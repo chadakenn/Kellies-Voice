@@ -9,7 +9,7 @@ Copy-and-paste Home Assistant examples for Kellie's Voice. All snippets use safe
 - **Automations** — paste into the automation YAML editor.
 - **Custom sentences / intent_script** — advanced; see the timer section and the repository's VOICE_TIMERS.md. These are optional and not required for the direct actions to work.
 
-**Current public release:** v0.16.8. Only features that exist in this release are shown.
+**Current public release:** v0.16.9. Only features that exist in this release are shown.
 
 ## Announcements
 
@@ -170,4 +170,4 @@ Replace the entity ID with the one on your Kellie's Voice device page. The four 
 
 ## Validation notes
 
-All examples were checked against `custom_components/kellies_voice/services.yaml` for v0.16.8. Required fields are marked. Placeholders avoid any personal credentials, tokens, or real IPs. Test each action from Developer tools before relying on voice or automations.
+All examples were checked against `custom_components/kellies_voice/services.yaml` for v0.16.9. Required fields are marked. Placeholders avoid any personal credentials, tokens, or real IPs. Test each action from Developer tools before relying on voice or automations.

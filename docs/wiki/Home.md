@@ -20,7 +20,7 @@ This Wiki is written for beginners. It walks you through:
 4. Copy-and-paste Home Assistant YAML examples (the [YAML Cookbook](YAML-Cookbook))
 5. Finding the exact **Resume TV alerts** button when popups stop working
 
-Only features that are **actually implemented and publicly released** (currently **v0.16.8**) are documented here. Draft ideas, wake-word support, follow-up listening, and native Home Assistant timer intent interception are **not** part of the public release.
+Only features that are **actually implemented and publicly released** (currently **v0.16.9**) are documented here. Draft ideas, wake-word support, follow-up listening, and native Home Assistant timer intent interception are **not** part of the public release.
 
 ## Quick start links
 
@@ -29,6 +29,6 @@ Only features that are **actually implemented and publicly released** (currently
 - [Troubleshooting](Troubleshooting) — including the exact steps for Resume TV alerts
 - [Supported TVs and Testing](Supported-TVs-and-Testing)
 
-**Current public release:** Android TV APK **v0.16.8** + matching HACS integration **v0.16.8** (October 24, 2026).
+**Current public release:** Android TV APK **v0.16.9** + matching HACS integration **v0.16.9** (October 24, 2026).
 
 Start with the [Getting Started](Getting-Started) page if this is your first time.

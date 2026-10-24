@@ -17,7 +17,7 @@
 
 This integration changes overlay layout and can send announcement and camera events to configured TVs. It does not start the microphone, replace the TV login, or install an APK.
 
-**Pairing diagnostic (v0.16.8 test release):** The Home Assistant TV device will expose a **TV alert receiver connected** diagnostic when its matching Android app opens the newer read-scoped notification channel. An ID that was manually mistyped will remain OFF/"never", rather than appearing verified. This is a socket-presence indicator, not a guarantee that a specific popup appeared. Older APKs on the legacy event subscription cannot report this new diagnostic. Requires matching v0.16.8 HACS and Android builds. Community hardware QA is in progress.
+**Pairing diagnostic (v0.16.9):** The Home Assistant TV device will expose a **TV alert receiver connected** diagnostic when its matching Android app opens the newer read-scoped notification channel. An ID that was manually mistyped will remain OFF/"never", rather than appearing verified. This is a socket-presence indicator, not a guarantee that a specific popup appeared. Older APKs on the legacy event subscription cannot report this new diagnostic. Requires matching v0.16.9 HACS and Android builds. Community hardware QA is in progress.
 
 Home Assistant never connects directly to the TV for layout changes. The TV can advertise through mDNS or you can enter its stable pairing ID manually. Either way, the TV reads those controls using its existing Home Assistant login.
 
@@ -29,7 +29,7 @@ In the maintainer's demonstrations, **Julia** is simply the name they gave their
 
 **No name or wake word is required for normal voice commands.** Activate the TV's listening overlay, then ask a question or give a command naturally. A wake word is an optional, separately configured feature, not synonymous with “Julia.” References to Julia in older developer test instructions are **examples only**. See the [main README explanation](../../README.md#kellies-voice-vs-julia-whats-the-difference).
 
-For **first-time testers**, start with the [full v0.16.8 installation, setup and tester checklist](../../docs/INSTALL.md). This HACS page covers the Home Assistant half; the Android TV APK must be installed separately.
+For **first-time testers**, start with the [full v0.16.9 installation, setup and tester checklist](../../docs/INSTALL.md). This HACS page covers the Home Assistant half; the Android TV APK must be installed separately.
 
 ## Install with HACS (recommended)
 
@@ -37,7 +37,7 @@ For **first-time testers**, start with the [full v0.16.8 installation, setup and
 
 1. Make sure HACS is installed in your Home Assistant instance.
 2. **First-time only:** in **HACS → ⋮ → Custom repositories**, add `https://github.com/chadakenn/Kellies-Voice` with category **Integration**. The shortcut badge does not register an unknown repository automatically.
-3. Click **[Open in HACS](https://my.home-assistant.io/redirect/hacs_repository/?owner=chadakenn&repository=Kellies-Voice&category=integration)**. Download the **public v0.16.8** Home Assistant integration to match the [v0.16.8 Android app](https://github.com/chadakenn/Kellies-Voice/releases/tag/v0.16.8), not old `v0.6` / `v0.16.0` builds.
+3. Click **[Open in HACS](https://my.home-assistant.io/redirect/hacs_repository/?owner=chadakenn&repository=Kellies-Voice&category=integration)**. Download the **public v0.16.9** Home Assistant integration to match the [v0.16.9 Android app](https://github.com/chadakenn/Kellies-Voice/releases/tag/v0.16.9), not old `v0.6` / `v0.16.0` builds.
 4. Restart Home Assistant, then turn **Home Assistant layout ON** inside the Kellie's Voice TV app. Either add the TV under **Settings → Devices & services → Discovered** or use **Add Integration → Kellie's Voice** for manual pairing with its device ID (shown on the TV under Settings → Home Assistant layout → Show this TV's pairing ID). This works if mDNS is blocked across VLANs.
 5. Optionally turn on **TV announcements & cameras** on the TV to receive HA announcements and Frigate camera snapshots.
 
