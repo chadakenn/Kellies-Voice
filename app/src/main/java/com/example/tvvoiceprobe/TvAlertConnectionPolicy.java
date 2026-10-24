@@ -30,6 +30,11 @@ public final class TvAlertConnectionPolicy {
                 && nowMs - sentAtMs >= HEARTBEAT_TIMEOUT_MS;
     }
 
+    /** Only missing HA controls during startup may retry; access denials stay terminal. */
+    public static boolean retryableSubscriptionError(String code) {
+        return "tv_not_ready".equals(code);
+    }
+
     public static long retryDelayMs(int attempts) {
         // Retain the old bounded retry schedule; avoid a shift overflow.
         return Math.min(30_000L, 2_000L << Math.min(4, Math.max(0, attempts)));

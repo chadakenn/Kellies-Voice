@@ -34,6 +34,14 @@ public class TvAlertConnectionPolicyTest {
         assertFalse(TvAlertConnectionPolicy.heartbeatTimedOut(30_000, 10_000));
     }
 
+    @Test public void temporaryHaStartupErrorRetriesButRealDenialsStayTerminal() {
+        assertTrue(TvAlertConnectionPolicy.retryableSubscriptionError("tv_not_ready"));
+        assertFalse(TvAlertConnectionPolicy.retryableSubscriptionError("unauthorized"));
+        assertFalse(TvAlertConnectionPolicy.retryableSubscriptionError("not_allowed"));
+        assertFalse(TvAlertConnectionPolicy.retryableSubscriptionError("invalid_format"));
+        assertFalse(TvAlertConnectionPolicy.retryableSubscriptionError(null));
+    }
+
     @Test public void reconnectBackoffIsBounded() {
         assertEquals(2_000, TvAlertConnectionPolicy.retryDelayMs(0));
         assertEquals(4_000, TvAlertConnectionPolicy.retryDelayMs(1));

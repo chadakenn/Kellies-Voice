@@ -31,7 +31,10 @@ its own authenticated Home Assistant WebSocket connection and, with matching
 v0.16.5+ Android/HACS, a **TV-scoped alert subscription** for announcements,
 camera snapshots/live/hide, forecasts, and timers. This connection is separate
 from voice/Assist. The app attempts to recover it after normal network losses,
-updates, and restarts; Android TV may block background starts, so it is **not**
+updates, and restarts. Source fix #86 (merged to main but not yet part of a public release) distinguishes
+Home Assistant's TV controls still loading from actual access denial and
+retries the first condition using bounded backoff; genuine read denials still
+block event delivery. Android TV may block background starts, so it is **not**
 a guaranteed 24/7 listener. Open the app or use **TV alert status → Resume TV
 alerts** if it remains disconnected. Events missed during outages are not
 replayed.
