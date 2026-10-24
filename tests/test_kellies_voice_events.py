@@ -225,7 +225,7 @@ class ValidationTests(unittest.TestCase):
         self.assertIn("SHOW_LIVE_SCHEMA", source)
         self.assertIn("async_show_live_camera", source)
         self.assertIn("kellies_voice_live_camera", const)
-        self.assertIn("MIN_LIVE_SECONDS = 15", const)
+        self.assertIn("MIN_LIVE_SECONDS = 4", const)
         self.assertIn("MAX_LIVE_SECONDS = 180", const)
 
     def test_hide_camera_event_registration_and_targeting(self):
