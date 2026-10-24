@@ -4,7 +4,7 @@
 
 Activate **TALK** on the TV and speak a natural question. Kellie's Voice sends the audio to your configured Home Assistant Assist pipeline and displays (and optionally speaks) the answer in a floating overlay. You do **not** need to say "Julia".
 
-The Google Assistant button on the remote is not intercepted. Devices without an accessible microphone show a clear error; a USB microphone may be required on some Philips TVs.
+The Google Assistant button on the remote is not intercepted. The app checks for usable audio inputs, but microphone detection is still unreliable on some Philips TVs in v0.16.8 (see [issue #71](https://github.com/chadakenn/Kellies-Voice/issues/71)); they may incorrectly show Listening and then receive no recognized speech. A USB microphone may be required.
 
 ## Named TV timers (v0.16.8)
 
