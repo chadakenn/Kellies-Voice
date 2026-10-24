@@ -20,6 +20,10 @@ _SPEC.loader.exec_module(validation)
 _CONST_SPEC = importlib.util.spec_from_file_location("kellies_voice_const", _COMPONENT / "const.py")
 const = importlib.util.module_from_spec(_CONST_SPEC)
 _CONST_SPEC.loader.exec_module(const)
+_ATTR_SPEC = importlib.util.spec_from_file_location(
+    "kellies_voice_layout_attrs", _COMPONENT / "layout_attrs.py")
+layout_attrs = importlib.util.module_from_spec(_ATTR_SPEC)
+_ATTR_SPEC.loader.exec_module(layout_attrs)
 
 
 class ForecastDeliveryTests(unittest.IsolatedAsyncioTestCase):
@@ -97,6 +101,15 @@ class ForecastDeliveryTests(unittest.IsolatedAsyncioTestCase):
 
 
 class ValidationTests(unittest.TestCase):
+    def test_registry_device_id_is_separate_from_pairing_id(self):
+        plain = layout_attrs.layout_attributes("pairing-uuid", "position", 0, None)
+        self.assertNotIn("ha_registry_device_id", plain)
+        self.assertEqual("pairing-uuid", plain["kellie_device_id"])
+        learned = layout_attrs.layout_attributes(
+            "pairing-uuid", "auto_listen", 2, " aabbccddeeff00112233445566778899 ")
+        self.assertEqual("aabbccddeeff00112233445566778899", learned["ha_registry_device_id"])
+        self.assertEqual("pairing-uuid", learned["kellie_device_id"])
+
     def test_snapshot_refresh_validation(self):
         for seconds in (0, 2, 5, 30):
             self.assertEqual(seconds, validation.clean_snapshot_refresh(seconds))

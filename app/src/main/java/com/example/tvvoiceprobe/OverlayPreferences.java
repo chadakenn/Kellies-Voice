@@ -43,6 +43,7 @@ public final class OverlayPreferences {
     private static final String KEY_HIDE_SECONDS = "overlay_hide_seconds";
     private static final String KEY_NOISE = "room_noise";
     private static final String KEY_DEVICE = "ha_device_id";
+    private static final String KEY_REGISTRY_DEVICE = "ha_registry_device_id";
     private static final String KEY_HA_MANAGE = "ha_manage_layout";
     private static final String KEY_TV_EVENTS = "tv_events_enabled";
     private static final String KEY_WEATHER_POSITION = "weather_position";
@@ -221,6 +222,18 @@ public final class OverlayPreferences {
             preferences.edit().putString(KEY_DEVICE, id).apply();
         }
         return id;
+    }
+
+    /** Home Assistant device-registry id learned from layout sync. Not the pairing id. */
+    public String registryDeviceId() {
+        String id = preferences.getString(KEY_REGISTRY_DEVICE, "");
+        return RegistryDeviceId.accepted(id);
+    }
+
+    public void setRegistryDeviceId(String id) {
+        String clean = RegistryDeviceId.accepted(id);
+        if (clean.isEmpty()) return;
+        preferences.edit().putString(KEY_REGISTRY_DEVICE, clean).apply();
     }
 
     public static String noiseLabel(String value) {
