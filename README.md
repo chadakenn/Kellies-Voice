@@ -111,7 +111,7 @@ The full camera script examples, including close and a 30 second view, are in [d
 
 ## Get started: install both parts
 
-**New testers:** follow the complete [v0.16.6 setup and hardware-testing checklist](docs/INSTALL.md), including TV permissions, HA connection, HACS pairing, and known limitations. The quick steps below are a short reference.
+**New testers:** follow the complete [v0.16.7 setup and hardware-testing checklist](docs/INSTALL.md), including TV permissions, HA connection, HACS pairing, and known limitations. The quick steps below are a short reference.
 
 The Android app and the HACS integration are **two different downloads**. You need both for Home Assistant-controlled overlay settings and camera announcements.
 
@@ -128,7 +128,7 @@ The Android app and the HACS integration are **two different downloads**. You ne
 [![Open Kellie's Voice in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=chadakenn&repository=Kellies-Voice&category=integration)
 
 1. If this is your first installation: **HACS → ⋮ → Custom repositories → Add**, paste `https://github.com/chadakenn/Kellies-Voice` and select **Integration**.
-2. Open Kellie's Voice in HACS and download the **matching v0.16.5 integration**. Restart Home Assistant.
+2. Open Kellie's Voice in HACS and download the **matching v0.16.7 integration**. Restart Home Assistant.
 3. Go to **Settings → Devices & services**, choose the discovered Kellie's Voice TV and add it. If mDNS discovery doesn't work, select **Add Integration → Kellie's Voice** and enter the ID shown under the TV app's **Settings → Home Assistant layout → Show this TV's pairing ID**.
 4. Open the registered TV device in Home Assistant. Configure voice-overlay position, size, style, auto-hide and auto-listen. You can now call the actions below.
 
@@ -230,11 +230,11 @@ On the device page, **Forecast source** is the weather entity used when a script
 
 ## Project status and contributing
 
-### Current release: v0.16.5 (October 22, 2026)
+### Current release: v0.16.7 (October 24, 2026)
 
-**Android TV APK v0.16.5 + matching Home Assistant integration v0.16.5 are publicly available.** This release includes named countdown pills and repeating timer completion alerts, seven-day weather popups, optional Aurora Glass overlay styling, camera overlays and Home Assistant announcements. On the maintainer's onn 4K Pro, the countdown and chimes, Back-to-dismiss, forecast card, voice questions, and moving driveway/doorbell live camera popups have been tested. Named timer **voice** start/stop worked after the maintainer added Home Assistant automations, not with zero additional setup.
+**Android TV APK v0.16.7 + matching Home Assistant integration v0.16.7 are publicly available.** This release includes named countdown pills and repeating timer completion alerts, seven-day weather popups, optional Aurora Glass overlay styling, camera overlays and Home Assistant announcements. On the maintainer's onn 4K Pro, the countdown and chimes, Back-to-dismiss, forecast card, voice questions, and moving driveway/doorbell live camera popups have been tested. Named timer **voice** start/stop worked after the maintainer added Home Assistant automations, not with zero additional setup.
 
-**Known limitations:** the v0.16.5 timer alert **OK/Dismiss** control needs a fix (Back works); app-wide theme synchronization and the HACS README banner are being improved; ordinary timer phrases may invoke Home Assistant's unsupported native timer intent until routed to Kellie's Voice. Follow-up listening, wake-word support, and actionable announcement buttons are **not** included in this public release, even though draft PRs and test builds exist.
+**Known limitations:** the timer alert **OK/Dismiss** fix now ships for physical testing (#54); app-wide theme synchronization and the HACS README banner are being improved; ordinary timer phrases may invoke Home Assistant's unsupported native timer intent until routed to Kellie's Voice. Follow-up listening, wake-word support, and actionable announcement buttons are **not** included in this public release, even though draft PRs and test builds exist.
 
 For a complete **first-time installation and testing checklist**, start with **[Install Kellie's Voice: new testers](docs/INSTALL.md)**. Other Android/Google/Fire TV models, audio behavior, camera compatibility, and longer-running reliability especially need real tester reports. [Open a GitHub issue](https://github.com/chadakenn/Kellies-Voice/issues) with device model, app/HACS version, reproducible steps and redacted screenshots.
 
@@ -251,7 +251,7 @@ data:
   device_id: "your-kellies-voice-tv-id"
 ```
 
-`show_live_camera` already supports **15–180 second** durations. Expose camera scripts with a `duration_seconds` field if your Assist agent can pass script arguments; a named 30-second camera script is a reliable alternative for simple speech commands. **Voice recognition of these new commands must be checked on your chosen conversation agent**. Both the v0.16.2 Android app **and** v0.16.2 HACS integration are required for the hide action.
+`show_live_camera` supports **4–180 second** durations, plus optional headerless and full-frame display and pre-video snapshot refresh. Expose camera scripts with a `duration_seconds` field if your Assist agent can pass script arguments; a named 30-second camera script is a reliable alternative for simple speech commands. **Voice recognition of these new commands must be checked on your chosen conversation agent**. Both the v0.16.2 Android app **and** v0.16.2 HACS integration are required for the hide action.
 
 ### Copy-and-paste Home Assistant script setup
 

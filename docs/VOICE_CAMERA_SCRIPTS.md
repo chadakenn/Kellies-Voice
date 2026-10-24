@@ -163,13 +163,13 @@ Change both entity IDs to the actual Frigate entities in **your** Home Assistant
 
 Public v0.16.4 can interrupt Philips HDMI playback when its overlay reserves the hardware video decoder. For those TVs, use `show_camera` snapshots until a validated fix ships.
 
-A draft Android test change introduces per-TV **Settings → Live camera** choices: safe software decoder (default), snapshots only, or opt-in hardware decoder for known-good boxes. Safe mode **never tries a hardware video decoder**. Try a low-resolution H.264 substream exposed as a separate Home Assistant camera entity, since 1080p HLS may be too demanding for software decoders on older TVs. An honest still-image fallback is not a live-playback success.
+v0.16.5 and newer include per-TV **Settings → Live camera** choices: safe software decoder (default), snapshots only, or opt-in hardware decoder for known-good boxes. Safe mode **never tries a hardware video decoder**. Try a low-resolution H.264 substream exposed as a separate Home Assistant camera entity, since 1080p HLS may be too demanding for software decoders on older TVs. An honest still-image fallback is not a live-playback success.
 
 QA must verify HDMI stays visible **during and after** playback, Netflix/TiviMate stays intact, audio remains uninterrupted, and repeated popup/hide/timeout calls release resources. On onn 4K Pro, verify existing live performance (and opt-in hardware mode if needed). Do not merge on CI alone; physical Philips and onn testing is required.
 
-## Snapshot controls for older TVs (draft issue #70)
+## Snapshot controls for older TVs (verified in v0.16.5)
 
-On the separate draft branch based on #67, `kellies_voice.show_camera`
+On v0.16.5+ Android and HACS, `kellies_voice.show_camera`
 accepts three **optional** settings without changing existing scripts:
 
 ```yaml
@@ -188,13 +188,11 @@ data:
 - Repeating the same camera call with unchanged header/fit/title reuses the visible window and refreshes the image without blinking or stealing D-pad focus. Requests for a different camera/layout replace the popup normally.
 - Network fetches use the existing authenticated same-HA-host `camera_proxy` URL; callbacks from stale cards are discarded, pending requests are canceled and refresh timers stop on close. This is pseudo-live, **not** HLS moving video, and may be slower than the chosen refresh interval.
 
-This is **not yet present in public v0.16.4** and requires matching HACS
-and Android test builds. Verify camera loading and repeated calls on physical
-Philips hardware before release.
+The original reporter verified these snapshot changes on both Philips TVs in v0.16.5, including no flicker and no cropping.
 
-## Live popup options (draft enhancement #79)
+## Live popup options (v0.16.7, issue #79)
 
-With the draft matching Android and HACS builds, `show_live_camera` also
+With matching Android and HACS v0.16.7, `show_live_camera` also
 accepts `show_header`, `image_fit` and `refresh_seconds`, just like snapshots:
 
 ```yaml
@@ -221,7 +219,7 @@ data:
   immediate after enabling Home Assistant's **Preload camera stream**
   for that entity. Preloading may increase Home Assistant/Frigate resource
   use; opt in only where useful.
-- This is **draft PR for #79**, not part of current public v0.16.6 until merged.
+- This shipped in **v0.16.7** via [PR #81](https://github.com/chadakenn/Kellies-Voice/pull/81). Philips/onn physical validation is pending in #79.
 
 ## Test and troubleshoot
 

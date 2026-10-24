@@ -1,4 +1,4 @@
-# Voice timers in public v0.16.4 (plus optional voice setup)
+# Voice timers in public v0.16.7 (plus optional voice setup)
 
 **Name clarification:** Julia is the maintainer's nickname for their Home Assistant conversation assistant, **not** an included assistant or wake word. Other users can use any Assist conversation agent and do **not** need to say "Julia" to start timers once the voice input is active. Timer scripts and sentence routing must be configured for your own Home Assistant pipeline; see the [naming explanation](../README.md#kellies-voice-vs-julia-whats-the-difference).
 
@@ -6,7 +6,7 @@ Named TV timers show small countdown pills over the current app. At completion: 
 
 The bundled chime plays locally. Optional speech uses the TV's Android text-to-speech engine, not the microphone or HA voice agent; it may sound different from your Home Assistant voice assistant. If speech is unavailable, chimes continue. A stalled utterance is stopped after 15 seconds so the pair sequence can resume. The phrase is configured per timer and limited to 140 characters.
 
-**Shipped:** signed Android v0.16.4 and matching HACS integration v0.16.4 support TV countdowns, completion chimes and the Home Assistant timer actions below. The maintainer confirmed countdown, recurring chimes and **Back** dismissal on the onn 4K Pro. **Known bug:** remote OK on the timer's Dismiss button did not work in v0.16.4; the fix remains unreleased in [PR #55](https://github.com/chadakenn/Kellies-Voice/pull/55). Optional hands-free follow-up listening (#46) and a wake word (#59) are **not shipped**. [New tester installation guide](INSTALL.md).
+**Shipped:** signed Android v0.16.7 and matching HACS integration v0.16.7 support TV countdowns, completion chimes and the Home Assistant timer actions below. The maintainer previously confirmed countdown, recurring chimes and **Back** dismissal on the onn 4K Pro. The previous **remote OK on Dismiss** failure is addressed in [merged PR #55](https://github.com/chadakenn/Kellies-Voice/pull/55), but still needs real-device verification before closing [#54](https://github.com/chadakenn/Kellies-Voice/issues/54). Optional hands-free follow-up listening (#46) and a wake word (#59) are **not shipped**. [New tester installation guide](INSTALL.md).
 
 ## Requirements and behavior
 
@@ -126,7 +126,7 @@ Examples: “Set a 5 minute timer”, “Set a pizza timer for 5 minutes”, “
 
 - [x] On the maintainer's onn 4K Pro: visible timer countdown, repeating chimes and **Back** to dismiss the completed alert.
 - [x] Voice start and stop on that TV after configuring custom Home Assistant timer automations.
-- [ ] Public v0.16.4 **OK/Dismiss** button: known failure; test fix only after a new signed version is released.
+- [ ] v0.16.7 **OK/Dismiss** fix: press OK without first moving the D-pad, then test multi-timer selection while a video plays. Record results in #54.
 - [ ] New tester devices, other Assist pipelines, simultaneous timers, network drops and extended sleep behavior.
 
 ## Further onn QA
