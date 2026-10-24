@@ -135,6 +135,7 @@ Alerts stay silent unless overlay permission is granted and the attached complet
 
 - [ ] Start two named timers over YouTube and verify countdowns without remote-focus theft.
 - [ ] At expiry, verify exactly two chimes, optional complete phrase, short pause, repeat indefinitely until dismissed.
+- [ ] **Fix validation from PR #55 (not yet in public v0.16.6):** When a 10-second timer finishes, press OK immediately **without moving the D-pad**. The Dismiss button should already have visible focus. With multiple completed timers, use Down/OK to dismiss the selected one while keeping the others available; Back must still dismiss all ringing alerts. While the countdown is running, the overlay must never steal TV remote focus.
 - [ ] Test D-pad Dismiss, Back, named voice cancellation, replacement while ringing, and multiple expired timers.
 - [ ] Verify dismiss stops MediaPlayer/TTS callbacks, restores audio focus, and cannot restart a stale alert.
 - [ ] Interrupt a ringing alert with other audio, then verify recovery and a later timer. Revoke overlay permission or hide/remove the completion window during chimes and speech: audio must stop; restore controls and verify safe resumption and Dismiss.
