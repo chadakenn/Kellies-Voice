@@ -4,6 +4,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
 from .const import PLATFORMS
+from .panel import async_register_layout_panel
 from .services import async_register_services
 from .websocket import async_register_alert_subscription
 
@@ -11,6 +12,7 @@ from .websocket import async_register_alert_subscription
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     async_register_services(hass)
     async_register_alert_subscription(hass)
+    await async_register_layout_panel(hass)
     return True
 
 

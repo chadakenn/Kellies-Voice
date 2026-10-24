@@ -94,6 +94,8 @@ The HACS integration and the Android APK are separate. Update HACS, restart Home
 | TV alert position and size | Home Assistant device page. These do not move the voice overlay |
 | Microphone sensitivity: Quiet room, Normal, TV on | Home Assistant device page. It changes the pause detector on the **next** question. It does not turn the microphone on |
 | Screensaver size and camera list | Home Assistant device page, when layout control is on. Size is Small, Medium, or Large. Cameras is a text field such as `camera.driveway, camera.doorbell`, or `none`. This does not turn the microphone on |
+
+The same controls are collected on one settings page. After you update the integration and restart Home Assistant, open the sidebar and choose **Kellie's Voice**. Overlay position, size, style, alerts, microphone sensitivity, forecast, and screensaver size are dropdowns. Screensaver cameras is a checkbox menu of your existing cameras, limited to four. The page does not start the microphone. Home Assistant layout still has to be on in the TV app.
 | Home Assistant URL, access token, pairing ID | TV only |
 | Microphone permission, display-over-apps permission, alert opt-in, alert resume | TV only |
 | Connect, new conversation, diagnostics, app update, forget login | TV only |

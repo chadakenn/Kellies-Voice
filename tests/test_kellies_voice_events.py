@@ -214,6 +214,22 @@ class ValidationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             validation.clean_screensaver_cameras("http://token.example/secret")
 
+    def test_layout_page_is_a_dropdown_panel(self):
+        source = (_COMPONENT / "www" / "layout-panel.js").read_text(encoding="utf-8")
+        panel = (_COMPONENT / "panel.py").read_text(encoding="utf-8")
+        self.assertIn('customElements.define("kellies-voice-layout"', source)
+        for setting in (
+            "position", "size", "style", "auto_hide", "auto_listen",
+            "alert_position", "alert_size", "noise", "screensaver_size",
+            "screensaver_cameras",
+        ):
+            self.assertIn(f'"{setting}"', source)
+        self.assertNotIn("Bearer", source)
+        self.assertNotIn("access_token", source)
+        self.assertIn("kellies-voice-layout", panel)
+        self.assertIn("layout-panel.js", panel)
+        self.assertIn("async_register_layout_panel", (_COMPONENT / "__init__.py").read_text(encoding="utf-8"))
+
     def test_custom_integration_english_translations(self):
         # Custom HA integrations load translations/en.json, not strings.json.
         source = json.loads((_COMPONENT / "strings.json").read_text(encoding="utf-8"))
