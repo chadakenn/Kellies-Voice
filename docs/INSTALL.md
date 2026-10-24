@@ -1,13 +1,13 @@
 # Install Kellie's Voice: start here (new testers)
 
-**Current public release: v0.16.4 (October 22, 2026)** · **Documentation checked: October 23, 2026**
+**Current public release: v0.16.6 (October 24, 2026)** · **Documentation checked: October 24, 2026**
 
 Welcome! **Kellie's Voice** turns an Android TV / Google TV into a voice companion for **your own Home Assistant**. It has two separate parts:
 
 1. **Android TV app**: listens after you press TALK, speaks Home Assistant's answer through the TV, and displays floating voice, timer, weather, announcement, and camera windows.
 2. **Home Assistant custom integration (via HACS)**: registers the TV and exposes per-TV controls and actions such as `kellies_voice.announce`, `show_camera`, `show_forecast`, and `start_timer`.
 
-**Install both parts at v0.16.4** for the full supported feature set. Installing the APK does **not** install HACS, and HACS does **not** install the APK. No separate AI server is needed on your TV.
+**Install both parts at v0.16.6** for the full supported feature set. Installing the APK does **not** install HACS, and HACS does **not** install the APK. No separate AI server is needed on your TV.
 
 > **Julia/Julie is not required.** That is only the maintainer's chosen name for their own Home Assistant voice assistant, **not** a second app or the wake word. Use your existing Home Assistant Assist agent, with any name or no name. After activating TALK, just speak naturally. Ollama and wake-word listening are optional, not required.
 
@@ -18,13 +18,13 @@ Welcome! **Kellie's Voice** turns an Android TV / Google TV into a voice compani
 - The TV and Home Assistant must be able to reach one another on your network. A valid Home Assistant URL and a **long-lived access token**, created under your own Home Assistant user profile's **Security** settings.
 - [HACS](https://www.hacs.xyz/) installed in Home Assistant to use the recommended integration setup. Manual custom-component installation is also possible.
 
-**TV alerts stuck Reconnecting on v0.16.5?** See [Troubleshooting](TROUBLESHOOTING.md#v0165-tv-alerts-stuck-on-reconnecting-after-tv-sleep-or-home-assistant-reload-issue-78). A draft fix makes the `Resume TV alerts` control replace stale connections and adds a Home Assistant heartbeat; Android and HACS connection statuses are separate. Until that candidate is tested, the reported workaround is force-stopping and reopening the TV app. No microphones start during alert recovery.
+**v0.16.6 TV alert reconnect fix (issue #78):** The Android receiver now has an explicit **Resume TV alerts** reconnect action and an authenticated HA ping/pong watchdog for stuck connections after sleep/HA reload. This is shipping for community testing, **not yet physically verified** on affected Philips TVs. The separate Home Assistant `TV alert receiver connected` sensor confirms subscription, not specific popup delivery. [Report re-tests here](https://github.com/chadakenn/Kellies-Voice/issues/78). No microphone is started by this fix.
 
 **Never post your HA token, authentication headers, camera URLs containing credentials, or signing keys** in GitHub issues, screenshots, or testing reports. Prefer a valid trusted HTTPS connection to Home Assistant; HTTP on a LAN does not encrypt the token or audio.
 
 ## Step 1: Install the signed Android TV APK
 
-1. Open the **[latest public Kellie's Voice release](https://github.com/chadakenn/Kellies-Voice/releases/latest)**. The current release is **v0.16.5** (early community test release).
+1. Open the **[latest public Kellie's Voice release](https://github.com/chadakenn/Kellies-Voice/releases/latest)**. The current release is **v0.16.6** (community test release).
 2. Download the release asset **`app-release.apk`**. Do **not** download a PR's `app-debug.apk` or GitHub Actions test artifact for a first installation.
 3. Transfer it to the TV. Options include a USB stick, a TV-compatible file manager, **Send Files to TV** on your phone and TV, or ADB (`adb install -r app-release.apk`).
 4. On the TV, open the APK and grant **Install unknown apps** to the installer/file manager if Android asks. Complete the installer.

@@ -111,7 +111,7 @@ The full camera script examples, including close and a 30 second view, are in [d
 
 ## Get started: install both parts
 
-**New testers:** follow the complete [v0.16.5 setup and hardware-testing checklist](docs/INSTALL.md), including TV permissions, HA connection, HACS pairing, and known limitations. The quick steps below are a short reference.
+**New testers:** follow the complete [v0.16.6 setup and hardware-testing checklist](docs/INSTALL.md), including TV permissions, HA connection, HACS pairing, and known limitations. The quick steps below are a short reference.
 
 The Android app and the HACS integration are **two different downloads**. You need both for Home Assistant-controlled overlay settings and camera announcements.
 
