@@ -20,6 +20,7 @@ public final class TvEventsRestartReceiver extends BroadcastReceiver {
 
     @Override public void onReceive(Context context, Intent intent) {
         if (context == null || intent == null || !TvEventsRecovery.accepts(intent.getAction())) return;
+        ScreensaverWatchService.startIfEnabled(context);
         boolean overlay = Settings.canDrawOverlays(context);
         boolean signedIn = signedIn(context);
         String decision = TvEventsRecovery.decide(

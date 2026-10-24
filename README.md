@@ -167,6 +167,21 @@ Use an existing Home Assistant `camera.*` entity. A Frigate person-detection aut
 </details>
 
 <details>
+<summary><strong>Example: Frigate dashboard while the screensaver is on</strong></summary>
+
+This is opt-in and is **not in the installed release** until a reviewed build is published. It does not use the microphone.
+
+1. On the TV, open **Settings → Frigate screensaver** and turn it **ON**.
+2. Set the Frigate page, for example `http://192.168.1.20:5000/`. Do not put a Home Assistant token or password in that address.
+3. Optional: if you leave the page blank, enter up to four camera entities (`camera.driveway, camera.doorbell`). Those stills use the saved Home Assistant login. The token is not written into the page address.
+4. Choose **Open Android screensaver list** and pick **Kellie's Voice Frigate**. Android does not let a normal popup draw on top of Google's own screensaver, so this choice is what makes the dashboard appear by itself when the screensaver starts.
+5. **Preview dashboard** shows it immediately. **Close** or **Back** leaves it.
+
+The TV also tries to place that same dashboard over whatever screensaver is already running. On some Google TV versions that extra layer stays behind Google's screensaver. Choosing **Kellie's Voice Frigate** is the path that is actually visible. Nothing here has been checked on a physical TV yet.
+
+</details>
+
+<details>
 <summary><strong>Example: request live video (experimental)</strong></summary>
 
 ```yaml
@@ -196,6 +211,7 @@ See [TV event setup](docs/TV_EVENTS.md), [HA service details](custom_components/
 | Frigate still-image camera popups | **Tested** with driveway camera on onn 4K Pro |
 | Person-detection automations for driveway and doorbell | **Configured** in HA; natural detection end-to-end test pending |
 | Live HLS camera overlay | **Verified** moving driveway and doorbell video on onn 4K Pro with Android v0.16.1; other cameras and TV devices still need testing |
+| Frigate page during the screensaver | **Not in the installed release.** Opt-in screensaver with a Close button. Not yet tried on a TV |
 | Other Google TV and Android TV brands | **Not comprehensively tested** |
 
 Kellie's Voice uses a user-controlled microphone; it **does not intercept the Google Assistant voice button** or promise access to the remote's Bluetooth microphone. Some streaming apps or protected content may limit overlays. The TV event listener is opt-in and Android may stop it while suspended; delivery is not guaranteed 24/7. No external ports need to be opened on the TV for Home Assistant events.

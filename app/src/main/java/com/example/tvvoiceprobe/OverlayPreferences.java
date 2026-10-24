@@ -50,6 +50,9 @@ public final class OverlayPreferences {
     private static final String KEY_WEATHER_SECONDS = "weather_seconds";
     private static final String KEY_CAMERA_MODE = "live_camera_decoder_mode";
     private static final String KEY_ALLOW_UNVERIFIED_MIC = "allow_unverified_mic";
+    private static final String KEY_SCREENSAVER = "screensaver_dashboard";
+    private static final String KEY_SCREENSAVER_URL = "screensaver_dashboard_url";
+    private static final String KEY_SCREENSAVER_CAMERAS = "screensaver_cameras";
     private final SharedPreferences preferences;
 
     public OverlayPreferences(Context context) {
@@ -271,5 +274,30 @@ public final class OverlayPreferences {
     public void setWeatherSeconds(int value) {
         preferences.edit().putInt(KEY_WEATHER_SECONDS,
                 value == 8 || value == 30 || value == 45 ? value : 20).apply();
+    }
+
+    /** Off until the owner asks for a Frigate page while the screensaver is running. */
+    public boolean screensaverDashboard() {
+        return preferences.getBoolean(KEY_SCREENSAVER, false);
+    }
+
+    public void setScreensaverDashboard(boolean enabled) {
+        preferences.edit().putBoolean(KEY_SCREENSAVER, enabled).apply();
+    }
+
+    public String screensaverUrl() {
+        return ScreensaverDashboard.dashboardUrl(preferences.getString(KEY_SCREENSAVER_URL, ""));
+    }
+
+    public void setScreensaverUrl(String value) {
+        preferences.edit().putString(KEY_SCREENSAVER_URL, ScreensaverDashboard.dashboardUrl(value)).apply();
+    }
+
+    public String screensaverCameras() {
+        return ScreensaverDashboard.cameras(preferences.getString(KEY_SCREENSAVER_CAMERAS, ""));
+    }
+
+    public void setScreensaverCameras(String value) {
+        preferences.edit().putString(KEY_SCREENSAVER_CAMERAS, ScreensaverDashboard.cameras(value)).apply();
     }
 }
