@@ -75,7 +75,7 @@ prove that the separate TV alert receiver is subscribed. If the new HA
 Reconnecting, camera/announcement automations may publish events that the TV
 never sees. v0.16.5's `Resume TV alerts` can fail to replace a stale WebSocket.
 
-A candidate fix in draft PR #80 makes **Resume TV alerts** explicitly abort
+The v0.16.6 recovery fix in [PR #80](https://github.com/chadakenn/Kellies-Voice/pull/80) makes **Resume TV alerts** explicitly abort
 and rebuild that receiver connection. A bounded Home Assistant WebSocket
 `ping`/`pong` heartbeat detects silently stalled sessions, and a setup timeout
 catches missing authentication or event-subscription acknowledgments.
@@ -83,7 +83,7 @@ Reconnecting never starts the microphone or replays missed alerts. Old
 WebSocket callbacks must not affect the new connection, and a rejected token
 or denied read permission must stay an actionable error rather than looping.
 
-**Temporary v0.16.5 recovery:** Android TV Settings → Apps → Kellie's Voice
+**Temporary workaround on v0.16.5:** Android TV Settings → Apps → Kellie's Voice
 → Force stop, then reopen the app. Test both TV sleep/wake and Home Assistant
 reload, verify the HA connection binary sensor returns ON, then send a new
 announcement; the receiver must not falsely claim that already-missed alerts
