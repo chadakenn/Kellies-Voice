@@ -10,7 +10,7 @@ The Android TV app handles the microphone, floating overlays, on-screen speech, 
 
 ## Required permissions
 
-- **Microphone** — needed for voice. If the TV reports no accessible microphone (common on some Philips models without a USB mic), the app shows a clear error instead of sending silence.
+- **Microphone** — needed for voice. The app attempts to reject non-microphone inputs, but microphone detection is still being investigated on some Philips TVs in v0.16.8 ([issue #71](https://github.com/chadakenn/Kellies-Voice/issues/71)); those TVs may still show Listening and send silence. A compatible USB microphone may be needed.
 - **Display over other apps** — required for floating overlays (voice card, announcements, cameras, timers, weather).
 
 ## Overlay themes (v0.16.8)
