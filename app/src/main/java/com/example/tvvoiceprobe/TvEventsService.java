@@ -9,6 +9,7 @@ import android.content.Intent;
 import android.content.pm.ServiceInfo;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Matrix;
 import android.graphics.PixelFormat;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
@@ -31,6 +32,7 @@ import androidx.media3.common.MediaItem;
 import androidx.media3.common.MimeTypes;
 import androidx.media3.common.PlaybackException;
 import androidx.media3.common.Player;
+import androidx.media3.common.VideoSize;
 import androidx.media3.exoplayer.DefaultRenderersFactory;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.exoplayer.mediacodec.MediaCodecInfo;
@@ -756,6 +758,7 @@ public final class TvEventsService extends Service {
             // TextureView is composited with the rest of this popup window.
             // Keep a real camera still behind the player until the first video frame.
             FrameLayout preview = new FrameLayout(this);
+            preview.setBackgroundColor(0xff2D211C); // letterbox behind live video
             ImageView still = new ImageView(this);
             still.setScaleType(fitWhole ? ImageView.ScaleType.FIT_CENTER
                     : ImageView.ScaleType.CENTER_CROP);
@@ -912,9 +915,28 @@ public final class TvEventsService extends Service {
         return factory;
     }
 
+    /** Correct raw TextureView aspect ratio when the HA action requests fit. */
+    private void fitLiveTexture(VideoSize size, TextureView surface) {
+        if (size == null || surface == null || !snapshotFit
+                || size.width <= 0 || size.height <= 0) return;
+        surface.post(() -> {
+            if (liveSurface != surface || !snapshotFit
+                    || surface.getWidth() <= 0 || surface.getHeight() <= 0) return;
+            float videoAspect = size.width * size.pixelWidthHeightRatio / size.height;
+            float windowAspect = (float) surface.getWidth() / surface.getHeight();
+            if (!Float.isFinite(videoAspect) || videoAspect <= 0) return;
+            float x = videoAspect > windowAspect ? 1f : videoAspect / windowAspect;
+            float y = videoAspect > windowAspect ? windowAspect / videoAspect : 1f;
+            Matrix transform = new Matrix();
+            transform.setScale(x, y, surface.getWidth() / 2f, surface.getHeight() / 2f);
+            surface.setTransform(transform);
+        });
+    }
+
     private void releaseLivePlayer(String status) {
         if (liveStatus != null && status != null) liveStatus.setText(status);
         if (liveSurface != null) liveSurface.setAlpha(0f);
+        if (photo != null) photo.setVisibility(View.VISIBLE);
         if (livePlayer != null) {
             ExoPlayer old = livePlayer;
             livePlayer = null;
@@ -948,12 +970,18 @@ public final class TvEventsService extends Service {
             player.setTrackSelectionParameters(player.getTrackSelectionParameters().buildUpon()
                     .setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, true).build());
             player.addListener(new Player.Listener() {
+                @Override public void onVideoSizeChanged(VideoSize videoSize) {
+                    if (player == livePlayer && liveSurface != null) {
+                        fitLiveTexture(videoSize, liveSurface);
+                    }
+                }
                 @Override public void onRenderedFirstFrame() {
                     // Headerless live popups intentionally have no subtitle.
                     // Lack of a label must never prevent playback from becoming visible.
                     if (player != livePlayer || liveSurface == null) return;
                     liveFirstFrame = true;
                     stopSnapshotRefresh();
+                    if (photo != null) photo.setVisibility(View.INVISIBLE);
                     liveSurface.setAlpha(1f);
                     if (liveStatus != null) liveStatus.setText("LIVE · muted");
                 }

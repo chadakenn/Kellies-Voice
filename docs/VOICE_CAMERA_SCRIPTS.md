@@ -209,8 +209,9 @@ data:
 
 - `show_header: false` removes the live title and status line. Video still
   becomes visible at the **actual first frame**, even with no status label.
-- `image_fit: fit` letterboxes the **snapshot placeholder** to show the full
-  frame. The Android HLS player keeps its own default video scaling.
+- `image_fit: fit` letterboxes both the **snapshot placeholder** and
+  the actual muted HLS video, using the video-size aspect ratio. Default
+  `crop` preserves the existing player presentation.
 - `refresh_seconds` defaults to **0** (off). When set to **2–30**, only the
   underlying still snapshot is refreshed while HLS connects; it stops fetching
   at the first video frame, on dismissal or when the popup is replaced.
