@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="docs/branding/kellies-voice-approved-banner.webp" alt="Kellie's Voice logo and branding banner" width="100%" />
+  <img src="https://raw.githubusercontent.com/chadakenn/Kellies-Voice/main/docs/branding/kellies-voice-header.svg" alt="Kellie's Voice | Your home. Your voice. Your way." width="100%" />
 </div>
 
 # Kellie's Voice 🎙️📺
