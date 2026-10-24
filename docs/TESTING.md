@@ -1,4 +1,4 @@
-**Follow-up #71: Philips audio-policy input allowlist (new draft):** With
+**v0.16.8 #71: Philips audio-policy input allowlist field verification:** With
 `Echo Reference In` and `line_in` but no real mic on a Philips
 65PUS8507/12, TALK must show **No accessible microphone detected**
 instead of starting a silent Assist STT session. Unknown/vendor, line
@@ -10,7 +10,7 @@ hardware results, not just JUnit, decide if issue #71 is complete.
 
 # Field testing and verified milestones
 
-**#52 updated app-wide theme test (rebased on current v0.16.7):** Open the Kellie's Voice main screen on onn 4K Pro, change Home Assistant **Overlay style** from Copper to Aurora and then Night Signal. The floating Julia overlay and main-screen background, headings, transcript, answer text, Settings rows and remote-focus colors should match without restarting Assist. Test local style selection, return from diagnostics, reconnect, dark-mode contrast, and D-pad focus. The original app branding remains. Java palette mapping unit tests must pass, and hardware confirmation is still pending.
+**v0.16.8 #52 app-wide theme field verification:** Open the Kellie's Voice main screen on onn 4K Pro, change Home Assistant **Overlay style** from Copper to Aurora and then Night Signal. The floating Julia overlay and main-screen background, headings, transcript, answer text, Settings rows and remote-focus colors should match without restarting Assist. Test local style selection, return from diagnostics, reconnect, dark-mode contrast, and D-pad focus. The original app branding remains. Java palette mapping unit tests must pass, and hardware confirmation is still pending.
 
 
 **v0.16.7 issue #54 timer focus regression test:** On the onn 4K Pro, start a 10-second Pizza timer, let it ring, and press D-pad OK **without moving focus**. The Dismiss button should activate and repeating chimes must stop. Repeat with two timers, Down/OK to dismiss only one, and Back to dismiss the remainder. Countdown must not steal focus over YouTube. The Android host unit tests passed, but real-TV behavior remains unverified until the owner tests it.
@@ -28,7 +28,7 @@ hardware results, not just JUnit, decide if issue #71 is complete.
 
 **Combined draft checks (#67–#71):** Verify the full test APK+HACS combination on real Philips and onn hardware. Snapshot header/fit/refresh options must survive non-admin scoped WebSocket sanitation. Check that live decoding does not blank HDMI, wrong pairing IDs stay unverified, and inputless TVs do not send silent PCM. CI alone does not prove functionality. See [community QA](COMMUNITY_QA.md).
 
-**Community release testing (October 24, 2026):** Android/HACS **v0.16.7** includes the candidate fixes for #67–#71; physical hardware validation is still in progress. The prior **v0.16.4** was verified on the maintainer's onn 4K Pro: voice/TTS, live driveway and doorbell video, weather popup, timer countdown/chimes and Back dismissal, plus named timer voice start/stop with custom HA automations. **Unverified or known issues:** new timer Dismiss/OK fix requires physical verification, main-app-wide theme sync, native Assist generic timer routing, other TV hardware, follow-up/wake-word features and action buttons from draft PRs. For an accurate first-time setup, see **[Install and test Kellie's Voice v0.16.7](INSTALL.md)**. **The milestones below are historical and may refer to earlier versions; they are not the current release checklist.**
+**Community release testing (October 24, 2026):** Android/HACS **v0.16.8** includes the candidate fixes for #67–#71; physical hardware validation is still in progress. The prior **v0.16.4** was verified on the maintainer's onn 4K Pro: voice/TTS, live driveway and doorbell video, weather popup, timer countdown/chimes and Back dismissal, plus named timer voice start/stop with custom HA automations. **Unverified or known issues:** new timer Dismiss/OK and main-app-wide theme fixes require physical verification, native Assist generic timer routing, other TV hardware, follow-up/wake-word features and action buttons from draft PRs. For an accurate first-time setup, see **[Install and test Kellie's Voice v0.16.8](INSTALL.md)**. **The milestones below are historical and may refer to earlier versions; they are not the current release checklist.**
 
 Updated historical milestone: **2026-10-20**. Device: maintainer's **onn 4K Pro / Google TV**, with Android builds through GitHub Actions.
 
