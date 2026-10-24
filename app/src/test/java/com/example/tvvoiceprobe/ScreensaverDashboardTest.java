@@ -56,4 +56,17 @@ public class ScreensaverDashboardTest {
         assertTrue(ScreensaverDashboard.configured("http://10.0.0.8:5000/", ""));
         assertTrue(ScreensaverDashboard.configured("", "camera.doorbell"));
     }
+
+    @Test public void sizeAndCameraEditsStayBounded() {
+        assertEquals("small", ScreensaverDashboard.sizeKey("Small"));
+        assertEquals("medium", ScreensaverDashboard.sizeKey("medium"));
+        assertEquals("large", ScreensaverDashboard.sizeKey("Large"));
+        assertEquals("", ScreensaverDashboard.sizeKey("Huge"));
+        assertEquals("Small", ScreensaverDashboard.sizeLabel("small"));
+        assertEquals("Large", ScreensaverDashboard.sizeLabel("nope"));
+        assertEquals(0.48f, ScreensaverDashboard.fraction("small"), 0.001f);
+        assertEquals(0.72f, ScreensaverDashboard.fraction("medium"), 0.001f);
+        assertEquals(1f, ScreensaverDashboard.fraction("large"), 0.001f);
+        assertEquals("", ScreensaverDashboard.cameras("none"));
+    }
 }

@@ -1,7 +1,7 @@
 """Option text shared with the Android TV app. Do not rename values."""
 
 DOMAIN = "kellies_voice"
-PLATFORMS = ["select", "switch", "binary_sensor"]
+PLATFORMS = ["select", "switch", "binary_sensor", "text"]
 
 POSITIONS = [
     "Original location",
@@ -58,6 +58,14 @@ WEATHER_SELECTS = (
     ("weather_size", "Forecast size", ALERT_SIZES, "mdi:relative-scale", "Medium"),
     ("weather_duration", "Forecast duration", WEATHER_DURATIONS, "mdi:timer-outline", "20 seconds"),
 )
+
+# Screensaver dashboard only. Large matches a TV that has never changed this.
+SCREENSAVER_SIZES = ["Small", "Medium", "Large"]
+SCREENSAVER_SELECTS = (
+    ("screensaver_size", "Screensaver size", SCREENSAVER_SIZES, "mdi:relative-scale", "Large"),
+)
+SCREENSAVER_CAMERAS = "screensaver_cameras"
+SCREENSAVER_CAMERAS_EMPTY = "none"
 
 EVENT_ANNOUNCEMENT = "kellies_voice_announcement"
 EVENT_CAMERA_POPUP = "kellies_voice_camera_popup"

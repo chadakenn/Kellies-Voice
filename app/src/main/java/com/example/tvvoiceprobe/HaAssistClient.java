@@ -622,26 +622,34 @@ public final class HaAssistClient {
         if (!HaLayout.known(setting)) return;
         String option;
         String entity;
-        boolean switchEntity;
         synchronized (this) {
             if (!layoutSync || !authenticated || socket == null) return;
             entity = layoutEntities.get(setting);
             if (entity == null) return;
             option = HaLayout.wireValue(new OverlayPreferences(context), setting);
             if (option == null) return;
-            switchEntity = entity.startsWith("switch.");
+            String domain = "select";
+            String service = "select_option";
+            if (entity.startsWith("switch.")) {
+                domain = "switch";
+                service = "on".equals(option) ? "turn_on" : "turn_off";
+            } else if (entity.startsWith("text.")) {
+                domain = "text";
+                service = "set_value";
+            }
             try {
                 JSONObject call = new JSONObject();
                 call.put("id", commandId++);
                 call.put("type", "call_service");
-                call.put("domain", switchEntity ? "switch" : "select");
-                call.put("service", switchEntity ? ("on".equals(option) ? "turn_on" : "turn_off") : "select_option");
+                call.put("domain", domain);
+                call.put("service", service);
                 JSONObject target = new JSONObject();
                 target.put("entity_id", entity);
                 call.put("target", target);
                 JSONObject data = new JSONObject();
                 data.put("entity_id", entity);
-                if (!switchEntity) data.put("option", option);
+                if ("text".equals(domain)) data.put("value", option);
+                else if (!"switch".equals(domain)) data.put("option", option);
                 call.put("service_data", data);
                 socket.send(call.toString());
             } catch (Exception ignored) { }

@@ -17,6 +17,8 @@ public final class HaLayout {
     public static final String WEATHER_POSITION = "weather_position";
     public static final String WEATHER_SIZE = "weather_size";
     public static final String WEATHER_DURATION = "weather_duration";
+    public static final String SCREENSAVER_SIZE = "screensaver_size";
+    public static final String SCREENSAVER_CAMERAS = "screensaver_cameras";
 
     private HaLayout() {}
 
@@ -26,7 +28,8 @@ public final class HaLayout {
                 || ALERT_POSITION.equals(setting) || ALERT_SIZE.equals(setting)
                 || NOISE.equals(setting)
                 || WEATHER_POSITION.equals(setting) || WEATHER_SIZE.equals(setting)
-                || WEATHER_DURATION.equals(setting);
+                || WEATHER_DURATION.equals(setting)
+                || SCREENSAVER_SIZE.equals(setting) || SCREENSAVER_CAMERAS.equals(setting);
     }
 
     public static boolean changesPanel(String setting) {
@@ -60,6 +63,11 @@ public final class HaLayout {
                 return TvAlertLayout.sizeLabel(prefs.weatherSize());
             case WEATHER_DURATION:
                 return WeatherLayout.durationLabel(prefs.weatherSeconds());
+            case SCREENSAVER_SIZE:
+                return ScreensaverDashboard.sizeLabel(prefs.screensaverSize());
+            case SCREENSAVER_CAMERAS:
+                String cameras = prefs.screensaverCameras();
+                return cameras.isEmpty() ? "none" : cameras;
             default:
                 return null;
         }
@@ -127,6 +135,23 @@ public final class HaLayout {
                 int weatherSeconds = WeatherLayout.durationSeconds(value);
                 if (weatherSeconds < 0 || weatherSeconds == prefs.weatherSeconds()) return false;
                 prefs.setWeatherSeconds(weatherSeconds);
+                return true;
+            case SCREENSAVER_SIZE:
+                String screensaverSize = ScreensaverDashboard.sizeKey(value);
+                if (screensaverSize.isEmpty() || screensaverSize.equals(prefs.screensaverSize())) return false;
+                prefs.setScreensaverSize(screensaverSize);
+                return true;
+            case SCREENSAVER_CAMERAS:
+                if ("none".equalsIgnoreCase(value)) {
+                    if (prefs.screensaverCameras().isEmpty()) return false;
+                    prefs.setScreensaverCameras("");
+                    return true;
+                }
+                String screensaverCameras = ScreensaverDashboard.cameras(value);
+                if (screensaverCameras.isEmpty() || screensaverCameras.equals(prefs.screensaverCameras())) {
+                    return false;
+                }
+                prefs.setScreensaverCameras(screensaverCameras);
                 return true;
             default:
                 return false;

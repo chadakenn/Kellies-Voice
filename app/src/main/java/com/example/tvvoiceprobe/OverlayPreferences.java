@@ -53,6 +53,7 @@ public final class OverlayPreferences {
     private static final String KEY_SCREENSAVER = "screensaver_dashboard";
     private static final String KEY_SCREENSAVER_URL = "screensaver_dashboard_url";
     private static final String KEY_SCREENSAVER_CAMERAS = "screensaver_cameras";
+    private static final String KEY_SCREENSAVER_SIZE = "screensaver_size";
     private final SharedPreferences preferences;
 
     public OverlayPreferences(Context context) {
@@ -299,5 +300,16 @@ public final class OverlayPreferences {
 
     public void setScreensaverCameras(String value) {
         preferences.edit().putString(KEY_SCREENSAVER_CAMERAS, ScreensaverDashboard.cameras(value)).apply();
+    }
+
+    /** Large matches the original full-screen dashboard. */
+    public String screensaverSize() {
+        String size = ScreensaverDashboard.sizeKey(preferences.getString(KEY_SCREENSAVER_SIZE, "Large"));
+        return size.isEmpty() ? "large" : size;
+    }
+
+    public void setScreensaverSize(String value) {
+        String size = ScreensaverDashboard.sizeKey(value);
+        preferences.edit().putString(KEY_SCREENSAVER_SIZE, size.isEmpty() ? "large" : size).apply();
     }
 }

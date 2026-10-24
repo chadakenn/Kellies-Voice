@@ -95,6 +95,28 @@ def clean_camera_entity(value) -> str:
     return entity_id
 
 
+def clean_screensaver_cameras(value) -> str:
+    """Up to four camera entities, or 'none' when the dashboard should not list cameras."""
+    if value is None:
+        return "none"
+    raw = str(value).strip()
+    if not raw or raw.lower() == "none":
+        return "none"
+    kept = []
+    for part in raw.replace(",", " ").split():
+        try:
+            entity = clean_camera_entity(part)
+        except ValueError:
+            continue
+        if entity not in kept:
+            kept.append(entity)
+        if len(kept) == 4:
+            break
+    if not kept:
+        raise ValueError("Use up to four camera entities, such as camera.driveway, or none.")
+    return ",".join(kept)
+
+
 def target_device_ids(requested, configured) -> list:
     """One configured TV, or every configured TV when no id is given."""
     known = []

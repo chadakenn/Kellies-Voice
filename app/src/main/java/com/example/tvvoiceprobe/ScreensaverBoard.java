@@ -8,6 +8,7 @@ import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.DisplayMetrics;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
@@ -54,6 +55,9 @@ final class ScreensaverBoard {
     private WebView web;
     private int generation;
     private boolean stopped;
+    private final Runnable onSettings = () -> main.post(() -> {
+        if (!stopped) start();
+    });
 
     ScreensaverBoard(Context context, Host host) {
         this.context = context;
@@ -68,6 +72,7 @@ final class ScreensaverBoard {
             }
             return false;
         });
+        ScreensaverSignals.listen(onSettings);
     }
 
     View view() { return root; }
@@ -98,6 +103,7 @@ final class ScreensaverBoard {
     void stop() {
         stopped = true;
         generation++;
+        ScreensaverSignals.unlisten(onSettings);
         main.removeCallbacksAndMessages(null);
         List<Call> pending;
         synchronized (calls) {
@@ -137,9 +143,7 @@ final class ScreensaverBoard {
                 return !ScreensaverDashboard.sameSite(page, request.getUrl().toString());
             }
         });
-        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT);
-        params.bottomMargin = dp(72);
+        FrameLayout.LayoutParams params = cardParams();
         root.addView(web, params);
         web.loadUrl(page);
     }
@@ -148,6 +152,7 @@ final class ScreensaverBoard {
         LinearLayout grid = new LinearLayout(context);
         grid.setOrientation(LinearLayout.VERTICAL);
         grid.setPadding(dp(16), dp(16), dp(16), dp(72));
+        grid.setBackgroundColor(Color.BLACK);
         ImageView[] photos = new ImageView[cameras.length];
         int rows = (cameras.length + 1) / 2;
         int index = 0;
@@ -181,8 +186,7 @@ final class ScreensaverBoard {
             }
             grid.addView(line, rowParams);
         }
-        root.addView(grid, new FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+        root.addView(grid, cardParams());
         CredentialStore.Connection connection = signedIn();
         if (connection == null) {
             showMessage("Sign in to Home Assistant to load these cameras.");
@@ -261,9 +265,25 @@ final class ScreensaverBoard {
         message.setTextColor(Color.WHITE);
         message.setTextSize(22);
         message.setGravity(Gravity.CENTER);
+        message.setBackgroundColor(Color.BLACK);
         message.setPadding(dp(32), dp(32), dp(32), dp(32));
-        root.addView(message, new FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+        root.addView(message, cardParams());
+    }
+
+    private FrameLayout.LayoutParams cardParams() {
+        float fraction = ScreensaverDashboard.fraction(new OverlayPreferences(context).screensaverSize());
+        DisplayMetrics metrics = context.getResources().getDisplayMetrics();
+        int width = fraction >= 1f
+                ? FrameLayout.LayoutParams.MATCH_PARENT
+                : Math.max(dp(320), Math.round(metrics.widthPixels * fraction));
+        int height = fraction >= 1f
+                ? FrameLayout.LayoutParams.MATCH_PARENT
+                : Math.max(dp(180), Math.round(metrics.heightPixels * fraction));
+        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(width, height);
+        params.gravity = Gravity.CENTER;
+        if (fraction >= 1f) params.bottomMargin = dp(72);
+        root.setBackgroundColor(fraction >= 1f ? Color.BLACK : 0x00000000);
+        return params;
     }
 
     private Button closeButton() {

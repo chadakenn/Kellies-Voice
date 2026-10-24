@@ -93,6 +93,7 @@ The HACS integration and the Android APK are separate. Update HACS, restart Home
 | Overlay position, size, style, auto-hide, auto-listen | Home Assistant device page, when layout control is on |
 | TV alert position and size | Home Assistant device page. These do not move the voice overlay |
 | Microphone sensitivity: Quiet room, Normal, TV on | Home Assistant device page. It changes the pause detector on the **next** question. It does not turn the microphone on |
+| Screensaver size and camera list | Home Assistant device page, when layout control is on. Size is Small, Medium, or Large. Cameras is a text field such as `camera.driveway, camera.doorbell`, or `none`. This does not turn the microphone on |
 | Home Assistant URL, access token, pairing ID | TV only |
 | Microphone permission, display-over-apps permission, alert opt-in, alert resume | TV only |
 | Connect, new conversation, diagnostics, app update, forget login | TV only |
@@ -176,6 +177,8 @@ This is opt-in and is **not in the installed release** until a reviewed build is
 3. Optional: if you leave the page blank, enter up to four camera entities (`camera.driveway, camera.doorbell`). Those stills use the saved Home Assistant login. The token is not written into the page address.
 4. Choose **Open Android screensaver list** and pick **Kellie's Voice Frigate**. Android does not let a normal popup draw on top of Google's own screensaver, so this choice is what makes the dashboard appear by itself when the screensaver starts.
 5. **Preview dashboard** shows it immediately. **Close** or **Back** leaves it.
+
+With **Settings → Home Assistant layout** on, the TV device in Home Assistant has **Screensaver size** and **Screensaver cameras**. Size uses the same Small, Medium, and Large choices as the other cards. Large fills the screen. Small and Medium leave the rest of the screen clear. The camera field takes up to four `camera.*` entities separated by commas, or `none`. Restart Home Assistant after updating the integration so those two controls appear. A Frigate page address, when set, is still edited on the TV and is shown instead of the camera list.
 
 The TV also tries to place that same dashboard over whatever screensaver is already running. On some Google TV versions that extra layer stays behind Google's screensaver. Choosing **Kellie's Voice Frigate** is the path that is actually visible. Nothing here has been checked on a physical TV yet.
 

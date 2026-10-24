@@ -194,6 +194,26 @@ class ValidationTests(unittest.TestCase):
         self.assertNotIn("noise", [item[0] for item in const.SELECTS])
         self.assertNotIn("on", options)
 
+    def test_screensaver_controls_are_separate_from_the_voice_overlay(self):
+        setting, name, options, icon, initial = const.SCREENSAVER_SELECTS[0]
+        self.assertEqual(setting, "screensaver_size")
+        self.assertEqual(name, "Screensaver size")
+        self.assertEqual(options, ["Small", "Medium", "Large"])
+        self.assertEqual(initial, "Large")
+        self.assertEqual(const.SCREENSAVER_CAMERAS, "screensaver_cameras")
+        self.assertEqual(validation.clean_screensaver_cameras(""), "none")
+        self.assertEqual(validation.clean_screensaver_cameras("none"), "none")
+        self.assertEqual(
+            validation.clean_screensaver_cameras("camera.Driveway, nope, camera.doorbell"),
+            "camera.driveway,camera.doorbell",
+        )
+        self.assertEqual(
+            validation.clean_screensaver_cameras("camera.a camera.b camera.c camera.d camera.e"),
+            "camera.a,camera.b,camera.c,camera.d",
+        )
+        with self.assertRaises(ValueError):
+            validation.clean_screensaver_cameras("http://token.example/secret")
+
     def test_custom_integration_english_translations(self):
         # Custom HA integrations load translations/en.json, not strings.json.
         source = json.loads((_COMPONENT / "strings.json").read_text(encoding="utf-8"))

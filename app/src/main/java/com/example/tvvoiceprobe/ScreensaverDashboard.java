@@ -14,6 +14,36 @@ public final class ScreensaverDashboard {
     /** A dream that dies as soon as the dashboard opens should not take the dashboard with it. */
     public static final long EARLY_STOP_MS = 1500L;
 
+    public static String sizeKey(String value) {
+        if (value == null) return "";
+        switch (value.trim()) {
+            case "Small":
+            case "small":
+                return "small";
+            case "Medium":
+            case "medium":
+                return "medium";
+            case "Large":
+            case "large":
+                return "large";
+            default:
+                return "";
+        }
+    }
+
+    public static String sizeLabel(String size) {
+        if ("small".equals(size)) return "Small";
+        if ("medium".equals(size)) return "Medium";
+        return "Large";
+    }
+
+    /** Share of the screen the dashboard fills. Large is the whole screen. */
+    public static float fraction(String size) {
+        if ("small".equals(size)) return 0.48f;
+        if ("medium".equals(size)) return 0.72f;
+        return 1f;
+    }
+
     private ScreensaverDashboard() { }
 
     public static boolean showOverlay(boolean enabled, boolean dreaming, boolean dismissed,

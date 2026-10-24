@@ -643,11 +643,15 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         showCopperMenu("SETTINGS  ✦  FRIGATE SCREENSAVER",
                 "When the TV screensaver turns on, Kellie's Voice opens this Frigate page and a Close button. "
                         + "The microphone stays off. Android will not paint a normal popup over Google's own screensaver, "
-                        + "so choose Kellie's Voice Frigate in the screensaver list. Page: " + page + ". Cameras: " + cameras + ".",
+                        + "so choose Kellie's Voice Frigate in the screensaver list. "
+                        + "Home Assistant layout can change the size and camera list. "
+                        + "Page: " + page + ". Cameras: " + cameras + ". Size: "
+                        + ScreensaverDashboard.sizeLabel(prefs.screensaverSize()) + ".",
                 new String[] {
                         enabled ? "Turn Frigate screensaver OFF" : "Turn Frigate screensaver ON",
                         "Set Frigate page address",
                         "Set camera list instead",
+                        "Size: " + ScreensaverDashboard.sizeLabel(prefs.screensaverSize()),
                         "Preview dashboard",
                         "Open Android screensaver list",
                         "Back to Settings"
@@ -664,17 +668,36 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                         }
                     } else if (which == 1) askScreensaverUrl(prefs);
                     else if (which == 2) askScreensaverCameras(prefs);
-                    else if (which == 3) {
+                    else if (which == 3) chooseScreensaverSize(prefs);
+                    else if (which == 4) {
                         if (!prefs.screensaverDashboard()) status("Turn the Frigate screensaver on first.");
                         else startActivity(new Intent(this, ScreensaverPreviewActivity.class));
-                    } else if (which == 4) {
+                    } else if (which == 5) {
                         try {
                             startActivity(new Intent(android.provider.Settings.ACTION_DREAM_SETTINGS));
                         } catch (Exception ignored) {
                             status("This TV didn't open the screensaver list. Look under Settings, Display, Screensaver.");
                         }
                     }
-                    if (which != 1 && which != 2) showSettingsMenu();
+                    if (which != 1 && which != 2 && which != 3) showSettingsMenu();
+                });
+    }
+
+    private void chooseScreensaverSize(OverlayPreferences prefs) {
+        String[] sizes = {"Small", "Medium", "Large"};
+        String[] rows = new String[sizes.length];
+        for (int i = 0; i < sizes.length; i++) {
+            rows[i] = (sizes[i].equals(ScreensaverDashboard.sizeLabel(prefs.screensaverSize())) ? "✓  " : "     ")
+                    + sizes[i];
+        }
+        showCopperMenu("SCREENSAVER  ✦  SIZE",
+                "Small and Medium leave the rest of the screen clear. Large fills it. Home Assistant can change this too.",
+                rows, which -> {
+                    prefs.setScreensaverSize(sizes[which]);
+                    pushLayout(HaLayout.SCREENSAVER_SIZE);
+                    ScreensaverSignals.settingsChanged();
+                    status("Screensaver size: " + sizes[which] + ".");
+                    showSettingsMenu();
                 });
     }
 
@@ -719,6 +742,8 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                     } else {
                         prefs.setScreensaverCameras(accepted);
                         status(accepted.isEmpty() ? "Screensaver cameras cleared." : "Screensaver cameras saved.");
+                        pushLayout(HaLayout.SCREENSAVER_CAMERAS);
+                        ScreensaverSignals.settingsChanged();
                     }
                     showSettingsMenu();
                 }).show();
@@ -1228,6 +1253,9 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
     }
 
     @Override public void haLayout(String setting) {
+        if (HaLayout.SCREENSAVER_CAMERAS.equals(setting) || HaLayout.SCREENSAVER_SIZE.equals(setting)) {
+            runOnUiThread(ScreensaverSignals::settingsChanged);
+        }
         if (HaLayout.STYLE.equals(setting)) {
             runOnUiThread(this::applyMainPalette);
         }

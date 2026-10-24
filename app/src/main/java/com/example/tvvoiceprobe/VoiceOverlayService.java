@@ -527,6 +527,9 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
     }
 
     @Override public void haLayout(String setting) {
+        if (HaLayout.SCREENSAVER_CAMERAS.equals(setting) || HaLayout.SCREENSAVER_SIZE.equals(setting)) {
+            main.post(ScreensaverSignals::settingsChanged);
+        }
         if (!HaLayout.changesPanel(setting)) return;
         main.post(() -> {
             if (!closing) refreshPanel();
