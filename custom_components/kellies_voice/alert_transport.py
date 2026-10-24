@@ -17,7 +17,7 @@ from .const import (
 EVENT_FIELDS = {
     EVENT_ANNOUNCEMENT: ("device_id", "title", "text", "duration_seconds"),
     EVENT_CAMERA_POPUP: ("device_id", "entity_id", "title", "duration_seconds", "show_header", "image_fit", "refresh_seconds"),
-    EVENT_LIVE_CAMERA: ("device_id", "entity_id", "title", "duration_seconds"),
+    EVENT_LIVE_CAMERA: ("device_id", "entity_id", "title", "duration_seconds", "show_header", "image_fit", "refresh_seconds"),
     EVENT_HIDE_CAMERA: ("device_id",),
     EVENT_FORECAST: ("device_id", "location", "units", "issued", "duration_seconds", "days"),
     "kellies_voice_timer": (

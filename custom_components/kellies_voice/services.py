@@ -83,6 +83,11 @@ SHOW_LIVE_SCHEMA = vol.Schema(
     {
         vol.Required("entity_id"): cv.string,
         vol.Optional("title", default="Live camera"): cv.string,
+        vol.Optional("show_header", default=True): cv.boolean,
+        vol.Optional("image_fit", default="crop"): vol.In(("crop", "fit")),
+        vol.Optional("refresh_seconds", default=0): vol.All(
+            vol.Coerce(int), vol.Any(0, vol.Range(min=2, max=30))
+        ),
         vol.Optional("duration_seconds", default=DEFAULT_LIVE_SECONDS): vol.All(
             vol.Coerce(int), vol.Range(min=MIN_LIVE_SECONDS, max=MAX_LIVE_SECONDS)
         ),
@@ -264,10 +269,16 @@ async def _async_show_live_camera(call: ServiceCall) -> None:
     """Request a live HLS session on a configured TV without sharing stream URLs."""
     try:
         entity_id = clean_camera_entity(call.data.get("entity_id"))
-        title = clean_title(call.data.get("title", "Live camera"))
+        show_header = call.data.get("show_header", True)
+        title = (clean_title(call.data.get("title", "Live camera"))
+                 if show_header else "")
+        fit = call.data.get("image_fit", "crop")
+        if fit not in ("crop", "fit"):
+            raise ValueError("Choose image_fit 'crop' or 'fit'.")
+        refresh = clean_snapshot_refresh(call.data.get("refresh_seconds", 0))
         duration = int(call.data.get("duration_seconds", DEFAULT_LIVE_SECONDS))
         if not MIN_LIVE_SECONDS <= duration <= MAX_LIVE_SECONDS:
-            raise ValueError("Live duration must be from 15 to 180 seconds.")
+            raise ValueError("Live duration must be from 4 to 180 seconds.")
         targets = target_device_ids(call.data.get("device_id"), configured_device_ids(call.hass))
     except (ValueError, TypeError) as err:
         raise ServiceValidationError(str(err)) from None
@@ -283,6 +294,9 @@ async def _async_show_live_camera(call: ServiceCall) -> None:
             {
                 "entity_id": entity_id,
                 "title": title,
+                "show_header": show_header,
+                "image_fit": fit,
+                "refresh_seconds": refresh,
                 "duration_seconds": duration,
                 "device_id": device_id,
             },

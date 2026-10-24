@@ -192,6 +192,36 @@ This is **not yet present in public v0.16.4** and requires matching HACS
 and Android test builds. Verify camera loading and repeated calls on physical
 Philips hardware before release.
 
+## Live popup options (draft enhancement #79)
+
+With the draft matching Android and HACS builds, `show_live_camera` also
+accepts `show_header`, `image_fit` and `refresh_seconds`, just like snapshots:
+
+```yaml
+action: kellies_voice.show_live_camera
+data:
+  entity_id: camera.driveway
+  show_header: false
+  image_fit: fit
+  refresh_seconds: 3
+  duration_seconds: 6
+```
+
+- `show_header: false` removes the live title and status line. Video still
+  becomes visible at the **actual first frame**, even with no status label.
+- `image_fit: fit` letterboxes the **snapshot placeholder** to show the full
+  frame. The Android HLS player keeps its own default video scaling.
+- `refresh_seconds` defaults to **0** (off). When set to **2–30**, only the
+  underlying still snapshot is refreshed while HLS connects; it stops fetching
+  at the first video frame, on dismissal or when the popup is replaced.
+- `duration_seconds` now accepts **4–180** (previously 15–180). A **6-second**
+  popup may close before a slow HLS stream displays moving frames.
+- Philips tester reported ~7-second HLS startup on a cold camera, nearly
+  immediate after enabling Home Assistant's **Preload camera stream**
+  for that entity. Preloading may increase Home Assistant/Frigate resource
+  use; opt in only where useful.
+- This is **draft PR for #79**, not part of current public v0.16.6 until merged.
+
 ## Test and troubleshoot
 
 - Start with Home Assistant **Developer tools → Actions**, running `kellies_voice.show_live_camera` for a known streaming camera, or run the new scripts from **Settings → Automations & scenes → Scripts**.

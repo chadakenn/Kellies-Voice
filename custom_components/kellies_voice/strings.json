@@ -96,11 +96,23 @@
         },
         "duration_seconds": {
           "name": "Duration (seconds)",
-          "description": "Temporary live stream for 15 to 180 seconds, default 90."
+          "description": "Muted live stream popup for 4 to 180 seconds, default 90. A short popup may close before HLS video starts; try HA's Preload camera stream option to improve startup."
         },
         "device_id": {
           "name": "TV pairing ID",
           "description": "The pairing ID shown inside Kellie's Voice TV Settings (not HA's device registry ID). An accepted action means HA published the event, not proof that TV displayed it. Leave blank to send to every configured TV."
+        },
+        "show_header": {
+          "name": "Show header",
+          "description": "Hide both the title and muted-live status line when false. Default shows them."
+        },
+        "image_fit": {
+          "name": "Image fit",
+          "description": "Fit shows the complete stream/placeholder frame with letterboxing. Crop fills the image area (default)."
+        },
+        "refresh_seconds": {
+          "name": "Preview refresh (seconds)",
+          "description": "0 disables preview updates (default); 2–30 refreshes the still image until the first real video frame appears or the popup closes."
         }
       }
     },

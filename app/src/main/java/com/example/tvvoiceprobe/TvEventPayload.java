@@ -38,7 +38,7 @@ public final class TvEventPayload {
     }
 
     public static int liveDuration(int seconds) {
-        return Math.min(180, Math.max(15, seconds <= 0 ? 90 : seconds));
+        return Math.min(180, Math.max(4, seconds <= 0 ? 90 : seconds));
     }
 
     public static boolean hlsPathAllowed(String path) {
