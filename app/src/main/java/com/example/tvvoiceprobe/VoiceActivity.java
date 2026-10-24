@@ -648,9 +648,9 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
             dialog.setPositiveButton("Resume TV alerts", (d, w) -> {
                 try {
                     startForegroundService(new Intent(this, TvEventsService.class)
-                            .setAction(TvEventsService.ACTION_START));
+                            .setAction(TvEventsService.ACTION_RESUME));
                     TvEventsRestartReceiver.clearResume(this);
-                    status("Resuming TV alerts.");
+                    status("Refreshing the TV alert connection.");
                 } catch (RuntimeException ignored) {
                     TvEventsRecovery.note(TvEventsRecovery.STOPPED);
                     status("Android blocked the TV alert receiver. Try again from this screen.");

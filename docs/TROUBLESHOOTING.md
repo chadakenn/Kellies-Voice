@@ -67,6 +67,28 @@ protected Google/Alexa remote mic. Silence in a quiet room is not considered
 proof of missing hardware. The public v0.16.4 still reports
 `stt-no-text-recognised` on some microphone-less televisions.
 
+## v0.16.5 TV alerts stuck on Reconnecting after TV sleep or Home Assistant reload (issue #78)
+
+On Android/HACS v0.16.5, a connected main Assist screen does **not**
+prove that the separate TV alert receiver is subscribed. If the new HA
+`TV alert receiver connected` entity stays OFF while TV alert status says
+Reconnecting, camera/announcement automations may publish events that the TV
+never sees. v0.16.5's `Resume TV alerts` can fail to replace a stale WebSocket.
+
+A candidate fix in draft PR #80 makes **Resume TV alerts** explicitly abort
+and rebuild that receiver connection. A bounded Home Assistant WebSocket
+`ping`/`pong` heartbeat detects silently stalled sessions, and a setup timeout
+catches missing authentication or event-subscription acknowledgments.
+Reconnecting never starts the microphone or replays missed alerts. Old
+WebSocket callbacks must not affect the new connection, and a rejected token
+or denied read permission must stay an actionable error rather than looping.
+
+**Temporary v0.16.5 recovery:** Android TV Settings → Apps → Kellie's Voice
+→ Force stop, then reopen the app. Test both TV sleep/wake and Home Assistant
+reload, verify the HA connection binary sensor returns ON, then send a new
+announcement; the receiver must not falsely claim that already-missed alerts
+were delivered. Do not share HA tokens, camera URLs or private logs.
+
 ## Remote's microphone button launches Google Assistant
 
 This is the observed behavior on this onn 4K Pro. It doesn't mean the Home Assistant app has lost its connection. Use **TALK / STOP** and speak toward the box's built-in microphone instead. Remapping ⭐ to launch the app is a planned experiment, **not implemented**. Remapping alone does not give third-party access to the Google voice remote mic.

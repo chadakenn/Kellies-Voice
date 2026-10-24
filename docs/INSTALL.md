@@ -18,6 +18,8 @@ Welcome! **Kellie's Voice** turns an Android TV / Google TV into a voice compani
 - The TV and Home Assistant must be able to reach one another on your network. A valid Home Assistant URL and a **long-lived access token**, created under your own Home Assistant user profile's **Security** settings.
 - [HACS](https://www.hacs.xyz/) installed in Home Assistant to use the recommended integration setup. Manual custom-component installation is also possible.
 
+**TV alerts stuck Reconnecting on v0.16.5?** See [Troubleshooting](TROUBLESHOOTING.md#v0165-tv-alerts-stuck-on-reconnecting-after-tv-sleep-or-home-assistant-reload-issue-78). A draft fix makes the `Resume TV alerts` control replace stale connections and adds a Home Assistant heartbeat; Android and HACS connection statuses are separate. Until that candidate is tested, the reported workaround is force-stopping and reopening the TV app. No microphones start during alert recovery.
+
 **Never post your HA token, authentication headers, camera URLs containing credentials, or signing keys** in GitHub issues, screenshots, or testing reports. Prefer a valid trusted HTTPS connection to Home Assistant; HTTP on a LAN does not encrypt the token or audio.
 
 ## Step 1: Install the signed Android TV APK

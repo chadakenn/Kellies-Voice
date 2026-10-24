@@ -15,6 +15,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.provider.Settings;
 import android.view.Gravity;
 import android.view.TextureView;
@@ -64,6 +65,8 @@ import okhttp3.WebSocketListener;
  */
 public final class TvEventsService extends Service {
     public static final String ACTION_START = "com.example.tvvoiceprobe.TV_EVENTS_START";
+    /** User-requested recovery, unlike an ordinary idempotent service START. */
+    public static final String ACTION_RESUME = "com.example.tvvoiceprobe.TV_EVENTS_RESUME";
     public static final String ACTION_STOP = "com.example.tvvoiceprobe.TV_EVENTS_STOP";
     public static final String ACTION_PREVIEW = "com.example.tvvoiceprobe.TV_EVENTS_PREVIEW";
 
@@ -87,6 +90,7 @@ public final class TvEventsService extends Service {
             .pingInterval(25, TimeUnit.SECONDS)
             .build();
     private final Runnable reconnect = this::connect;
+    private final Runnable connectionWatchdog = this::checkConnectionHealth;
     private final Runnable dismiss = this::hideCard;
 
     private WindowManager windowManager;
@@ -116,6 +120,11 @@ public final class TvEventsService extends Service {
     private boolean cameraVisible;
     private int failedAttempts;
     private int generation;
+    private boolean alertsSubscribed;
+    private boolean terminalAlertError;
+    private int heartbeatId = -1;
+    private long connectionStartedMs = -1L;
+    private long heartbeatSentMs = -1L;
 
     @Override public IBinder onBind(Intent intent) { return null; }
 
@@ -153,10 +162,13 @@ public final class TvEventsService extends Service {
         if (credentials != null
                 && (!credentials.url.equals(saved.url) || !credentials.token.equals(saved.token))) {
             main.removeCallbacks(reconnect);
+            main.removeCallbacks(connectionWatchdog);
             if (socket != null) {
-                socket.close(1000, "Home Assistant login changed");
+                socket.cancel();
                 socket = null;
             }
+            clearConnectionTracking();
+            terminalAlertError = false;
             failedAttempts = 0;
         }
         credentials = saved;
@@ -177,11 +189,21 @@ public final class TvEventsService extends Service {
         stopping = false;
         if (timerOverlay == null) timerOverlay = new TimerOverlayController(this, windowManager);
         TvEventsRestartReceiver.clearResume(this);
-        TvEventsRecovery.note(TvEventsRecovery.RECONNECTING);
         if (ACTION_PREVIEW.equals(action)) {
             showCard("Kellie's Voice", "This is how announcements will appear over your TV.", null, 10);
         }
-        if (socket == null) connect();
+        if (TvAlertConnectionPolicy.shouldForceRestart(
+                ACTION_RESUME.equals(action), socket != null, alertsSubscribed)) {
+            // A stale OkHttp WebSocket reference must never make the Resume
+            // button a no-op. Invalid-token / permission errors only retry
+            // after an explicit user resume or changed credentials.
+            if (ACTION_RESUME.equals(action) || !terminalAlertError) {
+                forceReconnect();
+            }
+        } else if (socket == null && !terminalAlertError) {
+            TvEventsRecovery.note(TvEventsRecovery.RECONNECTING);
+            connect();
+        }
         return START_STICKY;
     }
 
@@ -219,10 +241,77 @@ public final class TvEventsService extends Service {
         if (manager != null && !stopping) manager.notify(NOTICE_ID, buildNotification(message));
     }
 
+    private void clearConnectionTracking() {
+        alertsSubscribed = false;
+        heartbeatId = -1;
+        heartbeatSentMs = -1L;
+        connectionStartedMs = -1L;
+        layoutStatesId = -1;
+        legacyMode = false;
+        legacyPending = 0;
+        legacyDenied = false;
+    }
+
+    /** Abort even a half-open transport; late callbacks are ignored by identity. */
+    private void forceReconnect() {
+        main.removeCallbacks(reconnect);
+        main.removeCallbacks(connectionWatchdog);
+        WebSocket old = socket;
+        socket = null;
+        clearConnectionTracking();
+        terminalAlertError = false;
+        failedAttempts = 0;
+        if (old != null) old.cancel();
+        if (stopping) return;
+        TvEventsRecovery.note(TvEventsRecovery.RECONNECTING);
+        connectionNotice("Reconnecting TV alert receiver");
+        connect();
+    }
+
+    private void scheduleConnectionWatchdog() {
+        main.removeCallbacks(connectionWatchdog);
+        if (!stopping && socket != null && !terminalAlertError) {
+            main.postDelayed(connectionWatchdog, TvAlertConnectionPolicy.WATCHDOG_INTERVAL_MS);
+        }
+    }
+
+    /**
+     * HA responds to authenticated {id,type:"ping"} with {id,type:"pong"}.
+     * No audio, events, credentials or arbitrary URL are sent by this probe.
+     * Android standby can pause the Handler, so elapsedRealtime measures
+     * time across sleep; the next wake tick heals a half-open socket.
+     */
+    private void checkConnectionHealth() {
+        if (stopping || socket == null || terminalAlertError) return;
+        long now = SystemClock.elapsedRealtime();
+        if (TvAlertConnectionPolicy.setupTimedOut(connectionStartedMs, now, alertsSubscribed)
+                || (heartbeatId != -1 && TvAlertConnectionPolicy.heartbeatTimedOut(
+                        heartbeatSentMs, now))) {
+            forceReconnect();
+            return;
+        }
+        if (alertsSubscribed && heartbeatId == -1) {
+            try {
+                int id = ++requestCounter;
+                JSONObject ping = new JSONObject().put("id", id).put("type", "ping");
+                if (!socket.send(ping.toString())) {
+                    forceReconnect();
+                    return;
+                }
+                heartbeatId = id;
+                heartbeatSentMs = now;
+            } catch (Exception ignored) {
+                forceReconnect();
+                return;
+            }
+        }
+        scheduleConnectionWatchdog();
+    }
+
     private void connect() {
         main.removeCallbacks(reconnect);
-        if (stopping || socket != null || !new OverlayPreferences(this).tvEvents()
-                || credentials == null) return;
+        if (stopping || socket != null || terminalAlertError
+                || !new OverlayPreferences(this).tvEvents() || credentials == null) return;
         HttpUrl base = HttpUrl.parse(credentials.url);
         if (base == null || !(base.scheme().equals("http") || base.scheme().equals("https"))
                 || !base.username().isEmpty() || !base.password().isEmpty()) {
@@ -234,6 +323,9 @@ public final class TvEventsService extends Service {
         // itself only accepts the http/https schemes.
         HttpUrl address = base.newBuilder()
                 .addPathSegments("api/websocket").build();
+        clearConnectionTracking();
+        connectionStartedMs = SystemClock.elapsedRealtime();
+        TvEventsRecovery.note(TvEventsRecovery.RECONNECTING);
         socket = http.newWebSocket(new Request.Builder().url(address).build(),
                 new WebSocketListener() {
                     @Override public void onMessage(WebSocket ws, String text) {
@@ -247,19 +339,18 @@ public final class TvEventsService extends Service {
                         main.post(() -> lostConnection(ws));
                     }
                 });
+        scheduleConnectionWatchdog();
     }
 
     private void lostConnection(WebSocket ws) {
         if (ws != socket) return;
         socket = null;
-        layoutStatesId = -1;
-        legacyMode = false;
-        legacyPending = 0;
-        legacyDenied = false;
-        if (stopping) return;
+        main.removeCallbacks(connectionWatchdog);
+        clearConnectionTracking();
+        if (stopping || terminalAlertError) return;
         TvEventsRecovery.note(TvEventsRecovery.RECONNECTING);
         connectionNotice("Reconnecting to Home Assistant");
-        long delay = Math.min(30000L, 2000L << Math.min(4, failedAttempts++));
+        long delay = TvAlertConnectionPolicy.retryDelayMs(failedAttempts++);
         main.removeCallbacks(reconnect);
         main.postDelayed(reconnect, delay);
     }
@@ -275,6 +366,8 @@ public final class TvEventsService extends Service {
                 return;
             }
             if ("auth_invalid".equals(type)) {
+                terminalAlertError = true;
+                main.removeCallbacks(connectionWatchdog);
                 TvEventsRecovery.note(TvEventsRecovery.REJECTED);
                 connectionNotice("Home Assistant rejected the saved login");
                 ws.close(1000, "Authentication rejected");
@@ -302,10 +395,18 @@ public final class TvEventsService extends Service {
                 TvEventsRecovery.note(TvEventsRecovery.RECONNECTING);
                 return;
             }
+            if ("pong".equals(type)) {
+                if (message.optInt("id", -1) == heartbeatId) {
+                    heartbeatId = -1;
+                    heartbeatSentMs = -1L;
+                }
+                return;
+            }
             if ("result".equals(type)) {
                 int resultId = message.optInt("id", -1);
                 if (resultId == SCOPED_ALERTS_ID) {
                     if (message.optBoolean("success", false)) {
+                        alertsSubscribed = true;
                         TvEventsRecovery.note(TvEventsRecovery.CONNECTED);
                         connectionNotice("Connected, waiting for TV alerts");
                         TvEventsRestartReceiver.clearResume(this);
@@ -317,9 +418,13 @@ public final class TvEventsService extends Service {
                             // Non-admin users receive a clear denial instead.
                             subscribeLegacy(ws);
                         } else if ("unauthorized".equals(code) || "not_allowed".equals(code)) {
+                            terminalAlertError = true;
+                            main.removeCallbacks(connectionWatchdog);
                             TvEventsRecovery.note(TvEventsRecovery.DENIED);
                             connectionNotice("TV alert permissions denied; check TV alert status");
                         } else {
+                            terminalAlertError = true;
+                            main.removeCallbacks(connectionWatchdog);
                             TvEventsRecovery.note(TvEventsRecovery.UPDATE_HACS);
                             connectionNotice("Update the Kellie's Voice HACS integration");
                         }
@@ -331,9 +436,12 @@ public final class TvEventsService extends Service {
                     if (!message.optBoolean("success", false)) legacyDenied = true;
                     if (--legacyPending <= 0) {
                         if (legacyDenied) {
+                            terminalAlertError = true;
+                            main.removeCallbacks(connectionWatchdog);
                             TvEventsRecovery.note(TvEventsRecovery.DENIED);
                             connectionNotice("TV alert permissions denied; update HACS");
                         } else {
+                            alertsSubscribed = true;
                             TvEventsRecovery.note(TvEventsRecovery.CONNECTED);
                             connectionNotice("Connected (legacy event subscriptions)");
                             TvEventsRestartReceiver.clearResume(this);
@@ -961,6 +1069,7 @@ public final class TvEventsService extends Service {
         stopping = true;
         if (timerOverlay != null) { timerOverlay.close(!new OverlayPreferences(this).tvEvents()); timerOverlay = null; }
         main.removeCallbacksAndMessages(null);
+        clearConnectionTracking();
         hideCard();
         if (socket != null) {
             socket.close(1000, "Receiver stopped");
