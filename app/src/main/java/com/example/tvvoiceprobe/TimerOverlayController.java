@@ -15,6 +15,7 @@ import android.speech.tts.TextToSpeech;
 import android.speech.tts.UtteranceProgressListener;
 import android.view.Gravity;
 import android.view.KeyEvent;
+import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.LinearLayout;
@@ -66,7 +67,9 @@ public final class TimerOverlayController {
             }
             @Override public void stopPlayback() { stopAlertPlayback(); }
             @Override public void startPlayback(int token) {
-                if (panel != null) panel.requestFocus();
+                // Focus a real Dismiss control, not the surrounding LinearLayout.
+                // The root is focusable only as a fallback for odd TV firmware.
+                ensureDismissFocus(null);
                 chime(token, 0);
             }
         });
@@ -120,9 +123,25 @@ public final class TimerOverlayController {
                 @Override public boolean dispatchKeyEvent(KeyEvent event) {
                     if (event.getAction() == KeyEvent.ACTION_DOWN && event.getKeyCode() == KeyEvent.KEYCODE_BACK
                             && timers.ringing() != null) {
-                        timers.dismissRinging(); save(); render(); chooseAlert(); return true;
+                        dismissAllRinging(); return true;
+                    }
+                    if (TimerDismissKeys.shouldFallbackDismiss(event.getAction(), event.getKeyCode(),
+                            timers.ringing() != null, findFocus() instanceof Button)) {
+                        // On a TV whose window focused the root rather than the child,
+                        // still let OK dismiss one timer instead of doing nothing.
+                        TimerBook.Entry first = timers.ringing();
+                        if (first != null) dismissTimer(first.name);
+                        return true;
                     }
                     return super.dispatchKeyEvent(event);
+                }
+
+                @Override public void onWindowFocusChanged(boolean hasWindowFocus) {
+                    super.onWindowFocusChanged(hasWindowFocus);
+                    // Android may grant window focus only after FLAG_NOT_FOCUSABLE
+                    // is removed. Put it on the real button when that happens.
+                    if (hasWindowFocus && timers.ringing() != null)
+                        post(() -> ensureDismissFocus(null));
                 }
             };
             panel.addOnAttachStateChangeListener(new android.view.View.OnAttachStateChangeListener() {
@@ -142,7 +161,7 @@ public final class TimerOverlayController {
             panel.setFocusableInTouchMode(true);
             panel.setOnKeyListener((view, code, event) -> {
                 if (event.getAction() == KeyEvent.ACTION_DOWN && code == KeyEvent.KEYCODE_BACK && timers.ringing() != null) {
-                    timers.dismissRinging(); save(); render(); chooseAlert(); return true;
+                    dismissAllRinging(); return true;
                 }
                 return false;
             });
@@ -151,6 +170,11 @@ public final class TimerOverlayController {
         }
         if (panel == null) return;
         if (timers.entries().isEmpty()) { removePanel(); return; }
+        // Retain the user's selected ringing timer during a rebuild.
+        View previouslyFocused = panel.findFocus();
+        String preferredDismiss = previouslyFocused instanceof Button
+                && previouslyFocused.getTag() instanceof String
+                ? (String) previouslyFocused.getTag() : null;
         panel.removeAllViews();
         for (TimerBook.Entry timer : timers.entries()) {
             String text = timer.name + "   " + timer.remaining(SystemClock.elapsedRealtime());
@@ -158,7 +182,10 @@ public final class TimerOverlayController {
                 Button dismiss = new Button(context);
                 dismiss.setText(text + "  ·  Dismiss");
                 dismiss.setTextColor(0xFFFFFFFF);
-                dismiss.setOnClickListener(view -> { timers.cancel(timer.name); save(); render(); chooseAlert(); });
+                dismiss.setFocusable(true);
+                dismiss.setFocusableInTouchMode(true);
+                dismiss.setTag(TimerBook.key(timer.name));
+                dismiss.setOnClickListener(view -> dismissTimer(timer.name));
                 panel.addView(dismiss);
             } else {
                 TextView pill = new TextView(context);
@@ -167,8 +194,56 @@ public final class TimerOverlayController {
                 panel.addView(pill);
             }
         }
-        try { windows.updateViewLayout(panel, params(ringing)); controlsReady = ringing; }
-        catch (RuntimeException rejected) { removePanel(); }
+        try {
+            windows.updateViewLayout(panel, params(ringing));
+            controlsReady = ringing;
+            if (ringing) ensureDismissFocus(preferredDismiss);
+        } catch (RuntimeException rejected) { removePanel(); }
+    }
+
+    private void dismissTimer(String name) {
+        if (!timers.cancel(name)) return;
+        save();
+        render();
+        chooseAlert();
+    }
+
+    private void dismissAllRinging() {
+        timers.dismissRinging();
+        save();
+        render();
+        chooseAlert();
+    }
+
+    /** Choose a real D-pad clickable button rather than the focusable panel. */
+    private Button dismissButton(String preferredName) {
+        if (panel == null) return null;
+        Button first = null;
+        for (int i = 0; i < panel.getChildCount(); i++) {
+            View child = panel.getChildAt(i);
+            if (!(child instanceof Button)) continue;
+            Button button = (Button) child;
+            if (first == null) first = button;
+            if (preferredName != null && preferredName.equals(button.getTag())) return button;
+        }
+        return first;
+    }
+
+    private void ensureDismissFocus(String preferredName) {
+        if (closed || panel == null || timers.ringing() == null) return;
+        if (panel.findFocus() instanceof Button) return;
+        Button target = dismissButton(preferredName);
+        if (target == null) return;
+        target.requestFocus();
+        // Once Android grants focus to the newly focusable overlay window, a
+        // posted retry handles devices that reject the initial request.
+        LinearLayout owner = panel;
+        main.post(() -> {
+            if (closed || owner != panel || timers.ringing() == null
+                    || panel.findFocus() instanceof Button) return;
+            Button ready = dismissButton(preferredName);
+            if (ready != null) ready.requestFocus();
+        });
     }
 
     private WindowManager.LayoutParams params(boolean ringing) {
