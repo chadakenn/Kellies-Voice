@@ -16,7 +16,7 @@
 
 Other Android TV / Google TV / Fire TV models are welcome for community testing but are **not comprehensively verified**. Some Philips models have been used for camera and HDMI-safe decoder testing; microphone access is limited on devices that only expose echo-reference or line-in inputs. USB microphones may be required.
 
-## What is *not* in the public v0.16.8 release
+## What is *not* in the public v0.16.9 release
 
 - Always-on wake word
 - Automatic follow-up listening after the assistant finishes speaking

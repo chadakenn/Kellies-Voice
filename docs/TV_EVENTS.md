@@ -18,7 +18,7 @@ and then send a new test event. See
 [troubleshooting](TROUBLESHOOTING.md#tv-camera-or-announcement-popups-missing-find-resume-tv-alerts).
 
 
-1. Install the current signed Android APK (v0.16.8 at this documentation update) over the existing app (keep saved settings). Install the matching HACS Kellie's Voice integration and restart Home Assistant.
+1. Install the current signed Android APK (v0.16.9 at this documentation update) over the existing app (keep saved settings). Install the matching HACS Kellie's Voice integration and restart Home Assistant.
 2. In Kellie's Voice, open **Settings → TV announcements & cameras**.
 3. Turn it on. Android may require **Display over other apps** permission.
 4. Choose **Preview announcement** for a local test popup. It does
@@ -31,7 +31,7 @@ its own authenticated Home Assistant WebSocket connection and, with matching
 v0.16.5+ Android/HACS, a **TV-scoped alert subscription** for announcements,
 camera snapshots/live/hide, forecasts, and timers. This connection is separate
 from voice/Assist. The app attempts to recover it after normal network losses,
-updates, and restarts. Source fix #86 (merged to main but not yet part of a public release) distinguishes
+updates, and restarts. Starting with v0.16.9, fix #86 distinguishes
 Home Assistant's TV controls still loading from actual access denial and
 retries the first condition using bounded backoff; genuine read denials still
 block event delivery. Android TV may block background starts, so it is **not**
