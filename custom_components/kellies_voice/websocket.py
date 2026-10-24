@@ -29,23 +29,32 @@ def async_register_alert_subscription(hass: HomeAssistant) -> None:
     data[_REGISTERED] = True
 
 
-def _tv_can_read(hass: HomeAssistant, user, tv_id: str) -> bool:
-    """Require both a paired TV and access to one of its actual HA entities."""
+def _tv_access_state(hass: HomeAssistant, user, tv_id: str) -> str:
+    """Separate a TV still being set up from a genuine authorization failure."""
     paired = any(entry.data.get("device_id") == tv_id
                  for entry in hass.config_entries.async_entries(DOMAIN))
     if not paired or user is None:
-        return False
-    # Do not treat a known pairing UUID as authorization on its own.
+        return "denied"
+    # A paired UUID is never enough to authorize event delivery.
     permissions = user.permissions
+    found_controls = False
     for state in hass.states.async_all("select"):
         attrs = state.attributes
         if attrs.get("kellie_device_id") != tv_id or attrs.get("kellie_setting") != "alert_position":
             continue
+        found_controls = True
         if user.is_admin or permissions.access_all_entities(POLICY_READ):
-            return True
+            return "allowed"
         if permissions.check_entity(state.entity_id, POLICY_READ):
-            return True
-    return False
+            return "allowed"
+    # After an HA restart the config entry can exist before its select state.
+    # A retry must still re-check the read permission once the select exists.
+    return "denied" if found_controls else "not_ready"
+
+
+def _tv_can_read(hass: HomeAssistant, user, tv_id: str) -> bool:
+    """Require a paired TV and read access, including for each forwarded event."""
+    return _tv_access_state(hass, user, tv_id) == "allowed"
 
 
 @websocket_api.websocket_command({
@@ -63,7 +72,15 @@ def websocket_subscribe_alerts(hass: HomeAssistant,
         connection.send_error(msg["id"], websocket_api.ERR_INVALID_FORMAT,
                               "Invalid TV pairing ID")
         return
-    if not _tv_can_read(hass, connection.user, device_id):
+    access = _tv_access_state(hass, connection.user, device_id)
+    if access == "not_ready":
+        # HA can authenticate the TV while the paired select is still loading.
+        # This never creates a subscription or grants permission; Android
+        # retries and we enforce normal read authorization on every attempt.
+        connection.send_error(msg["id"], "tv_not_ready",
+                              "Paired TV alert controls are still loading")
+        return
+    if access != "allowed":
         connection.send_error(msg["id"], websocket_api.ERR_UNAUTHORIZED,
                               "No read permission for this paired TV")
         return

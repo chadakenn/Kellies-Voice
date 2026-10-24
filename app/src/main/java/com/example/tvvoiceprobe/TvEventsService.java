@@ -122,6 +122,9 @@ public final class TvEventsService extends Service {
     private boolean stopping;
     private boolean cameraVisible;
     private int failedAttempts;
+    // Kept separate from network failures: auth_ok resets failedAttempts
+    // even if HA has not created this TV's alert-position select yet.
+    private int notReadyAttempts;
     private int generation;
     private boolean alertsSubscribed;
     private boolean terminalAlertError;
@@ -173,6 +176,7 @@ public final class TvEventsService extends Service {
             clearConnectionTracking();
             terminalAlertError = false;
             failedAttempts = 0;
+            notReadyAttempts = 0;
         }
         credentials = saved;
         try {
@@ -200,8 +204,8 @@ public final class TvEventsService extends Service {
                 TvAlertConnectionPolicy.setupTimedOut(connectionStartedMs,
                         SystemClock.elapsedRealtime(), alertsSubscribed))) {
             // A stale OkHttp WebSocket reference must never make the Resume
-            // button a no-op. Invalid-token / permission errors only retry
-            // after an explicit user resume or changed credentials.
+            // button a no-op. Invalid-token / actual permission errors only
+            // retry after an explicit user resume or changed credentials.
             if (ACTION_RESUME.equals(action) || !terminalAlertError) {
                 forceReconnect();
             }
@@ -266,6 +270,7 @@ public final class TvEventsService extends Service {
         clearConnectionTracking();
         terminalAlertError = false;
         failedAttempts = 0;
+        notReadyAttempts = 0;
         if (old != null) old.cancel();
         if (stopping) return;
         TvEventsRecovery.note(TvEventsRecovery.RECONNECTING);
@@ -412,6 +417,7 @@ public final class TvEventsService extends Service {
                 if (resultId == SCOPED_ALERTS_ID) {
                     if (message.optBoolean("success", false)) {
                         alertsSubscribed = true;
+                        notReadyAttempts = 0;
                         TvEventsRecovery.note(TvEventsRecovery.CONNECTED);
                         connectionNotice("Connected, waiting for TV alerts");
                         TvEventsRestartReceiver.clearResume(this);
@@ -422,6 +428,19 @@ public final class TvEventsService extends Service {
                             // Compatibility with old HACS + an admin TV account.
                             // Non-admin users receive a clear denial instead.
                             subscribeLegacy(ws);
+                        } else if (TvAlertConnectionPolicy.retryableSubscriptionError(code)) {
+                            // A paired TV's HA select can lag behind WebSocket
+                            // authentication during HA startup. Retry only this
+                            // specific server code, never genuine read denials.
+                            main.removeCallbacks(connectionWatchdog);
+                            socket = null;
+                            clearConnectionTracking();
+                            ws.cancel();
+                            TvEventsRecovery.note(TvEventsRecovery.RECONNECTING);
+                            connectionNotice("Waiting for Home Assistant TV controls");
+                            main.removeCallbacks(reconnect);
+                            main.postDelayed(reconnect,
+                                    TvAlertConnectionPolicy.retryDelayMs(notReadyAttempts++));
                         } else if ("unauthorized".equals(code) || "not_allowed".equals(code)) {
                             terminalAlertError = true;
                             main.removeCallbacks(connectionWatchdog);

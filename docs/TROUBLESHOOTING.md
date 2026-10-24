@@ -138,6 +138,18 @@ Reconnecting never starts the microphone or replays missed alerts. Old
 WebSocket callbacks must not affect the new connection, and a rejected token
 or denied read permission must stay an actionable error rather than looping.
 
+**#78 HA restart reproduction (onn 4K Pro, v0.16.8):** After restarting HA,
+the receiver showed OFF/never while the TV alert status claimed permission
+was denied. Home Assistant had created the matching alert-position select by
+the time it was inspected. Pressing **Resume TV alerts** without changing any
+permissions restored the subscription and a new popup was received. Likely
+cause: the initial alert subscription arrived before the select was ready,
+and Android treated the temporary error as terminal. The #86 source fix separates
+temporary `tv_not_ready` responses from genuine authorization denials: retry
+the former with capped backoff, never grant access to a TV without the actual
+HA entity read check. A matching HACS+APK update and physical HA restart test
+are required before this is marked resolved.
+
 **Temporary workaround on v0.16.5:** Android TV Settings → Apps → Kellie's Voice
 → Force stop, then reopen the app. Test both TV sleep/wake and Home Assistant
 reload, verify the HA connection binary sensor returns ON, then send a new

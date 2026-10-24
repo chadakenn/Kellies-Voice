@@ -91,13 +91,14 @@ class ScopedPayloadTests(unittest.TestCase):
 class PermissionsTests(unittest.TestCase):
     def setUp(self):
         source = ast.parse((ROOT / "websocket.py").read_text(encoding="utf-8"))
-        node = next(item for item in source.body
-                    if isinstance(item, ast.FunctionDef) and item.name == "_tv_can_read")
+        nodes = [item for item in source.body if isinstance(item, ast.FunctionDef)
+                 and item.name in ("_tv_access_state", "_tv_can_read")]
         # Production annotations are evaluated at definition time; HA is intentionally
         # not installed in this fast offline unit-test job.
         self.funcs = {"HomeAssistant": object}
-        exec(compile(ast.Module(body=[node], type_ignores=[]), "permissions", "exec"), self.funcs)
+        exec(compile(ast.Module(body=nodes, type_ignores=[]), "permissions", "exec"), self.funcs)
         self.check = self.funcs["_tv_can_read"]
+        self.status = self.funcs["_tv_access_state"]
         self.id = "tv-one"
         self.state = SimpleNamespace(entity_id="select.tv_one_tv_alert_position",
                    attributes={"kellie_device_id": self.id, "kellie_setting": "alert_position"})
@@ -123,6 +124,68 @@ class PermissionsTests(unittest.TestCase):
         self.funcs["POLICY_READ"] = "read"
         self.state.attributes["kellie_setting"] = "noise"
         self.assertFalse(self.check(self.hass, self.user(True), self.id))
+        self.assertEqual("not_ready", self.status(self.hass, self.user(True), self.id))
+
+    def test_ha_startup_without_tv_controls_is_retryable_but_not_authorized(self):
+        self.funcs["DOMAIN"] = "kellies_voice"
+        self.funcs["POLICY_READ"] = "read"
+        self.hass.states.async_all = lambda domain: []
+        self.assertEqual("not_ready", self.status(self.hass, self.user(True), self.id))
+        self.assertFalse(self.check(self.hass, self.user(True), self.id))
+        # Once HA creates the select, a retry MUST still check real permissions.
+        self.hass.states.async_all = lambda domain: [self.state]
+        self.assertEqual("denied", self.status(self.hass, self.user(False), self.id))
+        self.assertEqual("allowed", self.status(self.hass, self.user(True), self.id))
+
+    def test_real_denials_do_not_become_retryable(self):
+        self.funcs["DOMAIN"] = "kellies_voice"
+        self.funcs["POLICY_READ"] = "read"
+        self.assertEqual("denied", self.status(self.hass, self.user(False), self.id))
+        self.assertEqual("denied", self.status(self.hass, None, self.id))
+        self.hass.states.async_all = lambda domain: []
+        # An unpaired ID is NEVER classified as a valid, pending TV.
+        self.assertEqual("denied", self.status(self.hass, self.user(True), "unpaired"))
+
+
+    def test_subscribe_protocol_sends_retryable_error_only_while_controls_missing(self):
+        # Execute the actual WebSocket handler without an HA install. Denial
+        # branches must not register listeners or a connected diagnostic.
+        source = ast.parse((ROOT / "websocket.py").read_text(encoding="utf-8"))
+        handler = next(item for item in source.body
+                       if isinstance(item, ast.FunctionDef)
+                       and item.name == "websocket_subscribe_alerts")
+        handler.decorator_list = []
+        runtime = dict(self.funcs)
+        runtime["websocket_api"] = SimpleNamespace(
+            ActiveConnection=object, ERR_UNAUTHORIZED="unauthorized",
+            ERR_INVALID_FORMAT="invalid_format")
+        runtime["clean_tv_device_id"] = lambda value: value
+        exec(compile(ast.Module(body=[handler], type_ignores=[]),
+                     "websocket_handler", "exec"), runtime)
+        self.funcs["DOMAIN"] = "kellies_voice"
+        self.funcs["POLICY_READ"] = "read"
+        errors = []
+        connection = SimpleNamespace(
+            user=self.user(True),
+            send_error=lambda request_id, code, message: errors.append((request_id, code)))
+        self.hass.states.async_all = lambda domain: []
+        runtime["websocket_subscribe_alerts"](
+            self.hass, connection, {"id": 9, "device_id": self.id})
+        self.assertEqual([(9, "tv_not_ready")], errors)
+
+        errors.clear()
+        self.hass.states.async_all = lambda domain: [self.state]
+        connection.user = self.user(False)
+        runtime["websocket_subscribe_alerts"](
+            self.hass, connection, {"id": 9, "device_id": self.id})
+        self.assertEqual([(9, "unauthorized")], errors)
+
+        errors.clear()
+        self.hass.states.async_all = lambda domain: []
+        connection.user = self.user(True)
+        runtime["websocket_subscribe_alerts"](
+            self.hass, connection, {"id": 9, "device_id": "wrong-pair"})
+        self.assertEqual([(9, "unauthorized")], errors)
 
 
 if __name__ == "__main__":
