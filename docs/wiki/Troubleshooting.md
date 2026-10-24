@@ -26,7 +26,7 @@ Manual Resume has been confirmed on an onn 4K Pro with v0.16.8. It is **not** pr
 
 ## Other common issues
 
-- **No microphone detected** — some Philips TVs expose only echo-reference or line-in devices that are not usable for speech. Connect a USB microphone or use the temporary diagnostic override in Settings. The Google Assistant remote button is not intercepted.
+- **No microphone detected / silent STT** — some Philips TVs expose only echo-reference or line-in devices that are not usable for speech. As of v0.16.8, those TVs can still incorrectly show Listening; see [issue #71](https://github.com/chadakenn/Kellies-Voice/issues/71). Try a compatible USB microphone and share non-sensitive Hardware microphone diagnostics with the maintainers. Use the unverified microphone override only for troubleshooting genuine, misreported microphones. The Google Assistant remote button is not intercepted.
 - **Action succeeds in Home Assistant but nothing appears on the TV** — check the alert receiver status, pairing ID (must be the TV's pairing ID, not an HA device-registry ID), and that the matching APK and HACS versions are installed.
 - **"This device doesn't support timers"** — Home Assistant's native timer intent was used. Direct `kellies_voice.start_timer` actions work; voice routing requires extra configuration. See [Voice and Timers](Voice-and-Timers).
 - **Signature conflict on update** — do not uninstall a signed release just to update. Use the in-app updater or install the newer signed APK over the existing one.
