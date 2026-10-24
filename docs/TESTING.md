@@ -1,3 +1,13 @@
+**Follow-up #71: Philips audio-policy input allowlist (new draft):** With
+`Echo Reference In` and `line_in` but no real mic on a Philips
+65PUS8507/12, TALK must show **No accessible microphone detected**
+instead of starting a silent Assist STT session. Unknown/vendor, line
+analog/digital, remote submix, BUS and tuner audio input types may not
+silently count as microphones. Attach a genuine USB mic and confirm
+speech works, test explicit compatibility override separately, and
+regress the onn 4K Pro built-in microphone plus STOP/audio focus. The
+hardware results, not just JUnit, decide if issue #71 is complete.
+
 # Field testing and verified milestones
 
 **v0.16.7 issue #54 timer focus regression test:** On the onn 4K Pro, start a 10-second Pizza timer, let it ring, and press D-pad OK **without moving focus**. The Dismiss button should activate and repeating chimes must stop. Repeat with two timers, Down/OK to dismiss only one, and Back to dismiss the remainder. Countdown must not steal focus over YouTube. The Android host unit tests passed, but real-TV behavior remains unverified until the owner tests it.

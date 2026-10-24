@@ -1,3 +1,26 @@
+## Philips TV line-in and echo-reference are not microphones (issue #71)
+
+Some Philips Android TVs report input devices such as **Echo Reference In**
+and **line_in** even when there is no app-accessible speech microphone.
+The initial v0.16.5 preflight blocked REMOTE_SUBMIX but mistakenly
+trusted other input types. The #71 follow-up fixes that by accepting only
+recognized microphone-capable Android device types (built-in, USB,
+wired-headset and Bluetooth headset). Unsupported or unknown devices,
+including line-in and internal echo-reference, no longer count as voice mics.
+
+If a vendor firmware exposes a genuine microphone only through a nonstandard
+type, use **TV Settings → Mic input detection → Try unverified microphone**
+as a *temporary diagnostic override*, then verify spoken STT works.
+This cannot unlock a Google Assistant-only remote microphone and doesn't
+capture anything until you explicitly start listening. Quiet speech or
+a silent room is not used to decide whether a microphone is present.
+
+**Original Philips tester acceptance:** On 65PUS8507/12 without USB mic,
+TALK should report **No accessible microphone detected** before Assist STT
+receives silent audio. Repeat on 55OLED856/12. With a real USB microphone,
+the preflight should proceed and route to a microphone. onn 4K Pro must
+retain its previously working built-in mic, normal TALK/STOP and overlay.
+
 # Troubleshooting: Kellie's Voice on Google TV
 
 ## "Conflicts with another app" / "App not installed"

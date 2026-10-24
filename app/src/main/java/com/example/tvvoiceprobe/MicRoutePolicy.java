@@ -3,12 +3,11 @@ package com.example.tvvoiceprobe;
 import android.media.AudioDeviceInfo;
 
 /**
- * Conservative audio INPUT policy. Android audio-policy configuration isn't
- * proof that an input is connected. Only getDevices(GET_DEVICES_INPUTS) lists
- * available sources; AudioRecord.getRoutedDevice() checks actual routing.
- *
- * Avoid false negatives for vendor-defined / unknown input types. Quiet
- * speech or silent samples are never evidence of a missing microphone.
+ * The public Android AudioDeviceInfo API identifies line-in, TV audio,
+ * echo-reference and loopback-type capture paths as input devices too.
+ * This is an intentional allowlist of MIC-capable routes, not merely an
+ * "anything except remote submix" check. An unknown/vendor route can
+ * still be tried through the explicit compatibility override in Settings.
  */
 public final class MicRoutePolicy {
     public static final String NO_MIC_MESSAGE =
@@ -18,21 +17,35 @@ public final class MicRoutePolicy {
 
     private MicRoutePolicy() { }
 
+    /** Recognized Android voice capture routes (input devices, not outputs). */
+    public static boolean isMicrophoneType(int type) {
+        switch (type) {
+            case AudioDeviceInfo.TYPE_BUILTIN_MIC:
+            case AudioDeviceInfo.TYPE_WIRED_HEADSET:
+            case AudioDeviceInfo.TYPE_BLUETOOTH_SCO:
+            case AudioDeviceInfo.TYPE_USB_DEVICE:
+            case AudioDeviceInfo.TYPE_USB_ACCESSORY:
+            case AudioDeviceInfo.TYPE_USB_HEADSET:
+            case AudioDeviceInfo.TYPE_BLE_HEADSET:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    /** Includes line-level, remote-submix, echo reference and unknown routes. */
     public static boolean unavailableRoute(int type) {
-        return type == AudioDeviceInfo.TYPE_REMOTE_SUBMIX
-                || type == AudioDeviceInfo.TYPE_TV_TUNER
-                || type == AudioDeviceInfo.TYPE_FM_TUNER
-                || type == AudioDeviceInfo.TYPE_TELEPHONY;
+        return !isMicrophoneType(type);
     }
 
     /**
-     * Unknown device types may be valid vendor microphones; don't reject
-     * them. A genuine empty input list or remote-submix-only TV is blocked.
+     * Null means enumeration failed/inconclusive, not confirmed no mic.
+     * An empty or non-mic-only list is a reliable preflight rejection.
      */
     public static boolean noUsableInputs(int[] types) {
-        if (types == null) return false; // Firmware query failed: inconclusive.
+        if (types == null) return false;
         for (int type : types) {
-            if (!unavailableRoute(type)) return false;
+            if (isMicrophoneType(type)) return false;
         }
         return true;
     }

@@ -18,6 +18,8 @@ Welcome! **Kellie's Voice** turns an Android TV / Google TV into a voice compani
 - The TV and Home Assistant must be able to reach one another on your network. A valid Home Assistant URL and a **long-lived access token**, created under your own Home Assistant user profile's **Security** settings.
 - [HACS](https://www.hacs.xyz/) installed in Home Assistant to use the recommended integration setup. Manual custom-component installation is also possible.
 
+**Philips microphone follow-up (#71 draft):** Internal echo-reference and line-in audio input devices are not voice microphones. A pending fix will require a recognized built-in/USB/headset microphone (or an explicit compatibility override) before starting Assist capture. This addresses the tester's v0.16.5 report, and is **not** part of the current public v0.16.7 release until merged. [Report findings on #71](https://github.com/chadakenn/Kellies-Voice/issues/71).
+
 **v0.16.6 TV alert reconnect fix (issue #78):** The Android receiver now has an explicit **Resume TV alerts** reconnect action and an authenticated HA ping/pong watchdog for stuck connections after sleep/HA reload. This is shipping for community testing, **not yet physically verified** on affected Philips TVs. The separate Home Assistant `TV alert receiver connected` sensor confirms subscription, not specific popup delivery. [Report re-tests here](https://github.com/chadakenn/Kellies-Voice/issues/78). No microphone is started by this fix.
 
 **Never post your HA token, authentication headers, camera URLs containing credentials, or signing keys** in GitHub issues, screenshots, or testing reports. Prefer a valid trusted HTTPS connection to Home Assistant; HTTP on a LAN does not encrypt the token or audio.
