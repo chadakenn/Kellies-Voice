@@ -61,6 +61,23 @@ class ScopedPayloadTests(unittest.TestCase):
         self.assertEqual("Pizza", t["name"])
         self.assertNotIn("extra", t)
 
+    def test_live_display_options_are_scoped_and_secret_free(self):
+        result = transport.sanitize_event(const.EVENT_LIVE_CAMERA, {
+            "device_id": self.TV, "entity_id": "camera.driveway",
+            "title": "", "show_header": False, "image_fit": "fit",
+            "refresh_seconds": 2, "duration_seconds": 6,
+            "camera_url": "https://example.invalid/secret"
+        }, self.TV)
+        self.assertIsNotNone(result)
+        self.assertEqual(False, result["show_header"])
+        self.assertEqual("fit", result["image_fit"])
+        self.assertEqual(2, result["refresh_seconds"])
+        self.assertEqual(6, result["duration_seconds"])
+        self.assertNotIn("camera_url", result)
+        self.assertIsNone(transport.sanitize_event(const.EVENT_LIVE_CAMERA, {
+            "device_id": self.OTHER, "entity_id": "camera.driveway"
+        }, self.TV))
+
     def test_invalid_and_oversized_data_dropped(self):
         self.assertIsNone(transport.sanitize_event("evil", {}, self.TV))
         self.assertIsNone(transport.sanitize_event(const.EVENT_FORECAST, {"days": [{}]*8}, self.TV))

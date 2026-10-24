@@ -104,6 +104,22 @@ class ValidationTests(unittest.TestCase):
             with self.subTest(value=invalid), self.assertRaises(ValueError):
                 validation.clean_snapshot_refresh(invalid)
 
+    def test_live_camera_options_and_short_duration_contract(self):
+        svc = (_COMPONENT / "services.py").read_text(encoding="utf-8")
+        const_src = (_COMPONENT / "const.py").read_text(encoding="utf-8")
+        yaml = (_COMPONENT / "services.yaml").read_text(encoding="utf-8")
+        self.assertEqual(4, const.MIN_LIVE_SECONDS)
+        self.assertIn('vol.Optional("show_header", default=True)', svc)
+        self.assertIn('vol.Optional("image_fit", default="crop")', svc)
+        self.assertIn('vol.Optional("refresh_seconds", default=0)', svc)
+        self.assertIn('Live duration must be from 4 to 180 seconds.', svc)
+        self.assertIn('MIN_LIVE_SECONDS = 4', const_src)
+        self.assertIn('min: 4', yaml)
+        live_handler = svc.split("async def _async_show_live_camera(", 1)[1].split(
+            "async def _async_hide_camera(", 1)[0]
+        for key in ("show_header", "image_fit", "refresh_seconds"):
+            self.assertIn('"' + key + '":', live_handler)
+
     def test_camera_snapshot_options_are_forwarded(self):
         source = (_COMPONENT / "services.py").read_text(encoding="utf-8")
         self.assertIn('vol.Optional("show_header", default=True)', source)
@@ -209,7 +225,7 @@ class ValidationTests(unittest.TestCase):
         self.assertIn("SHOW_LIVE_SCHEMA", source)
         self.assertIn("async_show_live_camera", source)
         self.assertIn("kellies_voice_live_camera", const)
-        self.assertIn("MIN_LIVE_SECONDS = 15", const)
+        self.assertIn("MIN_LIVE_SECONDS = 4", const)
         self.assertIn("MAX_LIVE_SECONDS = 180", const)
 
     def test_hide_camera_event_registration_and_targeting(self):

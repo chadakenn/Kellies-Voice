@@ -9,6 +9,7 @@ import android.content.Intent;
 import android.content.pm.ServiceInfo;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Matrix;
 import android.graphics.PixelFormat;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
@@ -31,6 +32,7 @@ import androidx.media3.common.MediaItem;
 import androidx.media3.common.MimeTypes;
 import androidx.media3.common.PlaybackException;
 import androidx.media3.common.Player;
+import androidx.media3.common.VideoSize;
 import androidx.media3.exoplayer.DefaultRenderersFactory;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.exoplayer.mediacodec.MediaCodecInfo;
@@ -105,6 +107,7 @@ public final class TvEventsService extends Service {
     private boolean snapshotFit;
     private TextureView liveSurface;
     private boolean liveFirstFrame;
+    private VideoSize liveVideoSize;
     private TextView liveStatus;
     private ExoPlayer livePlayer;
     private int requestCounter = 100;
@@ -529,10 +532,15 @@ public final class TvEventsService extends Service {
             } else if ((subscription == SCOPED_ALERTS_ID || subscription == LIVE_EVENT_ID)
                     && TvEventPayload.LIVE_CAMERA.equals(eventType)) {
                 String entity = TvEventPayload.cameraEntity(data.optString("entity_id"));
-                if (entity != null) showCard(
-                        TvEventPayload.cleanText(data.optString("title", "Live camera"), 65),
-                        "LIVE · Starting muted video…", entity,
-                        TvEventPayload.liveDuration(data.optInt("duration_seconds", 90)), true);
+                if (entity != null) {
+                    boolean header = data.optBoolean("show_header", true);
+                    boolean fit = TvEventPayload.fitWholeImage(data.optString("image_fit"));
+                    int refresh = TvEventPayload.snapshotRefresh(data.optInt("refresh_seconds", 0));
+                    showCard(TvEventPayload.cleanText(data.optString("title", "Live camera"), 65),
+                            "LIVE · Starting muted video…", entity,
+                            TvEventPayload.liveDuration(data.optInt("duration_seconds", 90)),
+                            true, header, fit, refresh);
+                }
             } else if ((subscription == SCOPED_ALERTS_ID || subscription == FORECAST_EVENT_ID)
                     && ForecastCard.EVENT.equals(eventType)) {
                 if (!cameraVisible) showForecast(data);
@@ -733,7 +741,7 @@ public final class TvEventsService extends Service {
         panel.setElevation(dp(12));
 
         TextView subtitle = null;
-        if (entity == null || live || showHeader) {
+        if (entity == null || showHeader) {
             View goldRule = new View(this);
             goldRule.setBackgroundColor(0xffE1B27B);
             panel.addView(goldRule, new LinearLayout.LayoutParams(-1, dp(3)));
@@ -751,8 +759,10 @@ public final class TvEventsService extends Service {
             // TextureView is composited with the rest of this popup window.
             // Keep a real camera still behind the player until the first video frame.
             FrameLayout preview = new FrameLayout(this);
+            preview.setBackgroundColor(0xff2D211C); // letterbox behind live video
             ImageView still = new ImageView(this);
-            still.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            still.setScaleType(fitWhole ? ImageView.ScaleType.FIT_CENTER
+                    : ImageView.ScaleType.CENTER_CROP);
             still.setBackgroundColor(0xff2D211C);
             preview.addView(still, new FrameLayout.LayoutParams(-1, -1));
             photo = still;
@@ -763,6 +773,7 @@ public final class TvEventsService extends Service {
             preview.addView(surface, new FrameLayout.LayoutParams(-1, -1));
             liveSurface = surface;
             liveFirstFrame = false;
+            liveVideoSize = null;
             panel.addView(preview, new LinearLayout.LayoutParams(-1,
                     dp(TvAlertLayout.mediaHeightDp(alertSize, true))));
         } else if (entity != null) {
@@ -793,7 +804,7 @@ public final class TvEventsService extends Service {
             windowManager.addView(panel, params);
             card = panel;
             cameraVisible = entity != null;
-            if (entity != null && !live) {
+            if (entity != null) {
                 snapshotEntity = entity;
                 snapshotTitle = title;
                 snapshotHeader = showHeader;
@@ -801,8 +812,9 @@ public final class TvEventsService extends Service {
             }
             if (entity != null) {
                 if (live) {
-                    // This is explicitly a still-image fallback, never label it "LIVE".
+                    // Keep stills behind the player until the first actual video frame.
                     fetchSnapshot(entity, photo, current);
+                    scheduleSnapshotRefresh(entity, current, refreshSeconds);
                     if (LiveCameraMode.requestsStream(cameraMode)) {
                         requestLiveStream(entity, current);
                         main.postDelayed(() -> {
@@ -814,7 +826,8 @@ public final class TvEventsService extends Service {
                             }
                         }, 18000L);
                     } else {
-                        liveStatus.setText("Camera snapshot · live video disabled on this TV.");
+                        if (liveStatus != null) liveStatus.setText(
+                                "Camera snapshot · live video disabled on this TV.");
                     }
                 } else {
                     fetchSnapshot(entity, photo, current);
@@ -904,9 +917,28 @@ public final class TvEventsService extends Service {
         return factory;
     }
 
+    /** Correct raw TextureView aspect ratio when the HA action requests fit. */
+    private void fitLiveTexture(VideoSize size, TextureView surface) {
+        if (size == null || surface == null || !snapshotFit
+                || size.width <= 0 || size.height <= 0) return;
+        surface.post(() -> {
+            if (liveSurface != surface || !snapshotFit
+                    || surface.getWidth() <= 0 || surface.getHeight() <= 0) return;
+            float videoAspect = size.width * size.pixelWidthHeightRatio / size.height;
+            float windowAspect = (float) surface.getWidth() / surface.getHeight();
+            if (!Float.isFinite(videoAspect) || videoAspect <= 0) return;
+            float x = videoAspect > windowAspect ? 1f : videoAspect / windowAspect;
+            float y = videoAspect > windowAspect ? windowAspect / videoAspect : 1f;
+            Matrix transform = new Matrix();
+            transform.setScale(x, y, surface.getWidth() / 2f, surface.getHeight() / 2f);
+            surface.setTransform(transform);
+        });
+    }
+
     private void releaseLivePlayer(String status) {
         if (liveStatus != null && status != null) liveStatus.setText(status);
         if (liveSurface != null) liveSurface.setAlpha(0f);
+        if (photo != null) photo.setVisibility(View.VISIBLE);
         if (livePlayer != null) {
             ExoPlayer old = livePlayer;
             livePlayer = null;
@@ -940,11 +972,22 @@ public final class TvEventsService extends Service {
             player.setTrackSelectionParameters(player.getTrackSelectionParameters().buildUpon()
                     .setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, true).build());
             player.addListener(new Player.Listener() {
+                @Override public void onVideoSizeChanged(VideoSize videoSize) {
+                    if (player == livePlayer && liveSurface != null) {
+                        liveVideoSize = videoSize;
+                        fitLiveTexture(videoSize, liveSurface);
+                    }
+                }
                 @Override public void onRenderedFirstFrame() {
-                    if (player != livePlayer || liveSurface == null || liveStatus == null) return;
+                    // Headerless live popups intentionally have no subtitle.
+                    // Lack of a label must never prevent playback from becoming visible.
+                    if (player != livePlayer || liveSurface == null) return;
                     liveFirstFrame = true;
+                    if (liveVideoSize != null) fitLiveTexture(liveVideoSize, liveSurface);
+                    stopSnapshotRefresh();
+                    if (photo != null) photo.setVisibility(View.INVISIBLE);
                     liveSurface.setAlpha(1f);
-                    liveStatus.setText("LIVE · muted");
+                    if (liveStatus != null) liveStatus.setText("LIVE · muted");
                 }
                 @Override public void onPlayerError(PlaybackException error) {
                     if (player != livePlayer) return;
@@ -967,6 +1010,15 @@ public final class TvEventsService extends Service {
         }
     }
 
+    /** Stop periodic stills and cancel an in-flight HTTP fetch after live video begins. */
+    private void stopSnapshotRefresh() {
+        if (snapshotRefreshTask != null) main.removeCallbacks(snapshotRefreshTask);
+        snapshotRefreshTask = null;
+        if (snapshotCall != null) snapshotCall.cancel();
+        snapshotCall = null;
+        ++snapshotSerial; // Discard stale responses, including a queued UI callback.
+    }
+
     /** Every timer is bounded by the card lifetime. Never request two periodic frames at once. */
     private void scheduleSnapshotRefresh(String entity, int current, int seconds) {
         if (snapshotRefreshTask != null) main.removeCallbacks(snapshotRefreshTask);
@@ -976,7 +1028,8 @@ public final class TvEventsService extends Service {
         snapshotRefreshTask = new Runnable() {
             @Override public void run() {
                 if (stopping || generation != current || photo == null
-                        || !entity.equals(snapshotEntity)) return;
+                        || !entity.equals(snapshotEntity)
+                        || (liveSurface != null && liveFirstFrame)) return;
                 // While one image downloads, skip the period rather than building
                 // an unbounded queue of Frigate/camera proxy requests.
                 if (snapshotCall == null) fetchSnapshot(entity, photo, current);
@@ -1056,6 +1109,7 @@ public final class TvEventsService extends Service {
         liveRequestId = -1;
         liveRequestGeneration = -1;
         liveFirstFrame = false;
+        liveVideoSize = null;
         releaseLivePlayer(null);
         liveSurface = null;
         liveStatus = null;

@@ -22,7 +22,9 @@ public class TvEventPayloadTest {
         assertEquals("kellies_voice_live_camera", TvEventPayload.LIVE_CAMERA);
         assertEquals("kellies_voice_hide_camera", TvEventPayload.HIDE_CAMERA);
         assertEquals(90, TvEventPayload.liveDuration(0));
-        assertEquals(15, TvEventPayload.liveDuration(1));
+        assertEquals(4, TvEventPayload.liveDuration(1));
+        assertEquals(6, TvEventPayload.liveDuration(6));
+        assertEquals(15, TvEventPayload.liveDuration(15));
         assertEquals(180, TvEventPayload.liveDuration(999));
         assertTrue(TvEventPayload.hlsPathAllowed("/api/hls/token/master_playlist.m3u8"));
         assertFalse(TvEventPayload.hlsPathAllowed("https://evil.example/playlist.m3u8"));
