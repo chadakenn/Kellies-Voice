@@ -43,7 +43,7 @@ Welcome! **Kellie's Voice** turns an Android TV / Google TV into a voice compani
 5. Wait for **LISTENING**, speak a simple question such as **“What time is it?”**, and select **STOP** if needed. Verify that your words appear on-screen, the Home Assistant answer appears, and audio plays through the TV speakers if TTS is configured.
 6. If connection or audio fails, open [Troubleshooting](TROUBLESHOOTING.md) and check the HA Assist pipeline, URL, TV sound, and on-screen error first.
 
-**Important:** The standard Google Assistant microphone button on the physical remote may still launch **Google**, not Kellie's Voice. On the tested onn 4K Pro, voice input uses the TV device's built-in microphone. A remote's Bluetooth mic is **not guaranteed accessible** to third-party apps. You do not need to say “Julia” to start a command, and a hands-free wake word is **not** part of public v0.16.5.
+**Important:** The standard Google Assistant microphone button on the physical remote may still launch **Google**, not Kellie's Voice. On the tested onn 4K Pro, voice input uses the TV device's built-in microphone. A remote's Bluetooth mic is **not guaranteed accessible** to third-party apps. You do not need to say “Julia” to start a command, and a hands-free wake word is **not** part of public v0.16.6.
 
 **Tip:** The Google TV/Google Home phone remote can make URL and token entry easier; keyboard/clipboard behavior varies. There is no QR-code pairing flow yet.
 
@@ -53,7 +53,7 @@ Welcome! **Kellie's Voice** turns an Android TV / Google TV into a voice compani
 2. In **Home Assistant → HACS → ⋮ → Custom repositories**, add:
    `https://github.com/chadakenn/Kellies-Voice`  
    Select category **Integration**. This is usually needed only once.
-3. Open [Kellie's Voice in HACS](https://my.home-assistant.io/redirect/hacs_repository/?owner=chadakenn&repository=Kellies-Voice&category=integration) and install/download the **v0.16.4** integration (not an older v0.6 or v0.16.0 copy).
+3. Open [Kellie's Voice in HACS](https://my.home-assistant.io/redirect/hacs_repository/?owner=chadakenn&repository=Kellies-Voice&category=integration) and install/download the **v0.16.6** integration (not an older v0.6 or v0.16.0 copy).
 4. **Restart Home Assistant** so the custom integration and services load.
 5. On your TV, enable **Kellie's Voice → Settings → Home Assistant layout**. Leave the TV online and connected while pairing.
 6. In Home Assistant, open **Settings → Devices & services** and add the discovered **Kellie's Voice** device. If discovery doesn't find it (for example across VLANs), choose **Add integration → Kellie's Voice**, then enter the pairing ID from **TV → Settings → Home Assistant layout → Show this TV's pairing ID**.
@@ -90,19 +90,19 @@ data:
 
 This is a **still image**, not live video.
 
-**Live-camera compatibility (#67, in v0.16.5 for testing):** In TV Settings, choose **Live camera**: *Safe software (default)*, *Snapshots only*, or *Hardware (advanced)*. Safe software only selects software video decoders so an integrated TV's hardware decoder stays free for HDMI, Netflix or TiviMate. Use a lower-resolution H.264 camera/substream for best results; if software decoding is unavailable the popup stays on the snapshot and does **not** claim moving video. Hardware is opt-in and potentially disrupts HDMI on integrated TVs. Please test on real TV hardware and report compatibility results.
+**Live-camera compatibility (#67, in v0.16.5 for testing):** In TV Settings, choose **Live camera**: *Safe software (default)*, *Snapshots only*, or *Hardware (advanced)*. Safe software only selects software video decoders so an integrated TV's hardware decoder stays free for HDMI, Netflix or TiviMate. Use a lower-resolution H.264 camera/substream for best results; if software decoding is unavailable the popup stays on the snapshot and does **not** claim moving video. Hardware is opt-in and potentially disrupts HDMI on integrated TVs. Both Philips models were confirmed playing live video safely in v0.16.5; please report regressions on other devices.
 
 For an on-demand **muted live HLS camera**, see [Voice camera scripts](VOICE_CAMERA_SCRIPTS.md) and [TV events](TV_EVENTS.md). The TV must receive events over its active HA connection, and a camera must support the relevant HA snapshot/stream functionality.
 
-**Snapshot display improvements (#70, in v0.16.5):** `kellies_voice.show_camera` can optionally use `show_header: false` (hide title/caption), `image_fit: fit` (show full uncropped 4:3 frame), and `refresh_seconds: 2..30` (in-place periodic snapshots; `0` turns auto-refresh off). Repeated calls to the same camera with the same layout update the image without tearing down the window. No new camera URLs or background microphone permissions are required. This is a community test feature and still needs Philips hardware verification.
+**Snapshot display improvements (#70, in v0.16.5):** `kellies_voice.show_camera` can optionally use `show_header: false` (hide title/caption), `image_fit: fit` (show full uncropped 4:3 frame), and `refresh_seconds: 2..30` (in-place periodic snapshots; `0` turns auto-refresh off). Repeated calls to the same camera with the same layout update the image without tearing down the window. No new camera URLs or background microphone permissions are required. This improvement was confirmed working on both Philips TVs in v0.16.5.
 
-**v0.16.5 community test release:** The update integrates Philips HDMI-safe live decoder, full-frame in-place snapshots, non-admin scoped TV alert WebSocket, per-TV alert receiver connectivity, and safe microphone route diagnostics. Install the matching **v0.16.5 Android APK and v0.16.5 HACS integration** to test new scoped alerts and snapshot options; see [the community test guide](COMMUNITY_QA.md). The fixes are released for public testing and still need hardware feedback.
+**v0.16.5 community test release:** The update integrates Philips HDMI-safe live decoder, full-frame in-place snapshots, non-admin scoped TV alert WebSocket, per-TV alert receiver connectivity, and safe microphone route diagnostics. Install the matching **v0.16.6 Android APK and v0.16.6 HACS integration** to test the current release; see [the community test guide](COMMUNITY_QA.md). The fixes are released for public testing and still need hardware feedback.
 
 **Multiple TVs:** leaving the optional `device_id` out of announcement/camera actions targets every configured Kellie's Voice TV. Add the **specific TV pairing ID** to target one. Timers require a targeted TV and are not broadcast by default.
 
 **After a reboot, standby or Wi-Fi drop:** the TV alert listener may not restart automatically because Android TV can block background starts. On the TV, check **Settings → TV alert status → Resume TV alerts** or open the main Kellie's Voice app. Missed events are not queued/replayed. The receiver is **not** guaranteed to operate 24/7.
 
-## Step 5: Try the optional v0.16.4 features
+## Step 5: Try the optional camera, timer and weather features
 
 | Feature | First test | Extra setup or limitation |
 | --- | --- | --- |
@@ -123,7 +123,7 @@ data:
   speak_alert: false
 ```
 
-The timer should display a countdown pill; after expiry, chimes repeat until dismissed. **Back** worked on the tested onn 4K Pro. In the public v0.16.5 build, **D-pad OK on Dismiss is a known bug**; the fix is in [PR #55](https://github.com/chadakenn/Kellies-Voice/pull/55) and needs another signed-device test. To prevent the alert before it rings, run `kellies_voice.cancel_timer` with the same ID and name.
+The timer should display a countdown pill; after expiry, chimes repeat until dismissed. **Back** worked on the tested onn 4K Pro. In the public v0.16.6 build, **D-pad OK on Dismiss is a known bug**; the fix is in [PR #55](https://github.com/chadakenn/Kellies-Voice/pull/55) and needs another signed-device test. To prevent the alert before it rings, run `kellies_voice.cancel_timer` with the same ID and name.
 
 The maintainer has also confirmed **starting and stopping named timers through their TV microphone** after configuring custom Home Assistant voice automations. Those automations are **home-specific**, not automatically installed for new users. If “Set a timer” answers *“Sorry, timers are not supported on this device”*, HA's **native** timer handler was invoked instead of the Kellie's Voice action. Follow the [timer setup guide](VOICE_TIMERS.md) or explore the [name-free timer automation draft](https://github.com/chadakenn/Kellies-Voice/blob/docs/voice-timers-llm-scripts-v0164/docs/VOICE_TIMERS_PLAIN_SPEECH.md) only if you're comfortable configuring and testing HA sentence triggers. Be especially cautious in homes with other Assist satellites because unscoped triggers can catch their commands too.
 
@@ -133,19 +133,19 @@ For weather, the recommended initial test is **Developer tools → Actions**, no
 
 | Status | Features |
 | --- | --- |
-| **Publicly downloadable: v0.16.4** | Authenticated HA voice/TTS, remote-driven overlay, per-TV layout controls, on-screen text announcements, camera snapshots, experimental on-demand live HLS, Aurora overlay styling, seven-day forecast popup, named TV countdowns |
+| **Publicly downloadable: v0.16.6** | Authenticated HA voice/TTS, remote-driven overlay, per-TV layout controls, on-screen text announcements, camera snapshots, experimental on-demand live HLS, Aurora overlay styling, seven-day forecast popup, named TV countdowns |
 | **Confirmed on maintainer's onn 4K Pro** | Basic conversation/TTS, driveway and doorbell moving live popups, weather forecast card, TV countdown/chimes with **Back** dismissal, and named timer voice start/stop after custom HA setup |
 | **Known public-release issues** | Timer alert **OK/Dismiss** focus problem; theme selection does not yet consistently recolor the **entire main app**; HACS README banner may show a broken image (proposed fix [#58](https://github.com/chadakenn/Kellies-Voice/pull/58)); natural generic timer speech may be intercepted by native Assist |
-| **Code/CI in review; NOT shipped in v0.16.4** | Originating TV registry ID [#50](https://github.com/chadakenn/Kellies-Voice/pull/50); full-app theme [#53](https://github.com/chadakenn/Kellies-Voice/pull/53); timer OK fix [#55](https://github.com/chadakenn/Kellies-Voice/pull/55); opt-in follow-up listening/microphone privacy [#62](https://github.com/chadakenn/Kellies-Voice/pull/62) / [#63](https://github.com/chadakenn/Kellies-Voice/pull/63); optional “Okay Nabu” wake word [#59](https://github.com/chadakenn/Kellies-Voice/pull/59); spoken/actionable TV buttons [#51](https://github.com/chadakenn/Kellies-Voice/pull/51) / [#61](https://github.com/chadakenn/Kellies-Voice/pull/61) |
+| **Code/CI in review; NOT shipped in v0.16.6** | Originating TV registry ID [#50](https://github.com/chadakenn/Kellies-Voice/pull/50); full-app theme [#53](https://github.com/chadakenn/Kellies-Voice/pull/53); timer OK fix [#55](https://github.com/chadakenn/Kellies-Voice/pull/55); opt-in follow-up listening/microphone privacy [#62](https://github.com/chadakenn/Kellies-Voice/pull/62) / [#63](https://github.com/chadakenn/Kellies-Voice/pull/63); optional “Okay Nabu” wake word [#59](https://github.com/chadakenn/Kellies-Voice/pull/59); spoken/actionable TV buttons [#51](https://github.com/chadakenn/Kellies-Voice/pull/51) / [#61](https://github.com/chadakenn/Kellies-Voice/pull/61) |
 
-**Do not mistake a passing PR build, a debug APK, or a draft integration branch for a public release.** The signed **[controlled onn test build PR #64](https://github.com/chadakenn/Kellies-Voice/pull/64)** is intended for explicitly coordinated testing, **not** normal first-time installation. Install the public **v0.16.4 GitHub Release** unless you're deliberately participating in that controlled preview.
+**Do not mistake a passing PR build, a debug APK, or a draft integration branch for a public release.** The signed **[controlled onn test build PR #64](https://github.com/chadakenn/Kellies-Voice/pull/64)** is intended for explicitly coordinated testing, **not** normal first-time installation. Install the public **v0.16.6 GitHub Release** unless you're deliberately participating in that controlled preview.
 
 ## New tester checklist
 
 Please start with these quick, low-risk checks before experimenting with locks, doors, or complex automations:
 
 - [ ] Record **TV brand/model**, Android/Google/Fire TV OS version, **Kellie's Voice APK version**, **HACS integration version**, and Home Assistant version.
-- [ ] Confirm the signed v0.16.4 APK installs, Home Assistant authenticates, and **TALK → answer → TV speech** works twice in a row.
+- [ ] Confirm the signed v0.16.6 APK installs, Home Assistant authenticates, and **TALK → answer → TV speech** works twice in a row.
 - [ ] Check **overlay appearance**, D-pad focus, and whether the normal TV audio resumes after an answer.
 - [ ] Enable **TV announcements & cameras** and verify a local preview, HA text popup and, if available, one valid camera snapshot.
 - [ ] Test an on-demand **live** camera only if your HA camera supports streaming; confirm actual moving frames, not merely a snapshot fallback.
@@ -154,7 +154,7 @@ Please start with these quick, low-risk checks before experimenting with locks, 
 - [ ] Reboot, resume from standby, interrupt Wi-Fi briefly, and check whether the app/event receiver reconnects without unnecessary mic activation.
 - [ ] Check whether your device's built-in or remote microphone is accessible. **Do not assume the physical remote's Google Assistant button will launch this app.**
 
-**Report results (include version v0.16.5):** open a [GitHub issue](https://github.com/chadakenn/Kellies-Voice/issues), with a short title, device/OS version, app/HACS versions, exact steps, exact non-sensitive on-screen error or transcript, expected versus actual behavior, and optionally **redacted** photos/video. Mark whether the test was with the **public v0.16.5 release** or an explicitly labeled preview. Report partial successes too: e.g. “snapshot loads but live frames don't move,” or “Back dismisses timer but OK doesn't.”
+**Report results (include version v0.16.6):** open a [GitHub issue](https://github.com/chadakenn/Kellies-Voice/issues), with a short title, device/OS version, app/HACS versions, exact steps, exact non-sensitive on-screen error or transcript, expected versus actual behavior, and optionally **redacted** photos/video. Mark whether the test was with the **public v0.16.6 release** or an explicitly labeled preview. Report partial successes too: e.g. “snapshot loads but live frames don't move,” or “Back dismisses timer but OK doesn't.”
 
 Further information: [Troubleshooting](TROUBLESHOOTING.md) · [Camera scripts](VOICE_CAMERA_SCRIPTS.md) · [Weather setup](WEATHER_FORECAST.md) · [Timer setup](VOICE_TIMERS.md) · [Signed app updates](UPDATES.md) · [Testing history](TESTING.md) · [Security](../SECURITY.md).
 
