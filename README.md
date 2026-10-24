@@ -109,6 +109,8 @@ data:
 
 Turning **Home Assistant layout** off stops later remote changes. A TV that has never changed sensitivity stays on **Normal**. The on-TV menu still works and, while layout control is on, copies the choice back. These controls are not a plan to remove the TV setup screen. Login, permissions, alert opt-in, and updates stay on the TV.
 
+A question such as "turn off the lights" can use the TV's room only after Kellie's Voice has learned Home Assistant's device id. Set an area on the Kellie's Voice device under **Settings → Devices & services**. Leave **Home Assistant layout** on and let the TV connect once. The app stores that registry id separately from its pairing id and includes it on Assist requests while Home Assistant layout sync is enabled. Until it has learned the id, requests go out without one, as they do today. Update the HACS integration and restart Home Assistant before reconnecting the TV.
+
 The full camera script examples, including close and a 30 second view, are in [docs/VOICE_CAMERA_SCRIPTS.md](docs/VOICE_CAMERA_SCRIPTS.md).
 
 ## Get started: install both parts
