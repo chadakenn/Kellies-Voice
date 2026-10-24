@@ -1,5 +1,8 @@
 # Field testing and verified milestones
 
+**#52 updated app-wide theme test (rebased on current v0.16.7):** Open the Kellie's Voice main screen on onn 4K Pro, change Home Assistant **Overlay style** from Copper to Aurora and then Night Signal. The floating Julia overlay and main-screen background, headings, transcript, answer text, Settings rows and remote-focus colors should match without restarting Assist. Test local style selection, return from diagnostics, reconnect, dark-mode contrast, and D-pad focus. The original app branding remains. Java palette mapping unit tests must pass, and hardware confirmation is still pending.
+
+
 **v0.16.7 issue #54 timer focus regression test:** On the onn 4K Pro, start a 10-second Pizza timer, let it ring, and press D-pad OK **without moving focus**. The Dismiss button should activate and repeating chimes must stop. Repeat with two timers, Down/OK to dismiss only one, and Back to dismiss the remainder. Countdown must not steal focus over YouTube. The Android host unit tests passed, but real-TV behavior remains unverified until the owner tests it.
 
 
