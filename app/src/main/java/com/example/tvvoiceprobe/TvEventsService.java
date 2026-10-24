@@ -107,6 +107,7 @@ public final class TvEventsService extends Service {
     private boolean snapshotFit;
     private TextureView liveSurface;
     private boolean liveFirstFrame;
+    private VideoSize liveVideoSize;
     private TextView liveStatus;
     private ExoPlayer livePlayer;
     private int requestCounter = 100;
@@ -772,6 +773,7 @@ public final class TvEventsService extends Service {
             preview.addView(surface, new FrameLayout.LayoutParams(-1, -1));
             liveSurface = surface;
             liveFirstFrame = false;
+            liveVideoSize = null;
             panel.addView(preview, new LinearLayout.LayoutParams(-1,
                     dp(TvAlertLayout.mediaHeightDp(alertSize, true))));
         } else if (entity != null) {
@@ -972,6 +974,7 @@ public final class TvEventsService extends Service {
             player.addListener(new Player.Listener() {
                 @Override public void onVideoSizeChanged(VideoSize videoSize) {
                     if (player == livePlayer && liveSurface != null) {
+                        liveVideoSize = videoSize;
                         fitLiveTexture(videoSize, liveSurface);
                     }
                 }
@@ -980,6 +983,7 @@ public final class TvEventsService extends Service {
                     // Lack of a label must never prevent playback from becoming visible.
                     if (player != livePlayer || liveSurface == null) return;
                     liveFirstFrame = true;
+                    if (liveVideoSize != null) fitLiveTexture(liveVideoSize, liveSurface);
                     stopSnapshotRefresh();
                     if (photo != null) photo.setVisibility(View.INVISIBLE);
                     liveSurface.setAlpha(1f);
@@ -1105,6 +1109,7 @@ public final class TvEventsService extends Service {
         liveRequestId = -1;
         liveRequestGeneration = -1;
         liveFirstFrame = false;
+        liveVideoSize = null;
         releaseLivePlayer(null);
         liveSurface = null;
         liveStatus = null;
