@@ -193,7 +193,9 @@ public final class TvEventsService extends Service {
             showCard("Kellie's Voice", "This is how announcements will appear over your TV.", null, 10);
         }
         if (TvAlertConnectionPolicy.shouldForceRestart(
-                ACTION_RESUME.equals(action), socket != null, alertsSubscribed)) {
+                ACTION_RESUME.equals(action), socket != null, alertsSubscribed,
+                TvAlertConnectionPolicy.setupTimedOut(connectionStartedMs,
+                        SystemClock.elapsedRealtime(), alertsSubscribed))) {
             // A stale OkHttp WebSocket reference must never make the Resume
             // button a no-op. Invalid-token / permission errors only retry
             // after an explicit user resume or changed credentials.

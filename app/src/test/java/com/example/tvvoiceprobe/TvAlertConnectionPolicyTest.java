@@ -5,16 +5,17 @@ import static org.junit.Assert.*;
 
 public class TvAlertConnectionPolicyTest {
     @Test public void explicitResumeAlwaysRefreshesTheAlertConnection() {
-        assertTrue(TvAlertConnectionPolicy.shouldForceRestart(true, true, true));
-        assertTrue(TvAlertConnectionPolicy.shouldForceRestart(true, true, false));
-        assertTrue(TvAlertConnectionPolicy.shouldForceRestart(true, false, false));
-        assertFalse(TvAlertConnectionPolicy.shouldForceRestart(false, true, true));
+        assertTrue(TvAlertConnectionPolicy.shouldForceRestart(true, true, true, false));
+        assertTrue(TvAlertConnectionPolicy.shouldForceRestart(true, true, false, false));
+        assertTrue(TvAlertConnectionPolicy.shouldForceRestart(true, false, false, false));
+        assertFalse(TvAlertConnectionPolicy.shouldForceRestart(false, true, true, false));
     }
 
-    @Test public void normalStartRepairsAnUnsubscribedSocket() {
-        assertTrue(TvAlertConnectionPolicy.shouldForceRestart(false, true, false));
-        assertFalse(TvAlertConnectionPolicy.shouldForceRestart(false, false, false));
-        assertFalse(TvAlertConnectionPolicy.shouldForceRestart(false, true, true));
+    @Test public void normalStartDoesNotInterruptAuthenticationButCanRepairStaleSetup() {
+        assertFalse(TvAlertConnectionPolicy.shouldForceRestart(false, true, false, false));
+        assertTrue(TvAlertConnectionPolicy.shouldForceRestart(false, true, false, true));
+        assertFalse(TvAlertConnectionPolicy.shouldForceRestart(false, false, false, true));
+        assertFalse(TvAlertConnectionPolicy.shouldForceRestart(false, true, true, true));
     }
 
     @Test public void setupWatchdogIgnoresHealthyAndRecentSessions() {

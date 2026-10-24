@@ -13,8 +13,10 @@ public final class TvAlertConnectionPolicy {
     private TvAlertConnectionPolicy() { }
 
     public static boolean shouldForceRestart(boolean explicitResume, boolean socketPresent,
-                                             boolean subscribed) {
-        return explicitResume || (socketPresent && !subscribed);
+                                             boolean subscribed, boolean setupExpired) {
+        // Don't destroy a fresh authentication just because Activity.onStart
+        // repeated ACTION_START while a WebSocket handshake was still running.
+        return explicitResume || (socketPresent && !subscribed && setupExpired);
     }
 
     public static boolean setupTimedOut(long startedAtMs, long nowMs, boolean subscribed) {
