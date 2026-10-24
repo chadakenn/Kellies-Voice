@@ -49,6 +49,10 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
     private final List<Button> buttons = new ArrayList<>();
     private int selected = 0;
     private TextView status;
+    private LinearLayout mainRoot;
+    private TextView mainTitle;
+    private TextView answerHeading;
+    private TextView transcriptHeading;
     private TextView recognized;
     private TextView response;
     private TextView connection;
@@ -73,6 +77,8 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
 
     @Override protected void onStart() {
         super.onStart();
+        // Apply saved preferences on returning from another app or system screen.
+        applyMainPalette();
         HaDiscovery.setWanted(this, new OverlayPreferences(this).haManage());
         HaDiscovery.acquire(this);
         if (assist != null) assist.setLayoutSync(new OverlayPreferences(this).haManage());
@@ -153,15 +159,17 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(34, 22, 34, 22);
-        root.setBackgroundColor(0xff1B1412);
+        mainRoot = root;
+        AppPalette palette = currentPalette();
+        root.setBackgroundColor(palette.screen);
 
-        TextView title = label("KELLIE'S VOICE   ✦   HOME ASSISTANT", 24, 0xffE9B390);
-        root.addView(title);
+        mainTitle = label("KELLIE'S VOICE   ✦   HOME ASSISTANT", 24, palette.accent);
+        root.addView(mainTitle);
 
-        connection = label("Home Assistant: not configured", 15, 0xffE8D7C9);
+        connection = label("Home Assistant: not configured", 15, palette.muted);
         root.addView(connection);
 
-        status = label("Connect, then press TALK.", 17, 0xffE6AB82);
+        status = label("Connect, then press TALK.", 17, palette.accent);
         root.addView(status);
 
         // Prioritize the conversation on small TV screens. The large seven-button
@@ -173,12 +181,14 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         history.setOrientation(LinearLayout.VERTICAL);
         history.setPadding(10, 6, 10, 6);
 
-        history.addView(label("HOME ASSISTANT SAYS", 16, 0xffC59A80));
-        response = label("Your answer will appear here.", 25, 0xffF7E8DB);
+        answerHeading = label("HOME ASSISTANT SAYS", 16, palette.muted);
+        history.addView(answerHeading);
+        response = label("Your answer will appear here.", 25, palette.text);
         history.addView(response);
 
-        history.addView(label("YOU SAID", 16, 0xffC59A80));
-        recognized = label("Nothing yet", 21, 0xffffffff);
+        transcriptHeading = label("YOU SAID", 16, palette.muted);
+        history.addView(transcriptHeading);
+        recognized = label("Nothing yet", 21, palette.text);
         history.addView(recognized);
 
         scroller.addView(history);
@@ -302,20 +312,43 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         return t;
     }
 
+    private AppPalette currentPalette() {
+        return AppPalette.forSkin(new OverlayPreferences(this).skin());
+    }
+
+    /** Repaint the existing screen in place, preserving text, focus and Assist. */
+    private void applyMainPalette() {
+        if (mainRoot == null || transparentShortcut) return;
+        AppPalette colors = currentPalette();
+        mainRoot.setBackgroundColor(colors.screen);
+        if (mainTitle != null) mainTitle.setTextColor(colors.accent);
+        if (connection != null) connection.setTextColor(colors.muted);
+        if (status != null) status.setTextColor(colors.accent);
+        if (answerHeading != null) answerHeading.setTextColor(colors.muted);
+        if (transcriptHeading != null) transcriptHeading.setTextColor(colors.muted);
+        if (response != null) response.setTextColor(colors.text);
+        if (recognized != null) recognized.setTextColor(colors.text);
+        for (Button b : buttons) {
+            b.setTextColor(colors.text);
+            b.setBackgroundTintList(ColorStateList.valueOf(b.hasFocus() ? colors.focus : colors.button));
+        }
+    }
+
     private void addButton(LinearLayout parent, String value, View.OnClickListener action) {
         Button b = new Button(this);
         int index = buttons.size();
         b.setText(value);
         b.setAllCaps(false);
         b.setTextSize(16);
-        b.setTextColor(0xffffffff);
+        b.setTextColor(currentPalette().text);
         b.setFocusable(true);
         b.setFocusableInTouchMode(true);
-        b.setBackgroundTintList(ColorStateList.valueOf(0xff62453B));
+        b.setBackgroundTintList(ColorStateList.valueOf(currentPalette().button));
         b.setOnClickListener(action);
         b.setOnFocusChangeListener((v, focused) -> {
             if (focused) selected = index;
-            b.setBackgroundTintList(ColorStateList.valueOf(focused ? 0xffBA785B : 0xff62453B));
+            AppPalette colors = currentPalette();
+            b.setBackgroundTintList(ColorStateList.valueOf(focused ? colors.focus : colors.button));
         });
         buttons.add(b);
         parent.addView(b, new LinearLayout.LayoutParams(0, -2, 1f));
@@ -383,18 +416,19 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         scroll.setVerticalScrollBarEnabled(true);
         LinearLayout body = new LinearLayout(this);
         body.setOrientation(LinearLayout.VERTICAL);
+        AppPalette colors = currentPalette();
         int pad = Math.round(20 * getResources().getDisplayMetrics().density);
         body.setPadding(pad, pad, pad, pad);
         GradientDrawable background = new GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
-                new int[] {0xff2B1B16, 0xff17100E});
+                new int[] {colors.menuStart, colors.menuEnd});
         background.setCornerRadius(pad);
-        background.setStroke(Math.max(1, pad / 16), 0xffB98465);
+        background.setStroke(Math.max(1, pad / 16), colors.stroke);
         body.setBackground(background);
-        TextView title = label(heading, 25, 0xffF4D3BB);
+        TextView title = label(heading, 25, colors.accent);
         title.setTypeface(null, android.graphics.Typeface.BOLD);
         body.addView(title);
-        TextView hint = label(subtitle, 14, 0xffCBA68F);
+        TextView hint = label(subtitle, 14, colors.muted);
         hint.setPadding(0, 0, 0, pad / 2);
         body.addView(hint);
         Button first = null;
@@ -431,7 +465,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         b.setText(text);
         b.setAllCaps(false);
         b.setTextSize(17);
-        b.setTextColor(0xffF9E7DA);
+        b.setTextColor(currentPalette().text);
         b.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
         b.setPadding(22, 10, 22, 10);
         b.setMinHeight(0);
@@ -445,11 +479,12 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
     }
 
     private GradientDrawable menuRowBackground(boolean focused) {
+        AppPalette colors = currentPalette();
         GradientDrawable shape = new GradientDrawable();
-        shape.setColor(focused ? 0xffA66A4B : 0xff493128);
+        shape.setColor(focused ? colors.menuFocus : colors.menuButton);
         int dp = Math.round(1 * getResources().getDisplayMetrics().density);
         shape.setCornerRadius(Math.max(12, dp * 12));
-        shape.setStroke(Math.max(1, dp), focused ? 0xffF6D1B4 : 0xff79513D);
+        shape.setStroke(Math.max(1, dp), colors.stroke);
         return shape;
     }
 
@@ -873,6 +908,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                 "Choose Copper Glass, Compact Charcoal, Night Signal, or Aurora Glass. Reopen the overlay to apply.",
                 labels, which -> {
                     prefs.setSkin(values[which]);
+                    applyMainPalette();
                     pushLayout(HaLayout.STYLE);
                     status("Appearance saved: " + OverlayPreferences.skinLabel(prefs.skin()));
                     showOverlayPreferences();
@@ -1098,6 +1134,12 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                     updateConnectionLabel();
                     status("Saved connection deleted.");
                 }).show();
+    }
+
+    @Override public void haLayout(String setting) {
+        if (HaLayout.STYLE.equals(setting)) {
+            runOnUiThread(this::applyMainPalette);
+        }
     }
 
     @Override public void status(String message) {
