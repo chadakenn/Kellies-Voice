@@ -23,6 +23,38 @@ retain its previously working built-in mic, normal TALK/STOP and overlay.
 
 # Troubleshooting: Kellie's Voice on Google TV
 
+## TV camera or announcement popups missing? Find Resume TV alerts
+
+The **voice/Assist connection and TV alert receiver are separate**. Even if
+TALK works and the main page says Connected, alerts and timers may not reach
+the TV after standby, an app update, or a Home Assistant reload.
+
+**Exact remote-control path (Kellie's Voice v0.16.6 and newer):**
+
+1. Open **Kellie's Voice** on the TV, not Android/Google TV system Settings.
+2. On the main screen choose **SETTINGS** with the remote.
+3. Scroll down to **TV alert status** and press **OK**. This is a separate
+   SETTINGS item, below **TV announcements & cameras**, not inside that menu.
+4. In the **TV alert status** pop-up, choose **Resume TV alerts** at the
+   bottom and press **OK**. It tries a fresh TV-alert-only connection.
+5. In Home Assistant, open the paired Kellie's Voice TV device and check
+   **TV alert receiver connected**. When ON, send a **new** announcement,
+   camera popup, or named timer to confirm delivery.
+
+**No Resume button?** It appears only when **TV announcements & cameras**
+is ON, a Home Assistant connection is configured, and **Display over other
+apps** is allowed in Android's app permissions. Go back to SETTINGS and
+enable/check those first. **Connect / reconnect** in SETTINGS controls the
+main Assist connection; it isn't the alert-receiver Resume command.
+
+If the receiver remains stuck on Reconnecting, note the app/HACS versions
+and file a [redacted report in #78](https://github.com/chadakenn/Kellies-Voice/issues/78).
+Manual Resume was confirmed to bring an onn 4K Pro receiver diagnostic back
+ON with v0.16.8. This does **not** establish that automatic recovery after
+standby or an HA reload is fixed on every device. TV events missed during
+a disconnection are not replayed; no microphone recording starts here.
+
+
 ## "Conflicts with another app" / "App not installed"
 
 Android requires the **same package ID and signing certificate** for an update.

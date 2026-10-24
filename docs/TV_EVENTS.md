@@ -6,6 +6,18 @@ Live Home Assistant events require HA configuration in a later step.
 
 ## TV configuration
 
+**If TV alerts/timers stopped after a TV wake, HA restart or update:** On the
+Kellie's Voice **main screen**, select **SETTINGS → TV alert status → Resume
+TV alerts**. Scroll down to **TV alert status** within the main SETTINGS
+menu. **Resume TV alerts** is the button in the status dialog; it is *not*
+inside **TV announcements & cameras**. If missing, enable the latter first,
+configure Home Assistant, and allow Android's **Display over other apps**
+permission. The TV alert receiver is separate from Assist's Connect /
+reconnect button. Check the HA **TV alert receiver connected** diagnostic
+and then send a new test event. See
+[troubleshooting](TROUBLESHOOTING.md#tv-camera-or-announcement-popups-missing-find-resume-tv-alerts).
+
+
 1. Install the signed v0.16.0 or newer APK over the existing app (keep your saved login).
 2. In Kellie's Voice, open **Settings → TV announcements & cameras**.
 3. Turn it on. Android may require **Display over other apps** permission.

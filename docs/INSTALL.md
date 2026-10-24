@@ -9,6 +9,8 @@ Welcome! **Kellie's Voice** turns an Android TV / Google TV into a voice compani
 
 **Install both parts at v0.16.8** for the full supported feature set. Installing the APK does **not** install HACS, and HACS does **not** install the APK. No separate AI server is needed on your TV.
 
+**Quick recovery if announcements, timers, or camera popups stop:** Open the Kellie's Voice TV app (not Android's system Settings). Choose **SETTINGS → TV alert status → Resume TV alerts**. **TV alert status** is farther down the SETTINGS list; **Resume TV alerts** is a button at the bottom of its status pop-up, *not* an item in the TV announcements menu. If the button is missing, turn **SETTINGS → TV announcements & cameras** ON, configure Home Assistant, and allow Android **Display over other apps**. A working voice/TALK connection does not guarantee the separate alert receiver is connected. [Detailed recovery steps](TROUBLESHOOTING.md#tv-camera-or-announcement-popups-missing-find-resume-tv-alerts).
+
 > **Julia/Julie is not required.** That is only the maintainer's chosen name for their own Home Assistant voice assistant, **not** a second app or the wake word. Use your existing Home Assistant Assist agent, with any name or no name. After activating TALK, just speak naturally. Ollama and wake-word listening are optional, not required.
 
 ## What you need
@@ -106,7 +108,7 @@ For an on-demand **muted live HLS camera**, see [Voice camera scripts](VOICE_CAM
 
 **Multiple TVs:** leaving the optional `device_id` out of announcement/camera actions targets every configured Kellie's Voice TV. Add the **specific TV pairing ID** to target one. Timers require a targeted TV and are not broadcast by default.
 
-**After a reboot, standby or Wi-Fi drop:** the TV alert listener may not restart automatically because Android TV can block background starts. On the TV, check **Settings → TV alert status → Resume TV alerts** or open the main Kellie's Voice app. Missed events are not queued/replayed. The receiver is **not** guaranteed to operate 24/7.
+**After a reboot, standby or Wi-Fi drop:** the TV alert listener may not restart automatically because Android TV can block background starts. Open the Kellie's Voice app's **SETTINGS**, scroll down to **TV alert status**, open it, and select the **Resume TV alerts** button on the status dialog. This is **not** the separate **TV announcements & cameras** toggle. In Home Assistant, the paired TV's **TV alert receiver connected** diagnostic should change to ON after a successful subscription. It confirms a connection, **not** delivery of a specific event: send a *new* test announcement or timer to verify. Missed events are not queued/replayed. The receiver is **not** guaranteed to operate 24/7.
 
 ## Step 5: Try the optional camera, timer and weather features
 
