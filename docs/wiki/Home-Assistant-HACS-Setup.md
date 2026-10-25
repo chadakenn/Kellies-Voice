@@ -1,5 +1,9 @@
 # Home Assistant HACS Setup
 
+[← Documentation home](Home.md) · [Getting started](Getting-Started.md) · [YAML Cookbook](YAML-Cookbook.md) · [Troubleshooting](Troubleshooting.md)
+
+---
+
 The Home Assistant side is a custom integration installed through HACS. It registers each paired TV and exposes actions such as `kellies_voice.announce`, `show_camera`, `show_live_camera`, `show_forecast`, `start_timer`, and more.
 
 ## Install the integration
@@ -32,6 +36,10 @@ Copy the entire `custom_components/kellies_voice` folder into your Home Assistan
 
 ## Next
 
-- [YAML Cookbook](YAML-Cookbook) for copy-and-paste examples of every action
-- [TV App and Permissions](TV-App-and-Permissions)
-- [Getting Started](Getting-Started)
+- [YAML Cookbook](YAML-Cookbook.md) for copy-and-paste examples of every action
+- [TV App and Permissions](TV-App-and-Permissions.md)
+- [Getting Started](Getting-Started.md)
+
+---
+
+[← All documentation](Home.md) · [Next: YAML Cookbook →](YAML-Cookbook.md)
