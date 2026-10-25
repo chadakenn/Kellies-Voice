@@ -142,6 +142,36 @@ If it does not, capture that last activity diagnostic before any manual
 Resume, without exposing the HA token. CI alone does not prove hardware
 recovery.
 
+### #69 targeted TV delivery feedback (experimental HACS fix)
+
+The v0.16.10 public release will publish HA events successfully even if the
+requested *configured* pairing ID is mistyped and no real TV subscribes to it.
+The existing scoped `TV alert receiver connected` diagnostic can show that
+a mispaired TV has never connected, but that status is not reflected in the
+service result.
+
+This development change introduces a preflight for **explicitly targeted**
+`announce`, camera snapshot/live/hide, forecast and timer actions:
+
+- When at least one modern scoped receiver has connected since HA Core started,
+  requests targeting a *disconnected* TV raise an actionable service error
+  **before publishing** rather than appearing successful. No target ID or
+  access token is included in the error.
+- Normal explicitly targeted requests to a currently connected TV still publish
+  exactly the same event, without changing overlay rendering or permission.
+- Omitted `device_id` broadcasts remain unchanged and best-effort.
+- When no scoped receiver has ever been observed during this HA session, an
+  older Android receiver may be in use. To preserve legacy behavior, the action
+  continues but HA logs a safe generic warning that delivery is unverified.
+  This deliberate compatibility concession means not all incorrect IDs can
+  be rejected. It is **not a receipt** proving an on-screen popup.
+
+Before promotion, test with two HA configurations (one real subscribed TV,
+one plausible but incorrect manually paired ID). Verify targeted mistaken ID
+fails in Developer Tools Actions; real ID succeeds with visible popup; omitted
+ID broadcasts as before; and an intentionally legacy-only client still works.
+No change to stable main is included in this PR.
+
 ## Home Assistant test integration
 
 Android and HACS are different deliveries. The Android dev artifact does
