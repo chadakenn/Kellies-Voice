@@ -40,12 +40,16 @@ class ForecastDeliveryTests(unittest.IsolatedAsyncioTestCase):
                      and node.name in ("configured_device_ids", "_saved_weather_entity",
                                        "_async_show_forecast", "_timer_target", "_async_start_timer",
                                        "_async_cancel_timer", "_async_dismiss_timers",
-                                       "_async_announce", "_event_targets")]
+                                       "_async_announce", "_event_targets",
+                                       "_async_show_camera", "_async_show_live_camera")]
         namespace = dict(vars(validation))
+        namespace.update(vars(const))
         namespace.update(HomeAssistant=object, ServiceCall=object,
                          ServiceValidationError=ValueError, DOMAIN=const.DOMAIN,
                          EVENT_FORECAST=const.EVENT_FORECAST,
                          EVENT_ANNOUNCEMENT=const.EVENT_ANNOUNCEMENT,
+                         EVENT_CAMERA_POPUP=const.EVENT_CAMERA_POPUP,
+                         EVENT_LIVE_CAMERA=const.EVENT_LIVE_CAMERA,
                          DEFAULT_ANNOUNCE_SECONDS=const.DEFAULT_ANNOUNCE_SECONDS,
                          time=time,
                          _LOGGER=logging.getLogger(__name__))
@@ -59,7 +63,7 @@ class ForecastDeliveryTests(unittest.IsolatedAsyncioTestCase):
                 SimpleNamespace(data={"device_id": "living-room"})]),
             config=SimpleNamespace(time_zone="UTC"),
             states=SimpleNamespace(get=lambda entity: SimpleNamespace(
-                attributes={"supported_features": 1, "temperature_unit": "°F",
+                attributes={"supported_features": 3, "temperature_unit": "°F",
                             "friendly_name": "Home"})),
             services=SimpleNamespace(async_call=AsyncMock(return_value={
                 "weather.home": {"forecast": [{"datetime": "2026-10-24T12:00:00Z",
@@ -97,6 +101,34 @@ class ForecastDeliveryTests(unittest.IsolatedAsyncioTestCase):
         await self.timer_handlers["_async_dismiss_timers"](SimpleNamespace(hass=self.hass, data={
             "device_id": "living-room"}))
         self.assertEqual("dismiss", self.hass.bus.async_fire.call_args.args[1]["operation"])
+
+    async def test_camera_speech_uses_same_popup_event(self):
+        await self.timer_handlers["_async_show_camera"](SimpleNamespace(
+            hass=self.hass, data={"entity_id": "camera.doorbell",
+                                 "speak": "Someone is at the door."}))
+        event, payload = self.hass.bus.async_fire.call_args.args
+        self.assertEqual(const.EVENT_CAMERA_POPUP, event)
+        self.assertEqual("camera.doorbell", payload["entity_id"])
+        self.assertEqual("Someone is at the door.", payload["speak"])
+        self.assertEqual("living-room", payload["device_id"])
+        self.assertEqual(1, self.hass.bus.async_fire.call_count)
+
+    async def test_live_camera_speech_keeps_camera_event(self):
+        await self.timer_handlers["_async_show_live_camera"](SimpleNamespace(
+            hass=self.hass, data={"entity_id": "camera.doorbell",
+                                 "speak": "Front door camera active."}))
+        event, payload = self.hass.bus.async_fire.call_args.args
+        self.assertEqual(const.EVENT_LIVE_CAMERA, event)
+        self.assertEqual("Front door camera active.", payload["speak"])
+        self.assertEqual(1, self.hass.bus.async_fire.call_count)
+
+    async def test_camera_silent_without_speak_and_rejects_url(self):
+        for value in (None, "https://example.com/token"):
+            self.hass.bus.async_fire.reset_mock()
+            await self.timer_handlers["_async_show_camera"](SimpleNamespace(
+                hass=self.hass, data={"entity_id": "camera.doorbell",
+                                     "speak": value}))
+            self.assertNotIn("speak", self.hass.bus.async_fire.call_args.args[1])
 
     async def test_explicit_mistyped_pairing_fails_when_real_receiver_online(self):
         # One real TV has established a scoped subscription. A second manually
@@ -400,6 +432,14 @@ class ValidationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             validation.target_device_ids(None, [])
 
+
+    def test_speak_is_optional_and_rejects_urls(self):
+        self.assertEqual(validation.clean_speak("The washer is finished."), "The washer is finished.")
+        self.assertEqual(validation.clean_speak("https://example.com/token"), "")
+        self.assertEqual(validation.clean_speak("www.example.com"), "")
+        self.assertEqual(validation.clean_speak(""), "")
+        self.assertEqual(validation.clean_speak(None), "")
+        self.assertEqual(validation.clean_speak("a" * 181), "")
 
 if __name__ == "__main__":
     unittest.main()

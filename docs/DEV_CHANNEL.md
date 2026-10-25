@@ -216,6 +216,34 @@ a re-enabled USB microphone test, and onn 4K Pro normal mic regression.
 No tokens, audio files or personal device IDs should be included in reports.
 No stable release is authorized by this development candidate.
 
+### v0.16.11-dev.2: optional spoken announcements with camera speech
+
+This development-only candidate combines reviewed spoken announcements (PR #104)
+with the already-integrated startup, microphone and TV receiver fixes from dev.
+Signed APK: **versionCode 33**, `versionName 0.16.11-dev.2` (above
+dev.1 / code 32 and stable code 31). No public release is published.
+
+**App setting:** TV app → Settings → Spoken announcements (OFF by default).
+With a matching development Home Assistant integration, `kellies_voice.announce`,
+`show_camera`, and `show_live_camera` accept an optional short `speak` string.
+The camera action speaks while its own popup stays visible; existing normal
+visual alerts remain silent. TV media playback should duck during the speech
+and return to its original level when speech completes or stops.
+
+**Hardware acceptance before any stable promotion:** check installed version,
+keep YouTube playing, enable spoken announcements, trigger spoken and silent
+alerts, dismiss a spoken alert early, send overlapping alerts, test speaking
+with live Frigate popups and confirm the media focus is restored. Test
+microphone/TALK, timer chimes, no mic activation, and reconnect. Disable
+spoken announcements and ensure existing visual cards continue to work.
+
+**Important:** Android dev APK alone does not update HACS. The current public
+HACS services do not provide the new `speak` field. To test the service API,
+use a separate HA test instance or an explicitly approved backed-up dev
+integration. Never overwrite a production HACS install without approval.
+The dev signed artifact is a GitHub Actions ZIP, not an in-app update; do not
+publish a public prerelease or stable release as part of this test.
+
 ## Home Assistant test integration
 
 Android and HACS are different deliveries. The Android dev artifact does

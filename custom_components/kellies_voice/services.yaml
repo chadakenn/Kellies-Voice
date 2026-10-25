@@ -63,6 +63,11 @@ announce:
           min: 4
           max: 45
           mode: box
+    speak:
+      description: Optional sentence for the TV to speak aloud. Silent by default. Rejects URLs.
+      example: The washer is finished.
+      selector:
+        text:
     device_id:
       example: ""
       selector:
@@ -106,6 +111,11 @@ show_camera:
           min: 4
           max: 45
           mode: box
+    speak:
+      description: Optional short sentence to speak while the camera popup stays visible.
+      example: Someone is at the front door.
+      selector:
+        text:
     device_id:
       example: ""
       selector:
@@ -149,6 +159,11 @@ show_live_camera:
           min: 4
           max: 180
           mode: box
+    speak:
+      description: Optional short sentence to speak while the camera popup stays visible.
+      example: Someone is at the front door.
+      selector:
+        text:
     device_id:
       example: ""
       selector:

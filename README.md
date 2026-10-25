@@ -4,7 +4,7 @@
 
 **Turn your Android TV into a Home Assistant voice companion, without turning your TV into a dashboard.**
 
-Kellie's Voice is a native Android TV / Google TV app with a companion **Home Assistant custom integration**. Talk to your Home Assistant Assist agent, see useful answers in a floating overlay, receive quiet smart-home announcements, and pop up security-camera views **over what you're already watching** when Android allows it.
+Kellie's Voice is a native Android TV / Google TV app with a companion **Home Assistant custom integration**. Talk to your Home Assistant Assist agent, see useful answers in a floating overlay, receive quiet smart-home announcements (optional spoken with audio ducking), and pop up security-camera views **over what you're already watching** when Android allows it.
 
 No replacement launcher, always-open browser tab, or separate AI server on the TV. Your existing Home Assistant setup does the thinking; Kellie's Voice handles the microphone, on-screen experience, and TV audio.
 

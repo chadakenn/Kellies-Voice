@@ -167,3 +167,6 @@ Please start with these quick, low-risk checks before experimenting with locks, 
 Further information: [Troubleshooting](TROUBLESHOOTING.md) · [Camera scripts](VOICE_CAMERA_SCRIPTS.md) · [Weather setup](WEATHER_FORECAST.md) · [Timer setup](VOICE_TIMERS.md) · [Signed app updates](UPDATES.md) · [Testing history](TESTING.md) · [Security](../SECURITY.md).
 
 **Testers are welcome; installing Kellie's Voice does not install or enable door unlocking, always-on microphones, or other consequential Home Assistant automations.**
+
+
+**Optional spoken announcements:** After installing, open the TV app → SETTINGS → Spoken announcements → ON. Then Home Assistant `kellies_voice.announce` can include a `speak` sentence. Other audio is ducked temporarily and restored. Default remains silent.

@@ -46,6 +46,7 @@ public final class OverlayPreferences {
     private static final String KEY_REGISTRY_DEVICE = "ha_registry_device_id";
     private static final String KEY_HA_MANAGE = "ha_manage_layout";
     private static final String KEY_TV_EVENTS = "tv_events_enabled";
+    private static final String KEY_SPOKEN_ANNOUNCEMENTS = "spoken_announcements";
     private static final String KEY_WEATHER_POSITION = "weather_position";
     private static final String KEY_WEATHER_SIZE = "weather_size";
     private static final String KEY_WEATHER_SECONDS = "weather_seconds";
@@ -227,6 +228,15 @@ public final class OverlayPreferences {
     public void setTvEvents(boolean enabled) {
         preferences.edit().putBoolean(KEY_TV_EVENTS, enabled).apply();
     }
+
+    public boolean spokenAnnouncements() {
+        return preferences.getBoolean(KEY_SPOKEN_ANNOUNCEMENTS, false);
+    }
+
+    public void setSpokenAnnouncements(boolean enabled) {
+        preferences.edit().putBoolean(KEY_SPOKEN_ANNOUNCEMENTS, enabled).apply();
+    }
+
 
     public String deviceId() {
         String id = preferences.getString(KEY_DEVICE, "");

@@ -540,6 +540,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                 "Overlay appearance & position",
                 "Home Assistant layout: " + (new OverlayPreferences(this).haManage() ? "ON" : "OFF"),
                 "TV announcements & cameras: " + (new OverlayPreferences(this).tvEvents() ? "ON" : "OFF"),
+                "Spoken announcements: " + (new OverlayPreferences(this).spokenAnnouncements() ? "ON" : "OFF"),
                 "TV alert status",
                 "Live camera: " + LiveCameraMode.label(new OverlayPreferences(this).cameraMode()),
                 "Check for app updates: " + updateChannelLabel(),
@@ -560,14 +561,24 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                         case 7: showOverlayPreferences(); break;
                         case 8: chooseHaLayout(); break;
                         case 9: chooseTvNotifications(); break;
-                        case 10: showTvAlertStatus(); break;
-                        case 11: chooseCameraMode(); break;
-                        case 12: chooseUpdates(); break;
-                        case 13: promptInstallUpdate(); break;
-                        case 14: confirmForget(); break;
+                        case 10: toggleSpokenAnnouncements(); break;
+                        case 11: showTvAlertStatus(); break;
+                        case 12: chooseCameraMode(); break;
+                        case 13: chooseUpdates(); break;
+                        case 14: promptInstallUpdate(); break;
+                        case 15: confirmForget(); break;
                         default: break;
                     }
                 });
+    }
+
+    private void toggleSpokenAnnouncements() {
+        OverlayPreferences prefs = new OverlayPreferences(this);
+        prefs.setSpokenAnnouncements(!prefs.spokenAnnouncements());
+        status(prefs.spokenAnnouncements()
+                ? "Spoken announcements enabled for alerts with a speak sentence."
+                : "Spoken announcements disabled. Text popups remain active.");
+        showSettingsMenu();
     }
 
     private void chooseHaLayout() {
