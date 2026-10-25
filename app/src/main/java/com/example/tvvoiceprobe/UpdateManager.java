@@ -13,8 +13,6 @@ import android.provider.Settings;
 
 import androidx.core.content.FileProvider;
 
-import org.json.JSONObject;
-
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -90,11 +88,11 @@ public final class UpdateManager {
                 channel = UpdateChannel.normalize(new OverlayPreferences(activity).updateChannel());
                 UpdateChannel.Selected selected = UpdateChannel.select(
                         channel, readText(UpdateChannel.feedUrl(channel), 750000));
-                JSONObject info = new JSONObject(readText(selected.metadataUrl, 16384));
-                UpdateChannel.requireMetadata(channel, selected.tag, info);
-                int code = info.getInt("versionCode");
-                String name = info.getString("versionName");
-                String hash = info.getString("sha256").toLowerCase(Locale.US);
+                UpdateChannel.Meta meta = UpdateChannel.requireMetadata(
+                        channel, selected.tag, readText(selected.metadataUrl, 16384));
+                int code = meta.versionCode;
+                String name = meta.versionName;
+                String hash = meta.sha256;
                 String decision = UpdateChannel.verdict(
                         channel, code, installedVersionCode(), activityVersion());
                 if (epoch != offerEpoch) return;

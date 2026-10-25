@@ -1,6 +1,5 @@
 package com.example.tvvoiceprobe;
 
-import org.json.JSONObject;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
@@ -61,6 +60,14 @@ public class UpdateChannelTest {
         } catch (IllegalArgumentException expected) {
             assertEquals("Stable updates only accept the latest release.", expected.getMessage());
         }
+        try {
+            UpdateChannel.select("stable", STABLE + " trailing");
+            throw new AssertionError("trailing junk was accepted");
+        } catch (IllegalArgumentException expected) {
+            assertEquals("Update metadata could not be read.", expected.getMessage());
+        }
+        String escaped = STABLE.replace("github.com", "github\\u002ecom");
+        assertEquals("v0.16.9", UpdateChannel.select("stable", escaped).tag);
     }
 
     @Test public void developmentUsesOnlyAPublishedPrerelease() {
@@ -95,20 +102,21 @@ public class UpdateChannelTest {
         }
     }
 
-    @Test public void malformedMetadataAndDowngradesAreRejected() throws Exception {
-        JSONObject good = new JSONObject("{\"versionCode\":27,\"versionName\":\"0.16.10-dev.1\","
-                + "\"tag\":\"v0.16.10-dev.1\",\"sha256\":\"" + hash() + "\"}");
-        UpdateChannel.requireMetadata("development", "v0.16.10-dev.1", good);
-        JSONObject broken = new JSONObject(good.toString());
-        broken.put("sha256", "zzzz");
+    @Test public void malformedMetadataAndDowngradesAreRejected() {
+        String good = "{\"versionCode\":27,\"versionName\":\"0.16.10-dev.1\","
+                + "\"tag\":\"v0.16.10-dev.1\",\"sha256\":\"" + hash() + "\"}";
+        UpdateChannel.Meta meta = UpdateChannel.requireMetadata("development", "v0.16.10-dev.1", good);
+        assertEquals(27, meta.versionCode);
+        assertEquals("0.16.10-dev.1", meta.versionName);
         try {
-            UpdateChannel.requireMetadata("development", "v0.16.10-dev.1", broken);
+            UpdateChannel.requireMetadata("development", "v0.16.10-dev.1",
+                    good.replace(hash(), "zzzz"));
             throw new AssertionError("bad hash accepted");
         } catch (IllegalArgumentException expected) {
             assertEquals("Invalid release integrity metadata.", expected.getMessage());
         }
-        JSONObject stableDevName = new JSONObject("{\"versionCode\":30,\"versionName\":\"0.16.11-dev.1\","
-                + "\"tag\":\"v0.16.11\",\"sha256\":\"" + hash() + "\"}");
+        String stableDevName = "{\"versionCode\":30,\"versionName\":\"0.16.11-dev.1\","
+                + "\"tag\":\"v0.16.11\",\"sha256\":\"" + hash() + "\"}";
         try {
             UpdateChannel.requireMetadata("stable", "v0.16.11", stableDevName);
             throw new AssertionError("dev name accepted as stable");
