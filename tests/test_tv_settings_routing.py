@@ -74,6 +74,7 @@ class TvSettingsRoutingTest(unittest.TestCase):
             "Frigate web URL:",
             "Home Assistant cameras:",
             "Dashboard size:",
+            "Frigate page layout:",
             "Choose Android screensaver",
             "Preview Frigate dashboard",
         ):
@@ -83,6 +84,7 @@ class TvSettingsRoutingTest(unittest.TestCase):
             "editScreensaverUrl",
             "editScreensaverCameras",
             "chooseScreensaverSize",
+            "toggleScreensaverDesktopPage",
             "openAndroidScreensaverList",
         ):
             with self.subTest(method=method):
