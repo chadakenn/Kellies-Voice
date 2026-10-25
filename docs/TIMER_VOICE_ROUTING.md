@@ -52,15 +52,21 @@ The safest product path is therefore:
 
 ## Pure mapping (implemented and tested)
 
-`custom_components/kellies_voice/timer_routing.py` is dependency-free:
+`custom_components/kellies_voice/timer_routing.py` is dependency-free.
+The prototype maps per-TV start, cancel and dismiss to the **existing TV
+receiver's actual event contract**. Every event includes a fresh Unix `issued`
+timestamp in seconds; start additionally includes absolute `ends_at_ms` in
+milliseconds. These fields are mandatory in `TimerOverlayController.command()`.
+The mapper validates the explicit target ID and ASCII timer names and bounds
+durations to 1–86400 seconds. Its deterministic clock parameter is for tests.
 
-- `map_start(device_id, name, total_seconds)` → existing start payload
-  (name defaults to `"Timer"`, duration clamped 1–86400)
-- `map_cancel(device_id, name)` → existing cancel payload
-- `map_dismiss(device_id)` → existing dismiss payload
-- `event_for(payload)` → `("kellies_voice_timer", payload)`
+Unit tests: `tests/test_timer_routing.py` (no Home Assistant required).
 
-Unit tests: `tests/test_timer_routing.py` (3 passed, no Home Assistant required).
+**Important:** these pure functions are **not called by any native HA handler
+yet**. This draft therefore does **not** fix spoken unprefixed timer requests.
+Home Assistant still must pass the TV registry device ID into the Assist
+pipeline, register and later unregister a timer handler, map native events,
+and reconcile native timer identity with TV-local named timers.
 
 ## Recommended safe alternative (works today, no app change)
 
