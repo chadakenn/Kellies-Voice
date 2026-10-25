@@ -242,6 +242,32 @@ A dev HACS installation affects the user's live Home Assistant instance.
 Do not perform that change or restart without explicit authorization.
 Do not change `main` or publish a public release.
 
+### v0.16.11-dev.5: independent spoken-announcement volume
+
+On the owner's onn 4K Pro, end-to-end spoken `kellies_voice.announce`
+succeeded using Android dev.4 and HACS `dev`, but the owner reported
+that the voice was too loud.
+
+Dev.5 (`versionCode 36`) adds **Settings → Announcement voice volume**
+with 20%, 40%, 60%, 80%, 100% options. Fresh installations default to
+**60%**; existing installations also use 60% until the owner selects
+something else. This is **relative Android TTS utterance gain**, not
+a change to the TV or media app volume. It affects the local speech
+self-test and spoken TV alerts/camera announcements, but **does not**
+change Assistant reply playback from HA, timer chimes, or YouTube volume.
+The gain is passed as `TextToSpeech.Engine.KEY_PARAM_VOLUME` on each
+utterance; Android's TTS API permits a 0.0–1.0 per-utterance float,
+although final perceived volume depends on the installed TTS engine.
+
+**Hardware QA:** Install the signed dev.5 APK over dev.4, preserving data.
+Open TV app Settings and verify **Announcement voice volume: 60%**.
+Choose 20% or 40%, then use **Test spoken announcements locally**.
+Verify that speech is less loud than at 100%, changing the setting persists
+after leaving Settings, and visual-only alerts remain silent. Confirm
+spoken Home Assistant alerts use the same chosen level. Do not retest
+YouTube ducking until the owner is in a position to check it, and do not
+promote to stable without approval.
+
 ### v0.16.11-dev.4: scoped speech transport repair + local TV speech test
 
 The owner installed v0.16.11-dev.3 on an onn 4K Pro and checked **TV alert
