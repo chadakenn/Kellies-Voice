@@ -76,6 +76,7 @@ SHOW_CAMERA_SCHEMA = vol.Schema(
             vol.Coerce(int),
             vol.Range(min=MIN_DURATION_SECONDS, max=MAX_DURATION_SECONDS),
         ),
+        vol.Optional("speak"): cv.string,
         vol.Optional("device_id"): cv.string,
     }
 )
@@ -93,6 +94,7 @@ SHOW_LIVE_SCHEMA = vol.Schema(
         vol.Optional("duration_seconds", default=DEFAULT_LIVE_SECONDS): vol.All(
             vol.Coerce(int), vol.Range(min=MIN_LIVE_SECONDS, max=MAX_LIVE_SECONDS)
         ),
+        vol.Optional("speak"): cv.string,
         vol.Optional("device_id"): cv.string,
     }
 )
@@ -246,6 +248,7 @@ async def _async_show_camera(call: ServiceCall) -> None:
             call.data.get("duration_seconds", DEFAULT_CAMERA_SECONDS),
             DEFAULT_CAMERA_SECONDS,
         )
+        speak = clean_speak(call.data.get("speak"))
         targets = target_device_ids(call.data.get("device_id"), configured_device_ids(call.hass))
     except ValueError as err:
         raise ServiceValidationError(str(err)) from None
@@ -262,6 +265,7 @@ async def _async_show_camera(call: ServiceCall) -> None:
                 "refresh_seconds": refresh,
                 "duration_seconds": duration,
                 "device_id": device_id,
+                **({"speak": speak} if speak else {}),
             },
         )
     _LOGGER.debug("Fired %s for %s configured TV(s)", EVENT_CAMERA_POPUP, len(targets))
@@ -282,6 +286,7 @@ async def _async_show_live_camera(call: ServiceCall) -> None:
         duration = int(call.data.get("duration_seconds", DEFAULT_LIVE_SECONDS))
         if not MIN_LIVE_SECONDS <= duration <= MAX_LIVE_SECONDS:
             raise ValueError("Live duration must be from 4 to 180 seconds.")
+        speak = clean_speak(call.data.get("speak"))
         targets = target_device_ids(call.data.get("device_id"), configured_device_ids(call.hass))
     except (ValueError, TypeError) as err:
         raise ServiceValidationError(str(err)) from None
@@ -302,6 +307,7 @@ async def _async_show_live_camera(call: ServiceCall) -> None:
                 "refresh_seconds": refresh,
                 "duration_seconds": duration,
                 "device_id": device_id,
+                **({"speak": speak} if speak else {}),
             },
         )
     _LOGGER.debug("Fired %s for %s configured TV(s)", EVENT_LIVE_CAMERA, len(targets))
