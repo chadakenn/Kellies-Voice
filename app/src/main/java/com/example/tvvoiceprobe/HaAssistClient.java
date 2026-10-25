@@ -102,6 +102,11 @@ public final class HaAssistClient {
 
     public boolean isConnected() { return authenticated; }
 
+    /** Whether reconnection is enabled; rejected credentials must not be retried. */
+    public synchronized boolean canReconnect() {
+        return !disposed && reconnectEnabled && savedToken != null;
+    }
+
     /** Explicit start/reconfigure. Tokens never enter logs or retry messages. */
     public synchronized void connect(String baseUrl, String token) {
         disconnect();
@@ -273,8 +278,9 @@ public final class HaAssistClient {
             }
             if (id == currentRunId && !msg.optBoolean("success", false)) {
                 JSONObject error = msg.optJSONObject("error");
-                events.status("Assist request rejected: " +
-                        (error == null ? "Check the selected pipeline" : error.optString("message", "Unknown error")));
+                events.status(AssistReadinessPolicy.assistError(
+                        error == null ? "" : error.optString("code", ""),
+                        error == null ? "" : error.optString("message", "")));
                 stopForRunEnd();
             }
             return;
@@ -362,8 +368,8 @@ public final class HaAssistClient {
                     events.runEnded();
                     break;
                 }
-                events.status("Assist error: " + data.optString("code", "unknown") +
-                        " (" + data.optString("message", "no details") + ")");
+                events.status(AssistReadinessPolicy.assistError(
+                        data.optString("code", ""), data.optString("message", "")));
                 stopForRunEnd();
                 break;
             case "run-end":
@@ -395,7 +401,9 @@ public final class HaAssistClient {
      */
     public synchronized boolean talk(boolean autoStopOnSilence) {
         if (!authenticated || socket == null) {
-            events.status("Connect to Home Assistant first.");
+            events.status(canReconnect()
+                    ? AssistReadinessPolicy.waitingForConnection()
+                    : "Home Assistant is not connected. Check login in Settings.");
             return false;
         }
         if (currentRunId != -1) {
