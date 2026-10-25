@@ -101,6 +101,24 @@ Speech-to-text and TTS are separate stages. The current client **successfully pl
 
 The client reads the HA `tts_output.url` event field; earlier builds missed this URL. The working on-device example answered **“5:07 AM”** aloud. If a later test shows a transcript but no sound, capture the **exact status/error text**; don't post your HA token.
 
+## Philips shows Listening with only phantom microphones (#71)
+
+Some Philips TV firmware advertises a `TYPE_BUILTIN_MIC` input to Android
+apps even though voice capture is all silence. Another TV reports an echo
+reference as a microphone-like input and records a constant loud signal.
+This means **checking device types or audio volume alone cannot reliably
+prove that the user is speaking**.
+
+An optional development-only workaround is being reviewed: **Settings →
+Mic input detection → Disable microphone capture on this TV**. It stops
+TALK before opening an audio recorder or starting an Assist request. The
+manual setting is off by default, reversible, and overrides the existing
+"Try unverified microphone" bypass. Re-enable when a known-good USB mic is
+connected. Other TVs should continue using automatic input checks.
+
+Public stable v0.16.10 does **not** include this new manual workaround.
+Issue #71 remains open for physical Philips and onn 4K Pro validation.
+
 ## TALK says no accessible microphone
 
 The draft #71 microphone check (not in public v0.16.4) queries Android's
