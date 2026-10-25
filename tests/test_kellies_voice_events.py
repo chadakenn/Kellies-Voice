@@ -39,12 +39,15 @@ class ForecastDeliveryTests(unittest.IsolatedAsyncioTestCase):
                      if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
                      and node.name in ("configured_device_ids", "_saved_weather_entity",
                                        "_async_show_forecast", "_timer_target", "_async_start_timer",
-                                       "_async_cancel_timer", "_async_dismiss_timers")]
+                                       "_async_cancel_timer", "_async_dismiss_timers",
+                                       "_event_targets")]
         namespace = dict(vars(validation))
         namespace.update(HomeAssistant=object, ServiceCall=object,
                          ServiceValidationError=ValueError, DOMAIN=const.DOMAIN,
                          EVENT_FORECAST=const.EVENT_FORECAST, time=time,
                          _LOGGER=logging.getLogger(__name__))
+        self.presence = SimpleNamespace(seen={}, online=lambda device_id: False)
+        namespace["tracker"] = lambda hass: self.presence
         exec(compile(ast.Module(body=functions, type_ignores=[]), "services.py", "exec"), namespace)
         self.handler = namespace["_async_show_forecast"]
         self.timer_handlers = namespace
@@ -92,6 +95,43 @@ class ForecastDeliveryTests(unittest.IsolatedAsyncioTestCase):
             "device_id": "living-room"}))
         self.assertEqual("dismiss", self.hass.bus.async_fire.call_args.args[1]["operation"])
 
+    async def test_explicit_mistyped_pairing_fails_when_real_receiver_online(self):
+        # One real TV has established a scoped subscription. A second manually
+        # entered UUID-shaped but incorrect TV ID is still configured.
+        self.hass.config_entries.async_entries = lambda domain: [
+            SimpleNamespace(data={"device_id": "living-room"}),
+            SimpleNamespace(data={"device_id": "mistyped-id"}),
+        ]
+        self.presence.seen = {"living-room": "2026-10-25T12:00:00Z"}
+        self.presence.online = lambda device_id: device_id == "living-room"
+        with self.assertRaisesRegex(ValueError, "receiver is not connected"):
+            await self.timer_handlers["_async_start_timer"](
+                SimpleNamespace(hass=self.hass, data={
+                    "device_id": "mistyped-id", "duration_seconds": 30,
+                }))
+        self.hass.bus.async_fire.assert_not_called()
+
+        await self.timer_handlers["_async_start_timer"](
+            SimpleNamespace(hass=self.hass, data={
+                "device_id": "living-room", "duration_seconds": 30,
+            }))
+        self.assertEqual("living-room", self.hass.bus.async_fire.call_args.args[1]["device_id"])
+
+    async def test_unverified_legacy_and_broadcast_compatibility(self):
+        self.hass.config_entries.async_entries = lambda domain: [
+            SimpleNamespace(data={"device_id": "living-room"}),
+            SimpleNamespace(data={"device_id": "mistyped-id"}),
+        ]
+        self.presence.seen = {}
+        self.assertEqual(["mistyped-id"],
+                         self.timer_handlers["_event_targets"](
+                             SimpleNamespace(hass=self.hass, data={}), "mistyped-id"))
+        self.presence.seen = {"living-room": "2026-10-25T12:00:00Z"}
+        self.presence.online = lambda device_id: device_id == "living-room"
+        self.assertEqual(["living-room", "mistyped-id"],
+                         self.timer_handlers["_event_targets"](
+                             SimpleNamespace(hass=self.hass, data={}), None))
+
     async def test_timer_missing_or_unknown_target_never_broadcasts(self):
         for target in ("", "bedroom"):
             with self.subTest(target=target), self.assertRaises(ValueError):
@@ -109,6 +149,19 @@ class ValidationTests(unittest.TestCase):
             "pairing-uuid", "auto_listen", 2, " aabbccddeeff00112233445566778899 ")
         self.assertEqual("aabbccddeeff00112233445566778899", learned["ha_registry_device_id"])
         self.assertEqual("pairing-uuid", learned["kellie_device_id"])
+
+    def test_explicit_target_preflight_is_redacted(self):
+        known = ["real-tv", "typo-tv"]
+        self.assertEqual(["real-tv"], validation.targets_with_receiver_feedback(
+            "real-tv", known, ["real-tv"], ["real-tv"]))
+        with self.assertRaisesRegex(ValueError, "TV alert receiver is not connected") as cm:
+            validation.targets_with_receiver_feedback(
+                "typo-tv", known, ["real-tv"], ["real-tv"])
+        self.assertNotIn("typo-tv", str(cm.exception))
+        self.assertEqual(["typo-tv"], validation.targets_with_receiver_feedback(
+            "typo-tv", known, [], []))
+        self.assertEqual(known, validation.targets_with_receiver_feedback(
+            None, known, ["real-tv"], ["real-tv"]))
 
     def test_snapshot_refresh_validation(self):
         for seconds in (0, 2, 5, 30):
