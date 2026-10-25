@@ -1,3 +1,17 @@
+## v0.16.12-dev.1 combined feature preview (build 40, not stable)
+
+With matching dev HACS installed deliberately, follow the [action buttons](TV_ACTION_BUTTONS.md) and [Frigate screensaver](FRIGATE_SCREENSAVER.md) QA. Confirm:
+
+- [ ] TV's 21 Settings entries open the correct menu (especially Follow-up, Mic input detection and Frigate screensaver).
+- [ ] With screensaver OFF, normal TV behavior is unchanged.
+- [ ] Frigate ON: Preview shows camera/page; selecting `Kellie's Voice Frigate` in Android's screensaver list opens the dashboard on idle; Close and Back dismiss it; microphone never opens.
+- [ ] Action button event: use `acknowledge` only. TV D-pad OK emits exactly one HA event. Back, timeout and replacement emit none; old popup cannot issue another event.
+- [ ] Buttons work on text, snapshot and live camera without breaking video; plain alerts remain unfocusable.
+- [ ] Existing voice, follow-up listening/STOP, spoken alerts at 40%, camera and timer functions still work. Reconnect after HA restart.
+- [ ] No credentials, Frigate auth tokens or HA pairing IDs leak into web links or test reports.
+
+**Hardware QA remains pending; dev build only.**
+
 ## Issue #43: opt-in hands-free follow-up after spoken reply (development QA)
 
 These checks are **not yet completed on a real TV**. Existing spoken TV
