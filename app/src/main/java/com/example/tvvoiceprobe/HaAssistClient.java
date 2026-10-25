@@ -47,11 +47,19 @@ public final class HaAssistClient {
         default void runEnded() { }
         /** Unexpected socket loss; in-progress Assist run has been reset. */
         default void connectionLost() { }
+        /** The answer had no spoken audio, so a text-only reply is complete. */
+        default void speechMissing() { }
+        /**
+         * AudioRecord.release has returned for this Assist run, or the run
+         * ended without ever opening a recorder. Must not call back into the client.
+         */
+        default void captureReleased(int runId) { }
     }
 
     private final Context context;
     private final Events events;
     private final SpeechFocus listeningFocus;
+    private final RunGate runs = new RunGate();
     private final OkHttpClient http = new OkHttpClient.Builder()
             .connectTimeout(15, TimeUnit.SECONDS)
             .pingInterval(25, TimeUnit.SECONDS)
@@ -257,7 +265,6 @@ public final class HaAssistClient {
                 authenticated = false;
                 connecting = false;
                 reconnectEnabled = false; // Invalid credentials cannot heal by retrying.
-                recording.set(false);
                 stopForRunEnd();
                 reconnectHandler.removeCallbacks(reconnectTask);
                 reconnectScheduled = false;
@@ -326,13 +333,13 @@ public final class HaAssistClient {
                 break;
             case "stt-vad-end":
                 endRequested = true;
-                recording.set(false);
+                runs.stopAudio(currentRunId, () -> recording.set(false));
                 events.status("Speech detected. Processing...");
                 events.processing();
                 break;
             case "stt-end":
                 endRequested = true;
-                recording.set(false);
+                runs.stopAudio(currentRunId, () -> recording.set(false));
                 JSONObject stt = data.optJSONObject("stt_output");
                 if (stt != null) events.transcript(stt.optString("text", ""));
                 events.status("Thinking...");
@@ -401,6 +408,14 @@ public final class HaAssistClient {
         roomNoise = OverlayPreferences.NOISE_QUIET.equals(mode)
                 || OverlayPreferences.NOISE_TV.equals(mode)
                 ? mode : OverlayPreferences.NOISE_NORMAL;
+    }
+
+    public synchronized boolean pipelineIdle() {
+        return currentRunId < 0;
+    }
+
+    public synchronized int activeRunId() {
+        return currentRunId;
     }
 
     public synchronized boolean talk() {
