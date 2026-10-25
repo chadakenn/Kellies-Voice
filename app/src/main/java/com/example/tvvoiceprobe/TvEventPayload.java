@@ -54,7 +54,6 @@ public final class TvEventPayload {
         String entity = value.trim();
         return CAMERA_ID.matcher(entity).matches() ? entity : null;
     }
-}
 
     /** A sentence the TV may speak. Rejects empty, too-long, or web addresses. */
     public static String speak(String value) {
@@ -65,3 +64,4 @@ public final class TvEventPayload {
         if (lower.contains("://") || lower.startsWith("http") || lower.contains("www.")) return "";
         return text;
     }
+}
