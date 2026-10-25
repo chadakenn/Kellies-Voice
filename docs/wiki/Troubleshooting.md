@@ -1,5 +1,9 @@
 # Troubleshooting
 
+[← Documentation home](Home.md) · [Getting started](Getting-Started.md) · [YAML Cookbook](YAML-Cookbook.md) · [Troubleshooting](Troubleshooting.md)
+
+---
+
 ## Resume TV alerts (exact steps)
 
 Camera, announcement, timer, and weather popups use a separate receiver from the main voice connection. Even if **TALK** works and the main screen says Connected, the alert receiver can drop after standby, a TV power cycle, an app update, or a Home Assistant reload.
@@ -28,12 +32,16 @@ Manual Resume has been confirmed on an onn 4K Pro with v0.16.8. It is **not** pr
 
 - **No microphone detected / silent STT** — some Philips TVs expose only echo-reference or line-in devices that are not usable for speech. As of v0.16.8, those TVs can still incorrectly show Listening; see [issue #71](https://github.com/chadakenn/Kellies-Voice/issues/71). Try a compatible USB microphone and share non-sensitive Hardware microphone diagnostics with the maintainers. Use the unverified microphone override only for troubleshooting genuine, misreported microphones. The Google Assistant remote button is not intercepted.
 - **Action succeeds in Home Assistant but nothing appears on the TV** — check the alert receiver status, pairing ID (must be the TV's pairing ID, not an HA device-registry ID), and that the matching APK and HACS versions are installed.
-- **"This device doesn't support timers"** — Home Assistant's native timer intent was used. Direct `kellies_voice.start_timer` actions work; voice routing requires extra configuration. See [Voice and Timers](Voice-and-Timers).
+- **"This device doesn't support timers"** — Home Assistant's native timer intent was used. Direct `kellies_voice.start_timer` actions work; voice routing requires extra configuration. See [Voice and Timers](Voice-and-Timers.md).
 - **Signature conflict on update** — do not uninstall a signed release just to update. Use the in-app updater or install the newer signed APK over the existing one.
 
 Full repository troubleshooting: [docs/TROUBLESHOOTING.md](https://github.com/chadakenn/Kellies-Voice/blob/main/docs/TROUBLESHOOTING.md).
 
 ## Next
 
-- [Getting Started](Getting-Started)
-- [YAML Cookbook](YAML-Cookbook)
+- [Getting Started](Getting-Started.md)
+- [YAML Cookbook](YAML-Cookbook.md)
+
+---
+
+[← All documentation](Home.md) · [Next: FAQ →](FAQ.md)
