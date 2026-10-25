@@ -17,7 +17,7 @@ PAGE_NAMES = (
     "Home-Assistant-HACS-Setup", "Voice-and-Timers",
     "Cameras-and-Frigate", "Announcements-and-Weather",
     "YAML-Cookbook", "Troubleshooting", "Supported-TVs-and-Testing",
-    "FAQ", "_Sidebar",
+    "FAQ", "_Sidebar", "_Footer",
 )
 LINK = re.compile(r"(?<!!)\[[^\]]*\]\(([^)]+)\)")
 WIKI_FILE_LINK = re.compile(r"\]\(([A-Za-z0-9_-]+)\.md(#[A-Za-z0-9_-]+)?\)")
