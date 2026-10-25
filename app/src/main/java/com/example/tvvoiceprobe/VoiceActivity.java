@@ -565,6 +565,15 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                 });
     }
 
+    private void toggleSpokenAnnouncements() {
+        OverlayPreferences prefs = new OverlayPreferences(this);
+        prefs.setSpokenAnnouncements(!prefs.spokenAnnouncements());
+        status(prefs.spokenAnnouncements()
+                ? "Spoken announcements enabled for alerts with a speak sentence."
+                : "Spoken announcements disabled. Text popups remain active.");
+        showSettingsMenu();
+    }
+
     private void chooseHaLayout() {
         OverlayPreferences prefs = new OverlayPreferences(this);
         boolean on = prefs.haManage();
