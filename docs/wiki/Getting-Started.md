@@ -1,5 +1,9 @@
 # Getting Started
 
+[← Documentation home](Home.md) · [Getting started](Getting-Started.md) · [YAML Cookbook](YAML-Cookbook.md) · [Troubleshooting](Troubleshooting.md)
+
+---
+
 You need **both** parts of Kellie's Voice:
 
 1. The **signed Android TV / Google TV APK** (installed on the TV)
@@ -37,7 +41,7 @@ They are separate downloads. Installing one does not install the other. Always u
 
 ## Step 3: Install the HACS integration
 
-See the dedicated page: [Home Assistant HACS Setup](Home-Assistant-HACS-Setup).
+See the dedicated page: [Home Assistant HACS Setup](Home-Assistant-HACS-Setup.md).
 
 After pairing, enable **Settings → Home Assistant layout** on the TV so Home Assistant can control overlay position, size, and style.
 
@@ -51,8 +55,12 @@ This enables announcements, camera popups, timers, and the weather card. The ale
 
 ## Next steps
 
-- Test a simple announcement from Home Assistant (see [YAML Cookbook](YAML-Cookbook)).
-- If popups stop after standby or a Home Assistant restart, follow the exact recovery steps in [Troubleshooting](Troubleshooting#resume-tv-alerts).
+- Test a simple announcement from Home Assistant (see [YAML Cookbook](YAML-Cookbook.md)).
+- If popups stop after standby or a Home Assistant restart, follow the exact recovery steps in [Troubleshooting](Troubleshooting.md#resume-tv-alerts-exact-steps).
 - Explore cameras, timers, and weather on their dedicated pages.
 
 **Full detailed checklist:** the repository's [docs/INSTALL.md](https://github.com/chadakenn/Kellies-Voice/blob/main/docs/INSTALL.md).
+
+---
+
+[← All documentation](Home.md) · [Next: Home Assistant HACS Setup →](Home-Assistant-HACS-Setup.md)
