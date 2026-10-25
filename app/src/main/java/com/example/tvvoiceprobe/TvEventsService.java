@@ -450,16 +450,17 @@ public final class TvEventsService extends Service {
                             retryAlertSubscription(ws,
                                     TvAlertConnectionPolicy.retryDelayMs(notReadyAttempts++),
                                     "Waiting for Home Assistant TV controls");
-                        } else if (TvAlertConnectionPolicy.shouldRetryScopedDenial(
-                                code, deniedAttempts)) {
-                            // On some HA restarts, read permissions briefly report
-                            // unauthorized even though manual Resume later works.
-                            // This cannot bypass authorization: every attempt is
-                            // checked again by HA, and persistent denial is terminal.
+                        } else if (TvAlertConnectionPolicy.isScopedPermissionDenial(code)) {
+                            int attempt = deniedAttempts;
+                            deniedAttempts = Math.min(deniedAttempts + 1,
+                                    TvAlertConnectionPolicy.MAX_TRANSIENT_DENIAL_RETRIES);
                             retryAlertSubscription(ws,
-                                    TvAlertConnectionPolicy.retryDelayMs(deniedAttempts++),
-                                    "Rechecking TV alert permission after HA restart");
-                        } else if ("unauthorized".equals(code) || "not_allowed".equals(code)) {
+                                    TvAlertConnectionPolicy.scopedDenialRetryDelayMs(attempt),
+                                    "Rechecking TV alert connection");
+                            if (attempt >= TvAlertConnectionPolicy.MAX_TRANSIENT_DENIAL_RETRIES) {
+                                TvEventsRecovery.note(TvEventsRecovery.DENIED);
+                            }
+                        } else if ("not_allowed".equals(code)) {
                             terminalAlertError = true;
                             main.removeCallbacks(connectionWatchdog);
                             TvEventsRecovery.note(TvEventsRecovery.DENIED);
