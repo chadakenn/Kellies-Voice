@@ -477,10 +477,12 @@ public final class TvEventsService extends Service {
                         JSONObject error = message.optJSONObject("error");
                         String code = error == null ? "" : error.optString("code");
                         if ("unknown_command".equals(code)) {
+                            TvEventsRecovery.diagnostic("Scoped command missing; trying legacy events");
                             // Compatibility with old HACS + an admin TV account.
                             // Non-admin users receive a clear denial instead.
                             subscribeLegacy(ws);
                         } else if (TvAlertConnectionPolicy.retryableSubscriptionError(code)) {
+                            TvEventsRecovery.diagnostic("TV controls not ready; retry " + (notReadyAttempts + 1));
                             // The paired TV's HA controls might not exist yet.
                             retryAlertSubscription(ws,
                                     TvAlertConnectionPolicy.retryDelayMs(notReadyAttempts++),
@@ -497,11 +499,13 @@ public final class TvEventsService extends Service {
                                 TvEventsRecovery.note(TvEventsRecovery.DENIED);
                             }
                         } else if ("not_allowed".equals(code)) {
+                            TvEventsRecovery.diagnostic("Server reported terminal not_allowed");
                             terminalAlertError = true;
                             main.removeCallbacks(connectionWatchdog);
                             TvEventsRecovery.note(TvEventsRecovery.DENIED);
                             connectionNotice("TV alert permissions denied; check TV alert status");
                         } else {
+                            TvEventsRecovery.diagnostic("Unexpected alert subscription response");
                             terminalAlertError = true;
                             main.removeCallbacks(connectionWatchdog);
                             TvEventsRecovery.note(TvEventsRecovery.UPDATE_HACS);
@@ -515,6 +519,7 @@ public final class TvEventsService extends Service {
                     if (!message.optBoolean("success", false)) legacyDenied = true;
                     if (--legacyPending <= 0) {
                         if (legacyDenied) {
+                            TvEventsRecovery.diagnostic("Legacy event subscriptions denied");
                             terminalAlertError = true;
                             main.removeCallbacks(connectionWatchdog);
                             TvEventsRecovery.note(TvEventsRecovery.DENIED);
