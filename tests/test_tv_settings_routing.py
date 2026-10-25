@@ -77,6 +77,8 @@ class TvSettingsRoutingTest(unittest.TestCase):
             "Frigate page layout:",
             "Choose Android screensaver",
             "Preview Frigate dashboard",
+            "Screensaver status & permissions",
+            "Test Frigate as TV overlay",
         ):
             with self.subTest(option=option):
                 self.assertIn(option, block)
@@ -86,9 +88,29 @@ class TvSettingsRoutingTest(unittest.TestCase):
             "chooseScreensaverSize",
             "toggleScreensaverDesktopPage",
             "openAndroidScreensaverList",
+            "showScreensaverDiagnostics",
+            "testScreensaverOverlay",
         ):
             with self.subTest(method=method):
                 self.assertIn(method + "();", block)
+
+    def test_screensaver_has_explicit_ambient_diagnostics_and_recovery(self):
+        root = ACTIVITY.split("private void showScreensaverDiagnostics()", 1)[1]
+        self.assertIn("ScreensaverWatchStatus.lastEvent()", root)
+        self.assertIn("ScreensaverWatchStatus.lastOverlay()", root)
+        self.assertIn("ScreensaverWatchService.ACTION_TEST_OVERLAY", root)
+        receiver = (
+            Path(__file__).resolve().parents[1]
+            / "app/src/main/java/com/example/tvvoiceprobe/TvEventsRestartReceiver.java"
+        ).read_text(encoding="utf-8")
+        self.assertIn("ScreensaverWatchService.startIfEnabled(context);", receiver)
+        service = (
+            Path(__file__).resolve().parents[1]
+            / "app/src/main/java/com/example/tvvoiceprobe/ScreensaverWatchService.java"
+        ).read_text(encoding="utf-8")
+        self.assertIn("return START_STICKY;", service)
+        self.assertIn("ACTION_TEST_OVERLAY", service)
+        self.assertIn("ScreensaverWatchStatus.event", service)
 
     def test_follow_up_is_opt_in_and_has_a_separate_mic_routing_menu(self):
         self.assertIn('prefs.setFollowUp(false)', ACTIVITY)
