@@ -72,9 +72,11 @@ public final class TvEventsRecovery {
             return "Reconnecting to Home Assistant. Alerts sent while it was disconnected are not replayed.";
         }
         if (DENIED.equals(runtime)) {
-            return "Home Assistant denied TV alert permission for this account. "
-                    + "Give the TV user read access to this TV's Kellie's Voice controls, "
-                    + "then use Resume TV alerts. No administrator token is required with an updated HACS integration.";
+            return "Home Assistant reported TV alert permission denied. "
+                    + "Kellie's Voice will automatically recheck periodically after startup, "
+                    + "but will not receive alerts until Home Assistant approves access. "
+                    + "If this persists, check read access to the TV's Kellie's Voice controls. "
+                    + "Resume TV alerts retries immediately; no administrator token is required.";
         }
         if (UPDATE_HACS.equals(runtime)) {
             return "The Home Assistant integration does not support scoped TV alerts. "
