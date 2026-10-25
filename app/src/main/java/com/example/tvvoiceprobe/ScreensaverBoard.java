@@ -135,6 +135,13 @@ final class ScreensaverBoard {
         web = new WebView(context);
         web.setBackgroundColor(Color.BLACK);
         WebSettings settings = web.getSettings();
+        boolean desktop = new OverlayPreferences(context).screensaverDesktopPage();
+        if (desktop) {
+            // Frigate otherwise uses a phone-width WebView viewport on many Android TVs.
+            settings.setUseWideViewPort(true);
+            settings.setLoadWithOverviewMode(true);
+            settings.setUserAgentString(ScreensaverDashboard.desktopUserAgent(settings.getUserAgentString()));
+        }
         settings.setJavaScriptEnabled(true);
         settings.setMediaPlaybackRequiresUserGesture(true);
         settings.setAllowFileAccess(false);
@@ -144,12 +151,21 @@ final class ScreensaverBoard {
         CookieManager cookies = CookieManager.getInstance();
         if (cookies != null) cookies.setAcceptThirdPartyCookies(web, false);
         web.setWebViewClient(new WebViewClient() {
+            @Override public void onPageFinished(WebView view, String url) {
+                super.onPageFinished(view, url);
+                if (desktop && !stopped && ScreensaverDashboard.sameSite(page, url)) {
+                    view.evaluateJavascript(ScreensaverDashboard.desktopViewportScript(), null);
+                }
+            }
+
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 if (request == null || request.getUrl() == null) return true;
                 return !ScreensaverDashboard.sameSite(page, request.getUrl().toString());
             }
         });
         FrameLayout.LayoutParams params = cardParams();
+        // Let Frigate use the whole TV; Close floats over the bottom-right corner.
+        if (params.width == FrameLayout.LayoutParams.MATCH_PARENT) params.bottomMargin = 0;
         root.addView(web, params);
         web.loadUrl(page);
     }
