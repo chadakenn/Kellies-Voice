@@ -47,9 +47,11 @@ class TimerRoutingTests(unittest.TestCase):
         for device in ("", "   ", None):
             with self.subTest(device=device), self.assertRaises(ValueError):
                 timer_routing.map_start(device, "Timer", 60, now_ms=NOW)
-        for name in ("🥐", "a" * 41, "bad\nname", "-leading"):
+        for name in ("🥐", "a" * 41, "bad!name", "-leading"):
             with self.subTest(name=name), self.assertRaises(ValueError):
                 timer_routing.map_start("tv-1", name, 60, now_ms=NOW)
+        self.assertEqual("bad name", timer_routing.map_start(
+            "tv-1", "bad\nname", 60, now_ms=NOW)["name"])
         with self.assertRaises(ValueError):
             timer_routing.map_cancel(" ", "Timer", now_ms=NOW)
 
