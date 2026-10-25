@@ -20,7 +20,7 @@ Turn an Android TV or Google TV into a voice companion for Home Assistant. Speak
 | **02 · Pair** | Install the companion HACS integration and pair your TV | [Home Assistant Setup](Home-Assistant-HACS-Setup.md) |
 | **03 · Try it** | Test a voice command, announcement or camera popup | [TV App & Permissions](TV-App-and-Permissions.md) · [YAML Cookbook](YAML-Cookbook.md) |
 
-> **Two components, one experience:** the Android TV app and the Home Assistant HACS integration are separate downloads. Use matching released versions. The current public release is **v0.16.9**; work under development is not included.
+> **Two components, one experience:** the Android TV app and the Home Assistant HACS integration are separate downloads. Use matching released versions. The current public release is **v0.16.11**; development-only features are not included.
 
 ## Explore by what you want to do
 
@@ -47,6 +47,6 @@ Turn an Android TV or Google TV into a voice companion for Home Assistant. Speak
 
 ---
 
-**A note on features:** the Google Assistant remote microphone button is not automatically available to third-party apps. Hands-free follow-up, wake-word support and the Frigate screensaver remain experimental, not part of the public release. See the [FAQ](FAQ.md) for more.
+**A note on features:** the Google Assistant remote microphone button is not automatically available to third-party apps. Optional hands-free follow-up listening is included in v0.16.11 (OFF by default). Always-on wake-word support, actionable popup buttons, and the Frigate screensaver remain experimental and are not in the public release. See the [FAQ](FAQ.md) for more.
 
 [**Begin installation →**](Getting-Started.md) · [**Back to the main repository**](https://github.com/chadakenn/Kellies-Voice)
