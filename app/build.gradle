@@ -10,9 +10,9 @@ android {
         applicationId 'com.example.tvvoiceprobe'
         minSdk 26
         targetSdk 35
-        // Fix missing Frigate configuration inputs; upgrades dev.1 (code 40).
-        versionCode 41
-        versionName '0.16.12-dev.2'
+        // Desktop Frigate layout on TV, with optional automatic fallback.
+        versionCode 42
+        versionName '0.16.12-dev.3'
     }
 
     // The keystore is private and supplied from GitHub Actions secrets.
