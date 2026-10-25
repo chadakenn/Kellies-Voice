@@ -1149,9 +1149,15 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
     }
 
     private void startTalk() {
-        if (assist != null && !assist.isConnected()) {
-            assist.ensureConnected();
-            status("Reconnecting to Home Assistant. Try TALK when connected.");
+        if (assist == null || !assist.isConnected()) {
+            if (assist != null && assist.canReconnect()) {
+                assist.ensureConnected();
+                // Full-screen TALK is not queued. Explicit consent must be renewed
+                // after authentication, unlike the short-lived overlay request.
+                status(AssistReadinessPolicy.waitingForConnection());
+            } else {
+                status("Home Assistant is not connected. Check login in SETTINGS.");
+            }
             return;
         }
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
