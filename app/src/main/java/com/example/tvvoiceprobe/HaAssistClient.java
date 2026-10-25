@@ -102,6 +102,11 @@ public final class HaAssistClient {
 
     public boolean isConnected() { return authenticated; }
 
+    /** Whether reconnection is enabled; rejected credentials must not be retried. */
+    public synchronized boolean canReconnect() {
+        return !disposed && reconnectEnabled && savedToken != null;
+    }
+
     /** Explicit start/reconfigure. Tokens never enter logs or retry messages. */
     public synchronized void connect(String baseUrl, String token) {
         disconnect();
@@ -273,9 +278,14 @@ public final class HaAssistClient {
             }
             if (id == currentRunId && !msg.optBoolean("success", false)) {
                 JSONObject error = msg.optJSONObject("error");
-                events.status("Assist request rejected: " +
-                        (error == null ? "Check the selected pipeline" : error.optString("message", "Unknown error")));
+                // A rejected run may never send run-end. Clear UI listening
+                // as well as audio state, so the TV does not get stuck.
                 stopForRunEnd();
+                events.processing();
+                events.status(AssistReadinessPolicy.assistError(
+                        error == null ? "" : error.optString("code", ""),
+                        error == null ? "" : error.optString("message", "")));
+                events.runEnded();
             }
             return;
         }
@@ -301,8 +311,10 @@ public final class HaAssistClient {
                 JSONObject runner = data.optJSONObject("runner_data");
                 int id = runner == null ? -1 : runner.optInt("stt_binary_handler_id", -1);
                 if (id < 0 || id > 255) {
-                    events.status("Assist did not provide a valid audio handler ID");
                     stopForRunEnd();
+                    events.processing();
+                    events.status("Assist did not provide a valid audio handler ID.");
+                    events.runEnded();
                     break;
                 }
                 handlerId = id;
@@ -358,18 +370,25 @@ public final class HaAssistClient {
                 if (microphoneMissing) {
                     stopForRunEnd();
                     events.processing();
-                    events.status(MicRoutePolicy.NO_MIC_MESSAGE);
+                    events.status(new OverlayPreferences(context).microphoneDisabled()
+                            ? MicRoutePolicy.MANUALLY_DISABLED_MESSAGE
+                            : MicRoutePolicy.NO_MIC_MESSAGE);
                     events.runEnded();
                     break;
                 }
-                events.status("Assist error: " + data.optString("code", "unknown") +
-                        " (" + data.optString("message", "no details") + ")");
                 stopForRunEnd();
+                events.processing();
+                events.status(AssistReadinessPolicy.assistError(
+                        data.optString("code", ""), data.optString("message", "")));
+                events.runEnded();
                 break;
             case "run-end":
                 boolean routeMissing = microphoneMissing;
                 stopForRunEnd();
-                events.status(routeMissing ? MicRoutePolicy.NO_MIC_MESSAGE
+                events.status(routeMissing
+                        ? (new OverlayPreferences(context).microphoneDisabled()
+                            ? MicRoutePolicy.MANUALLY_DISABLED_MESSAGE
+                            : MicRoutePolicy.NO_MIC_MESSAGE)
                         : "Ready for another question.");
                 events.runEnded();
                 break;
@@ -395,7 +414,9 @@ public final class HaAssistClient {
      */
     public synchronized boolean talk(boolean autoStopOnSilence) {
         if (!authenticated || socket == null) {
-            events.status("Connect to Home Assistant first.");
+            events.status(canReconnect()
+                    ? AssistReadinessPolicy.waitingForConnection()
+                    : "Home Assistant is not connected. Check login in Settings.");
             return false;
         }
         if (currentRunId != -1) {
@@ -407,8 +428,14 @@ public final class HaAssistClient {
             events.status("Microphone permission is required.");
             return false;
         }
+        OverlayPreferences micSettings = new OverlayPreferences(context);
+        if (MicRoutePolicy.manuallyBlocked(micSettings.microphoneDisabled(),
+                micSettings.allowUnverifiedMic())) {
+            events.status(MicRoutePolicy.MANUALLY_DISABLED_MESSAGE);
+            return false; // No Assist request, AudioRecord, or uploaded PCM.
+        }
         String routeIssue = MicrophoneRouting.preflight(context,
-                new OverlayPreferences(context).allowUnverifiedMic());
+                micSettings.allowUnverifiedMic());
         if (routeIssue != null) {
             events.status(routeIssue);
             return false; // No Assist run or misleading LISTENING state.
@@ -479,6 +506,16 @@ public final class HaAssistClient {
             AcousticEchoCanceler echo = null;
             NoiseSuppressor noise = null;
             try {
+                // Respect a setting change even if Assist was already waiting
+                // for its STT audio-handler. Never open AudioRecord afterward.
+                OverlayPreferences micSettings = new OverlayPreferences(context);
+                if (MicRoutePolicy.manuallyBlocked(micSettings.microphoneDisabled(),
+                        micSettings.allowUnverifiedMic())) {
+                    microphoneMissing = true;
+                    events.status(MicRoutePolicy.MANUALLY_DISABLED_MESSAGE);
+                    events.processing();
+                    return;
+                }
                 int minimum = AudioRecord.getMinBufferSize(16000,
                         AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);
                 if (minimum <= 0) throw new IllegalStateException("16kHz microphone audio is unsupported");

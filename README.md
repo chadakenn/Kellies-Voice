@@ -232,6 +232,13 @@ On the device page, **Forecast source** is the weather entity used when a script
 | Tue 27 | ❄ | 42° / 31° | 40% |
 | Wed 28 | ☾ | 45° / 33° | — |
 
+**Development testing (#44):** The first voice query after a TV reboot can
+arrive before the Home Assistant voice WebSocket or Assist pipeline is ready.
+A dev-only candidate improves Connecting/Ready, pipeline and STT/agent/TTS
+diagnostics and expires a pending overlay request after 30 seconds instead
+of recording unexpectedly later. [QA checklist](docs/TESTING.md). This change
+is **not included in stable v0.16.10**.
+
 ## Project status and contributing
 
 ### Current release: v0.16.9 (October 24, 2026)

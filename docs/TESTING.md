@@ -34,6 +34,42 @@ Updated historical milestone: **2026-10-20**. Device: maintainer's **onn 4K Pro 
 
 Distinguish what has actually worked on hardware from compiled features. A green build is **not** proof of behavior on a TV.
 
+## #44 development QA: first voice request after boot
+
+- [ ] Immediately after an onn 4K Pro reboot, activate TALK before HA auth:
+  show Connecting and do not claim an answer is ready.
+- [ ] Full-screen TALK while disconnected does **not** queue microphone
+  activation; when the socket reports Ready, press TALK again.
+- [ ] Explicit floating overlay request with auto-listen enabled and HA auth
+  within 30 seconds starts the mic no more than once.
+- [ ] Wait past 30 seconds before allowing HA auth. The old request must
+  expire and no microphone may start until a fresh press of TALK.
+- [ ] Restart HA / interrupt Wi-Fi; existing 2–30-second retry still
+  recovers. No stale microphone or surprise recording.
+- [ ] Distinguish missing/loading Assist pipeline from STT/agent/TTS errors;
+  no raw private server messages may appear in on-screen diagnostics.
+- [ ] Recheck normal STT, TTS, timer/alert popups and Back/STOP behavior.
+
+**Pending real-TV testing, not a verified stable release fix.**
+
+## #71 development QA: Philips phantom microphone opt-out
+
+- [ ] Philips 55OLED856/12 / 65PUS8507/12 without real microphone:
+  Settings → Mic input detection → **Disable microphone capture on
+  this TV**. TALK must display the disabled message *without* opening
+  AudioRecord, starting Assist or falsely reporting LISTENING.
+- [ ] Enable **Try unverified microphone** while manually disabled.
+  The manual disable still blocks audio capture.
+- [ ] Re-enable microphone capture. Existing safe route checks resume.
+  With a genuine USB microphone installed, test spoken transcription.
+- [ ] On onn 4K Pro, manual disable defaults OFF and TALK/STOP/TTS
+  with the built-in microphone continue working.
+- [ ] Ensure the reversible device-local preference persists across
+  signed in-place updates, independently of HACS TV alert settings.
+
+**Workaround only:** this doesn't automatically detect a phantom
+microphone. Keep #71 open pending genuine Philips hardware testing.
+
 ## v0.13 Home Assistant disconnection recovery (pending TV test)
 
 - [ ] With saved credentials, launch full-screen Kellie's Voice and verify Home Assistant changes to connected **without selecting Reconnect**
