@@ -1,3 +1,15 @@
+## v0.16.12-dev.3 Frigate TV desktop layout preview (build 42, dev only)
+
+Owner photo comparison showed Frigate live camera grid on laptop but a single giant camera tile and mobile navigation inside the onn Android WebView. The new **Desktop TV** default uses an installed-Chrome-version desktop browser ID, Android WebView wide/overview fit, and a 1440 CSS-pixel viewport after page load. Existing source URL allowlist and forbidden credentials remain intact.
+
+- [ ] TV **Settings → Frigate screensaver → Frigate page layout: Desktop TV** (default). With **Dashboard size: Large**, preview the same Frigate web address as on laptop and compare the dashboard grid, event strip and left navigation.
+- [ ] Confirm live video and camera playback still works, D-pad Back and **Close** exit normally, and on-device picture fills screen rather than reserving the former full-width 72dp black footer.
+- [ ] Toggle **Frigate page layout: Automatic**, preview prior mobile view; toggle back to Desktop TV. This is a TV-local presentation setting only and must not reset pairing or change HA/Frigate server config.
+- [ ] Repeat in idle-activated dream as well as Preview; try Small/Medium if desired, but full-width Large is recommended. Test one camera group, all cameras and the separate HA snapshot grid (unchanged).
+- [ ] Check Frigate group layout is browser-local. Laptop arrangement does **not** transfer automatically to TV WebView.
+
+**Owner TV verification required before promoting to main.**
+
 ## v0.16.12-dev.2 configuration UI repair (build 41, dev only)
 
 The signed dev.1 build offered only Frigate ON/OFF and Preview. Build 41 adds a remote-friendly dedicated setup menu without changing user HA/Frigate server configuration. Check:
