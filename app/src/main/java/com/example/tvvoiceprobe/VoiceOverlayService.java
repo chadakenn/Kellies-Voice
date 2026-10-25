@@ -137,35 +137,19 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
         }
         closing = false;
         preferences = new OverlayPreferences(this);
+        followToken = followUps.open();
+        followWindow = false;
+        followEar = new FollowUpEar(this);
         firstAutoListenPending = preferences.autoListen();
         firstAutoListenStarted = false;
         autoListenDeadlineMs = SystemClock.elapsedRealtime()
                                 + AssistReadinessPolicy.PENDING_USER_REQUEST_MS;
         try {
             createNotificationChannel();
-            Intent openApp = new Intent(this, VoiceActivity.class);
-            openApp.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-            PendingIntent openPending = PendingIntent.getActivity(this, 0, openApp,
-                    PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
-            Intent close = new Intent(this, VoiceOverlayService.class);
-            close.setAction(ACTION_CLOSE);
-            PendingIntent closePending = PendingIntent.getService(this, 1, close,
-                    PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
-            Notification notification = new Notification.Builder(this, CHANNEL_ID)
-                    .setSmallIcon(android.R.drawable.ic_btn_speak_now)
-                    .setContentTitle("Kellie's Voice")
-                    .setContentText("Overlay open. Microphone is active only during a voice request.")
-                    .setContentIntent(openPending)
-                    .addAction(new Notification.Action.Builder(
-                            android.R.drawable.ic_menu_close_clear_cancel, "Close", closePending)
-                            .build())
-                    .setOngoing(true)
-                    .build();
-            if (Build.VERSION.SDK_INT >= 29) {
-                startForeground(NOTIFICATION_ID, notification,
-                        ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE);
-            } else {
-                startForeground(NOTIFICATION_ID, notification);
+            if (!publishMicState()) {
+                notifyLauncher(ACTION_OVERLAY_FAILED);
+                stopSelf();
+                return START_NOT_STICKY;
             }
 
             connection = new CredentialStore(this).load();
@@ -484,16 +468,30 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
     }
 
     private void startListening() {
-        if (closing) return;
-        if (assist == null) return;
+        startListening(false);
+    }
+
+    private void startListening(boolean followUpTurn) {
+        if (closing || assist == null) return;
+        if (!followUpTurn && followEar != null) followEar.stop();
+        if (listening) {
+            if (followUpTurn && followEar != null) followEar.stop();
+            return;
+        }
         if (!assist.isConnected()) {
+            if (followUpTurn) {
+                if (followEar != null) followEar.stop();
+                followWindow = false;
+                mics.previewReleased();
+                publishMicState();
+                scheduleIdleDismiss();
+                return; // Never resume a follow-up mic across HA disconnect.
+            }
             if (!assist.canReconnect()) {
                 firstAutoListenPending = false;
                 status("Home Assistant login is unavailable. Open SETTINGS to reconnect.");
                 return;
             }
-            // TALK was just pressed. A bounded pending request may listen
-            // only after authentication and only before its 30s deadline.
             firstAutoListenPending = true;
             firstAutoListenStarted = false;
             autoListenDeadlineMs = SystemClock.elapsedRealtime()
@@ -502,7 +500,18 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
             status("Connecting to Home Assistant... I'll listen if ready within 30 seconds.");
             return;
         }
-        if (listening) return;
+        followWindow = false;
+        if (followUpTurn) mics.beginHandoff();
+        else mics.armAssist();
+        if (!publishMicState()) {
+            if (followEar != null) followEar.stop();
+            mics.captureNeverStarted();
+            publishMicState();
+            status("Android wouldn't allow the microphone. Capture stayed off.");
+            scheduleIdleDismiss();
+            return;
+        }
+        FollowUpEar handoff = followUpTurn ? followEar : null;
         firstAutoListenPending = false;
         main.removeCallbacks(dismissAfterReply);
         main.removeCallbacks(endListeningTimeout);
@@ -513,16 +522,28 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
         if (speechFocus != null) speechFocus.release();
         listening = true;
         speaking = false;
-        transcriptView.setText("Checking microphone...");
-        answerView.setText("...");
+        if (transcriptView != null) transcriptView.setText("Checking microphone...");
+        if (answerView != null) answerView.setText("...");
         if (wave != null) wave.setMode(VoiceWaveView.CONNECTING);
-        status("Checking microphone route...");
+        status(followUpTurn ? "Listening for a follow-up" : "Checking microphone route...");
         assist.setRoomNoise(preferences.noise());
-        if (!assist.talk(preferences.autoListen())) {
+        if (!assist.pipelineIdle() ||
+                !assist.talk(followUpTurn || preferences.autoListen(), handoff)) {
+            if (handoff != null) handoff.stop();
             listening = false;
+            mics.captureNeverStarted();
+            publishMicState();
             main.removeCallbacks(endListeningTimeout);
             if (wave != null) wave.setMode(
                     assist.isConnected() ? VoiceWaveView.IDLE : VoiceWaveView.CONNECTING);
+            if (followUpTurn) {
+                status("Couldn't open a follow-up. Microphone capture stopped.");
+                scheduleIdleDismiss();
+            }
+        } else {
+            mics.bindRun(assist.activeRunId());
+            mics.assistListening();
+            if (followUpTurn) followUps.markQuestion(followToken);
         }
     }
 
@@ -683,8 +704,10 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
 
     @Override public void listening() {
         main.post(() -> {
-            if (closing) return;
+            if (closing || mics.phase() == MicOwnership.PREVIEW) return;
             listening = true;
+            mics.assistListening();
+            publishMicState();
             if (transcriptView != null) transcriptView.setText("Listening to your voice...");
             if (wave != null) wave.setMode(VoiceWaveView.LISTENING);
             main.removeCallbacks(endListeningTimeout);
