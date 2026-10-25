@@ -35,15 +35,27 @@ public final class TvAlertConnectionPolicy {
         return "tv_not_ready".equals(code);
     }
 
-    // HA can briefly deny a subscribed TV after Core restarts, even though a
-    // manual Resume moments later succeeds. Retry that result only a bounded
-    // number of times. Each attempt is fully reauthorized by HA; actual denied
-    // users never receive events, and eventually see the permission error.
+    // HA can temporarily report unauthorized after Core restarts, even when
+    // pressing Resume later succeeds without changing permissions. Start with
+    // a brief burst, then recheck infrequently instead of stopping forever.
+    // Every new connection still needs explicit server-side authorization.
     public static final int MAX_TRANSIENT_DENIAL_RETRIES = 5;
+    public static final long PERMISSION_RECHECK_MS = 120_000L;
+
+    public static boolean isScopedPermissionDenial(String code) {
+        return "unauthorized".equals(code);
+    }
 
     public static boolean shouldRetryScopedDenial(String code, int attempts) {
-        return "unauthorized".equals(code)
+        return isScopedPermissionDenial(code)
                 && attempts >= 0 && attempts < MAX_TRANSIENT_DENIAL_RETRIES;
+    }
+
+    /** After the burst, permission errors are rechecked every two minutes. */
+    public static long scopedDenialRetryDelayMs(int attempts) {
+        if (attempts < 0) throw new IllegalArgumentException("Negative attempt");
+        return attempts < MAX_TRANSIENT_DENIAL_RETRIES
+                ? retryDelayMs(attempts) : PERMISSION_RECHECK_MS;
     }
 
     public static long retryDelayMs(int attempts) {
