@@ -71,6 +71,7 @@ public final class TvEventsService extends Service {
     public static final String ACTION_RESUME = "com.example.tvvoiceprobe.TV_EVENTS_RESUME";
     public static final String ACTION_STOP = "com.example.tvvoiceprobe.TV_EVENTS_STOP";
     public static final String ACTION_PREVIEW = "com.example.tvvoiceprobe.TV_EVENTS_PREVIEW";
+    public static final String ACTION_TEST_SPOKEN = "com.example.tvvoiceprobe.TV_EVENTS_TEST_SPOKEN";
 
     private static final String CHANNEL = "kellie_tv_events";
     private static final int NOTICE_ID = 2242;
@@ -216,6 +217,15 @@ public final class TvEventsService extends Service {
         TvEventsRestartReceiver.clearResume(this);
         if (ACTION_PREVIEW.equals(action)) {
             showCard("Kellie's Voice", "This is how announcements will appear over your TV.", null, 10);
+        }
+        if (ACTION_TEST_SPOKEN.equals(action)) {
+            // This direct TV-only test does not use Home Assistant's event bus.
+            // Only a Settings button can request it, and speech is opt-in.
+            showCard("Local spoken announcement test",
+                    "If the Android voice is working, you should hear this sentence.", null, 16);
+            if (card != null) {
+                maybeSpeak("Hello from Kellie's Voice. This is a local speech test.");
+            }
         }
         if (TvAlertConnectionPolicy.shouldForceRestart(
                 ACTION_RESUME.equals(action), socket != null, alertsSubscribed,
