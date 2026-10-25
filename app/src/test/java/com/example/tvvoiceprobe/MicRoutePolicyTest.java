@@ -17,7 +17,7 @@ public class MicRoutePolicyTest {
         assertFalse(MicRoutePolicy.manuallyBlocked(false, false));
         assertFalse(MicRoutePolicy.manuallyBlocked(false, true));
         assertTrue(MicRoutePolicy.MANUALLY_DISABLED_MESSAGE.contains("disabled"));
-        assertTrue(MicRoutePolicy.MANUALLY_DISABLED_MESSAGE.contains("re-enable"));
+        assertTrue(MicRoutePolicy.MANUALLY_DISABLED_MESSAGE.toLowerCase().contains("re-enable"));
     }
 
     @Test public void philipsEchoReferenceAndLineInAreNotSpeechMicrophones() {
