@@ -48,6 +48,8 @@ public final class OverlayPreferences {
     private static final String KEY_TV_EVENTS = "tv_events_enabled";
     private static final String KEY_SPOKEN_ANNOUNCEMENTS = "spoken_announcements";
     private static final String KEY_ANNOUNCEMENT_VOLUME = "spoken_announcement_volume";
+    private static final String KEY_FOLLOW = "follow_up_enabled";
+    private static final String KEY_FOLLOW_SECONDS = "follow_up_seconds";
     private static final String KEY_WEATHER_POSITION = "weather_position";
     private static final String KEY_WEATHER_SIZE = "weather_size";
     private static final String KEY_WEATHER_SECONDS = "weather_seconds";
