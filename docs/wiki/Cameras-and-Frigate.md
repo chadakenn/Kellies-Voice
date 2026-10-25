@@ -1,5 +1,9 @@
 # Cameras and Frigate
 
+[← Documentation home](Home.md) · [Getting started](Getting-Started.md) · [YAML Cookbook](YAML-Cookbook.md) · [Troubleshooting](Troubleshooting.md)
+
+---
+
 Kellie's Voice can show camera snapshots and experimental muted live HLS overlays over whatever you are already watching.
 
 ## Snapshot popups
@@ -10,7 +14,7 @@ Use `kellies_voice.show_camera`. This is a still image. Optional parameters (v0.
 - `image_fit: fit` — show the entire frame (letterboxed) instead of cropping
 - `refresh_seconds: 3` — periodically update the still (2–30 seconds)
 
-See full examples in the [YAML Cookbook](YAML-Cookbook#snapshot-camera).
+See full examples in the [YAML Cookbook](YAML-Cookbook.md#snapshot-camera).
 
 ## Live camera (experimental)
 
@@ -28,7 +32,7 @@ Short durations (down to 4 seconds) and the same header/fit/refresh options are 
 
 Use the included blueprint `frigate_person_popup.yaml` or a simple automation that calls `show_camera` when a Frigate person occupancy sensor turns on. This produces a **snapshot**, not live video.
 
-Full YAML is in the [YAML Cookbook](YAML-Cookbook#frigate-person-automation--blueprint).
+Full YAML is in the [YAML Cookbook](YAML-Cookbook.md#frigate-person-automation--blueprint).
 
 ## Voice control of cameras
 
@@ -36,5 +40,9 @@ Create clearly named scripts (e.g. "Show doorbell camera live on TV") and expose
 
 ## Next
 
-- [YAML Cookbook](YAML-Cookbook)
-- [Troubleshooting](Troubleshooting)
+- [YAML Cookbook](YAML-Cookbook.md)
+- [Troubleshooting](Troubleshooting.md)
+
+---
+
+[← All documentation](Home.md) · [Next: YAML Cookbook →](YAML-Cookbook.md)

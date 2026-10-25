@@ -1,5 +1,9 @@
 # Supported TVs and Testing
 
+[← Documentation home](Home.md) · [Getting started](Getting-Started.md) · [YAML Cookbook](YAML-Cookbook.md) · [Troubleshooting](Troubleshooting.md)
+
+---
+
 ## Primary tested device
 
 **onn 4K Pro** (Google TV) is the principal field-tested device. The maintainer has confirmed:
@@ -38,6 +42,10 @@ Open a GitHub issue with:
 
 ## Next
 
-- [Getting Started](Getting-Started)
-- [Troubleshooting](Troubleshooting)
-- [FAQ](FAQ)
+- [Getting Started](Getting-Started.md)
+- [Troubleshooting](Troubleshooting.md)
+- [FAQ](FAQ.md)
+
+---
+
+[← All documentation](Home.md) · [Next: FAQ →](FAQ.md)

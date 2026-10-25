@@ -1,5 +1,9 @@
 # Voice and Timers
 
+[← Documentation home](Home.md) · [Getting started](Getting-Started.md) · [YAML Cookbook](YAML-Cookbook.md) · [Troubleshooting](Troubleshooting.md)
+
+---
+
 ## Voice conversation
 
 Activate **TALK** on the TV and speak a natural question. Kellie's Voice sends the audio to your configured Home Assistant Assist pipeline and displays (and optionally speaks) the answer in a floating overlay. You do **not** need to say "Julia".
@@ -47,11 +51,15 @@ Timers are never broadcast by default — you must target a specific pairing ID.
 
 ### Optional voice routing
 
-You can create Assist-exposed scripts or custom sentence triggers that call the actions above. See the full examples and honest caveats in the [YAML Cookbook](YAML-Cookbook#timers) and the repository's [docs/VOICE_TIMERS.md](https://github.com/chadakenn/Kellies-Voice/blob/main/docs/VOICE_TIMERS.md).
+You can create Assist-exposed scripts or custom sentence triggers that call the actions above. See the full examples and honest caveats in the [YAML Cookbook](YAML-Cookbook.md#timers) and the repository's [docs/VOICE_TIMERS.md](https://github.com/chadakenn/Kellies-Voice/blob/main/docs/VOICE_TIMERS.md).
 
 The maintainer has confirmed voice start/stop on an onn 4K Pro *after* adding home-specific automations. This is not automatic for new installs.
 
 ## Next
 
-- [YAML Cookbook](YAML-Cookbook)
-- [Troubleshooting](Troubleshooting)
+- [YAML Cookbook](YAML-Cookbook.md)
+- [Troubleshooting](Troubleshooting.md)
+
+---
+
+[← All documentation](Home.md) · [Next: YAML Cookbook →](YAML-Cookbook.md)
