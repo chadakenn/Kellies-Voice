@@ -1,5 +1,9 @@
 # FAQ
 
+[← Documentation home](Home.md) · [Getting started](Getting-Started.md) · [YAML Cookbook](YAML-Cookbook.md) · [Troubleshooting](Troubleshooting.md)
+
+---
+
 **Do I need to install or name an assistant "Julia"?**  
 No. Julia is only the maintainer's personal name for their own Home Assistant voice assistant. Use your existing Assist pipeline. You do not need to say "Julia" to use Kellie's Voice.
 
@@ -10,7 +14,7 @@ No. It usually still launches Google. Use the on-screen **TALK** button and spea
 No. Direct `kellies_voice.start_timer` actions work from Home Assistant. Ordinary phrases like "set a five-minute timer" often hit Home Assistant's native timer intent, which replies that the device does not support timers. Optional custom sentences or automations are required for voice routing and must be configured carefully.
 
 **Why do camera or announcement popups stop after the TV goes to sleep?**  
-The alert receiver is separate from the main voice connection and Android may block background starts. Use the exact **SETTINGS → TV alert status → Resume TV alerts** path. See [Troubleshooting](Troubleshooting#resume-tv-alerts).
+The alert receiver is separate from the main voice connection and Android may block background starts. Use the exact **SETTINGS → TV alert status → Resume TV alerts** path. See [Troubleshooting](Troubleshooting.md#resume-tv-alerts-exact-steps).
 
 **Is live camera video guaranteed on every TV?**  
 No. Moving video is verified on the onn 4K Pro with specific cameras. Other devices and cameras need testing. On some Philips TVs use the safe software decoder mode.
@@ -19,7 +23,11 @@ No. Moving video is verified on the onn 4K Pro with specific cameras. Other devi
 Yes. They are separate. Always install matching versions.
 
 **Where are the YAML examples?**  
-[YAML Cookbook](YAML-Cookbook).
+[YAML Cookbook](YAML-Cookbook.md).
 
 **Is this an official Home Assistant product?**  
 No. It is a community project.
+
+---
+
+[← All documentation](Home.md) · [Next: Getting Started →](Getting-Started.md)
