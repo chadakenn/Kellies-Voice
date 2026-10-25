@@ -216,6 +216,38 @@ a re-enabled USB microphone test, and onn 4K Pro normal mic regression.
 No tokens, audio files or personal device IDs should be included in reports.
 No stable release is authorized by this development candidate.
 
+### v0.16.11-dev.4: scoped speech transport repair + local TV speech test
+
+The owner installed v0.16.11-dev.3 on an onn 4K Pro and checked **TV alert
+status**. The receiver was connected, but **Last spoken alert** still reported
+"No spoken alert attempted in this app session." Source review established that
+`alert_transport.EVENT_FIELDS` on the *running* HACS integration does not
+include the new optional `speak` key and therefore strips it before forwarding
+scoped events. A visible text popup does not prove speech reached the Android app.
+
+This candidate updates the **development HACS integration** sanitizer to
+retain only short, validated `speak` strings for announcement, snapshot, and
+live camera events. Unsafe URLs, oversized messages, and unexpected extra
+fields still never reach the scoped client. Plain visual alerts remain silent
+by default and no secret fields are forwarded.
+
+**Separate local test for installed Android dev.4 / code 35:**
+
+1. Install the signed dev.4 APK over dev.3 (do NOT uninstall or erase data).
+2. In the TV app, leave **TV announcements & cameras ON** and **Spoken
+   announcements ON**.
+3. Open **Settings → Test spoken announcements locally**. This executes a
+   **local** event, without using the HACS WebSocket relay or network.
+4. If you hear voice, the Android TTS engine works; if silent, immediately
+   reopen **Settings → TV alert status** and report **Last spoken alert**.
+5. Once local TTS is confirmed, test real HA `speak:` messages only after
+   a matching, backed-up **development HACS integration** is explicitly
+   approved and installed. Public stable HACS still drops this field.
+
+Do not change the production HA custom component automatically or claim an
+end-to-end spoken alert pass based on the local test alone. No main merge,
+public Release or HACS stable publication is authorized.
+
 ### v0.16.11-dev.3: Android TTS engine discovery correction
 
 On the maintainer's onn 4K Pro, **v0.16.11-dev.2 displayed a raw,
