@@ -1,5 +1,10 @@
 # Kellie's Voice development and testing lane
 
+## v0.16.12-dev.2 / build 41: Frigate screensaver configuration UI repair
+
+The previous signed dev.1 build had Frigate ON/OFF and Preview but no way to enter its URL or camera IDs. Dev.2 adds a dedicated **Settings → Frigate screensaver** menu with a validated local Frigate URL field, up to four real Home Assistant `camera.*` IDs, dashboard size, Android system screensaver chooser, and Preview. Clearing the URL selects the camera grid. Credentials and secret-bearing URLs are rejected. The matched HACS dev manifest is `0.16.12-dev.2` (no HACS behavior changes); signed Android versionCode **41** upgrades dev.1 code 40 without uninstalling or clearing pairing. **Owner real-TV QA still required**, do not release to stable `main` yet. See [Frigate setup](FRIGATE_SCREENSAVER.md) and [QA](TESTING.md).
+
+
 ## Combined one-install QA candidate: v0.16.12-dev.1 / build 40 (2026-10-25)
 
 **Stable main remains v0.16.11 (Android build 39).** This development candidate combines two separately CI-reviewed improvements:
