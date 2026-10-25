@@ -900,6 +900,34 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                 });
     }
 
+    private String followUpLabel() {
+        OverlayPreferences prefs = new OverlayPreferences(this);
+        if (!prefs.followUp()) return "OFF";
+        return "ON, " + prefs.followUpSeconds() + " seconds";
+    }
+
+    private void chooseFollowUp() {
+        OverlayPreferences prefs = new OverlayPreferences(this);
+        showCopperMenu("SETTINGS  ✦  FOLLOW-UP",
+                "After Julia finishes speaking, listen for another question. This stays off until you turn it on here.",
+                new String[] {
+                        "Off",
+                        "On, stop after 5 seconds of silence",
+                        "On, stop after 8 seconds of silence",
+                        "On, stop after 10 seconds of silence",
+                        "On, stop after 15 seconds of silence"
+                }, which -> {
+                    if (which == 0) prefs.setFollowUp(false);
+                    else {
+                        prefs.setFollowUp(true);
+                        prefs.setFollowUpSeconds(which == 1 ? 5 : which == 2 ? 8 : which == 3 ? 10 : 15);
+                    }
+                    pushLayout(HaLayout.FOLLOW_TIMEOUT);
+                    status("Follow-up listening: " + followUpLabel());
+                    showSettingsMenu();
+                });
+    }
+
     private void promptInstallUpdate() {
         if (isFinishing() || isDestroyed()) return;
         if (!updater.downloadedExists()) {
