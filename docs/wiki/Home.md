@@ -1,34 +1,50 @@
-# Kellie's Voice Wiki
+![Kellie's Voice: Your home, your voice, your way](https://raw.githubusercontent.com/chadakenn/Kellies-Voice/main/docs/branding/kellies-voice-approved-banner.webp)
 
-**Turn your Android TV / Google TV into a Home Assistant voice companion.**
+# Kellie's Voice | Documentation
 
-Kellie's Voice is a native Android TV app plus a companion Home Assistant custom integration (installed via HACS). It lets you talk to your existing Home Assistant Assist pipeline, see answers in a floating overlay, receive quiet announcements, and pop up camera snapshots or experimental live views — all while you keep watching your current program.
+**Your TV. Your Home Assistant. One simple conversation.**
 
-## Important naming note
+Turn an Android TV or Google TV into a voice companion for Home Assistant. Speak to your configured Assist agent, see answers without leaving what you're watching, and optionally show announcements, camera views, timers, and a seven-day weather card.
 
-**Kellie's Voice** is the name of the TV app and the HACS integration in this project.
+[**Download the signed TV app**](https://github.com/chadakenn/Kellies-Voice/releases/latest) · [**Install with HACS**](https://my.home-assistant.io/redirect/hacs_repository/?owner=chadakenn&repository=Kellies-Voice&category=integration) · [**Start here**](Getting-Started.md) · [**Report an issue**](https://github.com/chadakenn/Kellies-Voice/issues)
 
-**Julia** is only the personal name the maintainer uses for *their own* Home Assistant voice assistant. It is **not** a required setup step, a wake word, or something you need to install. You can use whatever conversation agent and name (or no name) you already have in Home Assistant. After you press **TALK** on the TV, just speak normally.
+---
 
-## What this Wiki covers
+## 🚀 New here? Start in three steps
 
-This Wiki is written for beginners. It walks you through:
+| Step | What you'll do | Guide |
+|:---|:---|:---|
+| **01 · Install** | Get the signed Android TV APK, set permissions and connect to Home Assistant | [Getting Started](Getting-Started.md) |
+| **02 · Pair** | Install the companion HACS integration and pair your TV | [Home Assistant Setup](Home-Assistant-HACS-Setup.md) |
+| **03 · Try it** | Test a voice command, announcement or camera popup | [TV App & Permissions](TV-App-and-Permissions.md) · [YAML Cookbook](YAML-Cookbook.md) |
 
-1. Installing the signed Android APK and the matching HACS integration
-2. Pairing the TV and granting permissions
-3. Using voice, timers, cameras, announcements, and the seven-day weather card
-4. Copy-and-paste Home Assistant YAML examples (the [YAML Cookbook](YAML-Cookbook))
-5. Finding the exact **Resume TV alerts** button when popups stop working
+> **Two components, one experience:** the Android TV app and the Home Assistant HACS integration are separate downloads. Use matching released versions. The current public release is **v0.16.9**; work under development is not included.
 
-Only features that are **actually implemented and publicly released** (currently **v0.16.9**) are documented here. Draft ideas, wake-word support, follow-up listening, and native Home Assistant timer intent interception are **not** part of the public release.
+## Explore by what you want to do
 
-## Quick start links
+| 🗣️ Talk to your home | 📷 See what's happening |
+|:---|:---|
+| [**Voice & Timers**](Voice-and-Timers.md) <br> Ask questions, control devices, use countdown timers. | [**Cameras & Frigate**](Cameras-and-Frigate.md) <br> See snapshots and opt-in muted live camera views. |
 
-- [Getting Started](Getting-Started) — install both parts and pair your TV
-- [YAML Cookbook](YAML-Cookbook) — ready-to-copy Home Assistant actions and scripts
-- [Troubleshooting](Troubleshooting) — including the exact steps for Resume TV alerts
-- [Supported TVs and Testing](Supported-TVs-and-Testing)
+| 📣 Get notifications | 🧩 Copy working examples |
+|:---|:---|
+| [**Announcements & Weather**](Announcements-and-Weather.md) <br> Put household alerts and forecasts on the screen. | [**YAML Cookbook**](YAML-Cookbook.md) <br> Home Assistant actions, scripts and automations. |
 
-**Current public release:** Android TV APK **v0.16.9** + matching HACS integration **v0.16.9** (October 24, 2026).
+## Need help?
 
-Start with the [Getting Started](Getting-Started) page if this is your first time.
+| Problem or question | Where to go |
+|:---|:---|
+| **Camera popups or TV alerts stopped showing** | [Resume TV alerts, step by step](Troubleshooting.md#resume-tv-alerts-exact-steps) |
+| **Microphone or remote button doesn't work** | [TV App & Permissions](TV-App-and-Permissions.md) · [FAQ](FAQ.md) |
+| **Will it work on my TV?** | [Supported TVs & Testing](Supported-TVs-and-Testing.md) |
+| **Want to report a bug or help test?** | [GitHub Issues](https://github.com/chadakenn/Kellies-Voice/issues) |
+
+## Kellie's Voice vs Julia
+
+**Kellie's Voice** is the Android TV app and HACS integration. **Julia** is simply the maintainer's name for their personal Home Assistant conversation agent. You **do not** need to install Julia, call your assistant Julia, or use a wake word. Activate **TALK** and speak normally with your own configured Assist agent.
+
+---
+
+**A note on features:** the Google Assistant remote microphone button is not automatically available to third-party apps. Hands-free follow-up, wake-word support and the Frigate screensaver remain experimental, not part of the public release. See the [FAQ](FAQ.md) for more.
+
+[**Begin installation →**](Getting-Started.md) · [**Back to the main repository**](https://github.com/chadakenn/Kellies-Voice)
