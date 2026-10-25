@@ -1,20 +1,19 @@
 ## Issue #43: opt-in hands-free follow-up after spoken reply (development QA)
 
-These checks are **not yet completed on a real TV**. Existing spoken TV
-announcement success is a separate feature. Test only when we install a
-single owner-approved consolidated dev APK, not one APK per feature.
+**Owner's onn 4K Pro core acceptance PASSED on signed dev.7 / build 38 (promoted to stable v0.16.11 / build 39).** Some checklist items still require other-device and edge-case tests. Confirm and document each result by device.
 
 - [ ] Feature is **OFF by default**; with OFF, a normal TALK interaction does
   not reopen the microphone after Kellie's answer.
-- [ ] Set follow-up **ON (8 seconds)** on the TV. Ask a first question using
+- [x] Set follow-up **ON (8 seconds)** on the TV. Ask a first question using
   an explicitly launched voice session. After Kellie's speech playback really
   finishes, the overlay enters the short listening preview. Ask **"What about
   tomorrow?"** without pressing the remote again. Confirm a second, contextual
   answer and that the same conversation context is retained.
-- [ ] Remain silent until 5, 8, 10 and 15-second windows expire; the mic
+- [x] On 8 seconds, silence expired and the mic indicator cleared on onn 4K Pro. Still test 5, 10 and 15-second windows on devices; the mic
   closes, the Android privacy indicator clears *after* the recorder stops,
   and no empty Assist request is generated.
-- [ ] STOP, Back, Close, playback error, missing mic permission, and dropped
+- [x] STOP canceled active follow-up with mic indicator clearing on onn 4K Pro.
+- [ ] Back, Close, playback error, missing mic permission, and dropped
   HA/Wi-Fi connection prevent any delayed microphone restart. Reconnect does
   not reopen an expired follow-up.
 - [ ] During preview and handoff, Android shows an active microphone and never
