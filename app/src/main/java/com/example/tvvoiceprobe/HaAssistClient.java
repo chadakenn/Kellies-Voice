@@ -827,18 +827,21 @@ public final class HaAssistClient {
             option = HaLayout.wireValue(new OverlayPreferences(context), setting);
             if (option == null) return;
             switchEntity = entity.startsWith("switch.");
+            boolean textEntity = entity.startsWith("text.");
             try {
                 JSONObject call = new JSONObject();
                 call.put("id", commandId++);
                 call.put("type", "call_service");
-                call.put("domain", switchEntity ? "switch" : "select");
-                call.put("service", switchEntity ? ("on".equals(option) ? "turn_on" : "turn_off") : "select_option");
+                call.put("domain", textEntity ? "text" : switchEntity ? "switch" : "select");
+                call.put("service", textEntity ? "set_value" : switchEntity
+                        ? ("on".equals(option) ? "turn_on" : "turn_off") : "select_option");
                 JSONObject target = new JSONObject();
                 target.put("entity_id", entity);
                 call.put("target", target);
                 JSONObject data = new JSONObject();
                 data.put("entity_id", entity);
-                if (!switchEntity) data.put("option", option);
+                if (textEntity) data.put("value", option);
+                else if (!switchEntity) data.put("option", option);
                 call.put("service_data", data);
                 socket.send(call.toString());
             } catch (Exception ignored) { }
@@ -904,10 +907,15 @@ public final class HaAssistClient {
                 return;
             }
             String raw = state.optString("state");
-            if ("unavailable".equals(raw) || "unknown".equals(raw) || raw.isEmpty()) return;
+            if ("unavailable".equals(raw) || "unknown".equals(raw)
+                    || (raw.isEmpty() && !HaLayout.SCREENSAVER_URL.equals(setting)
+                            && !HaLayout.SCREENSAVER_CAMERAS.equals(setting))) return;
             changed = HaLayout.apply(prefs, setting, raw) ? setting : null;
         }
-        if (changed != null) events.haLayout(changed);
+        if (changed != null) {
+            if (HaLayout.isScreensaver(changed)) ScreensaverSettingsEffects.apply(context, changed);
+            events.haLayout(changed);
+        }
     }
 
     public synchronized void disconnect() {
