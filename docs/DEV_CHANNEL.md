@@ -36,6 +36,29 @@ fallback on a TV with an actual allowed microphone that fails at 16 kHz.
 No production APK installation or public release is triggered by this
 development change alone.
 
+## v0.16.11-dev.7: fix blocked follow-up settings path
+
+A real onn 4K Pro user installed v0.16.11-dev.6 (build 37) and selected
+**Settings → Follow-up listening**. The TV instead displayed the
+**Microphone Routing** menu. Root cause: the entries array has follow-up
+at index 5 and mic input detection at index 6, but their click handlers
+were reversed.
+
+Android v0.16.11-dev.7 (build 38) swaps the two handlers back to their
+correct positions, without changing either feature's behavior or
+microphone permission preferences. A settings mapping regression test
+checks every menu row against its action, preventing accidental future
+index shifts during feature additions. No HACS component change is needed.
+
+Hardware acceptance: install the signed dev.7 app over build 37,
+do not uninstall or clear settings; open **Follow-up listening** and
+verify it shows Off / On (5, 8, 10, 15 seconds), select **On, 8 seconds**,
+then return to Settings and confirm the label is ON, 8 seconds. The
+separate **Mic input detection** row must continue to open Microphone
+Routing. Then test the second conversational question after a spoken
+reply, and STOP/timeout/privacy. Issue #43 stays open until the owner
+passes real hardware tests. Stable `main` unchanged.
+
 ## Single-install batch: v0.16.11-dev.6 / build 37
 
 This batch is staged specifically because the owner requested **one
