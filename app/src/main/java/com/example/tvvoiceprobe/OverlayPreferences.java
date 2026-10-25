@@ -287,6 +287,24 @@ public final class OverlayPreferences {
                 NOISE_QUIET.equals(value) || NOISE_TV.equals(value) ? value : NOISE_NORMAL).apply();
     }
 
+    public boolean followUp() {
+        return preferences.getBoolean(KEY_FOLLOW, false);
+    }
+
+    public void setFollowUp(boolean enabled) {
+        preferences.edit().putBoolean(KEY_FOLLOW, enabled).apply();
+    }
+
+    public int followUpSeconds() {
+        int value = preferences.getInt(KEY_FOLLOW_SECONDS, FollowUpSession.DEFAULT_SECONDS);
+        return value == 5 || value == 10 || value == 15 ? value : FollowUpSession.DEFAULT_SECONDS;
+    }
+
+    public void setFollowUpSeconds(int value) {
+        preferences.edit().putInt(KEY_FOLLOW_SECONDS,
+                value == 5 || value == 10 || value == 15 ? value : FollowUpSession.DEFAULT_SECONDS).apply();
+    }
+
     public boolean mainLauncherOpensOverlay() {
         return preferences.getBoolean(KEY_MAIN_SHORTCUT, false);
     }
