@@ -14,6 +14,16 @@ No replacement launcher, always-open browser tab, or separate AI server on the T
 
 **New to Kellie's Voice?** The [documentation home](docs/wiki/Home.md) has a guided first-install path, grouped feature guides, a [copy-and-paste YAML Cookbook](docs/wiki/YAML-Cookbook.md), and [step-by-step TV alert recovery](docs/wiki/Troubleshooting.md#resume-tv-alerts-exact-steps). These repository links work without a separately published GitHub Wiki. The [Wiki publishing guide](docs/WIKI_PUBLISHING.md) explains the owner-approved sync to the Wiki tab.
 
+## Latest: v0.16.11 (signed APK + matching HACS)
+
+[**Download signed v0.16.11 APK**](https://github.com/chadakenn/Kellies-Voice/releases/tag/v0.16.11) · [**Install both parts**](docs/INSTALL.md) · [**Release notes**](docs/releases/v0.16.11.md) · [**Community test guide**](docs/TESTING.md)
+
+**Hardware-confirmed on the maintainer's onn 4K Pro:** Optional **Follow-up listening** (locally enabled at 8 seconds) heard a second question after speech, expired silently with the mic indicator off, and stopped on STOP. Optional **spoken TV announcements** and the 40% announcement-volume setting were verified through both local speech and a real Home Assistant `kellies_voice.announce` action. Follow-up is OFF and silent text alerts remain the default.
+
+**Open community QA:** #39 camera voice reliability and disconnects, #57 optional native Assist timer bridge (OFF by default), #69 manual pairing, #71 Philips microphone inputs, #41 Fire TV, and #92 development-update option. Google remote mic takeover, hands-free wake words, actionable alert buttons and Frigate screensaver views are not released. Do not mistake CI green for full physical compatibility.
+
+**From signed dev.7:** Stable `versionCode 39` installs over `dev.7` `versionCode 38` without uninstalling. Update HACS to `0.16.11` separately, restart HA for integration changes, then reopen the TV app.
+
 ## Kellie's Voice vs. Julia: what's the difference?
 
 **Kellie's Voice** is the **Android TV app and Home Assistant integration** in this repository. It is named for Kellie.
@@ -37,7 +47,7 @@ Imagine you're watching YouTube and want to turn on the garage lights. Instead o
 | Move the assistant out of the way | Set voice-overlay position, size, appearance, auto-hide, and auto-listen from Home Assistant. |
 | Stay current | Check for a signed Android app update right inside Kellie's Voice. HACS updates its *separate* Home Assistant component. |
 
-**A key distinction:** automatic Frigate alerts currently show **still snapshots**, not live video. Live HLS streaming is a separate, **on-demand** feature, confirmed playing moving driveway **and doorbell** video on the onn 4K Pro in Android v0.16.1 (HA integration v0.16.0). Other cameras/devices remain unverified. Camera windows are Android overlays, not native system picture-in-picture. Announcements are **on-screen text**, not spoken TTS broadcasts.
+**A key distinction:** automatic Frigate alerts currently show **still snapshots**, not live video. Live HLS streaming is a separate, **on-demand** feature, confirmed playing moving driveway **and doorbell** video on the onn 4K Pro in Android v0.16.1 (HA integration v0.16.0). Other cameras/devices remain unverified. Camera windows are Android overlays, not native system picture-in-picture. Announcements are silent on-screen text by default, with optional `speak` and independent TTS volume in v0.16.11.
 
 ## See it in action 📸
 
