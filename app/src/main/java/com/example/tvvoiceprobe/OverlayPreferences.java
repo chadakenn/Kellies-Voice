@@ -48,6 +48,8 @@ public final class OverlayPreferences {
     private static final String KEY_TV_EVENTS = "tv_events_enabled";
     private static final String KEY_SPOKEN_ANNOUNCEMENTS = "spoken_announcements";
     private static final String KEY_ANNOUNCEMENT_VOLUME = "spoken_announcement_volume";
+    private static final String KEY_FOLLOW = "follow_up_enabled";
+    private static final String KEY_FOLLOW_SECONDS = "follow_up_seconds";
     private static final String KEY_WEATHER_POSITION = "weather_position";
     private static final String KEY_WEATHER_SIZE = "weather_size";
     private static final String KEY_WEATHER_SECONDS = "weather_seconds";
@@ -285,6 +287,24 @@ public final class OverlayPreferences {
     public void setNoise(String value) {
         preferences.edit().putString(KEY_NOISE,
                 NOISE_QUIET.equals(value) || NOISE_TV.equals(value) ? value : NOISE_NORMAL).apply();
+    }
+
+    public boolean followUp() {
+        return preferences.getBoolean(KEY_FOLLOW, false);
+    }
+
+    public void setFollowUp(boolean enabled) {
+        preferences.edit().putBoolean(KEY_FOLLOW, enabled).apply();
+    }
+
+    public int followUpSeconds() {
+        int value = preferences.getInt(KEY_FOLLOW_SECONDS, FollowUpSession.DEFAULT_SECONDS);
+        return value == 5 || value == 10 || value == 15 ? value : FollowUpSession.DEFAULT_SECONDS;
+    }
+
+    public void setFollowUpSeconds(int value) {
+        preferences.edit().putInt(KEY_FOLLOW_SECONDS,
+                value == 5 || value == 10 || value == 15 ? value : FollowUpSession.DEFAULT_SECONDS).apply();
     }
 
     public boolean mainLauncherOpensOverlay() {

@@ -533,6 +533,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                 "Hardware microphone diagnostics",
                 "Microphone sensitivity: " + OverlayPreferences.noiseLabel(
                         new OverlayPreferences(this).noise()),
+                "Follow-up listening: " + followUpLabel(),
                 "Mic input detection: " + (new OverlayPreferences(this).microphoneDisabled()
                         ? "Microphone DISABLED" : new OverlayPreferences(this).allowUnverifiedMic()
                         ? "Override ON" : "Safe checks ON"),
@@ -559,18 +560,19 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                         case 3: startActivity(new Intent(this, MainActivity.class)); break;
                         case 4: chooseMicSensitivity(); break;
                         case 5: chooseMicrophoneDetection(); break;
-                        case 6: launchOverlay(); break;
-                        case 7: showOverlayPreferences(); break;
-                        case 8: chooseHaLayout(); break;
-                        case 9: chooseTvNotifications(); break;
-                        case 10: toggleSpokenAnnouncements(); break;
-                        case 11: chooseAnnouncementVolume(); break;
-                        case 12: testSpokenAnnouncements(); break;
-                        case 13: showTvAlertStatus(); break;
-                        case 14: chooseCameraMode(); break;
-                        case 15: chooseUpdates(); break;
-                        case 16: promptInstallUpdate(); break;
-                        case 17: confirmForget(); break;
+                        case 6: chooseFollowUp(); break;
+                        case 7: launchOverlay(); break;
+                        case 8: showOverlayPreferences(); break;
+                        case 9: chooseHaLayout(); break;
+                        case 10: chooseTvNotifications(); break;
+                        case 11: toggleSpokenAnnouncements(); break;
+                        case 12: chooseAnnouncementVolume(); break;
+                        case 13: testSpokenAnnouncements(); break;
+                        case 14: showTvAlertStatus(); break;
+                        case 15: chooseCameraMode(); break;
+                        case 16: chooseUpdates(); break;
+                        case 17: promptInstallUpdate(); break;
+                        case 18: confirmForget(); break;
                         default: break;
                     }
                 });
@@ -896,6 +898,34 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                                 : "Checking GitHub Releases...");
                         updater.check();
                     }
+                    showSettingsMenu();
+                });
+    }
+
+    private String followUpLabel() {
+        OverlayPreferences prefs = new OverlayPreferences(this);
+        if (!prefs.followUp()) return "OFF";
+        return "ON, " + prefs.followUpSeconds() + " seconds";
+    }
+
+    private void chooseFollowUp() {
+        OverlayPreferences prefs = new OverlayPreferences(this);
+        showCopperMenu("SETTINGS  ✦  FOLLOW-UP",
+                "After Julia finishes speaking, listen for another question. This stays off until you turn it on here.",
+                new String[] {
+                        "Off",
+                        "On, stop after 5 seconds of silence",
+                        "On, stop after 8 seconds of silence",
+                        "On, stop after 10 seconds of silence",
+                        "On, stop after 15 seconds of silence"
+                }, which -> {
+                    if (which == 0) prefs.setFollowUp(false);
+                    else {
+                        prefs.setFollowUp(true);
+                        prefs.setFollowUpSeconds(which == 1 ? 5 : which == 2 ? 8 : which == 3 ? 10 : 15);
+                    }
+                    pushLayout(HaLayout.FOLLOW_TIMEOUT);
+                    status("Follow-up listening: " + followUpLabel());
                     showSettingsMenu();
                 });
     }

@@ -43,6 +43,12 @@ NOISE_SELECTS = (
     ("noise", "Microphone sensitivity", NOISE_PRESETS, "mdi:microphone-settings", "Normal"),
 )
 
+# Follow-up silence selection only. Cannot turn the microphone on.
+FOLLOW_TIMEOUTS = ["5 seconds", "8 seconds", "10 seconds", "15 seconds"]
+FOLLOW_SELECTS = (
+    ("follow_up_timeout", "Follow-up silence", FOLLOW_TIMEOUTS, "mdi:timer-sand", "8 seconds"),
+)
+
 # Forecast card only. These do not move the voice overlay or camera popups.
 WEATHER_POSITIONS = [
     "Top left",
