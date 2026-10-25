@@ -148,5 +148,16 @@
         }
       }
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Experimental native Assist timers",
+        "description": "OFF by default. Enable only for this paired TV when its Home Assistant Assist pipeline supplies the TV's HA registry device ID and routes phrases to native intents. TV countdowns and Home Assistant keep separate clocks; verify on hardware before relying on timers. Existing manual timer actions remain available. This does not enable the microphone.",
+        "data": {
+          "native_timer_intents": "Enable experimental native timers for this TV"
+        }
+      }
+    }
   }
 }
