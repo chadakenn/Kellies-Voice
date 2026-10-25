@@ -30,9 +30,67 @@ public final class TvAlertConnectionPolicy {
                 && nowMs - sentAtMs >= HEARTBEAT_TIMEOUT_MS;
     }
 
-    /** Only missing HA controls during startup may retry; access denials stay terminal. */
+    /** Missing HA controls during startup always require a fresh authorization check. */
     public static boolean retryableSubscriptionError(String code) {
         return "tv_not_ready".equals(code);
+    }
+
+    // Immediately after HA Core starts, the WebSocket API may authenticate
+    // before the Kellie's Voice custom command is registered. A missing scoped
+    // command is not proof of a permanently outdated HACS integration.
+    public static final int MAX_MISSING_SCOPED_QUICK_RETRIES = 5;
+
+    public static boolean shouldRetryMissingScopedCommand(String code, int attempts) {
+        return "unknown_command".equals(code) && attempts >= 0
+                && attempts < MAX_MISSING_SCOPED_QUICK_RETRIES;
+    }
+
+    /** Give older HACS integrations a one-time legacy fallback after startup. */
+    public static boolean shouldTryLegacyFallback(String code, int attempts,
+            boolean alreadyTried) {
+        return "unknown_command".equals(code)
+                && attempts >= MAX_MISSING_SCOPED_QUICK_RETRIES && !alreadyTried;
+    }
+
+    /** Keep checking the modern scoped subscription even if legacy is denied. */
+    public static long missingScopedRetryDelayMs(int attempts) {
+        if (attempts < 0) throw new IllegalArgumentException("Negative attempt");
+        return attempts < MAX_MISSING_SCOPED_QUICK_RETRIES
+                ? retryDelayMs(attempts) : PERMISSION_RECHECK_MS;
+    }
+
+    // HA can temporarily report unauthorized after Core restarts, even when
+    // pressing Resume later succeeds without changing permissions. Start with
+    // a brief burst, then recheck infrequently instead of stopping forever.
+    // Every new connection still needs explicit server-side authorization.
+    public static final int MAX_TRANSIENT_DENIAL_RETRIES = 5;
+    public static final long PERMISSION_RECHECK_MS = 120_000L;
+
+    public static boolean isScopedPermissionDenial(String code) {
+        return "unauthorized".equals(code);
+    }
+
+    public static boolean shouldRetryScopedDenial(String code, int attempts) {
+        return isScopedPermissionDenial(code)
+                && attempts >= 0 && attempts < MAX_TRANSIENT_DENIAL_RETRIES;
+    }
+
+    /** After the burst, permission errors are rechecked every two minutes. */
+    public static long scopedDenialRetryDelayMs(int attempts) {
+        if (attempts < 0) throw new IllegalArgumentException("Negative attempt");
+        return attempts < MAX_TRANSIENT_DENIAL_RETRIES
+                ? retryDelayMs(attempts) : PERMISSION_RECHECK_MS;
+    }
+
+    /** A separate service watchdog may repair a missing delayed callback.
+     *  Never override user opt-out, Android overlay permission, invalid
+     *  credentials or other terminal authorization errors.
+     */
+    public static boolean shouldMonitorReconnect(boolean optedIn, boolean overlayAllowed,
+            boolean signedIn, boolean terminal, boolean hasSocket,
+            long nextAttemptAtMs, long nowMs) {
+        return optedIn && overlayAllowed && signedIn && !terminal && !hasSocket
+                && (nextAttemptAtMs < 0 || nowMs >= nextAttemptAtMs + 5_000L);
     }
 
     public static long retryDelayMs(int attempts) {
