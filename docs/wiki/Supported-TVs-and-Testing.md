@@ -14,17 +14,19 @@
 - Moving live driveway and doorbell camera video (v0.16.1+)
 - Seven-day weather card
 - Named countdown timers with repeating chimes and Back dismissal
+- Optional follow-up listening after spoken responses, physically tested on v0.16.11
+- Spoken TV announcements with adjustable voice volume, physically tested on v0.16.11
 - Manual **Resume TV alerts** recovery (v0.16.8)
 
 ## Other devices
 
 Other Android TV / Google TV / Fire TV models are welcome for community testing but are **not comprehensively verified**. Some Philips models have been used for camera and HDMI-safe decoder testing; microphone access is limited on devices that only expose echo-reference or line-in inputs. USB microphones may be required.
 
-## What is *not* in the public v0.16.9 release
+## What is *not* in the public v0.16.11 release
 
 - Always-on wake word
-- Automatic follow-up listening after the assistant finishes speaking
-- Native Home Assistant timer intent interception (spoken timers need extra HA configuration)
+- Automatic always-on follow-up without enabling the TV setting (the shipped opt-in follow-up is OFF by default)
+- Automatic spoken named timers on every Assist pipeline without configuration (the optional native timer bridge is OFF by default and still requires device testing)
 - Universal Fire TV support
 - Spoken/actionable announcement buttons
 

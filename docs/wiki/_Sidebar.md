@@ -24,4 +24,4 @@
 - [Signed APK / Releases](https://github.com/chadakenn/Kellies-Voice/releases/latest)
 - [Home Assistant HACS](https://my.home-assistant.io/redirect/hacs_repository/?owner=chadakenn&repository=Kellies-Voice&category=integration)
 
-<sub>Public guide: v0.16.9 · Experimental changes stay in dev.</sub>
+<sub>Public guide: v0.16.11 · Experimental changes stay in dev.</sub>

@@ -13,7 +13,7 @@ Copy-and-paste Home Assistant examples for Kellie's Voice. All snippets use safe
 - **Automations** — paste into the automation YAML editor.
 - **Custom sentences / intent_script** — advanced; see the timer section and the repository's VOICE_TIMERS.md. These are optional and not required for the direct actions to work.
 
-**Current public release:** v0.16.9. Only features that exist in this release are shown.
+**Current public release:** v0.16.11. Actionable popup buttons and the Frigate screensaver are still development-only.
 
 ## Announcements
 
@@ -30,7 +30,7 @@ data:
 
 **Expected result:** a short text popup appears on the TV(s).  
 
-**Development draft only:** After PR #104 is reviewed and installed in matching Android/HACS builds, enable **Settings → Spoken announcements** and optionally add `speak: The washer is finished.` to the announcement above. Omit `speak` to remain silent. This is not available in the public stable release yet.
+**Optional in v0.16.11:** Enable **Settings → Spoken announcements** on the TV and add `speak: The washer is finished.` to the announcement above. Omit `speak` to keep the TV alert silent. The speech volume can be adjusted per TV.
 **Troubleshooting:** confirm **TV announcements & cameras** is ON and the alert receiver is connected (see [Resume TV alerts](Troubleshooting.md#resume-tv-alerts-exact-steps)).
 
 ## Snapshot camera
@@ -49,7 +49,7 @@ data:
   # refresh_seconds: 3
 ```
 
-**Development draft only:** After a matching reviewed build of PR #104, add `speak: Someone is at the door.` directly to `show_camera` or `show_live_camera` rather than calling a separate `announce` action. Speech occurs with the same camera popup and is optional; the default is quiet.
+**Optional in v0.16.11:** Add `speak: Someone is at the door.` to `show_camera` or `show_live_camera`. The sentence is spoken with the same popup when spoken announcements are enabled on the TV; the default remains quiet.
 
 **Expected result:** a still image popup. `image_fit: fit` shows the whole frame; `refresh_seconds` updates the still periodically (not live video).
 
@@ -178,7 +178,7 @@ Replace the entity ID with the one on your Kellie's Voice device page. The four 
 
 ## Validation notes
 
-All examples were checked against `custom_components/kellies_voice/services.yaml` for v0.16.9. Required fields are marked. Placeholders avoid any personal credentials, tokens, or real IPs. Test each action from Developer tools before relying on voice or automations.
+The core examples were originally checked against `custom_components/kellies_voice/services.yaml` for v0.16.9 and the optional speech notes have been updated for v0.16.11. Confirm supported fields against your installed HACS version. Required fields are marked. Placeholders avoid any personal credentials, tokens, or real IPs. Test each action from Developer tools before relying on voice or automations.
 
 ---
 
