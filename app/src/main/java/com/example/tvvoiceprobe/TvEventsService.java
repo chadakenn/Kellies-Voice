@@ -298,8 +298,28 @@ public final class TvEventsService extends Service {
         ws.cancel();
         TvEventsRecovery.note(TvEventsRecovery.RECONNECTING);
         connectionNotice(message);
+        scheduleReconnect(delay);
+    }
+
+    /** All retry paths record a deadline, including when Android loses a callback. */
+    private void scheduleReconnect(long delayMs) {
         main.removeCallbacks(reconnect);
-        main.postDelayed(reconnect, delay);
+        nextReconnectAtMs = SystemClock.elapsedRealtime() + delayMs;
+        main.postDelayed(reconnect, delayMs);
+    }
+
+    private void checkReceiverRecovery() {
+        if (stopping) return;
+        long now = SystemClock.elapsedRealtime();
+        if (TvAlertConnectionPolicy.shouldMonitorReconnect(
+                new OverlayPreferences(this).tvEvents(), Settings.canDrawOverlays(this),
+                credentials != null, terminalAlertError, socket != null,
+                nextReconnectAtMs, now)) {
+            TvEventsRecovery.diagnostic("Recovery watchdog repairing an overdue retry");
+            connect();
+        }
+        // Keep watching even when the authenticated alert socket is absent.
+        main.postDelayed(recoveryMonitor, 20_000L);
     }
 
     private void scheduleConnectionWatchdog() {
@@ -385,8 +405,8 @@ public final class TvEventsService extends Service {
         TvEventsRecovery.note(TvEventsRecovery.RECONNECTING);
         connectionNotice("Reconnecting to Home Assistant");
         long delay = TvAlertConnectionPolicy.retryDelayMs(failedAttempts++);
-        main.removeCallbacks(reconnect);
-        main.postDelayed(reconnect, delay);
+        TvEventsRecovery.diagnostic("Network reconnect scheduled in " + (delay / 1000L) + "s");
+        scheduleReconnect(delay);
     }
 
     private void handleMessage(WebSocket ws, String json) {
