@@ -36,6 +36,36 @@ fallback on a TV with an actual allowed microphone that fails at 16 kHz.
 No production APK installation or public release is triggered by this
 development change alone.
 
+## Single-install batch: v0.16.11-dev.6 / build 37
+
+This batch is staged specifically because the owner requested **one
+consolidated test install**, not repeated APK downloads. It includes:
+
+- Independent per-TV spoken alert gain presets (20/40/60/80/100%; default 60%)
+  with Android TextToSpeech utterance-level gain only; no system volume changes
+- 16 kHz-first microphone capture, 48 kHz fallback with PCM downsampling
+- Opt-in follow-up questions after spoken replies (5/8/10/15s), with run-scoped
+  ownership of a preview microphone and explicit capture-release/privacy rules
+- HACS-only manual pairing confirmation for mistyped pairing UUIDs
+- HACS-only experimental native timer handler OFF by default, with ID-scoped
+  TV timers and pause/resume handling (requires native HA Assist intents)
+
+**Rollout/test requirements:** install only the one signed dev.6 code37 APK
+over existing code35 (do not uninstall or clear data). No public release.
+The matching development HACS component is version 0.16.11-dev.6. Updating
+HACS changes the live Home Assistant installation; take a configuration backup,
+update the correct Kellie's Voice integration to the `dev` branch and restart
+Home Assistant **only when explicitly approved for a test session**.
+
+Recommended QA order: confirm volume 40% and a local spoken test; with follow-up
+OFF confirm one question; turn ON/8s and ask a second contextual question;
+confirm STOP/timeout turn off mic only after capture is released; check baseline
+TALK/microphone and camera events; then test HACS manual-pairing warning and
+experimental native timer via an HA native-intent-capable pipeline.
+The Ollama LLM may not route a phrase to native timers, even when the handler
+is enabled. Do not call #43, #57, #69 closed until actual acceptance evidence.
+The already-confirmed #44 reboot-readiness issue was closed at owner direction.
+
 ## Build and install an Android dev APK
 
 1. Merge an approved test change into `dev`. The
