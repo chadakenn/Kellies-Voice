@@ -541,6 +541,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                 "Home Assistant layout: " + (new OverlayPreferences(this).haManage() ? "ON" : "OFF"),
                 "TV announcements & cameras: " + (new OverlayPreferences(this).tvEvents() ? "ON" : "OFF"),
                 "Spoken announcements: " + (new OverlayPreferences(this).spokenAnnouncements() ? "ON" : "OFF"),
+                "Announcement voice volume: " + new OverlayPreferences(this).spokenAnnouncementVolume() + "%",
                 "Test spoken announcements locally",
                 "TV alert status",
                 "Live camera: " + LiveCameraMode.label(new OverlayPreferences(this).cameraMode()),
@@ -563,14 +564,35 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                         case 8: chooseHaLayout(); break;
                         case 9: chooseTvNotifications(); break;
                         case 10: toggleSpokenAnnouncements(); break;
-                        case 11: testSpokenAnnouncements(); break;
-                        case 12: showTvAlertStatus(); break;
-                        case 13: chooseCameraMode(); break;
-                        case 14: chooseUpdates(); break;
-                        case 15: promptInstallUpdate(); break;
-                        case 16: confirmForget(); break;
+                        case 11: chooseAnnouncementVolume(); break;
+                        case 12: testSpokenAnnouncements(); break;
+                        case 13: showTvAlertStatus(); break;
+                        case 14: chooseCameraMode(); break;
+                        case 15: chooseUpdates(); break;
+                        case 16: promptInstallUpdate(); break;
+                        case 17: confirmForget(); break;
                         default: break;
                     }
+                });
+    }
+
+    private void chooseAnnouncementVolume() {
+        OverlayPreferences prefs = new OverlayPreferences(this);
+        int[] levels = SpeechVolume.levels();
+        String[] choices = new String[levels.length];
+        for (int i = 0; i < levels.length; i++) {
+            choices[i] = (prefs.spokenAnnouncementVolume() == levels[i] ? "✓  " : "     ")
+                    + levels[i] + "%";
+        }
+        showCopperMenu("TV ALERTS  ✦  VOICE VOLUME",
+                "Adjust only spoken TV announcements. This does not change " +
+                        "YouTube, media volume, timers, or assistant replies. " +
+                        "Choose a level, then use Test spoken announcements locally to hear it.",
+                choices, which -> {
+                    if (which < 0 || which >= levels.length) return;
+                    prefs.setSpokenAnnouncementVolume(levels[which]);
+                    status("Announcement voice volume: " + prefs.spokenAnnouncementVolume() + "%");
+                    showSettingsMenu();
                 });
     }
 
