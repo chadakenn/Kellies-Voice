@@ -559,8 +559,8 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                         case 2: newConversation(); break;
                         case 3: startActivity(new Intent(this, MainActivity.class)); break;
                         case 4: chooseMicSensitivity(); break;
-                        case 5: chooseMicrophoneDetection(); break;
-                        case 6: chooseFollowUp(); break;
+                        case 5: chooseFollowUp(); break;
+                        case 6: chooseMicrophoneDetection(); break;
                         case 7: launchOverlay(); break;
                         case 8: showOverlayPreferences(); break;
                         case 9: chooseHaLayout(); break;
