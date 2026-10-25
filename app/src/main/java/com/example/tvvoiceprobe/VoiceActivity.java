@@ -1393,8 +1393,9 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         OverlayPreferences prefs = new OverlayPreferences(this);
         boolean next = !prefs.screensaverDashboard();
         prefs.setScreensaverDashboard(next);
-        if (next) ScreensaverWatchService.start(this);
-        else ScreensaverWatchService.stop(this);
+        if (next) ScreensaverWatchService.startIfEnabled(this);
+        else stopService(new Intent(this, ScreensaverWatchService.class)
+                .setAction(ScreensaverWatchService.ACTION_STOP));
         showSettingsMenu();
     }
 }
