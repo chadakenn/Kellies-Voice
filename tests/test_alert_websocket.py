@@ -42,6 +42,35 @@ class ScopedPayloadTests(unittest.TestCase):
                           "text": "Open", "duration_seconds": 9}, out)
         self.assertIsNone(transport.sanitize_event(const.EVENT_ANNOUNCEMENT, data, self.OTHER))
 
+    def test_spoken_announcements_reach_scoped_tv(self):
+        for event_type in (const.EVENT_ANNOUNCEMENT, const.EVENT_CAMERA_POPUP,
+                           const.EVENT_LIVE_CAMERA):
+            with self.subTest(event_type=event_type):
+                data = {"device_id": self.TV,
+                        "speak": "Someone is at the door.",
+                        "text": "Doorbell event",
+                        "title": "Doorbell",
+                        "entity_id": "camera.doorbell",
+                        "token": "must-be-dropped"}
+                safe = transport.sanitize_event(event_type, data, self.TV)
+                self.assertEqual("Someone is at the door.", safe["speak"])
+                self.assertNotIn("token", safe)
+                self.assertIsNone(transport.sanitize_event(event_type, data, self.OTHER))
+
+    def test_invalid_speech_stays_silent_without_dropping_visual(self):
+        for bad in ("", "https://example.invalid/token", "www.example.invalid",
+                    "httpForbidden", "a" * 181, 123, None):
+            with self.subTest(value=str(bad)):
+                safe = transport.sanitize_event(const.EVENT_ANNOUNCEMENT,
+                    {"device_id": self.TV, "title": "Silent notice",
+                     "text": "Normal visual message", "speak": bad}, self.TV)
+                self.assertIsNotNone(safe)
+                self.assertEqual("Normal visual message", safe["text"])
+                self.assertNotIn("speak", safe)
+        safe = transport.sanitize_event(const.EVENT_ANNOUNCEMENT,
+            {"device_id": self.TV, "text": "Normal notice"}, self.TV)
+        self.assertNotIn("speak", safe)
+
     def test_broadcast_is_explicit_and_targeted_per_subscriber(self):
         data = {"title": "Laundry", "text": "Finished"}
         a = transport.sanitize_event(const.EVENT_ANNOUNCEMENT, data, self.TV)
