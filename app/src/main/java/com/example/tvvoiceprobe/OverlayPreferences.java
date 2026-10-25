@@ -51,6 +51,7 @@ public final class OverlayPreferences {
     private static final String KEY_WEATHER_SECONDS = "weather_seconds";
     private static final String KEY_CAMERA_MODE = "live_camera_decoder_mode";
     private static final String KEY_ALLOW_UNVERIFIED_MIC = "allow_unverified_mic";
+    private static final String KEY_DISABLE_MIC_ON_TV = "disable_microphone_on_this_tv";
     private static final String KEY_UPDATE_CHANNEL = "update_channel";
     private final SharedPreferences preferences;
 
@@ -197,6 +198,17 @@ public final class OverlayPreferences {
 
     public void setCameraMode(String mode) {
         preferences.edit().putString(KEY_CAMERA_MODE, LiveCameraMode.normalize(mode)).apply();
+    }
+
+    /** Local manual opt-out for Android TVs advertising phantom microphone routes.
+     *  This takes priority over compatibility overrides and never auto-enables.
+     */
+    public boolean microphoneDisabled() {
+        return preferences.getBoolean(KEY_DISABLE_MIC_ON_TV, false);
+    }
+
+    public void setMicrophoneDisabled(boolean disabled) {
+        preferences.edit().putBoolean(KEY_DISABLE_MIC_ON_TV, disabled).apply();
     }
 
     /** Explicit compatibility override for TVs with unreliable input reports. */

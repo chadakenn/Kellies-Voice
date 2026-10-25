@@ -102,10 +102,18 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
                     if (preferences != null && preferences.autoListen()) {
                         firstAutoListenPending = true;
                         firstAutoListenStarted = false;
-                        autoListenDeadlineMs = SystemClock.elapsedRealtime() + 30000L;
+                        autoListenDeadlineMs = SystemClock.elapsedRealtime()
+                                + AssistReadinessPolicy.PENDING_USER_REQUEST_MS;
                     }
-                    assist.ensureConnected();
-                    status("Reconnecting to Home Assistant...");
+                    if (assist.canReconnect()) {
+                        assist.ensureConnected();
+                        status(preferences != null && preferences.autoListen()
+                                ? "Connecting to Home Assistant... listening if ready within 30 seconds."
+                                : AssistReadinessPolicy.waitingForConnection());
+                    } else {
+                        firstAutoListenPending = false;
+                        status("Home Assistant login is unavailable. Open SETTINGS to reconnect.");
+                    }
                 } else if (!listening && assist != null && assist.isConnected()
                         && preferences != null && preferences.autoListen()) {
                     startListening();
@@ -125,7 +133,8 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
         preferences = new OverlayPreferences(this);
         firstAutoListenPending = preferences.autoListen();
         firstAutoListenStarted = false;
-        autoListenDeadlineMs = SystemClock.elapsedRealtime() + 30000L;
+        autoListenDeadlineMs = SystemClock.elapsedRealtime()
+                                + AssistReadinessPolicy.PENDING_USER_REQUEST_MS;
         try {
             createNotificationChannel();
             Intent openApp = new Intent(this, VoiceActivity.class);
@@ -414,13 +423,19 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
         if (closing) return;
         if (assist == null) return;
         if (!assist.isConnected()) {
-            // TALK is a direct user request, so resume listening if the
-            // reconnect succeeds soon; expire it to avoid surprise mic use.
+            if (!assist.canReconnect()) {
+                firstAutoListenPending = false;
+                status("Home Assistant login is unavailable. Open SETTINGS to reconnect.");
+                return;
+            }
+            // TALK was just pressed. A bounded pending request may listen
+            // only after authentication and only before its 30s deadline.
             firstAutoListenPending = true;
             firstAutoListenStarted = false;
-            autoListenDeadlineMs = SystemClock.elapsedRealtime() + 30000L;
+            autoListenDeadlineMs = SystemClock.elapsedRealtime()
+                    + AssistReadinessPolicy.PENDING_USER_REQUEST_MS;
             assist.ensureConnected();
-            status("Reconnecting to Home Assistant. I'll listen when connected.");
+            status("Connecting to Home Assistant... I'll listen if ready within 30 seconds.");
             return;
         }
         if (listening) return;
@@ -570,13 +585,17 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
         main.post(() -> {
             if (closing) return;
             if (wave != null) wave.setMode(VoiceWaveView.IDLE);
-            if (firstAutoListenPending && !firstAutoListenStarted
-                    && SystemClock.elapsedRealtime() <= autoListenDeadlineMs) {
+            boolean expiredRequest = firstAutoListenPending
+                    && SystemClock.elapsedRealtime() > autoListenDeadlineMs;
+            if (AssistReadinessPolicy.mayStartPendingRequest(
+                    firstAutoListenPending, firstAutoListenStarted,
+                    SystemClock.elapsedRealtime(), autoListenDeadlineMs)) {
                 firstAutoListenStarted = true;
                 startListening();
             } else {
                 firstAutoListenPending = false;
-                status("Connected. Select TALK.");
+                status(expiredRequest ? AssistReadinessPolicy.expiredRequest()
+                        : "Connected. Ready. Select TALK.");
             }
         });
     }

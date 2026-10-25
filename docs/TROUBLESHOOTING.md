@@ -86,6 +86,27 @@ Try the Google TV / Google Home phone remote keyboard on the same network. The p
 - If using local HTTP, it is **not encrypted**. Restrict to a trusted private LAN or prefer HTTPS.
 - If the screen still says disconnected, retry **SETTINGS → Connect / reconnect**.
 
+## First TALK after reboot is still connecting (#44)
+
+The Home Assistant voice WebSocket and TV-alert receiver are independent. A
+voice request right after boot or a Home Assistant restart may arrive before
+the voice WebSocket has authenticated or the Assist pipeline has loaded.
+
+- **Connecting to Home Assistant** means the authenticated voice session is
+  not ready. Full-screen users must press TALK again once the screen says Ready.
+- A newly pressed TALK in the user-launched floating overlay can be held for
+  **up to 30 seconds**. If the connection is not ready by then, the request
+  expires. The microphone must not start later without another user action.
+- **Assist pipeline is starting** is different from a missing pipeline, a
+  token rejection, an STT failure, an agent failure or a TTS failure. Consult
+  the matching Home Assistant configuration and logs.
+- If Home Assistant rejects the saved token, check SETTINGS rather than
+  repeatedly opening the microphone. Do not share credentials or signed URLs.
+
+These improved startup messages are currently development-only (#44).
+Other Android TV hardware and post-reboot behavior still require testing.
+The separate TV alert receiver status does not guarantee voice readiness.
+
 ## I can see "YOU SAID" but not the answer
 
 The original seven-button alpha pushed the response beneath the visible portion of the TV. Upgrade to the **signed compact UI** with three main buttons, where the answer appears **above** the transcript. Check whether the HA conversation agent returned an answer; an STT transcript does not automatically guarantee a successful intent or TTS response.
@@ -100,6 +121,24 @@ Speech-to-text and TTS are separate stages. The current client **successfully pl
 4. The app shows **Speaking...**, **Finished...**, or a TTS error in its status line.
 
 The client reads the HA `tts_output.url` event field; earlier builds missed this URL. The working on-device example answered **“5:07 AM”** aloud. If a later test shows a transcript but no sound, capture the **exact status/error text**; don't post your HA token.
+
+## Philips shows Listening with only phantom microphones (#71)
+
+Some Philips TV firmware advertises a `TYPE_BUILTIN_MIC` input to Android
+apps even though voice capture is all silence. Another TV reports an echo
+reference as a microphone-like input and records a constant loud signal.
+This means **checking device types or audio volume alone cannot reliably
+prove that the user is speaking**.
+
+An optional development-only workaround is being reviewed: **Settings →
+Mic input detection → Disable microphone capture on this TV**. It stops
+TALK before opening an audio recorder or starting an Assist request. The
+manual setting is off by default, reversible, and overrides the existing
+"Try unverified microphone" bypass. Re-enable when a known-good USB mic is
+connected. Other TVs should continue using automatic input checks.
+
+Public stable v0.16.10 does **not** include this new manual workaround.
+Issue #71 remains open for physical Philips and onn 4K Pro validation.
 
 ## TALK says no accessible microphone
 

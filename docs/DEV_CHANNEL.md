@@ -142,6 +142,80 @@ If it does not, capture that last activity diagnostic before any manual
 Resume, without exposing the HA token. CI alone does not prove hardware
 recovery.
 
+### #69 targeted TV delivery feedback (experimental HACS fix)
+
+The v0.16.10 public release can accept HA events successfully even if the
+requested *configured* pairing ID is mistyped and no real TV subscribes to it.
+The existing scoped `TV alert receiver connected` diagnostic can show that
+a mispaired TV has never connected, but that status is not reflected in the
+service result.
+
+This development change introduces a preflight for **explicitly targeted**
+`announce`, camera snapshot/live/hide, forecast and timer actions:
+
+- When at least one modern scoped receiver has connected since HA Core started,
+  requests targeting a *disconnected* TV raise an actionable service error
+  **before publishing** rather than appearing successful. No target ID or
+  access token is included in the error.
+- Normal explicitly targeted requests to a currently connected TV still publish
+  exactly the same event, without changing overlay rendering or permission.
+- Omitted `device_id` broadcasts remain unchanged and best-effort.
+- When no scoped receiver has ever been observed during this HA session, an
+  older Android receiver may be in use. To preserve legacy behavior, the action
+  continues but HA logs a safe generic warning that delivery is unverified.
+  This deliberate compatibility concession means not all incorrect IDs can
+  be rejected. It is **not a receipt** proving an on-screen popup.
+
+Before promotion, test with two HA configurations (one real subscribed TV,
+one plausible but incorrect manually paired ID). Verify targeted mistaken ID
+fails in Developer Tools Actions; real ID succeeds with visible popup; omitted
+ID broadcasts as before; and an intentionally legacy-only client still works.
+No change to stable main is included in this PR.
+
+### #44 voice startup readiness candidate (development only)
+
+The device can establish a Home Assistant WebSocket after Android has started,
+while Assist pipelines may take longer to become available. This patch gives
+separate local, redacted messages for voice connection warmup, an unavailable
+Assist pipeline, STT, conversation-agent and TTS failures.
+
+An explicitly launched overlay still holds a pending user request for
+**at most 30 seconds**; after expiry, it requires TALK again. Full-screen
+TALK when disconnected is not queued and never triggers later recording.
+Invalid credentials remain non-retryable. Existing websocket retry backoff
+continues unchanged; the patch starts no new background microphone.
+
+Unit tests check 30-second expiry and error classification. Hardware acceptance
+requires immediate TALK on an onn 4K Pro after reboot/HA restart, verifying
+Connected/Ready transitions, safe expiry without surprise recording, and
+unaffected normal listening and TV alerts. Do not merge or publicly release
+until on-device tests pass.
+
+### #71 Philips TV phantom microphone: manual no-microphone mode (dev-only)
+
+Community tester @voravin measured two Philips TVs where the Android
+`AudioManager.getDevices(GET_DEVICES_INPUTS)` list includes a phantom
+`TYPE_BUILTIN_MIC` (id 16) despite no actual app-accessible microphone.
+Another reported input type 26 appears to map to Echo Reference In on a
+Philips set. One TV produces all-zero PCM, another produces a nearly
+constant high-amplitude signal, so neither device-type allowlisting nor a
+simple silence threshold reliably establishes live speech capture.
+
+This targeted candidate adds a reversible, **device-local manual opt-out**
+under **Settings → Mic input detection → Disable microphone capture on this
+TV**. When set, TALK fails with a clear message *before* sending an Assist
+pipeline request or opening AudioRecord. The check is also repeated just
+before the capture thread opens AudioRecord to protect a mid-session settings
+change. This opt-out takes priority over the separate "Try unverified
+microphone" compatibility override and does not affect other TVs. It is
+off by default. A user can re-enable later, such as after adding a USB mic.
+
+**This is a workaround, not an automatic detection fix.** Keep #71 open and
+request a Philips/no-USB physical test confirming TALK refuses capture,
+a re-enabled USB microphone test, and onn 4K Pro normal mic regression.
+No tokens, audio files or personal device IDs should be included in reports.
+No stable release is authorized by this development candidate.
+
 ## Home Assistant test integration
 
 Android and HACS are different deliveries. The Android dev artifact does

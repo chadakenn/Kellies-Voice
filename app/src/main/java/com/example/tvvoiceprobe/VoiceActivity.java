@@ -533,7 +533,8 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                 "Hardware microphone diagnostics",
                 "Microphone sensitivity: " + OverlayPreferences.noiseLabel(
                         new OverlayPreferences(this).noise()),
-                "Mic input detection: " + (new OverlayPreferences(this).allowUnverifiedMic()
+                "Mic input detection: " + (new OverlayPreferences(this).microphoneDisabled()
+                        ? "Microphone DISABLED" : new OverlayPreferences(this).allowUnverifiedMic()
                         ? "Override ON" : "Safe checks ON"),
                 "Open floating voice overlay",
                 "Overlay appearance & position",
@@ -740,16 +741,27 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
     private void chooseMicrophoneDetection() {
         OverlayPreferences prefs = new OverlayPreferences(this);
         boolean bypass = prefs.allowUnverifiedMic();
+        boolean disabled = prefs.microphoneDisabled();
         showCopperMenu("SETTINGS  ✦  MICROPHONE ROUTING",
-                "Safe checks prevent TALK from recording TV audio instead of speech. "
-                        + "Some Android TVs expose only a remote submix, not a mic.",
+                "Some TVs advertise a phantom built-in microphone or an echo "
+                        + "reference that cannot capture speech. If your TV has "
+                        + "no accessible microphone, disable capture here. "
+                        + "The existing compatibility override cannot bypass this block.",
                 new String[] {
+                        disabled ? "✓  Microphone DISABLED on this TV (re-enable)"
+                                : "Disable microphone capture on this TV",
                         bypass ? "Turn compatibility override OFF (recommended)"
                                 : "Try unverified microphone (compatibility override)",
                         "Open microphone diagnostics",
                         "Back to Settings"
                 }, which -> {
                     if (which == 0) {
+                        prefs.setMicrophoneDisabled(!disabled);
+                        status(disabled
+                                ? "Microphone capture re-enabled. Normal route checks apply."
+                                : "Microphone capture disabled on this TV. No Assist audio will start.");
+                        showSettingsMenu();
+                    } else if (which == 1) {
                         if (bypass) {
                             prefs.setAllowUnverifiedMic(false);
                             status("Microphone input checks enabled.");
@@ -760,7 +772,8 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                                     .setMessage("Only use this if your TV's audio-device list is wrong. "
                                             + "It cannot unlock Google/Alexa remote microphones. "
                                             + "An unusable input may still record silence; "
-                                            + "turn this off after testing.")
+                                            + "turn this off after testing. A manual microphone "
+                                            + "disable always takes priority.")
                                     .setNegativeButton("Cancel", (dialog, w) -> showSettingsMenu())
                                     .setPositiveButton("Try anyway", (dialog, w) -> {
                                         prefs.setAllowUnverifiedMic(true);
@@ -768,7 +781,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                                         showSettingsMenu();
                                     }).show();
                         }
-                    } else if (which == 1) {
+                    } else if (which == 2) {
                         startActivity(new Intent(this, MainActivity.class));
                     } else {
                         showSettingsMenu();
@@ -1149,9 +1162,15 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
     }
 
     private void startTalk() {
-        if (assist != null && !assist.isConnected()) {
-            assist.ensureConnected();
-            status("Reconnecting to Home Assistant. Try TALK when connected.");
+        if (assist == null || !assist.isConnected()) {
+            if (assist != null && assist.canReconnect()) {
+                assist.ensureConnected();
+                // Full-screen TALK is not queued. Explicit consent must be renewed
+                // after authentication, unlike the short-lived overlay request.
+                status(AssistReadinessPolicy.waitingForConnection());
+            } else {
+                status("Home Assistant is not connected. Check login in SETTINGS.");
+            }
             return;
         }
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
