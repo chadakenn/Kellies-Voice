@@ -1,3 +1,5 @@
+**v0.16.11 camera and local-LLM tip:** When Kellie says a camera is showing but nothing appears, inspect the separate Home Assistant TV alert receiver connectivity sensor and use TV **Settings → TV alert status → Resume TV alerts**. Exposed HA scripts should call `kellies_voice.hide_camera` for voice dismissal, not send only a legacy custom event. Invalid LLM tool JSON, HTTP 400 context overflows and oversized Assist prompts originate upstream of the TV camera player: check the selected conversation model, context window, exposed entity count and custom tool groups. Never post credentials or camera URLs containing secrets.
+
 ## Philips TV line-in and echo-reference are not microphones (issue #71)
 
 Some Philips Android TVs report input devices such as **Echo Reference In**
