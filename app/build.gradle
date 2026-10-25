@@ -10,9 +10,9 @@ android {
         applicationId 'com.example.tvvoiceprobe'
         minSdk 26
         targetSdk 35
-        // Desktop Frigate layout on TV, with optional automatic fallback.
-        versionCode 42
-        versionName '0.16.12-dev.3'
+        // Restart opted-in Frigate watcher on APK updates/reboot; ambient diagnostics.
+        versionCode 43
+        versionName '0.16.12-dev.4'
     }
 
     // The keystore is private and supplied from GitHub Actions secrets.
