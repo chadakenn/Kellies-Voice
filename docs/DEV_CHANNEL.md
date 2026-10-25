@@ -63,13 +63,51 @@ camera URLs to GitHub.
 ## Normal vs experimental updates
 
 - **Stable TV updater:** still reads `/releases/latest` and requires the
-  signed APK + SHA-256 metadata from a stable GitHub Release. **Unchanged**.
-- **Dev updates:** currently delivered by the **signed Actions artifact**
-  above, requiring an explicit install. There is **no in-app dev-channel
-  switch yet**. A future optional dev-update channel must preserve SHA-256,
-  certificate/package verification and owner installation consent.
-- The existing `build-apk.yml` public release job is gated to **main**.
-  The dev workflow has read-only GitHub permissions and **no publish job**.
+  signed APK + SHA-256 metadata from a stable GitHub Release. **Unchanged**
+  for anyone who never opens the new switch. The daily check runs only on
+  Stable.
+- **Development switch:** Settings → **Check for app updates** →
+  **Development prereleases**, then **Check now**. It calls the public
+  release list with no token and offers only a **published** prerelease
+  whose tag looks like `v0.16.10-dev.1`, with the same `app-release.apk`
+  and `update.json` rules as stable. Download and install still wait for
+  a separate tap and Android's installer.
+- **Actions artifacts are not an in-app update.** The signed
+  `kellies-voice-dev-signed` artifact stays the way to install a build
+  that has not been published. GitHub does not let an app download a
+  private Actions artifact without a token, and this app must not contain
+  one. Publishing a prerelease is a separate owner decision. This change
+  does not publish one.
+- **Rollback:** choose **Stable public releases** and check again. If the
+  newest stable `versionCode` is lower than the installed development
+  build, the app refuses it. Android cannot downgrade in place. The next
+  stable release must use a higher `versionCode` than every dev build a
+  tester installed. Do not uninstall to roll back unless the owner accepts
+  losing the saved login.
+
+## Owner checklist before anyone uses Development updates
+
+1. Keep the dev workflow's signed artifact as the install path until you
+   choose to publish. Do not mark a release as the latest stable.
+2. To try the in-app path, publish a **prerelease** (not a draft) tagged
+   `v` plus the `versionName`, for example `v0.16.10-dev.1`. Attach
+   `app-release.apk` and `update.json` with `versionCode`, `versionName`,
+   `tag`, and lowercase `sha256`. The tag and `versionName` must match
+   aside from the leading `v`.
+3. On a TV that already runs the signed dev build, open **Settings →
+   Check for app updates → Development prereleases → Check now**. Confirm
+   it does not appear for a TV left on Stable.
+4. Download, then install, and accept Android's prompt. Confirm the
+   package was not replaced by a different app.
+5. Switch back to Stable and check again. The current stable release must
+   be refused while its version code is lower. Record that result.
+6. Before the next public stable release, set its `versionCode` above the
+   highest development code anyone installed.
+
+The public release list is unauthenticated and can be rate-limited. The
+app reads only the newest 20 public releases, so the development
+prerelease has to be in that page. A check is manual on the Development
+switch. Nothing here starts the microphone or a background updater.
 
 ## Recommended test gate
 
