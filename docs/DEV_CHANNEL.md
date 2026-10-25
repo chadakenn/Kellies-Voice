@@ -72,6 +72,40 @@ show Connected or accept announcements without HA approving the scoped
 subscription. If this remains disconnected for more than 10 minutes,
 capture the non-sensitive TV status and report it without exposing tokens.
 
+### v0.16.10-dev.3: watchdog and TV diagnostics
+
+Dev.2 was confirmed installed on the onn 4K Pro. After restarting
+Home Assistant, the alert receiver remained OFF (last seen: never) for
+about nine minutes, despite an available HA TV alert position control.
+The owner pressed **TV alert status → Resume TV alerts** and the receiver
+immediately connected. A subsequent test announcement appeared on screen.
+This proves a manual connection and delivery work; **the precise automatic
+retry failure is still under investigation**.
+
+Dev.3 (versionCode 29) adds an independent recovery monitor that checks
+for an overdue retry even when the ordinary socket watchdog is idle.
+It respects explicit alert opt-out, absent overlay permission, missing login,
+the scheduled retry deadline, and terminal authentication errors.
+It also displays safe connection details in **Settings → TV alert status →
+Last receiver activity**, such as:
+- Opening alert socket, attempt N
+- Scoped unauthorized, retry N in X seconds
+- TV controls not ready
+- Recovery watchdog repairing an overdue retry
+- Authorized alert subscription on attempt N
+
+The diagnostic **never prints saved credentials, IP addresses, access
+tokens, pairing IDs, or raw server exception messages**. It remains on-device.
+
+**Repeatable dev.3 test:** confirm installed version 0.16.10-dev.3 in
+Android app settings, verify HA sensor ON, restart Home Assistant, leave
+Kellie's Voice running and **do not press Resume**. Open TV alert status
+only to read Last receiver activity, then compare it with the HA alert
+receiver binary sensor. Record the diagnostic text after 2 and 5 minutes.
+If it reconnects, send a fresh targeted announcement. If it does not,
+capture the safe diagnostic message before manually resuming. No change
+to the public release is authorized by this dev test.
+
 ## Home Assistant test integration
 
 Android and HACS are different deliveries. The Android dev artifact does

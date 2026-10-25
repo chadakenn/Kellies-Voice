@@ -26,6 +26,18 @@ public final class TvEventsRecovery {
     public static final int RESUME_NOTIFICATION_ID = 2243;
 
     private static volatile String runtime = "";
+    // Only fixed, non-sensitive labels are written by the TV receiver.
+    // Never record Home Assistant addresses, pairing IDs or access tokens.
+    private static volatile String diagnostic = "";
+
+    public static void diagnostic(String value) {
+        diagnostic = value == null ? "" : value;
+    }
+
+    public static String diagnostics() {
+        return diagnostic;
+    }
+
 
     private TvEventsRecovery() {}
 

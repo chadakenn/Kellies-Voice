@@ -93,6 +93,7 @@ public final class TvEventsService extends Service {
             .build();
     private final Runnable reconnect = this::connect;
     private final Runnable connectionWatchdog = this::checkConnectionHealth;
+    private final Runnable recoveryMonitor = this::checkReceiverRecovery;
     private final Runnable dismiss = this::hideCard;
 
     private WindowManager windowManager;
@@ -127,6 +128,8 @@ public final class TvEventsService extends Service {
     private int notReadyAttempts;
     // Separate from ordinary network retries; auth_ok must not reset this.
     private int deniedAttempts;
+    private int connectionAttempts;
+    private long nextReconnectAtMs = -1L;
     private int generation;
     private boolean alertsSubscribed;
     private boolean terminalAlertError;
@@ -171,6 +174,8 @@ public final class TvEventsService extends Service {
                 && (!credentials.url.equals(saved.url) || !credentials.token.equals(saved.token))) {
             main.removeCallbacks(reconnect);
             main.removeCallbacks(connectionWatchdog);
+            nextReconnectAtMs = -1L;
+            connectionAttempts = 0;
             if (socket != null) {
                 socket.cancel();
                 socket = null;
@@ -197,6 +202,8 @@ public final class TvEventsService extends Service {
             return START_NOT_STICKY;
         }
         stopping = false;
+        main.removeCallbacks(recoveryMonitor);
+        main.postDelayed(recoveryMonitor, 20_000L);
         if (timerOverlay == null) timerOverlay = new TimerOverlayController(this, windowManager);
         TvEventsRestartReceiver.clearResume(this);
         if (ACTION_PREVIEW.equals(action)) {
@@ -270,6 +277,7 @@ public final class TvEventsService extends Service {
         main.removeCallbacks(connectionWatchdog);
         WebSocket old = socket;
         socket = null;
+        nextReconnectAtMs = -1L;
         clearConnectionTracking();
         terminalAlertError = false;
         failedAttempts = 0;
@@ -290,8 +298,28 @@ public final class TvEventsService extends Service {
         ws.cancel();
         TvEventsRecovery.note(TvEventsRecovery.RECONNECTING);
         connectionNotice(message);
+        scheduleReconnect(delay);
+    }
+
+    /** All retry paths record a deadline, including when Android loses a callback. */
+    private void scheduleReconnect(long delayMs) {
         main.removeCallbacks(reconnect);
-        main.postDelayed(reconnect, delay);
+        nextReconnectAtMs = SystemClock.elapsedRealtime() + delayMs;
+        main.postDelayed(reconnect, delayMs);
+    }
+
+    private void checkReceiverRecovery() {
+        if (stopping) return;
+        long now = SystemClock.elapsedRealtime();
+        if (TvAlertConnectionPolicy.shouldMonitorReconnect(
+                new OverlayPreferences(this).tvEvents(), Settings.canDrawOverlays(this),
+                credentials != null, terminalAlertError, socket != null,
+                nextReconnectAtMs, now)) {
+            TvEventsRecovery.diagnostic("Recovery watchdog repairing an overdue retry");
+            connect();
+        }
+        // Keep watching even when the authenticated alert socket is absent.
+        main.postDelayed(recoveryMonitor, 20_000L);
     }
 
     private void scheduleConnectionWatchdog() {
@@ -338,10 +366,15 @@ public final class TvEventsService extends Service {
         main.removeCallbacks(reconnect);
         if (stopping || socket != null || terminalAlertError
                 || !new OverlayPreferences(this).tvEvents() || credentials == null) return;
+        nextReconnectAtMs = -1L;
+        connectionAttempts = Math.min(connectionAttempts + 1, 1_000_000);
+        TvEventsRecovery.diagnostic("Opening alert socket, attempt " + connectionAttempts);
         HttpUrl base = HttpUrl.parse(credentials.url);
         if (base == null || !(base.scheme().equals("http") || base.scheme().equals("https"))
                 || !base.username().isEmpty() || !base.password().isEmpty()) {
+            terminalAlertError = true;
             TvEventsRecovery.note(TvEventsRecovery.CHECK);
+            TvEventsRecovery.diagnostic("Saved Home Assistant address is invalid");
             connectionNotice("Check the Home Assistant connection in Settings");
             return;
         }
@@ -377,8 +410,8 @@ public final class TvEventsService extends Service {
         TvEventsRecovery.note(TvEventsRecovery.RECONNECTING);
         connectionNotice("Reconnecting to Home Assistant");
         long delay = TvAlertConnectionPolicy.retryDelayMs(failedAttempts++);
-        main.removeCallbacks(reconnect);
-        main.postDelayed(reconnect, delay);
+        TvEventsRecovery.diagnostic("Network reconnect scheduled in " + (delay / 1000L) + "s");
+        scheduleReconnect(delay);
     }
 
     private void handleMessage(WebSocket ws, String json) {
@@ -395,6 +428,7 @@ public final class TvEventsService extends Service {
                 terminalAlertError = true;
                 main.removeCallbacks(connectionWatchdog);
                 TvEventsRecovery.note(TvEventsRecovery.REJECTED);
+                TvEventsRecovery.diagnostic("Saved Home Assistant authentication rejected");
                 connectionNotice("Home Assistant rejected the saved login");
                 ws.close(1000, "Authentication rejected");
                 return;
@@ -436,16 +470,19 @@ public final class TvEventsService extends Service {
                         notReadyAttempts = 0;
                         deniedAttempts = 0;
                         TvEventsRecovery.note(TvEventsRecovery.CONNECTED);
+                        TvEventsRecovery.diagnostic("Authorized alert subscription on attempt " + connectionAttempts);
                         connectionNotice("Connected, waiting for TV alerts");
                         TvEventsRestartReceiver.clearResume(this);
                     } else {
                         JSONObject error = message.optJSONObject("error");
                         String code = error == null ? "" : error.optString("code");
                         if ("unknown_command".equals(code)) {
+                            TvEventsRecovery.diagnostic("Scoped command missing; trying legacy events");
                             // Compatibility with old HACS + an admin TV account.
                             // Non-admin users receive a clear denial instead.
                             subscribeLegacy(ws);
                         } else if (TvAlertConnectionPolicy.retryableSubscriptionError(code)) {
+                            TvEventsRecovery.diagnostic("TV controls not ready; retry " + (notReadyAttempts + 1));
                             // The paired TV's HA controls might not exist yet.
                             retryAlertSubscription(ws,
                                     TvAlertConnectionPolicy.retryDelayMs(notReadyAttempts++),
@@ -454,18 +491,21 @@ public final class TvEventsService extends Service {
                             int attempt = deniedAttempts;
                             deniedAttempts = Math.min(deniedAttempts + 1,
                                     TvAlertConnectionPolicy.MAX_TRANSIENT_DENIAL_RETRIES);
-                            retryAlertSubscription(ws,
-                                    TvAlertConnectionPolicy.scopedDenialRetryDelayMs(attempt),
-                                    "Rechecking TV alert connection");
+                            long delay = TvAlertConnectionPolicy.scopedDenialRetryDelayMs(attempt);
+                            TvEventsRecovery.diagnostic("Scoped unauthorized, retry " +
+                                    (attempt + 1) + " in " + (delay / 1000L) + "s");
+                            retryAlertSubscription(ws, delay, "Rechecking TV alert connection");
                             if (attempt >= TvAlertConnectionPolicy.MAX_TRANSIENT_DENIAL_RETRIES) {
                                 TvEventsRecovery.note(TvEventsRecovery.DENIED);
                             }
                         } else if ("not_allowed".equals(code)) {
+                            TvEventsRecovery.diagnostic("Server reported terminal not_allowed");
                             terminalAlertError = true;
                             main.removeCallbacks(connectionWatchdog);
                             TvEventsRecovery.note(TvEventsRecovery.DENIED);
                             connectionNotice("TV alert permissions denied; check TV alert status");
                         } else {
+                            TvEventsRecovery.diagnostic("Unexpected alert subscription response");
                             terminalAlertError = true;
                             main.removeCallbacks(connectionWatchdog);
                             TvEventsRecovery.note(TvEventsRecovery.UPDATE_HACS);
@@ -479,6 +519,7 @@ public final class TvEventsService extends Service {
                     if (!message.optBoolean("success", false)) legacyDenied = true;
                     if (--legacyPending <= 0) {
                         if (legacyDenied) {
+                            TvEventsRecovery.diagnostic("Legacy event subscriptions denied");
                             terminalAlertError = true;
                             main.removeCallbacks(connectionWatchdog);
                             TvEventsRecovery.note(TvEventsRecovery.DENIED);
