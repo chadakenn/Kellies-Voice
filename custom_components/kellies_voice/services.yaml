@@ -58,16 +58,16 @@ announce:
           multiline: true
     duration_seconds:
       example: 10
-    speak:
-      description: Optional sentence for the TV to speak aloud. Silent by default. Rejects URLs.
-      example: The washer is finished.
-      selector:
-        text:
       selector:
         number:
           min: 4
           max: 45
           mode: box
+    speak:
+      description: Optional sentence for the TV to speak aloud. Silent by default. Rejects URLs.
+      example: The washer is finished.
+      selector:
+        text:
     device_id:
       example: ""
       selector:
