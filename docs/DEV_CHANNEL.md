@@ -142,6 +142,25 @@ If it does not, capture that last activity diagnostic before any manual
 Resume, without exposing the HA token. CI alone does not prove hardware
 recovery.
 
+### #44 voice startup readiness candidate (development only)
+
+The device can establish a Home Assistant WebSocket after Android has started,
+while Assist pipelines may take longer to become available. This patch gives
+separate local, redacted messages for voice connection warmup, an unavailable
+Assist pipeline, STT, conversation-agent and TTS failures.
+
+An explicitly launched overlay still holds a pending user request for
+**at most 30 seconds**; after expiry, it requires TALK again. Full-screen
+TALK when disconnected is not queued and never triggers later recording.
+Invalid credentials remain non-retryable. Existing websocket retry backoff
+continues unchanged; the patch starts no new background microphone.
+
+Unit tests check 30-second expiry and error classification. Hardware acceptance
+requires immediate TALK on an onn 4K Pro after reboot/HA restart, verifying
+Connected/Ready transitions, safe expiry without surprise recording, and
+unaffected normal listening and TV alerts. Do not merge or publicly release
+until on-device tests pass.
+
 ## Home Assistant test integration
 
 Android and HACS are different deliveries. The Android dev artifact does
