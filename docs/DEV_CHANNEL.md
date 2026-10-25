@@ -106,6 +106,42 @@ If it reconnects, send a fresh targeted announcement. If it does not,
 capture the safe diagnostic message before manually resuming. No change
 to the public release is authorized by this dev test.
 
+### v0.16.10-dev.4: HA startup scoped-command registration race
+
+The owner installed and tested dev.3 on an onn 4K Pro. After restarting
+Home Assistant, the TV alerts receiver stayed OFF, and the new local
+TV alert status diagnostic reported exactly:
+**"Legacy event subscriptions denied."** The existing user then pressed
+Resume TV alerts and the receiver connected immediately; a targeted test
+announcement had already been confirmed visible during dev.2 testing.
+
+This narrows the defect to the startup compatibility fallback. The TV
+authenticates before Home Assistant has registered the custom
+`kellies_voice/subscribe_alerts` WebSocket command, gets `unknown_command`,
+immediately tries older `subscribe_events` event subscriptions, and the
+non-admin user is denied. Dev.3 treated that legacy denial as a permanent
+permission failure and stopped all automatic retries.
+
+Dev.4 (versionCode 30) **prefers the modern scoped command**, retrying
+`unknown_command` at 2, 4, 8, 16, and 30 seconds. It tries a legacy
+subscription only once if the modern command remains unavailable after
+startup. A denied legacy fallback now reconnects to retry the modern
+command every two minutes, instead of setting a terminal denial. A
+genuinely older HACS installation can still use legacy event access
+where its configured account has permission. Every modern subscription
+still requires normal HA authorization. Invalid credentials and explicitly
+terminal permission errors remain terminal.
+
+**Device acceptance test:** install signed dev.4 over dev.3 without
+uninstalling, verify Android reports 0.16.10-dev.4, verify the HA receiver
+ON, restart HA, and **do not press Resume TV alerts**. Watch the HA
+`TV alert receiver connected` sensor and the safe **Last receiver
+activity** line in Settings → TV alert status. The receiver should go
+back ON without intervention. Send a new announcement to verify delivery.
+If it does not, capture that last activity diagnostic before any manual
+Resume, without exposing the HA token. CI alone does not prove hardware
+recovery.
+
 ## Home Assistant test integration
 
 Android and HACS are different deliveries. The Android dev artifact does

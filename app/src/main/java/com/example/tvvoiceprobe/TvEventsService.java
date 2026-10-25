@@ -128,6 +128,10 @@ public final class TvEventsService extends Service {
     private int notReadyAttempts;
     // Separate from ordinary network retries; auth_ok must not reset this.
     private int deniedAttempts;
+    // Persist across socket changes so a startup race never turns into a
+    // terminal legacy permission error for a non-admin TV user.
+    private int missingScopedAttempts;
+    private boolean legacyFallbackAttempted;
     private int connectionAttempts;
     private long nextReconnectAtMs = -1L;
     private int generation;
@@ -185,6 +189,8 @@ public final class TvEventsService extends Service {
             failedAttempts = 0;
             notReadyAttempts = 0;
             deniedAttempts = 0;
+            missingScopedAttempts = 0;
+            legacyFallbackAttempted = false;
         }
         credentials = saved;
         try {
@@ -283,6 +289,8 @@ public final class TvEventsService extends Service {
         failedAttempts = 0;
         notReadyAttempts = 0;
         deniedAttempts = 0;
+        missingScopedAttempts = 0;
+        legacyFallbackAttempted = false;
         if (old != null) old.cancel();
         if (stopping) return;
         TvEventsRecovery.note(TvEventsRecovery.RECONNECTING);
@@ -469,6 +477,8 @@ public final class TvEventsService extends Service {
                         alertsSubscribed = true;
                         notReadyAttempts = 0;
                         deniedAttempts = 0;
+                        missingScopedAttempts = 0;
+                        legacyFallbackAttempted = false;
                         TvEventsRecovery.note(TvEventsRecovery.CONNECTED);
                         TvEventsRecovery.diagnostic("Authorized alert subscription on attempt " + connectionAttempts);
                         connectionNotice("Connected, waiting for TV alerts");
@@ -476,11 +486,32 @@ public final class TvEventsService extends Service {
                     } else {
                         JSONObject error = message.optJSONObject("error");
                         String code = error == null ? "" : error.optString("code");
-                        if ("unknown_command".equals(code)) {
-                            TvEventsRecovery.diagnostic("Scoped command missing; trying legacy events");
-                            // Compatibility with old HACS + an admin TV account.
-                            // Non-admin users receive a clear denial instead.
+                        if (TvAlertConnectionPolicy.shouldRetryMissingScopedCommand(
+                                code, missingScopedAttempts)) {
+                            int attempt = missingScopedAttempts++;
+                            long delay = TvAlertConnectionPolicy.missingScopedRetryDelayMs(attempt);
+                            TvEventsRecovery.diagnostic("Scoped command not registered yet; retry "
+                                    + (attempt + 1) + " in " + (delay / 1000L) + "s");
+                            retryAlertSubscription(ws, delay,
+                                    "Waiting for Kellie's Voice integration to finish loading");
+                        } else if (TvAlertConnectionPolicy.shouldTryLegacyFallback(
+                                code, missingScopedAttempts, legacyFallbackAttempted)) {
+                            // Genuine older HACS installations may still allow admin
+                            // access to legacy events. Try this ONCE after a startup
+                            // grace period; never mistake denied legacy access for
+                            // a permanent failure of the modern scoped command.
+                            legacyFallbackAttempted = true;
+                            TvEventsRecovery.diagnostic("Scoped command still missing; checking legacy compatibility");
                             subscribeLegacy(ws);
+                        } else if ("unknown_command".equals(code)) {
+                            // A non-admin user cannot subscribe to legacy events.
+                            // Retry modern, separately authorized access when
+                            // HA finishes registering the integration.
+                            TvEventsRecovery.diagnostic("Scoped command unavailable; recheck in 120s");
+                            retryAlertSubscription(ws,
+                                    TvAlertConnectionPolicy.PERMISSION_RECHECK_MS,
+                                    "Rechecking Kellie's Voice HACS command");
+                            TvEventsRecovery.note(TvEventsRecovery.UPDATE_HACS);
                         } else if (TvAlertConnectionPolicy.retryableSubscriptionError(code)) {
                             TvEventsRecovery.diagnostic("TV controls not ready; retry " + (notReadyAttempts + 1));
                             // The paired TV's HA controls might not exist yet.
@@ -519,11 +550,13 @@ public final class TvEventsService extends Service {
                     if (!message.optBoolean("success", false)) legacyDenied = true;
                     if (--legacyPending <= 0) {
                         if (legacyDenied) {
-                            TvEventsRecovery.diagnostic("Legacy event subscriptions denied");
-                            terminalAlertError = true;
-                            main.removeCallbacks(connectionWatchdog);
-                            TvEventsRecovery.note(TvEventsRecovery.DENIED);
-                            connectionNotice("TV alert permissions denied; update HACS");
+                            // Legacy subscribe_events is admin-only. A denial
+                            // does not revoke this user's modern scoped TV access.
+                            TvEventsRecovery.diagnostic("Legacy events denied; rechecking scoped command in 120s");
+                            retryAlertSubscription(ws,
+                                    TvAlertConnectionPolicy.PERMISSION_RECHECK_MS,
+                                    "Waiting for scoped TV alerts after legacy denial");
+                            TvEventsRecovery.note(TvEventsRecovery.UPDATE_HACS);
                         } else {
                             alertsSubscribed = true;
                             TvEventsRecovery.note(TvEventsRecovery.CONNECTED);
@@ -657,8 +690,12 @@ public final class TvEventsService extends Service {
             }
         }
         if (legacyPending <= 0) {
+            // All legacy sends failed; try scoped authorization later.
+            // Do not let this transport failure wedge the receiver.
+            TvEventsRecovery.diagnostic("Legacy events unavailable; rechecking scoped command in 120s");
+            retryAlertSubscription(ws, TvAlertConnectionPolicy.PERMISSION_RECHECK_MS,
+                    "Checking for scoped TV alert support");
             TvEventsRecovery.note(TvEventsRecovery.UPDATE_HACS);
-            connectionNotice("Update Kellie's Voice HACS for TV alerts");
         }
     }
 

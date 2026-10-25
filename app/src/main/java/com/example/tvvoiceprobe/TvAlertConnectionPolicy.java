@@ -35,6 +35,30 @@ public final class TvAlertConnectionPolicy {
         return "tv_not_ready".equals(code);
     }
 
+    // Immediately after HA Core starts, the WebSocket API may authenticate
+    // before the Kellie's Voice custom command is registered. A missing scoped
+    // command is not proof of a permanently outdated HACS integration.
+    public static final int MAX_MISSING_SCOPED_QUICK_RETRIES = 5;
+
+    public static boolean shouldRetryMissingScopedCommand(String code, int attempts) {
+        return "unknown_command".equals(code) && attempts >= 0
+                && attempts < MAX_MISSING_SCOPED_QUICK_RETRIES;
+    }
+
+    /** Give older HACS integrations a one-time legacy fallback after startup. */
+    public static boolean shouldTryLegacyFallback(String code, int attempts,
+            boolean alreadyTried) {
+        return "unknown_command".equals(code)
+                && attempts >= MAX_MISSING_SCOPED_QUICK_RETRIES && !alreadyTried;
+    }
+
+    /** Keep checking the modern scoped subscription even if legacy is denied. */
+    public static long missingScopedRetryDelayMs(int attempts) {
+        if (attempts < 0) throw new IllegalArgumentException("Negative attempt");
+        return attempts < MAX_MISSING_SCOPED_QUICK_RETRIES
+                ? retryDelayMs(attempts) : PERMISSION_RECHECK_MS;
+    }
+
     // HA can temporarily report unauthorized after Core restarts, even when
     // pressing Resume later succeeds without changing permissions. Start with
     // a brief burst, then recheck infrequently instead of stopping forever.
