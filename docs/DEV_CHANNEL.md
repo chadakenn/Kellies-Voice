@@ -16,6 +16,26 @@ Propose changes by PR into **dev**; do not push a draft/experimental feature
 directly to `main`. Grok and ChatGPT should use different feature branches.
 PRs can target `main` only when the owner approves promotion from tested dev.
 
+## Pending batch: 48 kHz microphone fallback
+
+Development-only port of PR #6. The Assist capture path first tries the
+unchanged 16 kHz `VOICE_RECOGNITION` input (the known-working onn 4K Pro
+route). If that rate cannot be initialized, it tries 48 kHz. The new
+`PcmCapture` anti-aliases and converts 48 kHz mono PCM16 to the same
+16 kHz frames, so STT and the VAD do not need a different streaming mode.
+Both physical rates are rejected if neither can be opened.
+
+The existing microphone-blocking preference, route verification and
+explicit user-initiated TALK gating remain in force. This is **not**
+a bypass of hardware microphone permissions or a promise that a
+Google TV remote's Google-only microphone becomes usable.
+
+**Batch QA** after the next signed dev APK: onn 4K Pro normal TALK and
+transcript should remain unchanged (16 kHz first). Only test the 48 kHz
+fallback on a TV with an actual allowed microphone that fails at 16 kHz.
+No production APK installation or public release is triggered by this
+development change alone.
+
 ## Build and install an Android dev APK
 
 1. Merge an approved test change into `dev`. The
