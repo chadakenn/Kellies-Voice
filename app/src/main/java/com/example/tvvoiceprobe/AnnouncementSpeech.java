@@ -4,6 +4,7 @@ import android.content.Context;
 import android.media.AudioAttributes;
 import android.media.AudioFocusRequest;
 import android.media.AudioManager;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.speech.tts.TextToSpeech;
@@ -120,8 +121,13 @@ public final class AnnouncementSpeech {
             acquireFocus(gen);
             scheduleFocusWatchdog(gen);
             TvSpeechStatus.note("Speech submitted to Android engine");
+            // Android applies this gain to this utterance only. Never adjust
+            // STREAM_MUSIC or the device's persistent/master volume.
+            Bundle params = new Bundle();
+            params.putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME,
+                    SpeechVolume.gain(new OverlayPreferences(context).spokenAnnouncementVolume()));
             // speak() may return ERROR without ever producing an onError callback.
-            if (speaker.speak(phrase, TextToSpeech.QUEUE_FLUSH, null, utteranceId)
+            if (speaker.speak(phrase, TextToSpeech.QUEUE_FLUSH, params, utteranceId)
                     != TextToSpeech.SUCCESS) {
                 TvSpeechStatus.note("Android TTS rejected the speech request");
                 complete(gen, utteranceId);
