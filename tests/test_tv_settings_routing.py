@@ -35,7 +35,7 @@ EXPECTED = [
     ("Live camera:", "chooseCameraMode"),
     ("Check for app updates:", "chooseUpdates"),
     ("Install downloaded update", "promptInstallUpdate"),
-    ("Frigate screensaver:", "toggleScreensaver"),
+    ("Frigate screensaver:", "showScreensaverSettings"),
     ("Preview Frigate dashboard", "startActivity"),
     ("Forget saved connection", "confirmForget"),
 ]
@@ -65,6 +65,28 @@ class TvSettingsRoutingTest(unittest.TestCase):
             with self.subTest(index=index, label=prefix):
                 self.assertTrue(menu_labels[index].startswith(prefix))
                 self.assertEqual(action, handlers[index])
+
+    def test_frigate_settings_exposes_all_configuration_routes(self):
+        block = ACTIVITY.split("private void showScreensaverSettings() {", 1)[1].split(
+            "private EditText screensaverInput(", 1
+        )[0]
+        for option in (
+            "Frigate web URL:",
+            "Home Assistant cameras:",
+            "Dashboard size:",
+            "Choose Android screensaver",
+            "Preview Frigate dashboard",
+        ):
+            with self.subTest(option=option):
+                self.assertIn(option, block)
+        for method in (
+            "editScreensaverUrl",
+            "editScreensaverCameras",
+            "chooseScreensaverSize",
+            "openAndroidScreensaverList",
+        ):
+            with self.subTest(method=method):
+                self.assertIn(method + "();", block)
 
     def test_follow_up_is_opt_in_and_has_a_separate_mic_routing_menu(self):
         self.assertIn('prefs.setFollowUp(false)', ACTIVITY)

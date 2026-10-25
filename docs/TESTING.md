@@ -1,3 +1,16 @@
+## v0.16.12-dev.2 configuration UI repair (build 41, dev only)
+
+The signed dev.1 build offered only Frigate ON/OFF and Preview. Build 41 adds a remote-friendly dedicated setup menu without changing user HA/Frigate server configuration. Check:
+
+- [ ] **Settings → Frigate screensaver** opens ON/OFF, Frigate URL, Home Assistant cameras, size, system screensaver chooser, Preview, Back.
+- [ ] Enter a valid local Frigate URL, save, and preview its page. Bad URL (including tokens/passwords) must show an error.
+- [ ] Clear the URL, enter 1-4 actual `camera.*` Home Assistant entity IDs separated by commas and preview refreshing snapshots. Invalid IDs and 5+ entries must show an error, never silently succeed.
+- [ ] If both URL and cameras are set, URL takes priority. Clear URL to select snapshots. Change Small/Medium/Large without changing voice-overlay size.
+- [ ] Android system screensaver selection may be unsupported on some TVs; failure should show guidance instead of crash.
+- [ ] Existing TV settings rows, voice, camera popups and authenticated alert buttons still work. No Android mic capture on screensaver.
+
+**Hardware QA pending. Do not publish dev.2 to stable main without owner testing.**
+
 ## v0.16.12-dev.1 combined feature preview (build 40, not stable)
 
 With matching dev HACS installed deliberately, follow the [action buttons](TV_ACTION_BUTTONS.md) and [Frigate screensaver](FRIGATE_SCREENSAVER.md) QA. Confirm:
