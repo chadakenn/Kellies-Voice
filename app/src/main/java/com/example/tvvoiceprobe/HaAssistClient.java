@@ -358,7 +358,9 @@ public final class HaAssistClient {
                 if (microphoneMissing) {
                     stopForRunEnd();
                     events.processing();
-                    events.status(MicRoutePolicy.NO_MIC_MESSAGE);
+                    events.status(new OverlayPreferences(context).microphoneDisabled()
+                            ? MicRoutePolicy.MANUALLY_DISABLED_MESSAGE
+                            : MicRoutePolicy.NO_MIC_MESSAGE);
                     events.runEnded();
                     break;
                 }
@@ -369,7 +371,10 @@ public final class HaAssistClient {
             case "run-end":
                 boolean routeMissing = microphoneMissing;
                 stopForRunEnd();
-                events.status(routeMissing ? MicRoutePolicy.NO_MIC_MESSAGE
+                events.status(routeMissing
+                        ? (new OverlayPreferences(context).microphoneDisabled()
+                            ? MicRoutePolicy.MANUALLY_DISABLED_MESSAGE
+                            : MicRoutePolicy.NO_MIC_MESSAGE)
                         : "Ready for another question.");
                 events.runEnded();
                 break;
@@ -407,8 +412,14 @@ public final class HaAssistClient {
             events.status("Microphone permission is required.");
             return false;
         }
+        OverlayPreferences micSettings = new OverlayPreferences(context);
+        if (MicRoutePolicy.manuallyBlocked(micSettings.microphoneDisabled(),
+                micSettings.allowUnverifiedMic())) {
+            events.status(MicRoutePolicy.MANUALLY_DISABLED_MESSAGE);
+            return false; // No Assist request, AudioRecord, or uploaded PCM.
+        }
         String routeIssue = MicrophoneRouting.preflight(context,
-                new OverlayPreferences(context).allowUnverifiedMic());
+                micSettings.allowUnverifiedMic());
         if (routeIssue != null) {
             events.status(routeIssue);
             return false; // No Assist run or misleading LISTENING state.
@@ -479,6 +490,16 @@ public final class HaAssistClient {
             AcousticEchoCanceler echo = null;
             NoiseSuppressor noise = null;
             try {
+                // Respect a setting change even if Assist was already waiting
+                // for its STT audio-handler. Never open AudioRecord afterward.
+                OverlayPreferences micSettings = new OverlayPreferences(context);
+                if (MicRoutePolicy.manuallyBlocked(micSettings.microphoneDisabled(),
+                        micSettings.allowUnverifiedMic())) {
+                    microphoneMissing = true;
+                    events.status(MicRoutePolicy.MANUALLY_DISABLED_MESSAGE);
+                    events.processing();
+                    return;
+                }
                 int minimum = AudioRecord.getMinBufferSize(16000,
                         AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);
                 if (minimum <= 0) throw new IllegalStateException("16kHz microphone audio is unsupported");
