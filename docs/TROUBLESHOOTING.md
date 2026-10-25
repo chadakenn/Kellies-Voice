@@ -138,6 +138,30 @@ Reconnecting never starts the microphone or replays missed alerts. Old
 WebSocket callbacks must not affect the new connection, and a rejected token
 or denied read permission must stay an actionable error rather than looping.
 
+**v0.16.9 follow-up, October 24 (onn 4K Pro):** With matching HACS 0.16.9
+and a TV alert receiver that was already ON, reloading only the Kellie's
+Voice HA integration briefly made the diagnostic unavailable and then ON.
+A full HA restart instead left the receiver OFF / `never` for several
+minutes. The Android TV showed **Home Assistant denied TV alert permission**
+while the separate Assist connection remained healthy. Pressing
+**SETTINGS → TV alert status → Resume TV alerts** restored the receiver to
+ON without changing roles or access tokens, and a new announcement reached
+the TV. This is a new physical reproduction of a **transient authorization
+denial that remains terminal in v0.16.9**, not proof that Home Assistant
+actually revoked the TV's permissions.
+
+**Unreleased recovery patch (review branch):** The Android receiver now
+rechecks an `unauthorized` scoped-subscription result at most five times,
+using fresh authenticated sockets and 2–30-second bounded backoff (about
+60 seconds total). Every attempt still requires Home Assistant to approve
+read access to the paired TV. A persistent denial, `not_allowed`, bad token,
+wrong pairing ID, or unsupported integration must not be treated as a
+successful alert subscription. The main TV screen separately displays
+voice/Assist connectivity and alert-receiver status. **Not shipped until
+merged, built, updated on TV and physically verified.** Missed messages
+are never replayed. Test a full HA restart without pressing Resume, then
+send a fresh announcement and confirm it appears.
+
 **#78 HA restart reproduction (onn 4K Pro, v0.16.8):** After restarting HA,
 the receiver showed OFF/never while the TV alert status claimed permission
 was denied. Home Assistant had created the matching alert-position select by

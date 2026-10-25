@@ -125,6 +125,8 @@ public final class TvEventsService extends Service {
     // Kept separate from network failures: auth_ok resets failedAttempts
     // even if HA has not created this TV's alert-position select yet.
     private int notReadyAttempts;
+    // Separate from ordinary network retries; auth_ok must not reset this.
+    private int deniedAttempts;
     private int generation;
     private boolean alertsSubscribed;
     private boolean terminalAlertError;
@@ -177,6 +179,7 @@ public final class TvEventsService extends Service {
             terminalAlertError = false;
             failedAttempts = 0;
             notReadyAttempts = 0;
+            deniedAttempts = 0;
         }
         credentials = saved;
         try {
@@ -271,11 +274,24 @@ public final class TvEventsService extends Service {
         terminalAlertError = false;
         failedAttempts = 0;
         notReadyAttempts = 0;
+        deniedAttempts = 0;
         if (old != null) old.cancel();
         if (stopping) return;
         TvEventsRecovery.note(TvEventsRecovery.RECONNECTING);
         connectionNotice("Reconnecting TV alert receiver");
         connect();
+    }
+
+    /** Retry on a new socket; late messages from the old one cannot alter state. */
+    private void retryAlertSubscription(WebSocket ws, long delay, String message) {
+        main.removeCallbacks(connectionWatchdog);
+        socket = null;
+        clearConnectionTracking();
+        ws.cancel();
+        TvEventsRecovery.note(TvEventsRecovery.RECONNECTING);
+        connectionNotice(message);
+        main.removeCallbacks(reconnect);
+        main.postDelayed(reconnect, delay);
     }
 
     private void scheduleConnectionWatchdog() {
@@ -418,6 +434,7 @@ public final class TvEventsService extends Service {
                     if (message.optBoolean("success", false)) {
                         alertsSubscribed = true;
                         notReadyAttempts = 0;
+                        deniedAttempts = 0;
                         TvEventsRecovery.note(TvEventsRecovery.CONNECTED);
                         connectionNotice("Connected, waiting for TV alerts");
                         TvEventsRestartReceiver.clearResume(this);
@@ -429,18 +446,19 @@ public final class TvEventsService extends Service {
                             // Non-admin users receive a clear denial instead.
                             subscribeLegacy(ws);
                         } else if (TvAlertConnectionPolicy.retryableSubscriptionError(code)) {
-                            // A paired TV's HA select can lag behind WebSocket
-                            // authentication during HA startup. Retry only this
-                            // specific server code, never genuine read denials.
-                            main.removeCallbacks(connectionWatchdog);
-                            socket = null;
-                            clearConnectionTracking();
-                            ws.cancel();
-                            TvEventsRecovery.note(TvEventsRecovery.RECONNECTING);
-                            connectionNotice("Waiting for Home Assistant TV controls");
-                            main.removeCallbacks(reconnect);
-                            main.postDelayed(reconnect,
-                                    TvAlertConnectionPolicy.retryDelayMs(notReadyAttempts++));
+                            // The paired TV's HA controls might not exist yet.
+                            retryAlertSubscription(ws,
+                                    TvAlertConnectionPolicy.retryDelayMs(notReadyAttempts++),
+                                    "Waiting for Home Assistant TV controls");
+                        } else if (TvAlertConnectionPolicy.shouldRetryScopedDenial(
+                                code, deniedAttempts)) {
+                            // On some HA restarts, read permissions briefly report
+                            // unauthorized even though manual Resume later works.
+                            // This cannot bypass authorization: every attempt is
+                            // checked again by HA, and persistent denial is terminal.
+                            retryAlertSubscription(ws,
+                                    TvAlertConnectionPolicy.retryDelayMs(deniedAttempts++),
+                                    "Rechecking TV alert permission after HA restart");
                         } else if ("unauthorized".equals(code) || "not_allowed".equals(code)) {
                             terminalAlertError = true;
                             main.removeCallbacks(connectionWatchdog);

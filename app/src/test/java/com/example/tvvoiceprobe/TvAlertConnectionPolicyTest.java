@@ -42,6 +42,18 @@ public class TvAlertConnectionPolicyTest {
         assertFalse(TvAlertConnectionPolicy.retryableSubscriptionError(null));
     }
 
+    @Test public void scopedPermissionDenialGetsOnlyFiniteRechecks() {
+        assertTrue(TvAlertConnectionPolicy.shouldRetryScopedDenial("unauthorized", 0));
+        assertTrue(TvAlertConnectionPolicy.shouldRetryScopedDenial("unauthorized", 4));
+        assertFalse(TvAlertConnectionPolicy.shouldRetryScopedDenial("unauthorized", 5));
+        assertFalse(TvAlertConnectionPolicy.shouldRetryScopedDenial("unauthorized", -1));
+        assertFalse(TvAlertConnectionPolicy.shouldRetryScopedDenial("not_allowed", 0));
+        assertFalse(TvAlertConnectionPolicy.shouldRetryScopedDenial("invalid_format", 0));
+        assertFalse(TvAlertConnectionPolicy.shouldRetryScopedDenial("tv_not_ready", 0));
+        assertFalse(TvAlertConnectionPolicy.shouldRetryScopedDenial("auth_invalid", 0));
+        assertFalse(TvAlertConnectionPolicy.shouldRetryScopedDenial(null, 0));
+    }
+
     @Test public void reconnectBackoffIsBounded() {
         assertEquals(2_000, TvAlertConnectionPolicy.retryDelayMs(0));
         assertEquals(4_000, TvAlertConnectionPolicy.retryDelayMs(1));
