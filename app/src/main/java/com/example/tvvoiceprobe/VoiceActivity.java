@@ -548,6 +548,8 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                 "Live camera: " + LiveCameraMode.label(new OverlayPreferences(this).cameraMode()),
                 "Check for app updates: " + updateChannelLabel(),
                 "Install downloaded update",
+                "Frigate screensaver: " + (new OverlayPreferences(this).screensaverDashboard() ? "ON" : "OFF"),
+                "Preview Frigate dashboard",
                 "Forget saved connection"
         };
         showCopperMenu("KELLIE'S VOICE  ✦  SETTINGS",
@@ -572,7 +574,9 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                         case 15: chooseCameraMode(); break;
                         case 16: chooseUpdates(); break;
                         case 17: promptInstallUpdate(); break;
-                        case 18: confirmForget(); break;
+                        case 18: toggleScreensaver(); break;
+                        case 19: startActivity(new Intent(this, ScreensaverPreviewActivity.class)); break;
+                        case 20: confirmForget(); break;
                         default: break;
                     }
                 });
@@ -1383,5 +1387,14 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         if (speechFocus != null) speechFocus.release();
         if (assist != null) assist.shutdown();
         super.onDestroy();
+    }
+
+    private void toggleScreensaver() {
+        OverlayPreferences prefs = new OverlayPreferences(this);
+        boolean next = !prefs.screensaverDashboard();
+        prefs.setScreensaverDashboard(next);
+        if (next) ScreensaverWatchService.start(this);
+        else ScreensaverWatchService.stop(this);
+        showSettingsMenu();
     }
 }
