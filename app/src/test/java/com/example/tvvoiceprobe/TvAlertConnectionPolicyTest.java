@@ -42,16 +42,26 @@ public class TvAlertConnectionPolicyTest {
         assertFalse(TvAlertConnectionPolicy.retryableSubscriptionError(null));
     }
 
-    @Test public void scopedPermissionDenialGetsOnlyFiniteRechecks() {
+    @Test public void scopedPermissionDenialGetsFastThenSlowRechecks() {
+        assertTrue(TvAlertConnectionPolicy.isScopedPermissionDenial("unauthorized"));
+        assertFalse(TvAlertConnectionPolicy.isScopedPermissionDenial("not_allowed"));
+        assertFalse(TvAlertConnectionPolicy.isScopedPermissionDenial("auth_invalid"));
+        assertFalse(TvAlertConnectionPolicy.isScopedPermissionDenial("invalid_format"));
+        assertFalse(TvAlertConnectionPolicy.isScopedPermissionDenial(null));
         assertTrue(TvAlertConnectionPolicy.shouldRetryScopedDenial("unauthorized", 0));
         assertTrue(TvAlertConnectionPolicy.shouldRetryScopedDenial("unauthorized", 4));
         assertFalse(TvAlertConnectionPolicy.shouldRetryScopedDenial("unauthorized", 5));
-        assertFalse(TvAlertConnectionPolicy.shouldRetryScopedDenial("unauthorized", -1));
-        assertFalse(TvAlertConnectionPolicy.shouldRetryScopedDenial("not_allowed", 0));
-        assertFalse(TvAlertConnectionPolicy.shouldRetryScopedDenial("invalid_format", 0));
-        assertFalse(TvAlertConnectionPolicy.shouldRetryScopedDenial("tv_not_ready", 0));
-        assertFalse(TvAlertConnectionPolicy.shouldRetryScopedDenial("auth_invalid", 0));
-        assertFalse(TvAlertConnectionPolicy.shouldRetryScopedDenial(null, 0));
+        assertEquals(2_000L, TvAlertConnectionPolicy.scopedDenialRetryDelayMs(0));
+        assertEquals(4_000L, TvAlertConnectionPolicy.scopedDenialRetryDelayMs(1));
+        assertEquals(8_000L, TvAlertConnectionPolicy.scopedDenialRetryDelayMs(2));
+        assertEquals(16_000L, TvAlertConnectionPolicy.scopedDenialRetryDelayMs(3));
+        assertEquals(30_000L, TvAlertConnectionPolicy.scopedDenialRetryDelayMs(4));
+        assertEquals(120_000L, TvAlertConnectionPolicy.scopedDenialRetryDelayMs(5));
+        assertEquals(120_000L, TvAlertConnectionPolicy.scopedDenialRetryDelayMs(1000));
+        try {
+            TvAlertConnectionPolicy.scopedDenialRetryDelayMs(-1);
+            fail("Negative attempts must be rejected");
+        } catch (IllegalArgumentException expected) { }
     }
 
     @Test public void reconnectBackoffIsBounded() {
