@@ -30,9 +30,20 @@ public final class TvAlertConnectionPolicy {
                 && nowMs - sentAtMs >= HEARTBEAT_TIMEOUT_MS;
     }
 
-    /** Only missing HA controls during startup may retry; access denials stay terminal. */
+    /** Missing HA controls during startup always require a fresh authorization check. */
     public static boolean retryableSubscriptionError(String code) {
         return "tv_not_ready".equals(code);
+    }
+
+    // HA can briefly deny a subscribed TV after Core restarts, even though a
+    // manual Resume moments later succeeds. Retry that result only a bounded
+    // number of times. Each attempt is fully reauthorized by HA; actual denied
+    // users never receive events, and eventually see the permission error.
+    public static final int MAX_TRANSIENT_DENIAL_RETRIES = 5;
+
+    public static boolean shouldRetryScopedDenial(String code, int attempts) {
+        return "unauthorized".equals(code)
+                && attempts >= 0 && attempts < MAX_TRANSIENT_DENIAL_RETRIES;
     }
 
     public static long retryDelayMs(int attempts) {
