@@ -1405,6 +1405,8 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                         "Frigate page layout: " + (prefs.screensaverDesktopPage() ? "Desktop TV" : "Automatic"),
                         "Choose Android screensaver",
                         "Preview Frigate dashboard",
+                        "Screensaver status & permissions",
+                        "Test Frigate as TV overlay",
                         "Back to Settings"
                 }, which -> {
                     switch (which) {
@@ -1415,7 +1417,9 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                         case 4: toggleScreensaverDesktopPage(); break;
                         case 5: openAndroidScreensaverList(); break;
                         case 6: startActivity(new Intent(this, ScreensaverPreviewActivity.class)); break;
-                        case 7: showSettingsMenu(); break;
+                        case 7: showScreensaverDiagnostics(); break;
+                        case 8: testScreensaverOverlay(); break;
+                        case 9: showSettingsMenu(); break;
                         default: break;
                     }
                 });
@@ -1539,6 +1543,72 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                             "choose Kellie's Voice Frigate if the firmware supports it.")
                     .setPositiveButton("Back", (d, w) -> showScreensaverSettings())
                     .show();
+        }
+    }
+
+    private void showScreensaverDiagnostics() {
+        OverlayPreferences prefs = new OverlayPreferences(this);
+        boolean overlay = Settings.canDrawOverlays(this);
+        boolean configured = ScreensaverDashboard.configured(
+                prefs.screensaverUrl(), prefs.screensaverCameras());
+        String info = "Frigate feature: " + (prefs.screensaverDashboard() ? "ON" : "OFF")
+                + "\nWatcher service: " + (ScreensaverWatchStatus.running() ? "RUNNING" : "NOT RUNNING")
+                + "\nDisplay over other apps: " + (overlay ? "ALLOWED" : "NOT ALLOWED")
+                + "\nDashboard address/cameras: " + (configured ? "Configured" : "Not configured")
+                + "\nLast Android dream event: " + ScreensaverWatchStatus.lastEvent()
+                + "\nLast overlay outcome: " + ScreensaverWatchStatus.lastOverlay()
+                + "\n\nGoogle TV Ambient Mode may not send Android dream events. "
+                + "If you wait for its normal art screensaver and this still says "
+                + "no DREAMING_STARTED, that is the next compatibility problem to solve. "
+                + "The manual overlay test checks drawing only, not the idle trigger. "
+                + "Neither test activates a microphone.";
+        new AlertDialog.Builder(this)
+                .setTitle("Frigate screensaver diagnostics")
+                .setMessage(info)
+                .setNegativeButton("Back", (d, w) -> showScreensaverSettings())
+                .setPositiveButton("Try to resume watcher", (d, w) -> {
+                    ScreensaverWatchService.startIfEnabled(this);
+                    showScreensaverSettings();
+                })
+                .show();
+    }
+
+    private void testScreensaverOverlay() {
+        OverlayPreferences prefs = new OverlayPreferences(this);
+        if (!prefs.screensaverDashboard()) {
+            new AlertDialog.Builder(this).setTitle("Screensaver is off")
+                    .setMessage("Turn Frigate screensaver ON before trying its overlay.")
+                    .setPositiveButton("Back", (d, w) -> showScreensaverSettings())
+                    .show();
+            return;
+        }
+        if (!Settings.canDrawOverlays(this)) {
+            new AlertDialog.Builder(this).setTitle("Allow the Frigate overlay")
+                    .setMessage("Android needs Display over other apps permission. "
+                            + "Your existing notification permission may already cover it.")
+                    .setNegativeButton("Back", (d, w) -> showScreensaverSettings())
+                    .setPositiveButton("Open permission", (d, w) -> {
+                        try {
+                            startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                    Uri.parse("package:" + getPackageName())));
+                        } catch (RuntimeException ignored) {
+                            status("TV could not open its display-over-apps permission screen.");
+                        }
+                    }).show();
+            return;
+        }
+        if (!ScreensaverDashboard.configured(prefs.screensaverUrl(), prefs.screensaverCameras())) {
+            new AlertDialog.Builder(this).setTitle("Choose Frigate cameras first")
+                    .setMessage("Set a Frigate URL or Home Assistant camera entities.")
+                    .setPositiveButton("Back", (d, w) -> showScreensaverSettings()).show();
+            return;
+        }
+        try {
+            startForegroundService(new Intent(this, ScreensaverWatchService.class)
+                    .setAction(ScreensaverWatchService.ACTION_TEST_OVERLAY));
+        } catch (RuntimeException ignored) {
+            status("Android blocked the Frigate overlay test. Check screensaver diagnostics.");
+            showScreensaverSettings();
         }
     }
 
