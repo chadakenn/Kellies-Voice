@@ -366,10 +366,15 @@ public final class TvEventsService extends Service {
         main.removeCallbacks(reconnect);
         if (stopping || socket != null || terminalAlertError
                 || !new OverlayPreferences(this).tvEvents() || credentials == null) return;
+        nextReconnectAtMs = -1L;
+        connectionAttempts = Math.min(connectionAttempts + 1, 1_000_000);
+        TvEventsRecovery.diagnostic("Opening alert socket, attempt " + connectionAttempts);
         HttpUrl base = HttpUrl.parse(credentials.url);
         if (base == null || !(base.scheme().equals("http") || base.scheme().equals("https"))
                 || !base.username().isEmpty() || !base.password().isEmpty()) {
+            terminalAlertError = true;
             TvEventsRecovery.note(TvEventsRecovery.CHECK);
+            TvEventsRecovery.diagnostic("Saved Home Assistant address is invalid");
             connectionNotice("Check the Home Assistant connection in Settings");
             return;
         }
@@ -423,6 +428,7 @@ public final class TvEventsService extends Service {
                 terminalAlertError = true;
                 main.removeCallbacks(connectionWatchdog);
                 TvEventsRecovery.note(TvEventsRecovery.REJECTED);
+                TvEventsRecovery.diagnostic("Saved Home Assistant authentication rejected");
                 connectionNotice("Home Assistant rejected the saved login");
                 ws.close(1000, "Authentication rejected");
                 return;
@@ -464,6 +470,7 @@ public final class TvEventsService extends Service {
                         notReadyAttempts = 0;
                         deniedAttempts = 0;
                         TvEventsRecovery.note(TvEventsRecovery.CONNECTED);
+                        TvEventsRecovery.diagnostic("Authorized alert subscription on attempt " + connectionAttempts);
                         connectionNotice("Connected, waiting for TV alerts");
                         TvEventsRestartReceiver.clearResume(this);
                     } else {
@@ -482,9 +489,10 @@ public final class TvEventsService extends Service {
                             int attempt = deniedAttempts;
                             deniedAttempts = Math.min(deniedAttempts + 1,
                                     TvAlertConnectionPolicy.MAX_TRANSIENT_DENIAL_RETRIES);
-                            retryAlertSubscription(ws,
-                                    TvAlertConnectionPolicy.scopedDenialRetryDelayMs(attempt),
-                                    "Rechecking TV alert connection");
+                            long delay = TvAlertConnectionPolicy.scopedDenialRetryDelayMs(attempt);
+                            TvEventsRecovery.diagnostic("Scoped unauthorized, retry " +
+                                    (attempt + 1) + " in " + (delay / 1000L) + "s");
+                            retryAlertSubscription(ws, delay, "Rechecking TV alert connection");
                             if (attempt >= TvAlertConnectionPolicy.MAX_TRANSIENT_DENIAL_RETRIES) {
                                 TvEventsRecovery.note(TvEventsRecovery.DENIED);
                             }
