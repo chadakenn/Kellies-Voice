@@ -1,3 +1,15 @@
+## v0.16.12-dev.4 Google TV Ambient Mode watcher recovery (build 43, dev only)
+
+The owner's onn Google TV only exposes Google's Ambient Mode sources (Photos, Art Gallery and Custom AI Art) instead of third-party DreamServices. Frigate Preview renders, and existing announcement overlays show during Ambient Mode, but the dashboard doesn't appear automatically. The old watcher only started when the feature was toggled and wasn't recovered following APK update/reboot.
+
+- [ ] With feature ON and matching Frigate URL, confirm **Settings → Frigate screensaver → Screensaver status & permissions** shows watcher running, overlay permission and configuration.
+- [ ] Trigger **Test Frigate as TV overlay**, verify fullscreen Frigate/Close/Back, then close. This is only a manual overlay rendering test.
+- [ ] After normal Google Ambient Mode starts, return to diagnostics. If no `DREAMING_STARTED` arrives, this firmware needs a different supported idle detection mechanism. Do not interpret a successful manual overlay as automatic screensaver support.
+- [ ] Reboot, then replace installed APK over prior build; verify boot/package-replaced receiver restarts only the already-opted-in watcher, even with TV alerts OFF, without microphone or unrelated Home Assistant changes.
+- [ ] Confirm no overlay when feature OFF, permission absent, or dashboard unconfigured. Verify manual Close/Back and Android Dream STOP restore normal playback.
+
+**Owner hardware QA required before main. If Ambient mode emits no Dream broadcast, automatic support remains unverified.**
+
 ## v0.16.12-dev.3 Frigate TV desktop layout preview (build 42, dev only)
 
 Owner photo comparison showed Frigate live camera grid on laptop but a single giant camera tile and mobile navigation inside the onn Android WebView. The new **Desktop TV** default uses an installed-Chrome-version desktop browser ID, Android WebView wide/overview fit, and a 1440 CSS-pixel viewport after page load. Existing source URL allowlist and forbidden credentials remain intact.
