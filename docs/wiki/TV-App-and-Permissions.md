@@ -1,5 +1,9 @@
 # TV App and Permissions
 
+[← Documentation home](Home.md) · [Getting started](Getting-Started.md) · [YAML Cookbook](YAML-Cookbook.md) · [Troubleshooting](Troubleshooting.md)
+
+---
+
 The Android TV app handles the microphone, floating overlays, on-screen speech, and the optional alert receiver.
 
 ## Main controls on the TV
@@ -35,7 +39,7 @@ If popups stop after standby, a reboot, or a Home Assistant restart:
 3. Press OK to open the status dialog.
 4. Select the **Resume TV alerts** button **inside** that dialog (it is not the neighboring toggle and not the main Connect button).
 
-See [Troubleshooting](Troubleshooting#resume-tv-alerts) for the full recovery path and limitations.
+See [Troubleshooting](Troubleshooting.md#resume-tv-alerts-exact-steps) for the full recovery path and limitations.
 
 ## Updates
 
@@ -43,6 +47,10 @@ Use **Settings → Check for app updates** for signed APK updates. Do not uninst
 
 ## Next
 
-- [Home Assistant HACS Setup](Home-Assistant-HACS-Setup)
-- [YAML Cookbook](YAML-Cookbook)
-- [Troubleshooting](Troubleshooting)
+- [Home Assistant HACS Setup](Home-Assistant-HACS-Setup.md)
+- [YAML Cookbook](YAML-Cookbook.md)
+- [Troubleshooting](Troubleshooting.md)
+
+---
+
+[← All documentation](Home.md) · [Next: Home Assistant HACS Setup →](Home-Assistant-HACS-Setup.md)
