@@ -316,5 +316,14 @@ class ValidationTests(unittest.TestCase):
             validation.target_device_ids(None, [])
 
 
+
+    def test_speak_is_optional_and_rejects_urls(self):
+        self.assertEqual(validation.clean_speak("The washer is finished."), "The washer is finished.")
+        self.assertEqual(validation.clean_speak("https://example.com/token"), "")
+        self.assertEqual(validation.clean_speak("www.example.com"), "")
+        self.assertEqual(validation.clean_speak(""), "")
+        self.assertEqual(validation.clean_speak(None), "")
+        self.assertEqual(validation.clean_speak("a" * 181), "")
+
 if __name__ == "__main__":
     unittest.main()

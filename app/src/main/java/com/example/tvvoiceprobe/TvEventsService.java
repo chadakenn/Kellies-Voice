@@ -135,6 +135,7 @@ public final class TvEventsService extends Service {
     private int connectionAttempts;
     private long nextReconnectAtMs = -1L;
     private int generation;
+    private AnnouncementSpeech announcementSpeech;
     private boolean alertsSubscribed;
     private boolean terminalAlertError;
     private int heartbeatId = -1;
@@ -211,6 +212,7 @@ public final class TvEventsService extends Service {
         main.removeCallbacks(recoveryMonitor);
         main.postDelayed(recoveryMonitor, 20_000L);
         if (timerOverlay == null) timerOverlay = new TimerOverlayController(this, windowManager);
+        if (announcementSpeech == null) announcementSpeech = new AnnouncementSpeech(this);
         TvEventsRestartReceiver.clearResume(this);
         if (ACTION_PREVIEW.equals(action)) {
             showCard("Kellie's Voice", "This is how announcements will appear over your TV.", null, 10);
@@ -626,9 +628,13 @@ public final class TvEventsService extends Service {
             if ((subscription == SCOPED_ALERTS_ID || subscription == ANNOUNCE_ID)
                     && TvEventPayload.ANNOUNCEMENT.equals(eventType)) {
                 String body = TvEventPayload.cleanText(data.optString("text"), 500);
-                if (!body.isEmpty()) showCard(
+                String spoken = TvEventPayload.speak(data.optString("speak", ""));
+                if (!body.isEmpty()) {
+                    showCard(
                         TvEventPayload.cleanText(data.optString("title", "Kellie's Voice"), 65),
                         body, null, duration);
+                    maybeSpeak(spoken);
+                }
             } else if ((subscription == SCOPED_ALERTS_ID || subscription == CAMERA_ID)
                     && TvEventPayload.CAMERA_POPUP.equals(eventType)) {
                 String entity = TvEventPayload.cameraEntity(data.optString("entity_id"));
@@ -1213,6 +1219,7 @@ public final class TvEventsService extends Service {
     }
 
     private void hideCard() {
+        if (announcementSpeech != null) announcementSpeech.stop();
         main.removeCallbacks(dismiss);
         if (snapshotRefreshTask != null) main.removeCallbacks(snapshotRefreshTask);
         snapshotRefreshTask = null;
@@ -1259,3 +1266,11 @@ public final class TvEventsService extends Service {
         super.onDestroy();
     }
 }
+
+
+    private void maybeSpeak(String phrase) {
+        if (phrase == null || phrase.isEmpty()) return;
+        OverlayPreferences prefs = new OverlayPreferences(this);
+        if (!prefs.spokenAnnouncements()) return;
+        if (announcementSpeech != null) announcementSpeech.speak(phrase);
+    }

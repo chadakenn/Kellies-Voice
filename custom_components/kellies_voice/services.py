@@ -33,6 +33,7 @@ from .validation import (
     clean_snapshot_refresh,
     clean_duration,
     clean_text,
+    clean_speak,
     clean_title,
     clean_forecast_days,
     clean_forecast_duration,
@@ -57,6 +58,7 @@ ANNOUNCE_SCHEMA = vol.Schema(
             vol.Coerce(int),
             vol.Range(min=MIN_DURATION_SECONDS, max=MAX_DURATION_SECONDS),
         ),
+        vol.Optional("speak"): cv.string,
         vol.Optional("device_id"): cv.string,
     }
 )
@@ -213,19 +215,20 @@ async def _async_announce(call: ServiceCall) -> None:
             call.data.get("duration_seconds", DEFAULT_ANNOUNCE_SECONDS),
             DEFAULT_ANNOUNCE_SECONDS,
         )
+        speak = clean_speak(call.data.get("speak"))
         targets = target_device_ids(call.data.get("device_id"), configured_device_ids(call.hass))
     except ValueError as err:
         raise ServiceValidationError(str(err)) from None
     for device_id in targets:
-        call.hass.bus.async_fire(
-            EVENT_ANNOUNCEMENT,
-            {
-                "title": title,
-                "text": text,
-                "duration_seconds": duration,
-                "device_id": device_id,
-            },
-        )
+        data = {
+            "title": title,
+            "text": text,
+            "duration_seconds": duration,
+            "device_id": device_id,
+        }
+        if speak:
+            data["speak"] = speak
+        call.hass.bus.async_fire(EVENT_ANNOUNCEMENT, data)
     _LOGGER.debug("Fired %s for %s configured TV(s)", EVENT_ANNOUNCEMENT, len(targets))
 
 
