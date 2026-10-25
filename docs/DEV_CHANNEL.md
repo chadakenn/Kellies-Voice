@@ -216,6 +216,32 @@ a re-enabled USB microphone test, and onn 4K Pro normal mic regression.
 No tokens, audio files or personal device IDs should be included in reports.
 No stable release is authorized by this development candidate.
 
+### HACS voice-relay dev branch installation (explicit owner approval only)
+
+The scoped alert forwarding code in `dev` now preserves an opt-in,
+validated `speak` sentence. For a non-admin TV user, the stable v0.16.10
+HACS integration strips this field, so Android receives only the visual
+popup even though the local spoken self-test passes.
+
+The development integration's `manifest.json` is set to
+`0.16.11-dev.4` to make the installed code identifiable, matching the
+reviewed Android dev.4 build. This **does not publish a GitHub Release**.
+
+For a *separately approved* live HACS test, first take a Home Assistant
+backup. The tracked HACS `update` entity can install a **specific public
+branch** using `update.install` and `version: dev`, rather than
+the default stable release. Confirm the repository update entity belongs
+to Kellie's Voice, and do not use the generic HACS integration update.
+Then restart Home Assistant after the update, verify the receiver connects,
+and use a single device-targeted spoken `announce` action while the TV
+setting is enabled. Never send the test sentence to a different TV.
+Rollback can choose stable `v0.16.10` via the same entity followed
+by a Home Assistant restart, if necessary.
+
+A dev HACS installation affects the user's live Home Assistant instance.
+Do not perform that change or restart without explicit authorization.
+Do not change `main` or publish a public release.
+
 ### v0.16.11-dev.4: scoped speech transport repair + local TV speech test
 
 The owner installed v0.16.11-dev.3 on an onn 4K Pro and checked **TV alert
