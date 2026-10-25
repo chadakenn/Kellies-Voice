@@ -78,6 +78,12 @@ final class ScreensaverBoard {
     View view() { return root; }
 
     void start() {
+        // A camera-list/size preference update must not leak the old refresh
+        // loop, video WebView, outstanding image requests or bitmap cache.
+        if (generation > 0) {
+            stop();
+            ScreensaverSignals.listen(onSettings);
+        }
         stopped = false;
         generation++;
         OverlayPreferences prefs = new OverlayPreferences(context);
