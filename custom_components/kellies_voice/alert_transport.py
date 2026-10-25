@@ -15,9 +15,9 @@ from .const import (
 )
 
 EVENT_FIELDS = {
-    EVENT_ANNOUNCEMENT: ("device_id", "title", "text", "duration_seconds"),
-    EVENT_CAMERA_POPUP: ("device_id", "entity_id", "title", "duration_seconds", "show_header", "image_fit", "refresh_seconds"),
-    EVENT_LIVE_CAMERA: ("device_id", "entity_id", "title", "duration_seconds", "show_header", "image_fit", "refresh_seconds"),
+    EVENT_ANNOUNCEMENT: ("device_id", "title", "text", "speak", "duration_seconds"),
+    EVENT_CAMERA_POPUP: ("device_id", "entity_id", "title", "speak", "duration_seconds", "show_header", "image_fit", "refresh_seconds"),
+    EVENT_LIVE_CAMERA: ("device_id", "entity_id", "title", "speak", "duration_seconds", "show_header", "image_fit", "refresh_seconds"),
     EVENT_HIDE_CAMERA: ("device_id",),
     EVENT_FORECAST: ("device_id", "location", "units", "issued", "duration_seconds", "days"),
     "kellies_voice_timer": (
@@ -28,7 +28,7 @@ EVENT_FIELDS = {
 MAX_BYTES = 8192
 STRING_LIMITS = {
     "title": 65, "text": 500, "location": 80, "units": 8,
-    "entity_id": 88, "name": 40, "alert_phrase": 140,
+    "entity_id": 88, "name": 40, "alert_phrase": 140, "speak": 180,
     "device_id": 64, "operation": 12, "image_fit": 8,
 }
 INT_FIELDS = {"issued", "duration_seconds", "ends_at_ms", "refresh_seconds"}
@@ -52,6 +52,19 @@ def sanitize_event(event_type: str, payload: dict, this_tv: str) -> dict | None:
         if key == "device_id" or key not in payload:
             continue
         value = payload[key]
+        if key == "speak":
+            # Explicit opt-in speech only. Never synthesize arbitrary URLs or
+            # oversized strings from user-controlled HA automation payloads.
+            if not isinstance(value, str):
+                continue
+            phrase = " ".join(value.split())
+            lower = phrase.lower()
+            if not phrase or len(phrase) > STRING_LIMITS["speak"] or (
+                "://" in lower or lower.startswith("http") or "www." in lower
+            ):
+                continue
+            safe["speak"] = phrase
+            continue
         if key in STRING_LIMITS:
             if not isinstance(value, str):
                 return None

@@ -10,9 +10,9 @@ android {
         applicationId 'com.example.tvvoiceprobe'
         minSdk 26
         targetSdk 35
-        // Stable release stays above the tested development build (code 30).
-        versionCode 31
-        versionName '0.16.10'
+        // Stable release supersedes dev.7 signed build 38.
+        versionCode 39
+        versionName '0.16.11'
     }
 
     // The keystore is private and supplied from GitHub Actions secrets.

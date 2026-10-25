@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.16.11 (2026-10-25) — Owner-tested spoken TV alerts and follow-up
+
+- Android **versionCode 39**, signed `0.16.11` release, matching HACS manifest `0.16.11`. Preserve existing package ID and signing key.
+- Optional local-TV follow-up listening: 8-second second-question, mic privacy timeout and STOP verified on onn 4K Pro. OFF by default. PR #114 and #116, #43 completed for core acceptance.
+- Optional spoken announcements: real HACS `speak` and local speech at 40% volume verified quieter on onn 4K Pro. Text-only notices remain silent. #110.
+- Post-boot voice session readiness confirmed on onn 4K Pro (#44); alert receiver reconnect and camera display reliability may vary after standby (#39).
+- 48 kHz microphone capture fallback (#112), manual pairing confirmation (#111), native Assist timer bridge OFF by default (#113 / #57), and opt-in development channel need additional hardware acceptance outside the tested cases.
+- Still open: #39 voice camera+LLM prompt latency, #57 native timer QA, #69 pairing, #71 Philips microphone, #41 Fire TV, #92 dev-update channel tests. Wake-word, Frigate screensaver dashboard and actionable buttons remain experimental and are not included.
+- [Detailed release notes](docs/releases/v0.16.11.md) and [new tester install guide](docs/INSTALL.md).
+
 This is an experimental Android TV / Google TV app. Each entry distinguishes **shipped code** from **tested on the onn 4K Pro**.
 
 ## v0.16.9 (2026-10-24) — Room-aware Assist and HA restart recovery

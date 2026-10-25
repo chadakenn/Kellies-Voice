@@ -1,7 +1,13 @@
 name: Publish reviewed Kellie's Voice Wiki
 
-# This is a manual, owner-approved step, never a dev push side effect.
+# Owner-gated publishing: manual PUBLISH or an explicitly approved main release commit. No dev side effect.
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/wiki/**'
+      - 'docs/WIKI_PUBLISHING.md'
+      - '.github/workflows/publish-wiki.yml'
   workflow_dispatch:
     inputs:
       confirm:
@@ -18,7 +24,13 @@ permissions:
 
 jobs:
   publish:
-    if: github.ref == 'refs/heads/main' && inputs.confirm == 'PUBLISH'
+    # This is NOT automatic on ordinary pushes. Both publishing paths require
+    # an explicit PUBLISH confirmation or a [publish-wiki] owner-approved
+    # marker on the main-branch release merge commit.
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      ((github.event_name == 'workflow_dispatch' && inputs.confirm == 'PUBLISH') ||
+       (github.event_name == 'push' && contains(github.event.head_commit.message, '[publish-wiki]')))
     runs-on: ubuntu-latest
     concurrency:
       group: kellies-voice-public-wiki

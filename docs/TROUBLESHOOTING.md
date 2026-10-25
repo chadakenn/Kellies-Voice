@@ -1,3 +1,5 @@
+**v0.16.11 camera and local-LLM tip:** When Kellie says a camera is showing but nothing appears, inspect the separate Home Assistant TV alert receiver connectivity sensor and use TV **Settings → TV alert status → Resume TV alerts**. Exposed HA scripts should call `kellies_voice.hide_camera` for voice dismissal, not send only a legacy custom event. Invalid LLM tool JSON, HTTP 400 context overflows and oversized Assist prompts originate upstream of the TV camera player: check the selected conversation model, context window, exposed entity count and custom tool groups. Never post credentials or camera URLs containing secrets.
+
 ## Philips TV line-in and echo-reference are not microphones (issue #71)
 
 Some Philips Android TVs report input devices such as **Echo Reference In**
@@ -24,16 +26,6 @@ retain its previously working built-in mic, normal TALK/STOP and overlay.
 # Troubleshooting: Kellie's Voice on Google TV
 
 ## TV camera or announcement popups missing? Find Resume TV alerts
-
-**v0.16.10 recovery candidate:** On the maintainer's onn 4K Pro, the
-modern scoped TV alert receiver reconnected automatically after two Home
-Assistant Core restart tests, including one with the Google TV screensaver
-active. Both tests also delivered a visible new text announcement. If your
-TV still gets stuck, open **TV alert status** and note **Last receiver
-activity** before trying Resume. This diagnostic is redacted and should
-never include a token, home address, or pairing ID. Automatic recovery on
-other device models remains unverified.
-
 
 The **voice/Assist connection and TV alert receiver are separate**. Even if
 TALK works and the main page says Connected, alerts and timers may not reach
@@ -96,6 +88,27 @@ Try the Google TV / Google Home phone remote keyboard on the same network. The p
 - If using local HTTP, it is **not encrypted**. Restrict to a trusted private LAN or prefer HTTPS.
 - If the screen still says disconnected, retry **SETTINGS → Connect / reconnect**.
 
+## First TALK after reboot is still connecting (#44)
+
+The Home Assistant voice WebSocket and TV-alert receiver are independent. A
+voice request right after boot or a Home Assistant restart may arrive before
+the voice WebSocket has authenticated or the Assist pipeline has loaded.
+
+- **Connecting to Home Assistant** means the authenticated voice session is
+  not ready. Full-screen users must press TALK again once the screen says Ready.
+- A newly pressed TALK in the user-launched floating overlay can be held for
+  **up to 30 seconds**. If the connection is not ready by then, the request
+  expires. The microphone must not start later without another user action.
+- **Assist pipeline is starting** is different from a missing pipeline, a
+  token rejection, an STT failure, an agent failure or a TTS failure. Consult
+  the matching Home Assistant configuration and logs.
+- If Home Assistant rejects the saved token, check SETTINGS rather than
+  repeatedly opening the microphone. Do not share credentials or signed URLs.
+
+These improved startup messages are currently development-only (#44).
+Other Android TV hardware and post-reboot behavior still require testing.
+The separate TV alert receiver status does not guarantee voice readiness.
+
 ## I can see "YOU SAID" but not the answer
 
 The original seven-button alpha pushed the response beneath the visible portion of the TV. Upgrade to the **signed compact UI** with three main buttons, where the answer appears **above** the transcript. Check whether the HA conversation agent returned an answer; an STT transcript does not automatically guarantee a successful intent or TTS response.
@@ -110,6 +123,24 @@ Speech-to-text and TTS are separate stages. The current client **successfully pl
 4. The app shows **Speaking...**, **Finished...**, or a TTS error in its status line.
 
 The client reads the HA `tts_output.url` event field; earlier builds missed this URL. The working on-device example answered **“5:07 AM”** aloud. If a later test shows a transcript but no sound, capture the **exact status/error text**; don't post your HA token.
+
+## Philips shows Listening with only phantom microphones (#71)
+
+Some Philips TV firmware advertises a `TYPE_BUILTIN_MIC` input to Android
+apps even though voice capture is all silence. Another TV reports an echo
+reference as a microphone-like input and records a constant loud signal.
+This means **checking device types or audio volume alone cannot reliably
+prove that the user is speaking**.
+
+An optional development-only workaround is being reviewed: **Settings →
+Mic input detection → Disable microphone capture on this TV**. It stops
+TALK before opening an audio recorder or starting an Assist request. The
+manual setting is off by default, reversible, and overrides the existing
+"Try unverified microphone" bypass. Re-enable when a known-good USB mic is
+connected. Other TVs should continue using automatic input checks.
+
+Public stable v0.16.10 does **not** include this new manual workaround.
+Issue #71 remains open for physical Philips and onn 4K Pro validation.
 
 ## TALK says no accessible microphone
 
@@ -147,6 +178,30 @@ catches missing authentication or event-subscription acknowledgments.
 Reconnecting never starts the microphone or replays missed alerts. Old
 WebSocket callbacks must not affect the new connection, and a rejected token
 or denied read permission must stay an actionable error rather than looping.
+
+**v0.16.9 follow-up, October 24 (onn 4K Pro):** With matching HACS 0.16.9
+and a TV alert receiver that was already ON, reloading only the Kellie's
+Voice HA integration briefly made the diagnostic unavailable and then ON.
+A full HA restart instead left the receiver OFF / `never` for several
+minutes. The Android TV showed **Home Assistant denied TV alert permission**
+while the separate Assist connection remained healthy. Pressing
+**SETTINGS → TV alert status → Resume TV alerts** restored the receiver to
+ON without changing roles or access tokens, and a new announcement reached
+the TV. This is a new physical reproduction of a **transient authorization
+denial that remains terminal in v0.16.9**, not proof that Home Assistant
+actually revoked the TV's permissions.
+
+**Unreleased recovery patch (review branch):** The Android receiver now
+rechecks an `unauthorized` scoped-subscription result at most five times,
+using fresh authenticated sockets and 2–30-second bounded backoff (about
+60 seconds total). Every attempt still requires Home Assistant to approve
+read access to the paired TV. A persistent denial, `not_allowed`, bad token,
+wrong pairing ID, or unsupported integration must not be treated as a
+successful alert subscription. The main TV screen separately displays
+voice/Assist connectivity and alert-receiver status. **Not shipped until
+merged, built, updated on TV and physically verified.** Missed messages
+are never replayed. Test a full HA restart without pressing Resume, then
+send a fresh announcement and confirm it appears.
 
 **#78 HA restart reproduction (onn 4K Pro, v0.16.8):** After restarting HA,
 the receiver showed OFF/never while the TV alert status claimed permission

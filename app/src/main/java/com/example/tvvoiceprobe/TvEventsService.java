@@ -71,6 +71,7 @@ public final class TvEventsService extends Service {
     public static final String ACTION_RESUME = "com.example.tvvoiceprobe.TV_EVENTS_RESUME";
     public static final String ACTION_STOP = "com.example.tvvoiceprobe.TV_EVENTS_STOP";
     public static final String ACTION_PREVIEW = "com.example.tvvoiceprobe.TV_EVENTS_PREVIEW";
+    public static final String ACTION_TEST_SPOKEN = "com.example.tvvoiceprobe.TV_EVENTS_TEST_SPOKEN";
 
     private static final String CHANNEL = "kellie_tv_events";
     private static final int NOTICE_ID = 2242;
@@ -135,6 +136,7 @@ public final class TvEventsService extends Service {
     private int connectionAttempts;
     private long nextReconnectAtMs = -1L;
     private int generation;
+    private AnnouncementSpeech announcementSpeech;
     private boolean alertsSubscribed;
     private boolean terminalAlertError;
     private int heartbeatId = -1;
@@ -211,9 +213,19 @@ public final class TvEventsService extends Service {
         main.removeCallbacks(recoveryMonitor);
         main.postDelayed(recoveryMonitor, 20_000L);
         if (timerOverlay == null) timerOverlay = new TimerOverlayController(this, windowManager);
+        if (announcementSpeech == null) announcementSpeech = new AnnouncementSpeech(this);
         TvEventsRestartReceiver.clearResume(this);
         if (ACTION_PREVIEW.equals(action)) {
             showCard("Kellie's Voice", "This is how announcements will appear over your TV.", null, 10);
+        }
+        if (ACTION_TEST_SPOKEN.equals(action)) {
+            // This direct TV-only test does not use Home Assistant's event bus.
+            // Only a Settings button can request it, and speech is opt-in.
+            showCard("Local spoken announcement test",
+                    "If the Android voice is working, you should hear this sentence.", null, 16);
+            if (card != null) {
+                maybeSpeak("Hello from Kellie's Voice. This is a local speech test.");
+            }
         }
         if (TvAlertConnectionPolicy.shouldForceRestart(
                 ACTION_RESUME.equals(action), socket != null, alertsSubscribed,
@@ -626,9 +638,13 @@ public final class TvEventsService extends Service {
             if ((subscription == SCOPED_ALERTS_ID || subscription == ANNOUNCE_ID)
                     && TvEventPayload.ANNOUNCEMENT.equals(eventType)) {
                 String body = TvEventPayload.cleanText(data.optString("text"), 500);
-                if (!body.isEmpty()) showCard(
+                String spoken = TvEventPayload.speak(data.optString("speak", ""));
+                if (!body.isEmpty()) {
+                    showCard(
                         TvEventPayload.cleanText(data.optString("title", "Kellie's Voice"), 65),
                         body, null, duration);
+                    if (card != null) maybeSpeak(spoken);
+                }
             } else if ((subscription == SCOPED_ALERTS_ID || subscription == CAMERA_ID)
                     && TvEventPayload.CAMERA_POPUP.equals(eventType)) {
                 String entity = TvEventPayload.cameraEntity(data.optString("entity_id"));
@@ -639,7 +655,15 @@ public final class TvEventsService extends Service {
                     boolean fit = TvEventPayload.fitWholeImage(data.optString("image_fit"));
                     int refresh = TvEventPayload.snapshotRefresh(
                             data.optInt("refresh_seconds", 0));
+                    // Repeat snapshot events refresh the same card without repeating its speech.
+                    boolean sameCard = cameraVisible && liveSurface == null && card != null
+                            && photo != null && entity.equals(snapshotEntity)
+                            && title.equals(snapshotTitle) && header == snapshotHeader
+                            && fit == snapshotFit;
                     showSnapshotCard(title, entity, duration, header, fit, refresh);
+                    if (!sameCard && card != null) {
+                        maybeSpeak(TvEventPayload.speak(data.optString("speak", "")));
+                    }
                 }
             } else if ((subscription == SCOPED_ALERTS_ID || subscription == LIVE_EVENT_ID)
                     && TvEventPayload.LIVE_CAMERA.equals(eventType)) {
@@ -652,6 +676,7 @@ public final class TvEventsService extends Service {
                             "LIVE · Starting muted video…", entity,
                             TvEventPayload.liveDuration(data.optInt("duration_seconds", 90)),
                             true, header, fit, refresh);
+                    if (card != null) maybeSpeak(TvEventPayload.speak(data.optString("speak", "")));
                 }
             } else if ((subscription == SCOPED_ALERTS_ID || subscription == FORECAST_EVENT_ID)
                     && ForecastCard.EVENT.equals(eventType)) {
@@ -1213,6 +1238,7 @@ public final class TvEventsService extends Service {
     }
 
     private void hideCard() {
+        if (announcementSpeech != null) announcementSpeech.stop();
         main.removeCallbacks(dismiss);
         if (snapshotRefreshTask != null) main.removeCallbacks(snapshotRefreshTask);
         snapshotRefreshTask = null;
@@ -1243,6 +1269,7 @@ public final class TvEventsService extends Service {
         main.removeCallbacksAndMessages(null);
         clearConnectionTracking();
         hideCard();
+        if (announcementSpeech != null) { announcementSpeech.shutdown(); announcementSpeech = null; }
         if (socket != null) {
             socket.close(1000, "Receiver stopped");
             socket = null;
@@ -1257,5 +1284,15 @@ public final class TvEventsService extends Service {
         }
         stopForeground(STOP_FOREGROUND_REMOVE);
         super.onDestroy();
+    }
+
+    private void maybeSpeak(String phrase) {
+        if (phrase == null || phrase.isEmpty()) return;
+        OverlayPreferences prefs = new OverlayPreferences(this);
+        if (!prefs.spokenAnnouncements()) {
+            TvSpeechStatus.note("Spoken announcements are OFF");
+            return;
+        }
+        if (announcementSpeech != null) announcementSpeech.speak(phrase);
     }
 }

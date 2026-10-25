@@ -1,3 +1,5 @@
+**v0.16.11 owner-test status (2026-10-25):** Follow-up second question (8 sec), silence/mic indicator off and STOP, and local/HA-announced speech gain at 40% passed on the maintainer's onn 4K Pro. Camera direct dispatch succeeds while the alert receiver is connected; PS5LM/other model tool JSON and latency have been inconsistent (#39). More hardware QA needed for timers (#57), typed pairing (#69), Philips mic (#71) and Fire TV (#41). See [Install](INSTALL.md).
+
 # v0.16.5 community test checklist (issues #67–#71)
 
 **Public early test release.** The user-approved community update is published

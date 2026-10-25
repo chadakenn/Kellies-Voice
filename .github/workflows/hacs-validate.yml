@@ -8,7 +8,7 @@ on:
       - 'custom_components/kellies_voice/**'
       - '.github/workflows/hacs-validate.yml'
   push:
-    branches: [main]
+    branches: [main, dev]
     paths:
       - 'hacs.json'
       - 'info.md'

@@ -13,6 +13,10 @@
           "device_id": "TV pairing ID",
           "name": "TV name"
         }
+      },
+      "manual_confirm": {
+        "title": "Verify the TV pairing ID",
+        "description": "Manual pairing cannot verify that this TV is online. Compare this ID with the one shown on the TV under Kellie's Voice → Settings → Home Assistant layout → Show this TV's pairing ID: {pairing_id}. TV: {name}. If one character is wrong, actions may not reach the TV. Submit again only when the IDs match; otherwise go Back and correct the ID."
       }
     },
     "abort": {
@@ -141,6 +145,17 @@
         "device_id": {
           "name": "TV pairing ID",
           "description": "The pairing ID shown inside Kellie's Voice TV Settings (not HA's device registry ID). An accepted action means HA published the event, not proof that TV displayed it. Leave blank to send to every configured TV."
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Experimental native Assist timers",
+        "description": "OFF by default. Enable only for this paired TV when its Home Assistant Assist pipeline supplies the TV's HA registry device ID and routes phrases to native intents. TV countdowns and Home Assistant keep separate clocks; verify on hardware before relying on timers. Existing manual timer actions remain available. This does not enable the microphone.",
+        "data": {
+          "native_timer_intents": "Enable experimental native timers for this TV"
         }
       }
     }

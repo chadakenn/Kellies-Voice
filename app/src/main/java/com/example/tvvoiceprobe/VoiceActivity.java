@@ -68,8 +68,8 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
     private boolean transparentShortcut;
     private boolean initialConnectionRequested;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
-    // The voice and TV-alert WebSockets are independent. Refresh their
-    // status labels while the foreground Activity is open.
+    // TV alerts use a different WebSocket from Assist. Refresh the two visible
+    // states while this Activity is open, even when no voice event fires.
     private final Runnable connectionLabelRefresh = new Runnable() {
         @Override public void run() {
             updateConnectionLabel();
@@ -102,6 +102,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                 TvEventsRecovery.note(TvEventsRecovery.STOPPED);
             }
         }
+        // These independent connections can diverge after Home Assistant restarts.
         mainHandler.removeCallbacks(connectionLabelRefresh);
         if (!transparentShortcut && connection != null) {
             mainHandler.post(connectionLabelRefresh);
@@ -137,18 +138,26 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         assist = new HaAssistClient(this, this);
         updater = new UpdateManager(this, new UpdateManager.Listener() {
             @Override public void onUpToDate(String message) {
-                rememberUpdateCheck();
+                if (UpdateChannel.allowsAutomaticCheck(new OverlayPreferences(VoiceActivity.this).updateChannel())) {
+                    rememberUpdateCheck();
+                }
                 if (manualUpdateCheck) status(message);
                 manualUpdateCheck = false;
             }
             @Override public void onAvailable(String version, String notes) {
-                rememberUpdateCheck();
+                boolean development = UpdateChannel.DEVELOPMENT.equals(
+                        new OverlayPreferences(VoiceActivity.this).updateChannel());
+                if (!development) rememberUpdateCheck();
                 manualUpdateCheck = false;
                 if (isFinishing() || isDestroyed()) return;
+                String shown = notes == null ? "" : notes.substring(0, Math.min(notes.length(), 700));
                 new AlertDialog.Builder(VoiceActivity.this)
-                        .setTitle("Kellie's Voice update available: " + version)
-                        .setMessage("Download the signed update from GitHub Releases?\n\n" +
-                                (notes == null ? "" : notes.substring(0, Math.min(notes.length(), 700))))
+                        .setTitle(development
+                                ? "Development update available: " + version
+                                : "Kellie's Voice update available: " + version)
+                        .setMessage(development
+                                ? "Download this published development prerelease? It is not a stable release.\n\n" + shown
+                                : "Download the signed update from GitHub Releases?\n\n" + shown)
                         .setNegativeButton("Later", null)
                         .setPositiveButton("Download update", (dialog, choice) -> {
                             status("Downloading verified update...");
@@ -243,7 +252,8 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
             long now = System.currentTimeMillis();
             android.content.SharedPreferences checks =
                     getSharedPreferences("tv_voice_update_checks", MODE_PRIVATE);
-            if (now - checks.getLong("last_checked", 0) >= 24L * 60 * 60 * 1000) {
+            if (UpdateChannel.allowsAutomaticCheck(new OverlayPreferences(this).updateChannel())
+                    && now - checks.getLong("last_checked", 0) >= 24L * 60 * 60 * 1000) {
                 root.post(() -> updater.check());
             }
         }
@@ -523,15 +533,20 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                 "Hardware microphone diagnostics",
                 "Microphone sensitivity: " + OverlayPreferences.noiseLabel(
                         new OverlayPreferences(this).noise()),
-                "Mic input detection: " + (new OverlayPreferences(this).allowUnverifiedMic()
+                "Follow-up listening: " + followUpLabel(),
+                "Mic input detection: " + (new OverlayPreferences(this).microphoneDisabled()
+                        ? "Microphone DISABLED" : new OverlayPreferences(this).allowUnverifiedMic()
                         ? "Override ON" : "Safe checks ON"),
                 "Open floating voice overlay",
                 "Overlay appearance & position",
                 "Home Assistant layout: " + (new OverlayPreferences(this).haManage() ? "ON" : "OFF"),
                 "TV announcements & cameras: " + (new OverlayPreferences(this).tvEvents() ? "ON" : "OFF"),
+                "Spoken announcements: " + (new OverlayPreferences(this).spokenAnnouncements() ? "ON" : "OFF"),
+                "Announcement voice volume: " + new OverlayPreferences(this).spokenAnnouncementVolume() + "%",
+                "Test spoken announcements locally",
                 "TV alert status",
                 "Live camera: " + LiveCameraMode.label(new OverlayPreferences(this).cameraMode()),
-                "Check for app updates",
+                "Check for app updates: " + updateChannelLabel(),
                 "Install downloaded update",
                 "Forget saved connection"
         };
@@ -544,23 +559,69 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                         case 2: newConversation(); break;
                         case 3: startActivity(new Intent(this, MainActivity.class)); break;
                         case 4: chooseMicSensitivity(); break;
-                        case 5: chooseMicrophoneDetection(); break;
-                        case 6: launchOverlay(); break;
-                        case 7: showOverlayPreferences(); break;
-                        case 8: chooseHaLayout(); break;
-                        case 9: chooseTvNotifications(); break;
-                        case 10: showTvAlertStatus(); break;
-                        case 11: chooseCameraMode(); break;
-                        case 12:
-                            manualUpdateCheck = true;
-                            status("Checking GitHub Releases...");
-                            updater.check();
-                            break;
-                        case 13: promptInstallUpdate(); break;
-                        case 14: confirmForget(); break;
+                        case 5: chooseFollowUp(); break;
+                        case 6: chooseMicrophoneDetection(); break;
+                        case 7: launchOverlay(); break;
+                        case 8: showOverlayPreferences(); break;
+                        case 9: chooseHaLayout(); break;
+                        case 10: chooseTvNotifications(); break;
+                        case 11: toggleSpokenAnnouncements(); break;
+                        case 12: chooseAnnouncementVolume(); break;
+                        case 13: testSpokenAnnouncements(); break;
+                        case 14: showTvAlertStatus(); break;
+                        case 15: chooseCameraMode(); break;
+                        case 16: chooseUpdates(); break;
+                        case 17: promptInstallUpdate(); break;
+                        case 18: confirmForget(); break;
                         default: break;
                     }
                 });
+    }
+
+    private void chooseAnnouncementVolume() {
+        OverlayPreferences prefs = new OverlayPreferences(this);
+        int[] levels = SpeechVolume.levels();
+        String[] choices = new String[levels.length];
+        for (int i = 0; i < levels.length; i++) {
+            choices[i] = (prefs.spokenAnnouncementVolume() == levels[i] ? "✓  " : "     ")
+                    + levels[i] + "%";
+        }
+        showCopperMenu("TV ALERTS  ✦  VOICE VOLUME",
+                "Adjust only spoken TV announcements. This does not change " +
+                        "YouTube, media volume, timers, or assistant replies. " +
+                        "Choose a level, then use Test spoken announcements locally to hear it.",
+                choices, which -> {
+                    if (which < 0 || which >= levels.length) return;
+                    prefs.setSpokenAnnouncementVolume(levels[which]);
+                    status("Announcement voice volume: " + prefs.spokenAnnouncementVolume() + "%");
+                    showSettingsMenu();
+                });
+    }
+
+    private void testSpokenAnnouncements() {
+        OverlayPreferences prefs = new OverlayPreferences(this);
+        if (!prefs.tvEvents() || !prefs.spokenAnnouncements()) {
+            status("Enable TV alerts and Spoken announcements before this local test.");
+            showSettingsMenu();
+            return;
+        }
+        try {
+            startForegroundService(new Intent(this, TvEventsService.class)
+                    .setAction(TvEventsService.ACTION_TEST_SPOKEN));
+            status("Local speech test requested. Check TV sound and TV alert status.");
+        } catch (RuntimeException ignored) {
+            status("Android could not start the TV alert speech self-test.");
+        }
+        showSettingsMenu();
+    }
+
+    private void toggleSpokenAnnouncements() {
+        OverlayPreferences prefs = new OverlayPreferences(this);
+        prefs.setSpokenAnnouncements(!prefs.spokenAnnouncements());
+        status(prefs.spokenAnnouncements()
+                ? "Spoken announcements enabled for alerts with a speak sentence."
+                : "Spoken announcements disabled. Text popups remain active.");
+        showSettingsMenu();
     }
 
     private void chooseHaLayout() {
@@ -702,6 +763,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                 Settings.canDrawOverlays(this), signedIn, TvEventsRecovery.runtime());
         String diagnostic = TvEventsRecovery.diagnostics();
         if (!diagnostic.isEmpty()) message += "\n\nLast receiver activity: " + diagnostic;
+        message += "\n\nLast spoken alert: " + TvSpeechStatus.latest();
         AlertDialog.Builder dialog = new AlertDialog.Builder(this)
                 .setTitle("TV alert status")
                 .setMessage(message + "\n\nThis does not start the microphone. "
@@ -734,16 +796,27 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
     private void chooseMicrophoneDetection() {
         OverlayPreferences prefs = new OverlayPreferences(this);
         boolean bypass = prefs.allowUnverifiedMic();
+        boolean disabled = prefs.microphoneDisabled();
         showCopperMenu("SETTINGS  ✦  MICROPHONE ROUTING",
-                "Safe checks prevent TALK from recording TV audio instead of speech. "
-                        + "Some Android TVs expose only a remote submix, not a mic.",
+                "Some TVs advertise a phantom built-in microphone or an echo "
+                        + "reference that cannot capture speech. If your TV has "
+                        + "no accessible microphone, disable capture here. "
+                        + "The existing compatibility override cannot bypass this block.",
                 new String[] {
+                        disabled ? "✓  Microphone DISABLED on this TV (re-enable)"
+                                : "Disable microphone capture on this TV",
                         bypass ? "Turn compatibility override OFF (recommended)"
                                 : "Try unverified microphone (compatibility override)",
                         "Open microphone diagnostics",
                         "Back to Settings"
                 }, which -> {
                     if (which == 0) {
+                        prefs.setMicrophoneDisabled(!disabled);
+                        status(disabled
+                                ? "Microphone capture re-enabled. Normal route checks apply."
+                                : "Microphone capture disabled on this TV. No Assist audio will start.");
+                        showSettingsMenu();
+                    } else if (which == 1) {
                         if (bypass) {
                             prefs.setAllowUnverifiedMic(false);
                             status("Microphone input checks enabled.");
@@ -754,7 +827,8 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                                     .setMessage("Only use this if your TV's audio-device list is wrong. "
                                             + "It cannot unlock Google/Alexa remote microphones. "
                                             + "An unusable input may still record silence; "
-                                            + "turn this off after testing.")
+                                            + "turn this off after testing. A manual microphone "
+                                            + "disable always takes priority.")
                                     .setNegativeButton("Cancel", (dialog, w) -> showSettingsMenu())
                                     .setPositiveButton("Try anyway", (dialog, w) -> {
                                         prefs.setAllowUnverifiedMic(true);
@@ -762,7 +836,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                                         showSettingsMenu();
                                     }).show();
                         }
-                    } else if (which == 1) {
+                    } else if (which == 2) {
                         startActivity(new Intent(this, MainActivity.class));
                     } else {
                         showSettingsMenu();
@@ -787,6 +861,71 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                     prefs.setNoise(values[which]);
                     pushLayout(HaLayout.NOISE);
                     status("Microphone sensitivity: " + OverlayPreferences.noiseLabel(prefs.noise()));
+                    showSettingsMenu();
+                });
+    }
+
+    private String updateChannelLabel() {
+        return UpdateChannel.DEVELOPMENT.equals(new OverlayPreferences(this).updateChannel())
+                ? "Development" : "Stable";
+    }
+
+    private void chooseUpdates() {
+        OverlayPreferences prefs = new OverlayPreferences(this);
+        boolean development = UpdateChannel.DEVELOPMENT.equals(prefs.updateChannel());
+        showCopperMenu("SETTINGS  ✦  APP UPDATES",
+                "Stable is the normal public release. Development looks only for a published prerelease and never checks by itself. "
+                        + "Neither choice uses a token. A signed Actions artifact is not an in-app update. "
+                        + "Android cannot install an older stable build over a newer development build.",
+                new String[] {
+                        development ? "✓  Development prereleases" : "     Development prereleases",
+                        development ? "     Stable public releases" : "✓  Stable public releases",
+                        "Check now",
+                        "Back to Settings"
+                }, which -> {
+                    if (which == 0 && !development) {
+                        prefs.setUpdateChannel(UpdateChannel.DEVELOPMENT);
+                        updater.clearOffer();
+                        status("Development updates on. Choose Check now. Nothing downloads until you say so.");
+                    } else if (which == 1 && development) {
+                        prefs.setUpdateChannel(UpdateChannel.STABLE);
+                        updater.clearOffer();
+                        status("Stable updates on. A newer stable release can replace this build. An older one cannot.");
+                    } else if (which == 2) {
+                        manualUpdateCheck = true;
+                        status(development
+                                ? "Checking published development prereleases..."
+                                : "Checking GitHub Releases...");
+                        updater.check();
+                    }
+                    showSettingsMenu();
+                });
+    }
+
+    private String followUpLabel() {
+        OverlayPreferences prefs = new OverlayPreferences(this);
+        if (!prefs.followUp()) return "OFF";
+        return "ON, " + prefs.followUpSeconds() + " seconds";
+    }
+
+    private void chooseFollowUp() {
+        OverlayPreferences prefs = new OverlayPreferences(this);
+        showCopperMenu("SETTINGS  ✦  FOLLOW-UP",
+                "After Julia finishes speaking, listen for another question. This stays off until you turn it on here.",
+                new String[] {
+                        "Off",
+                        "On, stop after 5 seconds of silence",
+                        "On, stop after 8 seconds of silence",
+                        "On, stop after 10 seconds of silence",
+                        "On, stop after 15 seconds of silence"
+                }, which -> {
+                    if (which == 0) prefs.setFollowUp(false);
+                    else {
+                        prefs.setFollowUp(true);
+                        prefs.setFollowUpSeconds(which == 1 ? 5 : which == 2 ? 8 : which == 3 ? 10 : 15);
+                    }
+                    pushLayout(HaLayout.FOLLOW_TIMEOUT);
+                    status("Follow-up listening: " + followUpLabel());
                     showSettingsMenu();
                 });
     }
@@ -1106,9 +1245,15 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
     }
 
     private void startTalk() {
-        if (assist != null && !assist.isConnected()) {
-            assist.ensureConnected();
-            status("Reconnecting to Home Assistant. Try TALK when connected.");
+        if (assist == null || !assist.isConnected()) {
+            if (assist != null && assist.canReconnect()) {
+                assist.ensureConnected();
+                // Full-screen TALK is not queued. Explicit consent must be renewed
+                // after authentication, unlike the short-lived overlay request.
+                status(AssistReadinessPolicy.waitingForConnection());
+            } else {
+                status("Home Assistant is not connected. Check login in SETTINGS.");
+            }
             return;
         }
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {

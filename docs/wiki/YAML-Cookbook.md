@@ -29,6 +29,8 @@ data:
 ```
 
 **Expected result:** a short text popup appears on the TV(s).  
+
+**Development draft only:** After PR #104 is reviewed and installed in matching Android/HACS builds, enable **Settings → Spoken announcements** and optionally add `speak: The washer is finished.` to the announcement above. Omit `speak` to remain silent. This is not available in the public stable release yet.
 **Troubleshooting:** confirm **TV announcements & cameras** is ON and the alert receiver is connected (see [Resume TV alerts](Troubleshooting.md#resume-tv-alerts-exact-steps)).
 
 ## Snapshot camera
@@ -46,6 +48,8 @@ data:
   # image_fit: fit
   # refresh_seconds: 3
 ```
+
+**Development draft only:** After a matching reviewed build of PR #104, add `speak: Someone is at the door.` directly to `show_camera` or `show_live_camera` rather than calling a separate `announce` action. Speech occurs with the same camera popup and is optional; the default is quiet.
 
 **Expected result:** a still image popup. `image_fit: fit` shows the whole frame; `refresh_seconds` updates the still periodically (not live video).
 

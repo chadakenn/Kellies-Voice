@@ -1,3 +1,5 @@
+**Now available: [v0.16.11](https://github.com/chadakenn/Kellies-Voice/releases/tag/v0.16.11)** with optional follow-up listening and spoken alert volume verified on onn 4K Pro. [Install the matching TV APK + HACS integration](Getting-Started.md), then see [Voice and Timers](Voice-and-Timers.md). Alternate TVs and optional native timer bridge still require testing.
+
 ![Kellie's Voice: Your home, your voice, your way](https://raw.githubusercontent.com/chadakenn/Kellies-Voice/main/docs/branding/kellies-voice-approved-banner.webp)
 
 # Kellie's Voice | Documentation

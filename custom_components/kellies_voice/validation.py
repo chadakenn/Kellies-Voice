@@ -118,6 +118,27 @@ def target_device_ids(requested, configured) -> list:
     return [chosen]
 
 
+def targets_with_receiver_feedback(requested, configured, active, observed) -> list:
+    """Reject a selected TV known to be offline, without breaking legacy-only setups.
+
+    Explicit services normally report that an event was fired even if the TV
+    never received it. If this HA session has seen a modern scoped receiver,
+    a selected, disconnected pairing ID should not silently succeed.
+
+    Legacy-only installations have no scoped receiver telemetry, so keep
+    their existing delivery semantics. Broadcast remains best-effort.
+    """
+    targets = target_device_ids(requested, configured)
+    explicitly_targeted = isinstance(requested, str) and bool(requested.strip())
+    if explicitly_targeted and observed and targets[0] not in active:
+        raise ValueError(
+            "The selected TV alert receiver is not connected. Check the TV "
+            "pairing ID in Kellie's Voice settings, then check its 'TV alert "
+            "receiver connected' sensor in Home Assistant. No event was sent."
+        )
+    return targets
+
+
 _WEATHER_ENTITY = re.compile(r"^weather\.[a-z0-9_]+$")
 
 
@@ -289,3 +310,15 @@ def _clean_line(value) -> str:
     if value is None:
         return ""
     return " ".join(str(value).split())
+
+def clean_speak(value) -> str:
+    """Return a short spoken sentence, or empty string if invalid/silent."""
+    if value is None or not isinstance(value, str):
+        return ""
+    text = " ".join(value.strip().split())
+    if not text or len(text) > 180:
+        return ""
+    lower = text.lower()
+    if "://" in lower or lower.startswith("http") or "www." in lower:
+        return ""
+    return text

@@ -4,7 +4,7 @@
 
 **Turn your Android TV into a Home Assistant voice companion, without turning your TV into a dashboard.**
 
-Kellie's Voice is a native Android TV / Google TV app with a companion **Home Assistant custom integration**. Talk to your Home Assistant Assist agent, see useful answers in a floating overlay, receive quiet smart-home announcements, and pop up security-camera views **over what you're already watching** when Android allows it.
+Kellie's Voice is a native Android TV / Google TV app with a companion **Home Assistant custom integration**. Talk to your Home Assistant Assist agent, see useful answers in a floating overlay, receive quiet smart-home announcements (optional spoken with audio ducking), and pop up security-camera views **over what you're already watching** when Android allows it.
 
 No replacement launcher, always-open browser tab, or separate AI server on the TV. Your existing Home Assistant setup does the thinking; Kellie's Voice handles the microphone, on-screen experience, and TV audio.
 
@@ -13,6 +13,16 @@ No replacement launcher, always-open browser tab, or separate AI server on the T
 > **Camera/announcement popups not arriving after standby or a Home Assistant restart?** On the TV, **open the Kellie's Voice app → SETTINGS → TV alert status → Resume TV alerts** (the *button inside the status pop-up*). You may need to scroll down in SETTINGS to find **TV alert status**. First enable **SETTINGS → TV announcements & cameras**; the Resume button appears only with that setting ON, a configured Home Assistant connection, and Android's **Display over other apps** permission. This restores the *alert receiver*, which is separate from **Connect / reconnect** for voice. See [TV-alert recovery troubleshooting](docs/TROUBLESHOOTING.md#tv-camera-or-announcement-popups-missing-find-resume-tv-alerts).
 
 **New to Kellie's Voice?** The [documentation home](docs/wiki/Home.md) has a guided first-install path, grouped feature guides, a [copy-and-paste YAML Cookbook](docs/wiki/YAML-Cookbook.md), and [step-by-step TV alert recovery](docs/wiki/Troubleshooting.md#resume-tv-alerts-exact-steps). These repository links work without a separately published GitHub Wiki. The [Wiki publishing guide](docs/WIKI_PUBLISHING.md) explains the owner-approved sync to the Wiki tab.
+
+## Latest: v0.16.11 (signed APK + matching HACS)
+
+[**Download signed v0.16.11 APK**](https://github.com/chadakenn/Kellies-Voice/releases/tag/v0.16.11) · [**Install both parts**](docs/INSTALL.md) · [**Release notes**](docs/releases/v0.16.11.md) · [**Community test guide**](docs/TESTING.md)
+
+**Hardware-confirmed on the maintainer's onn 4K Pro:** Optional **Follow-up listening** (locally enabled at 8 seconds) heard a second question after speech, expired silently with the mic indicator off, and stopped on STOP. Optional **spoken TV announcements** and the 40% announcement-volume setting were verified through both local speech and a real Home Assistant `kellies_voice.announce` action. Follow-up is OFF and silent text alerts remain the default.
+
+**Open community QA:** #39 camera voice reliability and disconnects, #57 optional native Assist timer bridge (OFF by default), #69 manual pairing, #71 Philips microphone inputs, #41 Fire TV, and #92 development-update option. Google remote mic takeover, hands-free wake words, actionable alert buttons and Frigate screensaver views are not released. Do not mistake CI green for full physical compatibility.
+
+**From signed dev.7:** Stable `versionCode 39` installs over `dev.7` `versionCode 38` without uninstalling. Update HACS to `0.16.11` separately, restart HA for integration changes, then reopen the TV app.
 
 ## Kellie's Voice vs. Julia: what's the difference?
 
@@ -37,7 +47,7 @@ Imagine you're watching YouTube and want to turn on the garage lights. Instead o
 | Move the assistant out of the way | Set voice-overlay position, size, appearance, auto-hide, and auto-listen from Home Assistant. |
 | Stay current | Check for a signed Android app update right inside Kellie's Voice. HACS updates its *separate* Home Assistant component. |
 
-**A key distinction:** automatic Frigate alerts currently show **still snapshots**, not live video. Live HLS streaming is a separate, **on-demand** feature, confirmed playing moving driveway **and doorbell** video on the onn 4K Pro in Android v0.16.1 (HA integration v0.16.0). Other cameras/devices remain unverified. Camera windows are Android overlays, not native system picture-in-picture. Announcements are **on-screen text**, not spoken TTS broadcasts.
+**A key distinction:** automatic Frigate alerts currently show **still snapshots**, not live video. Live HLS streaming is a separate, **on-demand** feature, confirmed playing moving driveway **and doorbell** video on the onn 4K Pro in Android v0.16.1 (HA integration v0.16.0). Other cameras/devices remain unverified. Camera windows are Android overlays, not native system picture-in-picture. Announcements are silent on-screen text by default, with optional `speak` and independent TTS volume in v0.16.11.
 
 ## See it in action 📸
 
@@ -115,7 +125,7 @@ The full camera script examples, including close and a 30 second view, are in [d
 
 ## Get started: install both parts
 
-**New testers:** follow the complete [v0.16.10 setup and hardware-testing checklist](docs/INSTALL.md), including TV permissions, HA connection, HACS pairing, and known limitations. The quick steps below are a short reference.
+**New testers:** follow the complete [v0.16.9 setup and hardware-testing checklist](docs/INSTALL.md), including TV permissions, HA connection, HACS pairing, and known limitations. The quick steps below are a short reference.
 
 The Android app and the HACS integration are **two different downloads**. You need both for Home Assistant-controlled overlay settings and camera announcements.
 
@@ -132,7 +142,7 @@ The Android app and the HACS integration are **two different downloads**. You ne
 [![Open Kellie's Voice in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=chadakenn&repository=Kellies-Voice&category=integration)
 
 1. If this is your first installation: **HACS → ⋮ → Custom repositories → Add**, paste `https://github.com/chadakenn/Kellies-Voice` and select **Integration**.
-2. Open Kellie's Voice in HACS and download the **matching v0.16.10 integration**. Restart Home Assistant.
+2. Open Kellie's Voice in HACS and download the **matching v0.16.9 integration**. Restart Home Assistant.
 3. Go to **Settings → Devices & services**, choose the discovered Kellie's Voice TV and add it. If mDNS discovery doesn't work, select **Add Integration → Kellie's Voice** and enter the ID shown under the TV app's **Settings → Home Assistant layout → Show this TV's pairing ID**.
 4. Open the registered TV device in Home Assistant. Configure voice-overlay position, size, style, auto-hide and auto-listen. You can now call the actions below.
 
@@ -232,15 +242,24 @@ On the device page, **Forecast source** is the weather entity used when a script
 | Tue 27 | ❄ | 42° / 31° | 40% |
 | Wed 28 | ☾ | 45° / 33° | — |
 
+**Development testing (#44):** The first voice query after a TV reboot can
+arrive before the Home Assistant voice WebSocket or Assist pipeline is ready.
+A dev-only candidate improves Connecting/Ready, pipeline and STT/agent/TTS
+diagnostics and expires a pending overlay request after 30 seconds instead
+of recording unexpectedly later. [QA checklist](docs/TESTING.md). This change
+is **not included in stable v0.16.10**.
+
 ## Project status and contributing
 
-### Current release: v0.16.10 (October 25, 2026)
+### Current release: v0.16.9 (October 24, 2026)
 
-**Latest public release: Android TV APK v0.16.10 (versionCode 31) and matching Home Assistant HACS integration v0.16.10.** This release fixes TV alert recovery following a Home Assistant Core restart: the TV retries its modern read-scoped WebSocket subscription while the HA integration is loading instead of falling into a permanently denied legacy event subscription. The receiver can diagnose safe retry stages in **Settings → TV alert status**, and the main screen independently reports voice and TV-alert connections. It does not automatically enable alerts or start the microphone.
+**Android TV APK v0.16.9 + matching Home Assistant integration v0.16.9 are publicly available.** New in v0.16.9: [#50](https://github.com/chadakenn/Kellies-Voice/pull/50) passes the TV's Home Assistant device-registry ID to Assist when layout sync is enabled so area-aware commands can use the TV's room; [#86](https://github.com/chadakenn/Kellies-Voice/pull/86) retries TV alert registration when Home Assistant's TV controls aren't ready yet instead of showing a permanent permission denial. Both changes require matching Android and HACS updates and **still need a real-TV restart/room-awareness retest**. Existing features include named countdowns and ringing alerts, seven-day weather, Aurora Glass, camera overlays and announcements. On the maintainer's onn 4K Pro, the countdown and chimes, Back-to-dismiss, forecast card, voice questions, and moving driveway/doorbell live camera popups have been tested. Named timer **voice** start/stop worked after the maintainer added Home Assistant automations, not with zero additional setup.
 
-**Physical validation:** signed **v0.16.10-dev.4** was installed over the previous version on the maintainer's onn 4K Pro. After Home Assistant restarts, the alert receiver returned without pressing Resume: **83 seconds while awake** and **74 seconds while the Google TV screensaver was active**. A fresh on-TV announcement was visibly confirmed in both modes. Other Android TV models and force-stop/reboot cases still need testing.
+**Experimental native TV timers (development only):** a separate, opt-in Home Assistant timer bridge is under review for the next batched test build. It remains OFF by default, cannot force Ollama or another LLM to choose Home Assistant's native timer intents, and still needs physical TV testing. See [Native Assist timer bridge](docs/TIMER_NATIVE_BRIDGE.md) or continue using the existing per-TV named timer script route in [Voice timers](docs/VOICE_TIMERS.md).
 
-**Known limitations:** Philips microphone detection still fails on some TVs (#71), generic timer speech may reach unsupported native HA timer intent (#57), and TV-specific audio/camera features need broader testing. Experimental follow-up listening, wake-word support, actionable announcement buttons, the Frigate screensaver dashboard and the in-app Development update channel are **not included in this stable release**. See [v0.16.10 release notes](docs/releases/v0.16.10.md).
+**Experimental opt-in follow-up listening (#43, development only):** After Kellie's *spoken answer finishes*, an optional 5/8/10/15-second listening window can capture another question without pressing TALK. Default is OFF; enable it on the TV in **Settings → Follow-up listening**. Home Assistant's **Follow-up silence** control may adjust the delay but cannot enable the TV microphone. The full Android microphone privacy/recorder-release behavior still needs device QA. See [test checklist](docs/TESTING.md); no script is required. This is **not** in a public stable APK yet.
+
+**Known limitations:** Philips microphone detection remains unresolved on some TVs despite the v0.16.8 allowlist change (#71); the new automatic TV alert reconnection after HA restart has not yet passed physical device retesting (#78); the timer alert **OK/Dismiss** fix still needs testing on other TVs (#54); ordinary timer phrases may invoke Home Assistant's unsupported native timer intent until routed to Kellie's Voice. Follow-up listening, wake-word support, and actionable announcement buttons are **not** included in this public release, even though draft PRs and test builds exist.
 
 For a complete **first-time installation and testing checklist**, start with **[Install Kellie's Voice: new testers](docs/INSTALL.md)**. Other Android/Google/Fire TV models, audio behavior, camera compatibility, and longer-running reliability especially need real tester reports. [Open a GitHub issue](https://github.com/chadakenn/Kellies-Voice/issues) with device model, app/HACS version, reproducible steps and redacted screenshots.
 
