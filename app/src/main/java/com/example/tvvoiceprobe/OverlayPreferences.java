@@ -61,6 +61,7 @@ public final class OverlayPreferences {
     private static final String KEY_SCREENSAVER_URL = "screensaver_dashboard_url";
     private static final String KEY_SCREENSAVER_CAMERAS = "screensaver_cameras";
     private static final String KEY_SCREENSAVER_SIZE = "screensaver_size";
+    private static final String KEY_SCREENSAVER_DESKTOP = "screensaver_desktop_page";
     private final SharedPreferences preferences;
 
     public OverlayPreferences(Context context) {
@@ -377,6 +378,15 @@ public final class OverlayPreferences {
 
     public void setScreensaverCameras(String value) {
         preferences.edit().putString(KEY_SCREENSAVER_CAMERAS, ScreensaverDashboard.cameras(value)).apply();
+    }
+
+    /** TV-first default. Switching off restores the original embedded mobile layout. */
+    public boolean screensaverDesktopPage() {
+        return preferences.getBoolean(KEY_SCREENSAVER_DESKTOP, true);
+    }
+
+    public void setScreensaverDesktopPage(boolean desktop) {
+        preferences.edit().putBoolean(KEY_SCREENSAVER_DESKTOP, desktop).apply();
     }
 
     /** Large matches the original full-screen dashboard. */

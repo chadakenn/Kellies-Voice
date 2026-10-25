@@ -3,6 +3,8 @@ package com.example.tvvoiceprobe;
 import java.net.URI;
 import java.util.LinkedHashSet;
 import java.util.Locale;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.Set;
 
 /**
@@ -45,6 +47,22 @@ public final class ScreensaverDashboard {
     }
 
     private ScreensaverDashboard() { }
+
+    /** Use the installed WebView Chrome version, without advertising an Android/mobile UI. */
+    public static String desktopUserAgent(String original) {
+        if (original == null) return "";
+        Matcher browser = Pattern.compile("Chrome/([0-9]+(?:\\.[0-9]+){1,3})").matcher(original);
+        if (!browser.find()) return original;
+        return "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 " +
+                "(KHTML, like Gecko) Chrome/" + browser.group(1) + " Safari/537.36";
+    }
+
+    /** Frigate uses a responsive viewport; request a TV-sized CSS viewport for its grid. */
+    public static String desktopViewportScript() {
+        return "(function(){var m=document.querySelector(\'meta[name=\\\"viewport\\\"]\');" +
+                "if(!m){m=document.createElement(\'meta\');m.name=\'viewport\';document.head.appendChild(m);}" +
+                "m.setAttribute(\'content\',\'width=1440, initial-scale=1\');})();";
+    }
 
     public static boolean showOverlay(boolean enabled, boolean dreaming, boolean dismissed,
             boolean ourDreamVisible, boolean overlayAllowed, boolean configured) {

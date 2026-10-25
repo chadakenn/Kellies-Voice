@@ -1,5 +1,9 @@
 # Kellie's Voice development and testing lane
 
+## v0.16.12-dev.3 / build 42: TV-size Frigate browser rendering
+
+A photo comparison found the Frigate webpage using a giant single-camera mobile layout on the onn TV while desktop Chrome on the laptop showed a live camera grid. The new **Frigate page layout → Desktop TV** (default, with **Automatic** fallback) requests a desktop Chromium user-agent based on the installed WebView, enables wide viewport and overview fit, then applies a wide CSS viewport on page load. Frigate page mode uses full-height WebView behind an overlay Close button. The authenticated Home Assistant snapshot grid is unchanged. Configure **Dashboard size → Large**, preview, verify actual camera streams and Back / Close on hardware. Signed development code **42** upgrades build 41 without uninstalling, and the matching HACS development manifest version is `0.16.12-dev.3`. This is still **not a public release**. Frigate group layouts are browser-local and might need initial TV arrangement.
+
 ## v0.16.12-dev.2 / build 41: Frigate screensaver configuration UI repair
 
 The previous signed dev.1 build had Frigate ON/OFF and Preview but no way to enter its URL or camera IDs. Dev.2 adds a dedicated **Settings → Frigate screensaver** menu with a validated local Frigate URL field, up to four real Home Assistant `camera.*` IDs, dashboard size, Android system screensaver chooser, and Preview. Clearing the URL selects the camera grid. Credentials and secret-bearing URLs are rejected. The matched HACS dev manifest is `0.16.12-dev.2` (no HACS behavior changes); signed Android versionCode **41** upgrades dev.1 code 40 without uninstalling or clearing pairing. **Owner real-TV QA still required**, do not release to stable `main` yet. See [Frigate setup](FRIGATE_SCREENSAVER.md) and [QA](TESTING.md).
