@@ -42,6 +42,34 @@ public class TvAlertConnectionPolicyTest {
         assertFalse(TvAlertConnectionPolicy.retryableSubscriptionError(null));
     }
 
+    @Test public void scopedCommandMissingDuringHaStartupRetriesBeforeLegacy() {
+        assertTrue(TvAlertConnectionPolicy.shouldRetryMissingScopedCommand("unknown_command", 0));
+        assertTrue(TvAlertConnectionPolicy.shouldRetryMissingScopedCommand("unknown_command", 4));
+        assertFalse(TvAlertConnectionPolicy.shouldRetryMissingScopedCommand("unknown_command", 5));
+        assertFalse(TvAlertConnectionPolicy.shouldRetryMissingScopedCommand("unauthorized", 0));
+        assertFalse(TvAlertConnectionPolicy.shouldRetryMissingScopedCommand("auth_invalid", 0));
+        assertFalse(TvAlertConnectionPolicy.shouldRetryMissingScopedCommand("unknown_command", -1));
+
+        // Older HACS supports a single compatibility fallback, not a
+        // repeated non-admin legacy subscription that permanently wedges TV alerts.
+        assertFalse(TvAlertConnectionPolicy.shouldTryLegacyFallback("unknown_command", 4, false));
+        assertTrue(TvAlertConnectionPolicy.shouldTryLegacyFallback("unknown_command", 5, false));
+        assertFalse(TvAlertConnectionPolicy.shouldTryLegacyFallback("unknown_command", 5, true));
+        assertFalse(TvAlertConnectionPolicy.shouldTryLegacyFallback("unauthorized", 5, false));
+        assertFalse(TvAlertConnectionPolicy.shouldTryLegacyFallback("auth_invalid", 5, false));
+        assertEquals(2_000L, TvAlertConnectionPolicy.missingScopedRetryDelayMs(0));
+        assertEquals(4_000L, TvAlertConnectionPolicy.missingScopedRetryDelayMs(1));
+        assertEquals(8_000L, TvAlertConnectionPolicy.missingScopedRetryDelayMs(2));
+        assertEquals(16_000L, TvAlertConnectionPolicy.missingScopedRetryDelayMs(3));
+        assertEquals(30_000L, TvAlertConnectionPolicy.missingScopedRetryDelayMs(4));
+        assertEquals(120_000L, TvAlertConnectionPolicy.missingScopedRetryDelayMs(5));
+        assertEquals(120_000L, TvAlertConnectionPolicy.missingScopedRetryDelayMs(999));
+        try {
+            TvAlertConnectionPolicy.missingScopedRetryDelayMs(-1);
+            fail("Negative attempts must be rejected");
+        } catch (IllegalArgumentException expected) { }
+    }
+
     @Test public void scopedPermissionDenialGetsFastThenSlowRechecks() {
         assertTrue(TvAlertConnectionPolicy.isScopedPermissionDenial("unauthorized"));
         assertFalse(TvAlertConnectionPolicy.isScopedPermissionDenial("not_allowed"));
