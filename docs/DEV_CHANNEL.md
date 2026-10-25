@@ -144,7 +144,7 @@ recovery.
 
 ### #69 targeted TV delivery feedback (experimental HACS fix)
 
-The v0.16.10 public release will publish HA events successfully even if the
+The v0.16.10 public release can accept HA events successfully even if the
 requested *configured* pairing ID is mistyped and no real TV subscribes to it.
 The existing scoped `TV alert receiver connected` diagnostic can show that
 a mispaired TV has never connected, but that status is not reflected in the
