@@ -278,10 +278,14 @@ public final class HaAssistClient {
             }
             if (id == currentRunId && !msg.optBoolean("success", false)) {
                 JSONObject error = msg.optJSONObject("error");
+                // A rejected run may never send run-end. Clear UI listening
+                // as well as audio state, so the TV does not get stuck.
+                stopForRunEnd();
+                events.processing();
                 events.status(AssistReadinessPolicy.assistError(
                         error == null ? "" : error.optString("code", ""),
                         error == null ? "" : error.optString("message", "")));
-                stopForRunEnd();
+                events.runEnded();
             }
             return;
         }
@@ -307,8 +311,10 @@ public final class HaAssistClient {
                 JSONObject runner = data.optJSONObject("runner_data");
                 int id = runner == null ? -1 : runner.optInt("stt_binary_handler_id", -1);
                 if (id < 0 || id > 255) {
-                    events.status("Assist did not provide a valid audio handler ID");
                     stopForRunEnd();
+                    events.processing();
+                    events.status("Assist did not provide a valid audio handler ID.");
+                    events.runEnded();
                     break;
                 }
                 handlerId = id;
@@ -368,9 +374,11 @@ public final class HaAssistClient {
                     events.runEnded();
                     break;
                 }
+                stopForRunEnd();
+                events.processing();
                 events.status(AssistReadinessPolicy.assistError(
                         data.optString("code", ""), data.optString("message", "")));
-                stopForRunEnd();
+                events.runEnded();
                 break;
             case "run-end":
                 boolean routeMissing = microphoneMissing;
