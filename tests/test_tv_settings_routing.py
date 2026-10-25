@@ -35,6 +35,8 @@ EXPECTED = [
     ("Live camera:", "chooseCameraMode"),
     ("Check for app updates:", "chooseUpdates"),
     ("Install downloaded update", "promptInstallUpdate"),
+    ("Frigate screensaver:", "toggleScreensaver"),
+    ("Preview Frigate dashboard", "startActivity"),
     ("Forget saved connection", "confirmForget"),
 ]
 
