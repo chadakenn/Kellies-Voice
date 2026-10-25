@@ -34,6 +34,24 @@ Updated historical milestone: **2026-10-20**. Device: maintainer's **onn 4K Pro 
 
 Distinguish what has actually worked on hardware from compiled features. A green build is **not** proof of behavior on a TV.
 
+## #71 development QA: Philips phantom microphone opt-out
+
+- [ ] Philips 55OLED856/12 / 65PUS8507/12 without real microphone:
+  Settings → Mic input detection → **Disable microphone capture on
+  this TV**. TALK must display the disabled message *without* opening
+  AudioRecord, starting Assist or falsely reporting LISTENING.
+- [ ] Enable **Try unverified microphone** while manually disabled.
+  The manual disable still blocks audio capture.
+- [ ] Re-enable microphone capture. Existing safe route checks resume.
+  With a genuine USB microphone installed, test spoken transcription.
+- [ ] On onn 4K Pro, manual disable defaults OFF and TALK/STOP/TTS
+  with the built-in microphone continue working.
+- [ ] Ensure the reversible device-local preference persists across
+  signed in-place updates, independently of HACS TV alert settings.
+
+**Workaround only:** this doesn't automatically detect a phantom
+microphone. Keep #71 open pending genuine Philips hardware testing.
+
 ## v0.13 Home Assistant disconnection recovery (pending TV test)
 
 - [ ] With saved credentials, launch full-screen Kellie's Voice and verify Home Assistant changes to connected **without selecting Reconnect**
