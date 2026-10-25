@@ -1,0 +1,60 @@
+name: Publish reviewed Kellie's Voice Wiki
+
+# This is a manual, owner-approved step, never a dev push side effect.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Select PUBLISH to sync the reviewed main-branch docs into the public GitHub Wiki'
+        type: choice
+        required: true
+        default: 'DO_NOT_PUBLISH'
+        options:
+          - DO_NOT_PUBLISH
+          - PUBLISH
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main' && inputs.confirm == 'PUBLISH'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: kellies-voice-public-wiki
+      cancel-in-progress: false
+    steps:
+      - name: Check out reviewed main
+        uses: actions/checkout@v4
+      - name: Validate all links and render Wiki URLs
+        run: python3 scripts/check_wiki_docs.py --render-wiki "$RUNNER_TEMP/wiki-rendered"
+      - name: Synchronize Wiki pages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # The Wiki is an independent Git repository. Its first page must
+          # be created in GitHub's Wiki tab before a GitHub Action can clone it.
+          AUTH="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          REMOTE="https://github.com/${GITHUB_REPOSITORY}.wiki.git"
+          if ! git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $AUTH" \
+                  clone --quiet "$REMOTE" "$RUNNER_TEMP/wiki-live"; then
+            echo "::error::Initialize the repository's Wiki via the GitHub Wiki tab (create a Home page) before publishing."
+            exit 1
+          fi
+          # Copy only maintained wiki sources; do not erase other wiki pages.
+          cp "$RUNNER_TEMP"/wiki-rendered/*.md "$RUNNER_TEMP/wiki-live/"
+          git -C "$RUNNER_TEMP/wiki-live" config user.name "github-actions[bot]"
+          git -C "$RUNNER_TEMP/wiki-live" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C "$RUNNER_TEMP/wiki-live" add -- '*.md'
+          if git -C "$RUNNER_TEMP/wiki-live" diff --cached --quiet; then
+            echo "Wiki already matches reviewed source; nothing to publish."
+            exit 0
+          fi
+          git -C "$RUNNER_TEMP/wiki-live" commit -m "Publish reviewed Kellie's Voice documentation from $GITHUB_SHA"
+          git -C "$RUNNER_TEMP/wiki-live" \
+              -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $AUTH" \
+              push origin HEAD
+      - name: Show published Wiki
+        run: echo "Open https://github.com/${GITHUB_REPOSITORY}/wiki and verify Home, Sidebar, Cookbook, and troubleshooting links."

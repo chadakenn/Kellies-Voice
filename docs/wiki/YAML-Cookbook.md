@@ -1,5 +1,9 @@
 # YAML Cookbook
 
+[← Documentation home](Home.md) · [Getting started](Getting-Started.md) · [YAML Cookbook](YAML-Cookbook.md) · [Troubleshooting](Troubleshooting.md)
+
+---
+
 Copy-and-paste Home Assistant examples for Kellie's Voice. All snippets use safe placeholders (`YOUR_TV_PAIRING_ID`, `camera.example_driveway`, `weather.home`, etc.). Replace them with your own entity IDs and the pairing ID shown on the TV under **Settings → Home Assistant layout → Show this TV's pairing ID**.
 
 **Where to put each snippet:**
@@ -25,7 +29,7 @@ data:
 ```
 
 **Expected result:** a short text popup appears on the TV(s).  
-**Troubleshooting:** confirm **TV announcements & cameras** is ON and the alert receiver is connected (see [Resume TV alerts](Troubleshooting#resume-tv-alerts)).
+**Troubleshooting:** confirm **TV announcements & cameras** is ON and the alert receiver is connected (see [Resume TV alerts](Troubleshooting.md#resume-tv-alerts-exact-steps)).
 
 ## Snapshot camera
 
@@ -130,7 +134,7 @@ sequence:
 
 ## Timers
 
-See also [Voice and Timers](Voice-and-Timers).
+See also [Voice and Timers](Voice-and-Timers.md).
 
 **Start** (required `device_id` and `duration_seconds`):
 
@@ -144,7 +148,7 @@ data:
   alert_phrase: Your pizza timer is finished.
 ```
 
-**Cancel** and **dismiss** examples are on the [Voice and Timers](Voice-and-Timers) page.
+**Cancel** and **dismiss** examples are on the [Voice and Timers](Voice-and-Timers.md) page.
 
 **Honest note on spoken timers:** native Home Assistant Assist may reply "this device doesn't support timers" because the generic timer intent is not automatically mapped to Kellie's Voice. Direct actions above work today. Optional custom sentence files or home-specific automations can route speech, but they are extra setup and must be scoped carefully if you have other Assist satellites. Do not claim timers work with no additional configuration.
 
@@ -171,3 +175,7 @@ Replace the entity ID with the one on your Kellie's Voice device page. The four 
 ## Validation notes
 
 All examples were checked against `custom_components/kellies_voice/services.yaml` for v0.16.9. Required fields are marked. Placeholders avoid any personal credentials, tokens, or real IPs. Test each action from Developer tools before relying on voice or automations.
+
+---
+
+[← All documentation](Home.md) · [Next: Troubleshooting →](Troubleshooting.md)
