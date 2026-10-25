@@ -68,6 +68,14 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
     private boolean transparentShortcut;
     private boolean initialConnectionRequested;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    // The voice and TV-alert WebSockets are independent. Refresh their
+    // status labels while the foreground Activity is open.
+    private final Runnable connectionLabelRefresh = new Runnable() {
+        @Override public void run() {
+            updateConnectionLabel();
+            mainHandler.postDelayed(this, 2_000L);
+        }
+    };
     private BroadcastReceiver overlayLaunchReceiver;
     private final Runnable overlayLaunchTimeout = () -> {
         stopListeningForOverlay();
@@ -93,6 +101,10 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
             } catch (RuntimeException ignored) {
                 TvEventsRecovery.note(TvEventsRecovery.STOPPED);
             }
+        }
+        mainHandler.removeCallbacks(connectionLabelRefresh);
+        if (!transparentShortcut && connection != null) {
+            mainHandler.post(connectionLabelRefresh);
         }
         // Reuse saved credentials without asking for a manual Reconnect click.
         // No microphone is activated here, just the authenticated socket.
@@ -399,9 +411,24 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
 
     private void updateConnectionLabel() {
         if (connection == null) return;
-        connection.setText(settings == null
-                ? "Home Assistant: not configured"
-                : "Home Assistant: " + settings.url + (assist.isConnected() ? "  ✓ connected" : "  (not connected)"));
+        String voice = settings == null ? "Home Assistant voice: not configured"
+                : "Home Assistant voice: " + settings.url
+                + (assist != null && assist.isConnected() ? "  ✓ connected" : "  (not connected)");
+        OverlayPreferences prefs = new OverlayPreferences(this);
+        String alert;
+        if (!prefs.tvEvents()) alert = "off";
+        else if (settings == null) alert = "configure Home Assistant";
+        else if (!Settings.canDrawOverlays(this)) alert = "overlay permission needed";
+        else {
+            String state = TvEventsRecovery.runtime();
+            if (TvEventsRecovery.CONNECTED.equals(state)) alert = "✓ connected";
+            else if (TvEventsRecovery.RECONNECTING.equals(state)) alert = "reconnecting";
+            else if (TvEventsRecovery.DENIED.equals(state)) alert = "permission denied (see TV alert status)";
+            else if (TvEventsRecovery.REJECTED.equals(state)) alert = "login rejected";
+            else if (TvEventsRecovery.UPDATE_HACS.equals(state)) alert = "check HACS version";
+            else alert = "not connected (see TV alert status)";
+        }
+        connection.setText(voice + "\nTV alerts: " + alert);
     }
 
     /**
@@ -673,6 +700,8 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         boolean signedIn = settings != null;
         String message = TvEventsRecovery.describe(prefs.tvEvents(),
                 Settings.canDrawOverlays(this), signedIn, TvEventsRecovery.runtime());
+        String diagnostic = TvEventsRecovery.diagnostics();
+        if (!diagnostic.isEmpty()) message += "\n\nLast receiver activity: " + diagnostic;
         AlertDialog.Builder dialog = new AlertDialog.Builder(this)
                 .setTitle("TV alert status")
                 .setMessage(message + "\n\nThis does not start the microphone. "
@@ -1198,6 +1227,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
     }
 
     @Override protected void onStop() {
+        mainHandler.removeCallbacks(connectionLabelRefresh);
         HaDiscovery.release(this);
         super.onStop();
     }

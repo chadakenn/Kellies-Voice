@@ -93,6 +93,7 @@ public final class TvEventsService extends Service {
             .build();
     private final Runnable reconnect = this::connect;
     private final Runnable connectionWatchdog = this::checkConnectionHealth;
+    private final Runnable recoveryMonitor = this::checkReceiverRecovery;
     private final Runnable dismiss = this::hideCard;
 
     private WindowManager windowManager;
@@ -125,6 +126,14 @@ public final class TvEventsService extends Service {
     // Kept separate from network failures: auth_ok resets failedAttempts
     // even if HA has not created this TV's alert-position select yet.
     private int notReadyAttempts;
+    // Separate from ordinary network retries; auth_ok must not reset this.
+    private int deniedAttempts;
+    // Persist across socket changes so a startup race never turns into a
+    // terminal legacy permission error for a non-admin TV user.
+    private int missingScopedAttempts;
+    private boolean legacyFallbackAttempted;
+    private int connectionAttempts;
+    private long nextReconnectAtMs = -1L;
     private int generation;
     private boolean alertsSubscribed;
     private boolean terminalAlertError;
@@ -169,6 +178,8 @@ public final class TvEventsService extends Service {
                 && (!credentials.url.equals(saved.url) || !credentials.token.equals(saved.token))) {
             main.removeCallbacks(reconnect);
             main.removeCallbacks(connectionWatchdog);
+            nextReconnectAtMs = -1L;
+            connectionAttempts = 0;
             if (socket != null) {
                 socket.cancel();
                 socket = null;
@@ -177,6 +188,9 @@ public final class TvEventsService extends Service {
             terminalAlertError = false;
             failedAttempts = 0;
             notReadyAttempts = 0;
+            deniedAttempts = 0;
+            missingScopedAttempts = 0;
+            legacyFallbackAttempted = false;
         }
         credentials = saved;
         try {
@@ -194,6 +208,8 @@ public final class TvEventsService extends Service {
             return START_NOT_STICKY;
         }
         stopping = false;
+        main.removeCallbacks(recoveryMonitor);
+        main.postDelayed(recoveryMonitor, 20_000L);
         if (timerOverlay == null) timerOverlay = new TimerOverlayController(this, windowManager);
         TvEventsRestartReceiver.clearResume(this);
         if (ACTION_PREVIEW.equals(action)) {
@@ -267,15 +283,51 @@ public final class TvEventsService extends Service {
         main.removeCallbacks(connectionWatchdog);
         WebSocket old = socket;
         socket = null;
+        nextReconnectAtMs = -1L;
         clearConnectionTracking();
         terminalAlertError = false;
         failedAttempts = 0;
         notReadyAttempts = 0;
+        deniedAttempts = 0;
+        missingScopedAttempts = 0;
+        legacyFallbackAttempted = false;
         if (old != null) old.cancel();
         if (stopping) return;
         TvEventsRecovery.note(TvEventsRecovery.RECONNECTING);
         connectionNotice("Reconnecting TV alert receiver");
         connect();
+    }
+
+    /** Retry on a new socket; late messages from the old one cannot alter state. */
+    private void retryAlertSubscription(WebSocket ws, long delay, String message) {
+        main.removeCallbacks(connectionWatchdog);
+        socket = null;
+        clearConnectionTracking();
+        ws.cancel();
+        TvEventsRecovery.note(TvEventsRecovery.RECONNECTING);
+        connectionNotice(message);
+        scheduleReconnect(delay);
+    }
+
+    /** All retry paths record a deadline, including when Android loses a callback. */
+    private void scheduleReconnect(long delayMs) {
+        main.removeCallbacks(reconnect);
+        nextReconnectAtMs = SystemClock.elapsedRealtime() + delayMs;
+        main.postDelayed(reconnect, delayMs);
+    }
+
+    private void checkReceiverRecovery() {
+        if (stopping) return;
+        long now = SystemClock.elapsedRealtime();
+        if (TvAlertConnectionPolicy.shouldMonitorReconnect(
+                new OverlayPreferences(this).tvEvents(), Settings.canDrawOverlays(this),
+                credentials != null, terminalAlertError, socket != null,
+                nextReconnectAtMs, now)) {
+            TvEventsRecovery.diagnostic("Recovery watchdog repairing an overdue retry");
+            connect();
+        }
+        // Keep watching even when the authenticated alert socket is absent.
+        main.postDelayed(recoveryMonitor, 20_000L);
     }
 
     private void scheduleConnectionWatchdog() {
@@ -322,10 +374,15 @@ public final class TvEventsService extends Service {
         main.removeCallbacks(reconnect);
         if (stopping || socket != null || terminalAlertError
                 || !new OverlayPreferences(this).tvEvents() || credentials == null) return;
+        nextReconnectAtMs = -1L;
+        connectionAttempts = Math.min(connectionAttempts + 1, 1_000_000);
+        TvEventsRecovery.diagnostic("Opening alert socket, attempt " + connectionAttempts);
         HttpUrl base = HttpUrl.parse(credentials.url);
         if (base == null || !(base.scheme().equals("http") || base.scheme().equals("https"))
                 || !base.username().isEmpty() || !base.password().isEmpty()) {
+            terminalAlertError = true;
             TvEventsRecovery.note(TvEventsRecovery.CHECK);
+            TvEventsRecovery.diagnostic("Saved Home Assistant address is invalid");
             connectionNotice("Check the Home Assistant connection in Settings");
             return;
         }
@@ -361,8 +418,8 @@ public final class TvEventsService extends Service {
         TvEventsRecovery.note(TvEventsRecovery.RECONNECTING);
         connectionNotice("Reconnecting to Home Assistant");
         long delay = TvAlertConnectionPolicy.retryDelayMs(failedAttempts++);
-        main.removeCallbacks(reconnect);
-        main.postDelayed(reconnect, delay);
+        TvEventsRecovery.diagnostic("Network reconnect scheduled in " + (delay / 1000L) + "s");
+        scheduleReconnect(delay);
     }
 
     private void handleMessage(WebSocket ws, String json) {
@@ -379,6 +436,7 @@ public final class TvEventsService extends Service {
                 terminalAlertError = true;
                 main.removeCallbacks(connectionWatchdog);
                 TvEventsRecovery.note(TvEventsRecovery.REJECTED);
+                TvEventsRecovery.diagnostic("Saved Home Assistant authentication rejected");
                 connectionNotice("Home Assistant rejected the saved login");
                 ws.close(1000, "Authentication rejected");
                 return;
@@ -418,35 +476,67 @@ public final class TvEventsService extends Service {
                     if (message.optBoolean("success", false)) {
                         alertsSubscribed = true;
                         notReadyAttempts = 0;
+                        deniedAttempts = 0;
+                        missingScopedAttempts = 0;
+                        legacyFallbackAttempted = false;
                         TvEventsRecovery.note(TvEventsRecovery.CONNECTED);
+                        TvEventsRecovery.diagnostic("Authorized alert subscription on attempt " + connectionAttempts);
                         connectionNotice("Connected, waiting for TV alerts");
                         TvEventsRestartReceiver.clearResume(this);
                     } else {
                         JSONObject error = message.optJSONObject("error");
                         String code = error == null ? "" : error.optString("code");
-                        if ("unknown_command".equals(code)) {
-                            // Compatibility with old HACS + an admin TV account.
-                            // Non-admin users receive a clear denial instead.
+                        if (TvAlertConnectionPolicy.shouldRetryMissingScopedCommand(
+                                code, missingScopedAttempts)) {
+                            int attempt = missingScopedAttempts++;
+                            long delay = TvAlertConnectionPolicy.missingScopedRetryDelayMs(attempt);
+                            TvEventsRecovery.diagnostic("Scoped command not registered yet; retry "
+                                    + (attempt + 1) + " in " + (delay / 1000L) + "s");
+                            retryAlertSubscription(ws, delay,
+                                    "Waiting for Kellie's Voice integration to finish loading");
+                        } else if (TvAlertConnectionPolicy.shouldTryLegacyFallback(
+                                code, missingScopedAttempts, legacyFallbackAttempted)) {
+                            // Genuine older HACS installations may still allow admin
+                            // access to legacy events. Try this ONCE after a startup
+                            // grace period; never mistake denied legacy access for
+                            // a permanent failure of the modern scoped command.
+                            legacyFallbackAttempted = true;
+                            TvEventsRecovery.diagnostic("Scoped command still missing; checking legacy compatibility");
                             subscribeLegacy(ws);
+                        } else if ("unknown_command".equals(code)) {
+                            // A non-admin user cannot subscribe to legacy events.
+                            // Retry modern, separately authorized access when
+                            // HA finishes registering the integration.
+                            TvEventsRecovery.diagnostic("Scoped command unavailable; recheck in 120s");
+                            retryAlertSubscription(ws,
+                                    TvAlertConnectionPolicy.PERMISSION_RECHECK_MS,
+                                    "Rechecking Kellie's Voice HACS command");
+                            TvEventsRecovery.note(TvEventsRecovery.UPDATE_HACS);
                         } else if (TvAlertConnectionPolicy.retryableSubscriptionError(code)) {
-                            // A paired TV's HA select can lag behind WebSocket
-                            // authentication during HA startup. Retry only this
-                            // specific server code, never genuine read denials.
-                            main.removeCallbacks(connectionWatchdog);
-                            socket = null;
-                            clearConnectionTracking();
-                            ws.cancel();
-                            TvEventsRecovery.note(TvEventsRecovery.RECONNECTING);
-                            connectionNotice("Waiting for Home Assistant TV controls");
-                            main.removeCallbacks(reconnect);
-                            main.postDelayed(reconnect,
-                                    TvAlertConnectionPolicy.retryDelayMs(notReadyAttempts++));
-                        } else if ("unauthorized".equals(code) || "not_allowed".equals(code)) {
+                            TvEventsRecovery.diagnostic("TV controls not ready; retry " + (notReadyAttempts + 1));
+                            // The paired TV's HA controls might not exist yet.
+                            retryAlertSubscription(ws,
+                                    TvAlertConnectionPolicy.retryDelayMs(notReadyAttempts++),
+                                    "Waiting for Home Assistant TV controls");
+                        } else if (TvAlertConnectionPolicy.isScopedPermissionDenial(code)) {
+                            int attempt = deniedAttempts;
+                            deniedAttempts = Math.min(deniedAttempts + 1,
+                                    TvAlertConnectionPolicy.MAX_TRANSIENT_DENIAL_RETRIES);
+                            long delay = TvAlertConnectionPolicy.scopedDenialRetryDelayMs(attempt);
+                            TvEventsRecovery.diagnostic("Scoped unauthorized, retry " +
+                                    (attempt + 1) + " in " + (delay / 1000L) + "s");
+                            retryAlertSubscription(ws, delay, "Rechecking TV alert connection");
+                            if (attempt >= TvAlertConnectionPolicy.MAX_TRANSIENT_DENIAL_RETRIES) {
+                                TvEventsRecovery.note(TvEventsRecovery.DENIED);
+                            }
+                        } else if ("not_allowed".equals(code)) {
+                            TvEventsRecovery.diagnostic("Server reported terminal not_allowed");
                             terminalAlertError = true;
                             main.removeCallbacks(connectionWatchdog);
                             TvEventsRecovery.note(TvEventsRecovery.DENIED);
                             connectionNotice("TV alert permissions denied; check TV alert status");
                         } else {
+                            TvEventsRecovery.diagnostic("Unexpected alert subscription response");
                             terminalAlertError = true;
                             main.removeCallbacks(connectionWatchdog);
                             TvEventsRecovery.note(TvEventsRecovery.UPDATE_HACS);
@@ -460,10 +550,13 @@ public final class TvEventsService extends Service {
                     if (!message.optBoolean("success", false)) legacyDenied = true;
                     if (--legacyPending <= 0) {
                         if (legacyDenied) {
-                            terminalAlertError = true;
-                            main.removeCallbacks(connectionWatchdog);
-                            TvEventsRecovery.note(TvEventsRecovery.DENIED);
-                            connectionNotice("TV alert permissions denied; update HACS");
+                            // Legacy subscribe_events is admin-only. A denial
+                            // does not revoke this user's modern scoped TV access.
+                            TvEventsRecovery.diagnostic("Legacy events denied; rechecking scoped command in 120s");
+                            retryAlertSubscription(ws,
+                                    TvAlertConnectionPolicy.PERMISSION_RECHECK_MS,
+                                    "Waiting for scoped TV alerts after legacy denial");
+                            TvEventsRecovery.note(TvEventsRecovery.UPDATE_HACS);
                         } else {
                             alertsSubscribed = true;
                             TvEventsRecovery.note(TvEventsRecovery.CONNECTED);
@@ -597,8 +690,12 @@ public final class TvEventsService extends Service {
             }
         }
         if (legacyPending <= 0) {
+            // All legacy sends failed; try scoped authorization later.
+            // Do not let this transport failure wedge the receiver.
+            TvEventsRecovery.diagnostic("Legacy events unavailable; rechecking scoped command in 120s");
+            retryAlertSubscription(ws, TvAlertConnectionPolicy.PERMISSION_RECHECK_MS,
+                    "Checking for scoped TV alert support");
             TvEventsRecovery.note(TvEventsRecovery.UPDATE_HACS);
-            connectionNotice("Update Kellie's Voice HACS for TV alerts");
         }
     }
 

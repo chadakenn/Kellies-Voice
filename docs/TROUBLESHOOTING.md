@@ -25,6 +25,16 @@ retain its previously working built-in mic, normal TALK/STOP and overlay.
 
 ## TV camera or announcement popups missing? Find Resume TV alerts
 
+**v0.16.10 recovery candidate:** On the maintainer's onn 4K Pro, the
+modern scoped TV alert receiver reconnected automatically after two Home
+Assistant Core restart tests, including one with the Google TV screensaver
+active. Both tests also delivered a visible new text announcement. If your
+TV still gets stuck, open **TV alert status** and note **Last receiver
+activity** before trying Resume. This diagnostic is redacted and should
+never include a token, home address, or pairing ID. Automatic recovery on
+other device models remains unverified.
+
+
 The **voice/Assist connection and TV alert receiver are separate**. Even if
 TALK works and the main page says Connected, alerts and timers may not reach
 the TV after standby, an app update, or a Home Assistant reload.
