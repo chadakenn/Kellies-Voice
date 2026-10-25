@@ -40,11 +40,14 @@ class ForecastDeliveryTests(unittest.IsolatedAsyncioTestCase):
                      and node.name in ("configured_device_ids", "_saved_weather_entity",
                                        "_async_show_forecast", "_timer_target", "_async_start_timer",
                                        "_async_cancel_timer", "_async_dismiss_timers",
-                                       "_event_targets")]
+                                       "_async_announce", "_event_targets")]
         namespace = dict(vars(validation))
         namespace.update(HomeAssistant=object, ServiceCall=object,
                          ServiceValidationError=ValueError, DOMAIN=const.DOMAIN,
-                         EVENT_FORECAST=const.EVENT_FORECAST, time=time,
+                         EVENT_FORECAST=const.EVENT_FORECAST,
+                         EVENT_ANNOUNCEMENT=const.EVENT_ANNOUNCEMENT,
+                         DEFAULT_ANNOUNCE_SECONDS=const.DEFAULT_ANNOUNCE_SECONDS,
+                         time=time,
                          _LOGGER=logging.getLogger(__name__))
         self.presence = SimpleNamespace(seen={}, online=lambda device_id: False)
         namespace["tracker"] = lambda hass: self.presence
@@ -116,6 +119,35 @@ class ForecastDeliveryTests(unittest.IsolatedAsyncioTestCase):
                 "device_id": "living-room", "duration_seconds": 30,
             }))
         self.assertEqual("living-room", self.hass.bus.async_fire.call_args.args[1]["device_id"])
+
+    async def test_targeted_announcement_does_not_succeed_to_mistyped_id(self):
+        self.hass.config_entries.async_entries = lambda domain: [
+            SimpleNamespace(data={"device_id": "living-room"}),
+            SimpleNamespace(data={"device_id": "mistyped-id"}),
+        ]
+        self.presence.seen = {"living-room": "2026-10-25T12:00:00Z"}
+        self.presence.online = lambda device_id: device_id == "living-room"
+        with self.assertRaisesRegex(ValueError, "receiver is not connected"):
+            await self.timer_handlers["_async_announce"](
+                SimpleNamespace(hass=self.hass, data={
+                    "device_id": "mistyped-id",
+                    "title": "Door", "text": "Guest arrived",
+                }))
+        self.hass.bus.async_fire.assert_not_called()
+
+        await self.timer_handlers["_async_announce"](
+            SimpleNamespace(hass=self.hass, data={
+                "device_id": "living-room",
+                "title": "Door", "text": "Guest arrived",
+            }))
+        self.assertEqual(
+            (const.EVENT_ANNOUNCEMENT, {
+                "title": "Door",
+                "text": "Guest arrived",
+                "duration_seconds": const.DEFAULT_ANNOUNCE_SECONDS,
+                "device_id": "living-room",
+            }), self.hass.bus.async_fire.call_args.args
+        )
 
     async def test_unverified_legacy_and_broadcast_compatibility(self):
         self.hass.config_entries.async_entries = lambda domain: [
