@@ -46,6 +46,32 @@ Android will not accept a lower code as an in-place upgrade. The same
 package ID means dev and stable are **not** side-by-side apps. Keep the
 versionName visibly suffixed with `-dev` while on dev.
 
+### v0.16.10-dev.2: repeated HA startup authorization test
+
+On the owner's onn 4K Pro, v0.16.10-dev.1 still showed **TV alerts:
+permission denied** after Home Assistant restarted. The corresponding HA
+TV alert receiver sensor stayed OFF with `last_seen_since_ha_start: never`
+for over four minutes. The five fast authorization rechecks had expired,
+leaving manual Resume as the only recovery path.
+
+The next candidate, **v0.16.10-dev.2 / versionCode 28**, continues a
+low-frequency recheck every two minutes after the initial five tries.
+Each attempt still goes through Home Assistant's normal read permission
+verification; the app does not receive or replay events while access is
+denied. `auth_invalid` and unsupported HACS errors are still terminal.
+This is **unverified on real hardware** until tested after installing the
+new signed APK.
+
+**Hardware acceptance:** install v0.16.10-dev.2 over dev.1 without
+uninstalling, verify the version, start with the HA alert receiver ON,
+restart HA and **do not press Resume**. Watch the TV alert status and
+the HA `TV alert receiver connected` binary sensor until it comes back
+ON by itself, then send a fresh announcement and check that the TV shows
+it. Test real account permission denial separately: the app must never
+show Connected or accept announcements without HA approving the scoped
+subscription. If this remains disconnected for more than 10 minutes,
+capture the non-sensitive TV status and report it without exposing tokens.
+
 ## Home Assistant test integration
 
 Android and HACS are different deliveries. The Android dev artifact does
