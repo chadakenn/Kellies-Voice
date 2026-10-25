@@ -633,7 +633,7 @@ public final class TvEventsService extends Service {
                     showCard(
                         TvEventPayload.cleanText(data.optString("title", "Kellie's Voice"), 65),
                         body, null, duration);
-                    maybeSpeak(spoken);
+                    if (card != null) maybeSpeak(spoken);
                 }
             } else if ((subscription == SCOPED_ALERTS_ID || subscription == CAMERA_ID)
                     && TvEventPayload.CAMERA_POPUP.equals(eventType)) {
@@ -645,7 +645,15 @@ public final class TvEventsService extends Service {
                     boolean fit = TvEventPayload.fitWholeImage(data.optString("image_fit"));
                     int refresh = TvEventPayload.snapshotRefresh(
                             data.optInt("refresh_seconds", 0));
+                    // Repeat snapshot events refresh the same card without repeating its speech.
+                    boolean sameCard = cameraVisible && liveSurface == null && card != null
+                            && photo != null && entity.equals(snapshotEntity)
+                            && title.equals(snapshotTitle) && header == snapshotHeader
+                            && fit == snapshotFit;
                     showSnapshotCard(title, entity, duration, header, fit, refresh);
+                    if (!sameCard && card != null) {
+                        maybeSpeak(TvEventPayload.speak(data.optString("speak", "")));
+                    }
                 }
             } else if ((subscription == SCOPED_ALERTS_ID || subscription == LIVE_EVENT_ID)
                     && TvEventPayload.LIVE_CAMERA.equals(eventType)) {
@@ -658,6 +666,7 @@ public final class TvEventsService extends Service {
                             "LIVE · Starting muted video…", entity,
                             TvEventPayload.liveDuration(data.optInt("duration_seconds", 90)),
                             true, header, fit, refresh);
+                    if (card != null) maybeSpeak(TvEventPayload.speak(data.optString("speak", "")));
                 }
             } else if ((subscription == SCOPED_ALERTS_ID || subscription == FORECAST_EVENT_ID)
                     && ForecastCard.EVENT.equals(eventType)) {
