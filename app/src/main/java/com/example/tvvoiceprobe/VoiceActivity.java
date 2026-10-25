@@ -574,7 +574,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                         case 15: chooseCameraMode(); break;
                         case 16: chooseUpdates(); break;
                         case 17: promptInstallUpdate(); break;
-                        case 18: toggleScreensaver(); break;
+                        case 18: showScreensaverSettings(); break;
                         case 19: startActivity(new Intent(this, ScreensaverPreviewActivity.class)); break;
                         case 20: confirmForget(); break;
                         default: break;
@@ -1389,6 +1389,150 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         super.onDestroy();
     }
 
+    /** Configure the opt-in dashboard entirely on the TV. No HA or Frigate settings change. */
+    private void showScreensaverSettings() {
+        OverlayPreferences prefs = new OverlayPreferences(this);
+        String[] cameras = ScreensaverDashboard.cameraList(prefs.screensaverCameras());
+        showCopperMenu("SETTINGS  ✦  FRIGATE SCREENSAVER",
+                "Choose one view: a Frigate web page, or up to four Home Assistant camera " +
+                "snapshots. A saved Frigate URL takes priority; clear it to use the camera grid. " +
+                "No microphone is started.",
+                new String[] {
+                        prefs.screensaverDashboard() ? "Turn Frigate screensaver OFF" : "Turn Frigate screensaver ON",
+                        "Frigate web URL: " + (prefs.screensaverUrl().isEmpty() ? "Not set" : "Configured (edit / clear)"),
+                        "Home Assistant cameras: " + cameras.length + " configured (edit / clear)",
+                        "Dashboard size: " + ScreensaverDashboard.sizeLabel(prefs.screensaverSize()),
+                        "Choose Android screensaver",
+                        "Preview Frigate dashboard",
+                        "Back to Settings"
+                }, which -> {
+                    switch (which) {
+                        case 0: toggleScreensaver(); break;
+                        case 1: editScreensaverUrl(); break;
+                        case 2: editScreensaverCameras(); break;
+                        case 3: chooseScreensaverSize(); break;
+                        case 4: openAndroidScreensaverList(); break;
+                        case 5: startActivity(new Intent(this, ScreensaverPreviewActivity.class)); break;
+                        case 6: showSettingsMenu(); break;
+                        default: break;
+                    }
+                });
+    }
+
+    private EditText screensaverInput(String value, String hint, int inputType) {
+        EditText input = new EditText(this);
+        input.setSingleLine(true);
+        input.setInputType(inputType);
+        input.setHint(hint);
+        input.setText(value);
+        input.setSelection(input.getText().length());
+        return input;
+    }
+
+    private LinearLayout screensaverInputView(EditText input) {
+        LinearLayout form = new LinearLayout(this);
+        form.setOrientation(LinearLayout.VERTICAL);
+        int pad = Math.round(20 * getResources().getDisplayMetrics().density);
+        form.setPadding(pad, pad / 2, pad, pad / 2);
+        form.addView(input, new LinearLayout.LayoutParams(-1, -2));
+        return form;
+    }
+
+    private void editScreensaverUrl() {
+        OverlayPreferences prefs = new OverlayPreferences(this);
+        EditText input = screensaverInput(prefs.screensaverUrl(),
+                "http://frigate.local:5000/",
+                InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
+        new AlertDialog.Builder(this)
+                .setTitle("Frigate web page")
+                .setMessage("Enter your Frigate address on the local network. " +
+                        "Leave empty to use Home Assistant camera snapshots instead. " +
+                        "Never put passwords or tokens in this URL.")
+                .setView(screensaverInputView(input))
+                .setNegativeButton("Cancel", (d, w) -> showScreensaverSettings())
+                .setPositiveButton("Save", (d, w) -> {
+                    String typed = input.getText().toString().trim();
+                    String safe = ScreensaverDashboard.dashboardUrl(typed);
+                    if (!typed.isEmpty() && safe.isEmpty()) {
+                        new AlertDialog.Builder(this)
+                                .setTitle("Invalid Frigate URL")
+                                .setMessage("Use a full http:// or https:// address without a password or token.")
+                                .setPositiveButton("Edit again", (error, choice) -> editScreensaverUrl())
+                                .show();
+                        return;
+                    }
+                    prefs.setScreensaverUrl(safe);
+                    ScreensaverSignals.settingsChanged();
+                    showScreensaverSettings();
+                })
+                .show();
+    }
+
+    private void editScreensaverCameras() {
+        OverlayPreferences prefs = new OverlayPreferences(this);
+        EditText input = screensaverInput(prefs.screensaverCameras(),
+                "camera.driveway, camera.doorbell",
+                InputType.TYPE_CLASS_TEXT);
+        new AlertDialog.Builder(this)
+                .setTitle("Home Assistant camera entities")
+                .setMessage("Enter up to four real Home Assistant camera.* entity IDs, separated " +
+                        "by commas. Leave empty to clear the grid. These are snapshots, " +
+                        "not Frigate camera labels or RTSP URLs.")
+                .setView(screensaverInputView(input))
+                .setNegativeButton("Cancel", (d, w) -> showScreensaverSettings())
+                .setPositiveButton("Save", (d, w) -> {
+                    String typed = input.getText().toString().trim();
+                    String[] ids = typed.isEmpty() ? new String[0] : typed.split("[,\\s]+");
+                    boolean invalid = ids.length > ScreensaverDashboard.MAX_CAMERAS;
+                    for (String id : ids) {
+                        if (TvEventPayload.cameraEntity(id) == null) invalid = true;
+                    }
+                    if (invalid) {
+                        new AlertDialog.Builder(this)
+                                .setTitle("Check camera entity IDs")
+                                .setMessage("Enter one to four valid camera.* entity IDs. " +
+                                        "Find the exact IDs in Home Assistant -> Developer Tools -> States.")
+                                .setPositiveButton("Edit again", (error, choice) -> editScreensaverCameras())
+                                .show();
+                        return;
+                    }
+                    prefs.setScreensaverCameras(typed);
+                    ScreensaverSignals.settingsChanged();
+                    showScreensaverSettings();
+                })
+                .show();
+    }
+
+    private void chooseScreensaverSize() {
+        OverlayPreferences prefs = new OverlayPreferences(this);
+        final String[] sizes = {"small", "medium", "large"};
+        String[] labels = new String[sizes.length];
+        for (int i = 0; i < sizes.length; i++) {
+            labels[i] = (sizes[i].equals(prefs.screensaverSize()) ? "✓  " : "     ") +
+                    ScreensaverDashboard.sizeLabel(sizes[i]);
+        }
+        showCopperMenu("FRIGATE  ✦  DASHBOARD SIZE",
+                "Small leaves more TV content visible; Large fills the screen.",
+                labels, which -> {
+                    prefs.setScreensaverSize(sizes[which]);
+                    ScreensaverSignals.settingsChanged();
+                    showScreensaverSettings();
+                });
+    }
+
+    private void openAndroidScreensaverList() {
+        try {
+            startActivity(new Intent(Settings.ACTION_DREAM_SETTINGS));
+        } catch (Exception ignored) {
+            new AlertDialog.Builder(this)
+                    .setTitle("Android screensaver settings unavailable")
+                    .setMessage("Open the TV's Android Settings -> Display -> Screensaver and " +
+                            "choose Kellie's Voice Frigate if the firmware supports it.")
+                    .setPositiveButton("Back", (d, w) -> showScreensaverSettings())
+                    .show();
+        }
+    }
+
     private void toggleScreensaver() {
         OverlayPreferences prefs = new OverlayPreferences(this);
         boolean next = !prefs.screensaverDashboard();
@@ -1396,6 +1540,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         if (next) ScreensaverWatchService.startIfEnabled(this);
         else stopService(new Intent(this, ScreensaverWatchService.class)
                 .setAction(ScreensaverWatchService.ACTION_STOP));
-        showSettingsMenu();
+        ScreensaverSignals.settingsChanged();
+        showScreensaverSettings();
     }
 }
