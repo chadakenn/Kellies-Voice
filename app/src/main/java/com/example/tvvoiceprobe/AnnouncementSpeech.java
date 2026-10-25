@@ -4,6 +4,8 @@ import android.content.Context;
 import android.media.AudioAttributes;
 import android.media.AudioFocusRequest;
 import android.media.AudioManager;
+import android.os.Handler;
+import android.os.Looper;
 import android.speech.tts.TextToSpeech;
 import android.speech.tts.UtteranceProgressListener;
 
@@ -16,6 +18,8 @@ public final class AnnouncementSpeech {
     private final Context context;
     private final AudioManager audio;
     private final AnnouncementSpeechSession sessions = new AnnouncementSpeechSession();
+    private final Handler main = new Handler(Looper.getMainLooper());
+    private Runnable focusWatchdog;
     private TextToSpeech speaker;
     private AudioFocusRequest focusRequest;
     private boolean initialized;
@@ -37,6 +41,7 @@ public final class AnnouncementSpeech {
         if (!enabled || phrase == null || phrase.isEmpty()) return;
         int gen = sessions.begin();
         // Stop the old voice before acquiring focus for a new one.
+        cancelFocusWatchdog();
         if (speaker != null) {
             try { speaker.stop(); } catch (RuntimeException ignored) { }
         }
@@ -61,7 +66,12 @@ public final class AnnouncementSpeech {
             sessions.cancel();
             pendingText = null;
             pendingGeneration = -1;
+            cancelFocusWatchdog();
             releaseFocus();
+            if (speaker != null) {
+                try { speaker.shutdown(); } catch (RuntimeException ignored) { }
+                speaker = null; // Allow a fresh TTS initialization on the next event.
+            }
             return;
         }
         speakPending();
@@ -84,6 +94,7 @@ public final class AnnouncementSpeech {
                 @Override public void onStop(String id, boolean interrupted) { complete(gen, id); }
             });
             acquireFocus(gen);
+            scheduleFocusWatchdog(gen);
             // speak() may return ERROR without ever producing an onError callback.
             if (speaker.speak(phrase, TextToSpeech.QUEUE_FLUSH, null, utteranceId)
                     != TextToSpeech.SUCCESS) {
@@ -96,7 +107,7 @@ public final class AnnouncementSpeech {
 
     private synchronized void complete(int gen, String utteranceId) {
         if (!("kv-announce-" + gen).equals(utteranceId)) return;
-        if (sessions.finish(gen)) releaseFocus();
+        if (sessions.finish(gen)) { cancelFocusWatchdog(); releaseFocus(); }
     }
 
     private synchronized void fail(int gen) {
@@ -105,6 +116,22 @@ public final class AnnouncementSpeech {
             pendingGeneration = -1;
             pendingText = null;
         }
+    }
+
+    private void scheduleFocusWatchdog(int gen) {
+        cancelFocusWatchdog();
+        focusWatchdog = () -> {
+            synchronized (AnnouncementSpeech.this) {
+                if (sessions.isCurrent(gen)) stop();
+            }
+        };
+        // Engine callbacks are not guaranteed. A bounded timeout avoids permanent ducking.
+        main.postDelayed(focusWatchdog, 45_000L);
+    }
+
+    private void cancelFocusWatchdog() {
+        if (focusWatchdog != null) main.removeCallbacks(focusWatchdog);
+        focusWatchdog = null;
     }
 
     private void acquireFocus(int gen) {
@@ -144,6 +171,7 @@ public final class AnnouncementSpeech {
 
     public synchronized void stop() {
         sessions.cancel();
+        cancelFocusWatchdog();
         pendingText = null;
         pendingGeneration = -1;
         if (speaker != null) {
