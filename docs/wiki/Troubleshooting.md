@@ -26,7 +26,7 @@ It is **not** the neighboring **TV announcements & cameras** toggle and **not** 
 
 **In Home Assistant:** the paired TV's **TV alert receiver connected** diagnostic should become ON after a successful resume. This means the TV is subscribed — it does **not** guarantee that any particular popup already rendered. Send a **fresh** test announcement, camera, or timer. Events that occurred while the receiver was disconnected are **not** replayed.
 
-Manual Resume has been confirmed on an onn 4K Pro with v0.16.8. It is **not** proof that automatic recovery after standby works on every Philips device. Issue [#78](https://github.com/chadakenn/Kellies-Voice/issues/78) remains open for community testing.
+Manual Resume has been confirmed on an onn 4K Pro. With v0.16.9, a Home Assistant restart also reproduced a misleading permission-denied status while the receiver was actually disconnected. Pressing Resume restored it without changing account permissions. The original [issue #78](https://github.com/chadakenn/Kellies-Voice/issues/78) is closed, but follow-up automatic recovery work is being tested on the `dev` branch. This is **not** proof that reconnection works after standby on every device.
 
 ## Other common issues
 
