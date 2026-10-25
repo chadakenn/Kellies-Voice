@@ -5,6 +5,21 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 public class MicRoutePolicyTest {
+    @Test public void manualDisableOverridesPhantomBuiltInAndCompatibilityOverride() {
+        // The Philips sets list a phantom built-in microphone (type 15)
+        // even though AudioRecord does not capture real speech. Never assume
+        // a positive type alone confirms physical voice capture.
+        assertFalse(MicRoutePolicy.noUsableInputs(new int[] {
+                AudioDeviceInfo.TYPE_REMOTE_SUBMIX, AudioDeviceInfo.TYPE_BUILTIN_MIC
+        }));
+        assertTrue(MicRoutePolicy.manuallyBlocked(true, false));
+        assertTrue(MicRoutePolicy.manuallyBlocked(true, true));
+        assertFalse(MicRoutePolicy.manuallyBlocked(false, false));
+        assertFalse(MicRoutePolicy.manuallyBlocked(false, true));
+        assertTrue(MicRoutePolicy.MANUALLY_DISABLED_MESSAGE.contains("disabled"));
+        assertTrue(MicRoutePolicy.MANUALLY_DISABLED_MESSAGE.contains("re-enable"));
+    }
+
     @Test public void philipsEchoReferenceAndLineInAreNotSpeechMicrophones() {
         // Philips 65PUS8507/12 v0.16.5 report: Echo Reference In + line_in.
         // The echo-ref value is vendor/internal; unknown values must not grant mic.
