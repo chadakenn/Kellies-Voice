@@ -141,3 +141,12 @@ Alerts stay silent unless overlay permission is granted and the attached complet
 - [ ] Interrupt a ringing alert with other audio, then verify recovery and a later timer. Revoke overlay permission or hide/remove the completion window during chimes and speech: audio must stop; restore controls and verify safe resumption and Dismiss.
 - [ ] Test absent TTS engine/voice, muted alarm volume, HA/network loss, app force-stop, receiver disable, sleep and restart.
 - [ ] Confirm timers do not enable microphones, replace cameras/weather, or change release behavior.
+
+
+## Native Assist timer intents (Issue #57)
+
+Native "set a five-minute pizza timer" requires the TV to be registered as a
+Home Assistant timer-capable device. That registration is **not enabled** in
+this draft. See [TIMER_VOICE_ROUTING.md](TIMER_VOICE_ROUTING.md) for the
+architecture, the dual-ownership limitation, and the safe custom-sentence
+alternative that reuses the existing `kellies_voice.start_timer` action.
