@@ -6,7 +6,7 @@
 
 ## Text announcements
 
-Home Assistant can send quiet on-screen text popups with `kellies_voice.announce`. These are **not** spoken TTS broadcasts — they are visual only.
+Home Assistant can send quiet on-screen text popups with `kellies_voice.announce`. They remain **silent by default**. In v0.16.11, an optional short `speak` argument to `kellies_voice.announce` speaks a sentence through the TV. TV **Settings → Announcement voice volume** controls separate 20–100% spoken gain (60% default). The maintainer verified 40% sounded quieter in a local test and a real Home Assistant announcement on onn 4K Pro. Audio ducking and alternate devices still need physical verification.
 
 Example and placement notes are in the [YAML Cookbook](YAML-Cookbook.md#announcements).
 
