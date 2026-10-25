@@ -58,6 +58,17 @@ public final class TvAlertConnectionPolicy {
                 ? retryDelayMs(attempts) : PERMISSION_RECHECK_MS;
     }
 
+    /** A separate service watchdog may repair a missing delayed callback.
+     *  Never override user opt-out, Android overlay permission, invalid
+     *  credentials or other terminal authorization errors.
+     */
+    public static boolean shouldMonitorReconnect(boolean optedIn, boolean overlayAllowed,
+            boolean signedIn, boolean terminal, boolean hasSocket,
+            long nextAttemptAtMs, long nowMs) {
+        return optedIn && overlayAllowed && signedIn && !terminal && !hasSocket
+                && (nextAttemptAtMs < 0 || nowMs >= nextAttemptAtMs + 5_000L);
+    }
+
     public static long retryDelayMs(int attempts) {
         // Retain the old bounded retry schedule; avoid a shift overflow.
         return Math.min(30_000L, 2_000L << Math.min(4, Math.max(0, attempts)));
