@@ -1402,6 +1402,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                         "Frigate web URL: " + (prefs.screensaverUrl().isEmpty() ? "Not set" : "Configured (edit / clear)"),
                         "Home Assistant cameras: " + cameras.length + " configured (edit / clear)",
                         "Dashboard size: " + ScreensaverDashboard.sizeLabel(prefs.screensaverSize()),
+                        "Frigate page layout: " + (prefs.screensaverDesktopPage() ? "Desktop TV" : "Automatic"),
                         "Choose Android screensaver",
                         "Preview Frigate dashboard",
                         "Back to Settings"
@@ -1411,9 +1412,10 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                         case 1: editScreensaverUrl(); break;
                         case 2: editScreensaverCameras(); break;
                         case 3: chooseScreensaverSize(); break;
-                        case 4: openAndroidScreensaverList(); break;
-                        case 5: startActivity(new Intent(this, ScreensaverPreviewActivity.class)); break;
-                        case 6: showSettingsMenu(); break;
+                        case 4: toggleScreensaverDesktopPage(); break;
+                        case 5: openAndroidScreensaverList(); break;
+                        case 6: startActivity(new Intent(this, ScreensaverPreviewActivity.class)); break;
+                        case 7: showSettingsMenu(); break;
                         default: break;
                     }
                 });
@@ -1518,6 +1520,13 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                     ScreensaverSignals.settingsChanged();
                     showScreensaverSettings();
                 });
+    }
+
+    private void toggleScreensaverDesktopPage() {
+        OverlayPreferences prefs = new OverlayPreferences(this);
+        prefs.setScreensaverDesktopPage(!prefs.screensaverDesktopPage());
+        ScreensaverSignals.settingsChanged();
+        showScreensaverSettings();
     }
 
     private void openAndroidScreensaverList() {
