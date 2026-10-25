@@ -51,7 +51,6 @@ public class TvEventPayloadTest {
         assertEquals("abc", TvEventPayload.cleanText("abc", 10));
         assertEquals("abc", TvEventPayload.cleanText("abcdefg", 3));
     }
-}
 
     @Test
     public void speakRejectsUrlsAndLongText() {
@@ -63,3 +62,4 @@ public class TvEventPayloadTest {
         String longText = "a".repeat(181);
         assertEquals("", TvEventPayload.speak(longText));
     }
+}
