@@ -23,6 +23,7 @@ import android.view.WindowManager;
 public final class ScreensaverWatchService extends Service {
     static final String ACTION_START = "com.example.tvvoiceprobe.SCREENSAVER_START";
     static final String ACTION_STOP = "com.example.tvvoiceprobe.SCREENSAVER_STOP";
+    static final String ACTION_TEST_OVERLAY = "com.example.tvvoiceprobe.SCREENSAVER_TEST_OVERLAY";
     private static final String CHANNEL = "kellie_screensaver";
     private static final int NOTICE = 2244;
     private static final String DREAMING_STARTED = "android.intent.action.DREAMING_STARTED";
@@ -39,10 +40,12 @@ public final class ScreensaverWatchService extends Service {
             if (intent == null || intent.getAction() == null) return;
             if (DREAMING_STARTED.equals(intent.getAction())) {
                 dreaming = true;
+                ScreensaverWatchStatus.event("Android DREAMING_STARTED received");
                 ScreensaverSignals.screensaverStopped();
-                showIfWanted();
+                showIfWanted(false);
             } else if (DREAMING_STOPPED.equals(intent.getAction())) {
                 dreaming = false;
+                ScreensaverWatchStatus.event("Android DREAMING_STOPPED received");
                 long now = SystemClock.elapsedRealtime();
                 if (board != null && ScreensaverDashboard.keepAfterEarlyStop(shownAtMs, now)) return;
                 hide();
@@ -63,13 +66,15 @@ public final class ScreensaverWatchService extends Service {
 
     @Override public int onStartCommand(Intent intent, int flags, int startId) {
         startForeground(NOTICE, notice());
-        if (intent != null && ACTION_STOP.equals(intent.getAction())
+        if ((intent != null && ACTION_STOP.equals(intent.getAction()))
                 || !new OverlayPreferences(this).screensaverDashboard()) {
             hide();
+            ScreensaverWatchStatus.serviceRunning(false);
             stopForeground(STOP_FOREGROUND_REMOVE);
             stopSelf();
             return START_NOT_STICKY;
         }
+        ScreensaverWatchStatus.serviceRunning(true);
         windows = getSystemService(WindowManager.class);
         if (!registered) {
             IntentFilter filter = new IntentFilter();
@@ -83,20 +88,29 @@ public final class ScreensaverWatchService extends Service {
             registered = true;
             ScreensaverSignals.setListener(this::hideBecauseOurDream);
         }
-        return START_NOT_STICKY;
+        if (intent != null && ACTION_TEST_OVERLAY.equals(intent.getAction())) {
+            // Explicit local test, not evidence of an ambient-mode event.
+            showIfWanted(true);
+        }
+        // Survive service eviction only while the user has opted in.
+        return START_STICKY;
     }
 
     private void hideBecauseOurDream() {
         if (ScreensaverSignals.ourDream()) hide();
     }
 
-    private void showIfWanted() {
+    private void showIfWanted(boolean manualTest) {
         OverlayPreferences prefs = new OverlayPreferences(this);
         boolean configured = ScreensaverDashboard.configured(
                 prefs.screensaverUrl(), prefs.screensaverCameras());
-        if (!ScreensaverDashboard.showOverlay(prefs.screensaverDashboard(), dreaming,
-                ScreensaverSignals.dismissed(), ScreensaverSignals.ourDream(),
-                Settings.canDrawOverlays(this), configured)) {
+        boolean overlayAllowed = Settings.canDrawOverlays(this);
+        if (!ScreensaverDashboard.showOverlay(prefs.screensaverDashboard(), dreaming || manualTest,
+                manualTest ? false : ScreensaverSignals.dismissed(), ScreensaverSignals.ourDream(),
+                overlayAllowed, configured)) {
+            if (!overlayAllowed) ScreensaverWatchStatus.overlay("Blocked: Display over other apps permission needed");
+            else if (!configured) ScreensaverWatchStatus.overlay("Blocked: configure Frigate URL or cameras");
+            else ScreensaverWatchStatus.overlay("Not shown: screensaver inactive or dismissed");
             return;
         }
         if (board != null || windows == null) return;
@@ -112,10 +126,15 @@ public final class ScreensaverWatchService extends Service {
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
                 windowFlags, PixelFormat.TRANSLUCENT);
         try {
+            params.setTitle("Kellie's Voice Frigate overlay");
             windows.addView(board.view(), params);
             board.start();
             shownAtMs = SystemClock.elapsedRealtime();
+            ScreensaverWatchStatus.overlay(manualTest
+                    ? "Overlay shown (manual test, not ambient detection)"
+                    : "Overlay shown after Android dream-start event");
         } catch (RuntimeException ignored) {
+            ScreensaverWatchStatus.overlay("Android rejected the overlay window");
             board.stop();
             board = null;
         }
@@ -152,6 +171,7 @@ public final class ScreensaverWatchService extends Service {
         hide();
         try { stopForeground(STOP_FOREGROUND_REMOVE); } catch (RuntimeException ignored) { }
         ScreensaverSignals.setListener(null);
+        ScreensaverWatchStatus.serviceRunning(false);
         if (registered) {
             try { unregisterReceiver(dreams); } catch (RuntimeException ignored) { }
             registered = false;
