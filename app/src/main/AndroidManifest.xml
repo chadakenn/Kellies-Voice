@@ -58,7 +58,10 @@
         <activity android:name=".MainActivity" android:exported="false"/>
         <service android:name=".VoiceOverlayService"
             android:exported="false"
-            android:foregroundServiceType="microphone" />
+            android:foregroundServiceType="microphone|specialUse">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Show the Kellie's Voice overlay while waiting, without an open microphone" />
+        </service>
         <!-- Opt-in foreground TV alert receiver: never accesses the microphone. -->
         <service android:name=".TvEventsService"
             android:exported="false"
