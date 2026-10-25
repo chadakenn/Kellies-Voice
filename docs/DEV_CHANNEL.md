@@ -142,6 +142,31 @@ If it does not, capture that last activity diagnostic before any manual
 Resume, without exposing the HA token. CI alone does not prove hardware
 recovery.
 
+### #71 Philips TV phantom microphone: manual no-microphone mode (dev-only)
+
+Community tester @voravin measured two Philips TVs where the Android
+`AudioManager.getDevices(GET_DEVICES_INPUTS)` list includes a phantom
+`TYPE_BUILTIN_MIC` (id 16) despite no actual app-accessible microphone.
+Another reported input type 26 appears to map to Echo Reference In on a
+Philips set. One TV produces all-zero PCM, another produces a nearly
+constant high-amplitude signal, so neither device-type allowlisting nor a
+simple silence threshold reliably establishes live speech capture.
+
+This targeted candidate adds a reversible, **device-local manual opt-out**
+under **Settings → Mic input detection → Disable microphone capture on this
+TV**. When set, TALK fails with a clear message *before* sending an Assist
+pipeline request or opening AudioRecord. The check is also repeated just
+before the capture thread opens AudioRecord to protect a mid-session settings
+change. This opt-out takes priority over the separate "Try unverified
+microphone" compatibility override and does not affect other TVs. It is
+off by default. A user can re-enable later, such as after adding a USB mic.
+
+**This is a workaround, not an automatic detection fix.** Keep #71 open and
+request a Philips/no-USB physical test confirming TALK refuses capture,
+a re-enabled USB microphone test, and onn 4K Pro normal mic regression.
+No tokens, audio files or personal device IDs should be included in reports.
+No stable release is authorized by this development candidate.
+
 ## Home Assistant test integration
 
 Android and HACS are different deliveries. The Android dev artifact does
