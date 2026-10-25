@@ -70,11 +70,17 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
     private boolean firstAutoListenStarted = false;
     private long autoListenDeadlineMs;
     private boolean closing = false;
+    private final FollowUpSession followUps = new FollowUpSession();
+    private FollowUpEar followEar;
+    private int followToken;
+    private boolean followWindow;
+    private final MicOwnership mics = new MicOwnership();
 
     private final Runnable endListeningTimeout = () -> {
         if (listening && assist != null) {
             listening = false;
             assist.finishTalking();
+            mics.stopRequested();
             if (wave != null) wave.setMode(VoiceWaveView.THINKING);
             status("Listening time limit reached. Processing...");
         }
@@ -185,6 +191,64 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
 
     private void notifyLauncher(String action) {
         sendBroadcast(new Intent(action).setPackage(getPackageName()));
+    }
+
+    private Notification buildNotification(String message) {
+        Intent openApp = new Intent(this, VoiceActivity.class);
+        openApp.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        PendingIntent openPending = PendingIntent.getActivity(this, 0, openApp,
+                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+        Intent close = new Intent(this, VoiceOverlayService.class);
+        close.setAction(ACTION_CLOSE);
+        PendingIntent closePending = PendingIntent.getService(this, 1, close,
+                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+        return new Notification.Builder(this, CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.ic_btn_speak_now)
+                .setContentTitle("Kellie's Voice")
+                .setContentText(message)
+                .setContentIntent(openPending)
+                .addAction(new Notification.Action.Builder(
+                        android.R.drawable.ic_menu_close_clear_cancel, "Close", closePending)
+                        .build())
+                .setOngoing(true)
+                .build();
+    }
+
+    /**
+     * Publishes the foreground type for the current recorder owner.
+     * A follow-up preview is microphone-on even though {@code listening} is still false.
+     * Returns false when a capture was required and Android rejected the microphone type.
+     */
+    private boolean publishMicState() {
+        if (closing) return false;
+        boolean capturing = mics.microphoneActive();
+        int sdk = Build.VERSION.SDK_INT;
+        int attempted = MicrophonePrivacy.serviceType(sdk, capturing);
+        boolean rejected = false;
+        if (attempted == MicrophonePrivacy.TYPE_SPECIAL_USE) {
+            try {
+                startForeground(NOTIFICATION_ID, buildNotification(
+                        MicrophonePrivacy.notificationText(false, MicrophonePrivacy.TYPE_SPECIAL_USE)),
+                        ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
+                return true;
+            } catch (RuntimeException ignored) {
+                rejected = true;
+            }
+        }
+        int actual = MicrophonePrivacy.afterRejection(attempted, rejected);
+        Notification notification = buildNotification(MicrophonePrivacy.notificationText(
+                capturing, actual, mics.followUpCapture()));
+        try {
+            if (sdk >= 29 && actual == MicrophonePrivacy.TYPE_MICROPHONE) {
+                startForeground(NOTIFICATION_ID, notification,
+                        ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE);
+            } else {
+                startForeground(NOTIFICATION_ID, notification);
+            }
+        } catch (RuntimeException ignored) {
+            return false;
+        }
+        return !capturing || sdk < 29 || actual == MicrophonePrivacy.TYPE_MICROPHONE;
     }
 
     private void createNotificationChannel() {
@@ -475,11 +539,24 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
     }
 
     private void stopListening() {
-        if (assist == null) return;
+        boolean pipeline = listening;
+        endFollowUps();
+        if (!pipeline || assist == null) {
+            listening = false;
+            mics.releaseAll();
+            publishMicState();
+            if (wave != null) wave.setMode(VoiceWaveView.IDLE);
+            status("Stopped. Microphone capture stopped.");
+            scheduleIdleDismiss();
+            return;
+        }
         listening = false;
         main.removeCallbacks(endListeningTimeout);
         if (wave != null) wave.setMode(VoiceWaveView.THINKING);
         assist.finishTalking();
+        mics.stopRequested();
+        mics.releaseAll();
+        publishMicState();
     }
 
     private final class VoicePanel extends LinearLayout {
@@ -570,7 +647,11 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
     @Override public void connectionLost() {
         main.post(() -> {
             if (closing) return;
+            endFollowUps();
             listening = false;
+            mics.stopRequested();
+            mics.releaseAll();
+            publishMicState();
             main.removeCallbacks(endListeningTimeout);
             main.removeCallbacks(dismissAfterReply);
             // Preserve only a recent, explicitly requested auto-listen.
@@ -614,6 +695,7 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
     @Override public void processing() {
         main.post(() -> {
             listening = false;
+            mics.stopRequested();
             main.removeCallbacks(endListeningTimeout);
             if (wave != null) wave.setMode(VoiceWaveView.THINKING);
         });
@@ -622,6 +704,7 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
     @Override public void localSilence() {
         main.post(() -> {
             listening = false;
+            mics.stopRequested();
             main.removeCallbacks(endListeningTimeout);
             if (!closing && wave != null) wave.setMode(VoiceWaveView.THINKING);
         });
@@ -631,9 +714,24 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
         main.post(() -> {
             if (closing) return;
             if (!speaking) {
+                int token = followUps.takeDeferred();
+                if (token != 0) {
+                    maybeFollowUp(token);
+                    return;
+                }
+            }
+            if (!speaking && !followWindow) {
                 if (wave != null) wave.setMode(VoiceWaveView.IDLE);
                 scheduleIdleDismiss();
             }
+        });
+    }
+
+    @Override public void speechMissing() {
+        final int token = followToken;
+        main.post(() -> {
+            if (closing || speaking || token != followToken) return;
+            maybeFollowUp(token);
         });
     }
 
@@ -682,6 +780,8 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
             if (speechFocus == null) speechFocus = new SpeechFocus(this);
             speechFocus.release(); // Release any previous TTS focus before replay.
             speechFocus.acquire();
+            final int spokenFor = followToken;
+            final int playbackId = followUps.bindPlayback();
             player = new MediaPlayer();
             player.setAudioAttributes(new AudioAttributes.Builder()
                     .setUsage(AudioAttributes.USAGE_ASSISTANT)
@@ -697,12 +797,18 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
             player.setOnCompletionListener(p -> {
                 speaking = false;
                 if (speechFocus != null) speechFocus.release();
-                status("Done. Press ⭐ again or choose TALK.");
                 if (wave != null) wave.setMode(VoiceWaveView.IDLE);
-                scheduleIdleDismiss();
+                if (!followUps.playbackCurrent(playbackId, spokenFor)) {
+                    scheduleIdleDismiss();
+                    return;
+                }
+                maybeFollowUp(spokenFor);
             });
             player.setOnErrorListener((p, what, extra) -> {
                 speaking = false;
+                endFollowUps();
+                mics.releaseAll();
+                publishMicState();
                 if (speechFocus != null) speechFocus.release();
                 status("Speech playback failed; answer is still shown.");
                 scheduleIdleDismiss();
@@ -711,14 +817,99 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
             player.prepareAsync();
         } catch (Exception ignored) {
             speaking = false;
+            endFollowUps();
+            mics.releaseAll();
+            publishMicState();
             if (speechFocus != null) speechFocus.release();
             status("Could not play speech. The answer is still shown.");
             scheduleIdleDismiss();
         }
     }
 
+    private void endFollowUps() {
+        followWindow = false;
+        followUps.cancel();
+        if (followEar != null) followEar.stop();
+        mics.previewReleased();
+    }
+
+    private void maybeFollowUp(int token) {
+        if (closing || preferences == null || assist == null) return;
+        if (!FollowUpSession.captureAllowed(true,
+                checkSelfPermission(android.Manifest.permission.RECORD_AUDIO)
+                        == android.content.pm.PackageManager.PERMISSION_GRANTED,
+                closing)) {
+            followWindow = false;
+            status("Microphone permission is missing. Capture stayed off.");
+            scheduleIdleDismiss();
+            return;
+        }
+        if (!followUps.arm(preferences.followUp(), token)) {
+            followWindow = false;
+            status("Done. Press ⭐ again or choose TALK.");
+            scheduleIdleDismiss();
+            return;
+        }
+        if (!assist.pipelineIdle()) {
+            followUps.deferUntilIdle(token);
+            return;
+        }
+        followWindow = true;
+        status("Listening for a follow-up");
+        if (wave != null) wave.setMode(VoiceWaveView.LISTENING);
+        if (followEar == null) followEar = new FollowUpEar(this);
+        mics.armPreview();
+        if (!publishMicState()) {
+            mics.previewDidNotOpen();
+            publishMicState();
+            followWindow = false;
+            if (wave != null) wave.setMode(VoiceWaveView.IDLE);
+            status("Android wouldn't allow the microphone. Capture stayed off.");
+            scheduleIdleDismiss();
+            return;
+        }
+        boolean opened = followEar.listen(preferences.followUpSeconds() * 1000,
+                preferences.noise(),
+                () -> main.post(() -> followUpHeard(token)),
+                () -> main.post(() -> followUpMissed(token)));
+        if (!opened) {
+            followWindow = false;
+            mics.previewDidNotOpen();
+            publishMicState();
+            if (wave != null) wave.setMode(VoiceWaveView.IDLE);
+            status("Microphone didn't open. Capture stayed off.");
+            scheduleIdleDismiss();
+        }
+    }
+
+    private void followUpHeard(int token) {
+        if (closing || !followUps.same(token) || !followWindow) return;
+        startListening(true);
+    }
+
+    private void followUpMissed(int token) {
+        if (closing || !followUps.same(token)) return;
+        followWindow = false;
+        listening = false;
+        mics.previewReleased();
+        publishMicState();
+        if (wave != null) wave.setMode(VoiceWaveView.IDLE);
+        status("No follow-up. Microphone capture stopped.");
+        scheduleIdleDismiss();
+    }
+
+    @Override public void captureReleased(int runId) {
+        main.post(() -> {
+            boolean wasOn = mics.microphoneActive();
+            mics.captureReleased(runId);
+            if (!closing && wasOn != mics.microphoneActive()) publishMicState();
+        });
+    }
+
     @Override public void onDestroy() {
         closing = true;
+        endFollowUps();
+        mics.releaseAll();
         HaDiscovery.release(this);
         speaking = false;
         main.removeCallbacksAndMessages(null);
