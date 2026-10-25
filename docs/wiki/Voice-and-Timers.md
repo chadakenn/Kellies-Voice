@@ -10,7 +10,11 @@ Activate **TALK** on the TV and speak a natural question. Kellie's Voice sends t
 
 The Google Assistant button on the remote is not intercepted. The app checks for usable audio inputs, but microphone detection is still unreliable on some Philips TVs in v0.16.8 (see [issue #71](https://github.com/chadakenn/Kellies-Voice/issues/71)); they may incorrectly show Listening and then receive no recognized speech. A USB microphone may be required.
 
-## Named TV timers (v0.16.8)
+## Optional follow-up listening (v0.16.11)
+
+Use TV **Settings → Follow-up listening** to choose OFF (default) or ON with 5/8/10/15 seconds of listening after a *spoken answer* finishes. A real onn 4K Pro test confirmed a second question hands-free, 8-second timeout with the Android mic indicator clearing, and STOP cancellation. Other TVs and Back/Close/disconnection cases are not yet hardware verified. The HA Follow-up silence control adjusts time only; it cannot enable recording without the TV setting.
+
+## Named TV timers (v0.16.11)
 
 Kellie's Voice can show small countdown pills on the TV. When a timer finishes it plays repeating chimes (and an optional spoken phrase) until you dismiss it with **Back** or the on-screen Dismiss button.
 
@@ -54,6 +58,8 @@ Timers are never broadcast by default — you must target a specific pairing ID.
 You can create Assist-exposed scripts or custom sentence triggers that call the actions above. See the full examples and honest caveats in the [YAML Cookbook](YAML-Cookbook.md#timers) and the repository's [docs/VOICE_TIMERS.md](https://github.com/chadakenn/Kellies-Voice/blob/main/docs/VOICE_TIMERS.md).
 
 The maintainer has confirmed voice start/stop on an onn 4K Pro *after* adding home-specific automations. This is not automatic for new installs.
+
+**Optional native Assist timer bridge in HACS v0.16.11:** OFF by default. Direct TV timer actions and user-configured scripts remain supported. The native bridge still needs physical QA for #57; don't expect generic timers to work without enabling/configuring it deliberately.
 
 ## Next
 
