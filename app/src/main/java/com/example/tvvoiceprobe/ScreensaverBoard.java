@@ -8,9 +8,11 @@ import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.util.DisplayMetrics;
 import android.view.Gravity;
 import android.view.KeyEvent;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.CookieManager;
@@ -53,6 +55,9 @@ final class ScreensaverBoard {
     private final List<Call> calls = new ArrayList<>();
     private OkHttpClient http;
     private WebView web;
+    private TextView remotePointer;
+    private boolean browsing;
+    private final ScreensaverRemoteCursor cursor = new ScreensaverRemoteCursor();
     private int generation;
     private boolean stopped;
     private final Runnable onSettings = () -> main.post(() -> {
@@ -88,6 +93,8 @@ final class ScreensaverBoard {
         generation++;
         OverlayPreferences prefs = new OverlayPreferences(context);
         root.removeAllViews();
+        remotePointer = null;
+        browsing = false;
         if (!prefs.screensaverDashboard()) {
             showMessage("Frigate screensaver is off. Turn it on in Kellie's Voice settings, then press Close.");
             root.addView(closeButton());
@@ -103,11 +110,14 @@ final class ScreensaverBoard {
             }
         } else if (cameras.length > 0) showCameras(cameras);
         else showMessage("Set a Frigate page or camera list in Kellie's Voice settings.");
+        if (web != null) root.addView(browseButton());
         root.addView(closeButton());
     }
 
     void stop() {
         stopped = true;
+        browsing = false;
+        remotePointer = null;
         generation++;
         ScreensaverSignals.unlisten(onSettings);
         main.removeCallbacksAndMessages(null);
@@ -135,7 +145,8 @@ final class ScreensaverBoard {
         web = new WebView(context);
         web.setBackgroundColor(Color.BLACK);
         WebSettings settings = web.getSettings();
-        boolean desktop = new OverlayPreferences(context).screensaverDesktopPage();
+        OverlayPreferences prefs = new OverlayPreferences(context);
+        boolean desktop = prefs.screensaverDesktopPage();
         if (desktop) {
             // Frigate otherwise uses a phone-width WebView viewport on many Android TVs.
             settings.setUseWideViewPort(true);
@@ -150,11 +161,14 @@ final class ScreensaverBoard {
         settings.setDomStorageEnabled(true);
         CookieManager cookies = CookieManager.getInstance();
         if (cookies != null) cookies.setAcceptThirdPartyCookies(web, false);
+        web.setFocusableInTouchMode(true);
+        web.setOnKeyListener((view, key, event) -> browsing && remoteKey(key, event));
         web.setWebViewClient(new WebViewClient() {
             @Override public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
                 if (desktop && !stopped && ScreensaverDashboard.sameSite(page, url)) {
-                    view.evaluateJavascript(ScreensaverDashboard.desktopViewportScript(), null);
+                    view.evaluateJavascript(ScreensaverDashboard.desktopViewportScript(
+                            ScreensaverDashboard.viewportWidth(prefs.screensaverFit())), null);
                 }
             }
 
@@ -168,6 +182,97 @@ final class ScreensaverBoard {
         if (params.width == FrameLayout.LayoutParams.MATCH_PARENT) params.bottomMargin = 0;
         root.addView(web, params);
         web.loadUrl(page);
+    }
+
+    /** Explicit remote browsing. WebView itself may not expose Frigate's tiles to D-pad focus. */
+    private Button browseButton() {
+        Button browse = new Button(context);
+        browse.setText("Select camera");
+        browse.setTextColor(Color.WHITE);
+        browse.setTextSize(16);
+        browse.setAllCaps(false);
+        browse.setFocusable(true);
+        browse.setOnClickListener(v -> startBrowsing());
+        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(dp(186), dp(52));
+        params.gravity = Gravity.BOTTOM | Gravity.START;
+        params.setMargins(dp(16), dp(16), dp(16), dp(16));
+        browse.setLayoutParams(params);
+        return browse;
+    }
+
+    private void startBrowsing() {
+        if (web == null || stopped) return;
+        browsing = true;
+        if (remotePointer == null) {
+            remotePointer = new TextView(context);
+            remotePointer.setText("⊕");
+            remotePointer.setTextSize(34);
+            remotePointer.setTextColor(0xFFFFCB77);
+            remotePointer.setShadowLayer(dp(4), 0, 0, Color.BLACK);
+            remotePointer.setGravity(Gravity.CENTER);
+            remotePointer.setFocusable(false);
+            root.addView(remotePointer, new FrameLayout.LayoutParams(dp(48), dp(48)));
+        }
+        web.requestFocus();
+        web.post(this::positionPointer);
+    }
+
+    private boolean remoteKey(int key, KeyEvent event) {
+        if (event.getAction() != KeyEvent.ACTION_DOWN) return true;
+        switch (key) {
+            case KeyEvent.KEYCODE_DPAD_UP:
+                cursor.move(ScreensaverRemoteCursor.UP); break;
+            case KeyEvent.KEYCODE_DPAD_RIGHT:
+                cursor.move(ScreensaverRemoteCursor.RIGHT); break;
+            case KeyEvent.KEYCODE_DPAD_DOWN:
+                cursor.move(ScreensaverRemoteCursor.DOWN); break;
+            case KeyEvent.KEYCODE_DPAD_LEFT:
+                cursor.move(ScreensaverRemoteCursor.LEFT); break;
+            case KeyEvent.KEYCODE_DPAD_CENTER:
+            case KeyEvent.KEYCODE_ENTER:
+                tapWeb(); return true;
+            case KeyEvent.KEYCODE_BACK:
+                if (web != null && web.canGoBack()) {
+                    web.goBack();
+                } else {
+                    browsing = false;
+                    if (remotePointer != null) remotePointer.setVisibility(View.GONE);
+                    root.requestFocus();
+                }
+                return true;
+            default: return false;
+        }
+        positionPointer();
+        return true;
+    }
+
+    private void positionPointer() {
+        if (!browsing || web == null || remotePointer == null) return;
+        int centerX = web.getLeft() + cursor.pixelX(web.getWidth());
+        int centerY = web.getTop() + cursor.pixelY(web.getHeight());
+        FrameLayout.LayoutParams p = (FrameLayout.LayoutParams) remotePointer.getLayoutParams();
+        p.gravity = Gravity.TOP | Gravity.START;
+        p.leftMargin = centerX - dp(24);
+        p.topMargin = centerY - dp(24);
+        remotePointer.setLayoutParams(p);
+        remotePointer.setVisibility(View.VISIBLE);
+        remotePointer.bringToFront();
+    }
+
+    private void tapWeb() {
+        if (!browsing || web == null || web.getWidth() == 0 || web.getHeight() == 0) return;
+        float x = cursor.pixelX(web.getWidth());
+        float y = cursor.pixelY(web.getHeight());
+        long now = SystemClock.uptimeMillis();
+        MotionEvent down = MotionEvent.obtain(now, now, MotionEvent.ACTION_DOWN, x, y, 0);
+        MotionEvent up = MotionEvent.obtain(now, now + 75, MotionEvent.ACTION_UP, x, y, 0);
+        try {
+            web.dispatchTouchEvent(down);
+            web.dispatchTouchEvent(up);
+        } finally {
+            down.recycle();
+            up.recycle();
+        }
     }
 
     private void showCameras(String[] cameras) {
