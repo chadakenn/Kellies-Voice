@@ -64,6 +64,25 @@ public class TvAlertConnectionPolicyTest {
         } catch (IllegalArgumentException expected) { }
     }
 
+    @Test public void independentMonitorOnlyRepairsMissingOrOverdueRetries() {
+        assertTrue(TvAlertConnectionPolicy.shouldMonitorReconnect(
+                true, true, true, false, false, -1L, 50_000L));
+        assertFalse(TvAlertConnectionPolicy.shouldMonitorReconnect(
+                true, true, true, false, false, 100_000L, 104_999L));
+        assertTrue(TvAlertConnectionPolicy.shouldMonitorReconnect(
+                true, true, true, false, false, 100_000L, 105_000L));
+        assertFalse(TvAlertConnectionPolicy.shouldMonitorReconnect(
+                false, true, true, false, false, -1L, 50_000L));
+        assertFalse(TvAlertConnectionPolicy.shouldMonitorReconnect(
+                true, false, true, false, false, -1L, 50_000L));
+        assertFalse(TvAlertConnectionPolicy.shouldMonitorReconnect(
+                true, true, false, false, false, -1L, 50_000L));
+        assertFalse(TvAlertConnectionPolicy.shouldMonitorReconnect(
+                true, true, true, true, false, -1L, 50_000L));
+        assertFalse(TvAlertConnectionPolicy.shouldMonitorReconnect(
+                true, true, true, false, true, -1L, 50_000L));
+    }
+
     @Test public void reconnectBackoffIsBounded() {
         assertEquals(2_000, TvAlertConnectionPolicy.retryDelayMs(0));
         assertEquals(4_000, TvAlertConnectionPolicy.retryDelayMs(1));
