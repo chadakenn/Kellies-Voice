@@ -325,7 +325,13 @@ public final class HaAssistClient {
                     events.runEnded();
                     break;
                 }
-                handlerId = id;
+                if (!runs.assignHandler(currentRunId, id, () -> handlerId = id)) {
+                    stopForRunEnd();
+                    events.processing();
+                    events.status("Assist audio handler is no longer active.");
+                    events.runEnded();
+                    break;
+                }
                 events.status("Audio handler ready. Preparing microphone...");
                 break;
             case "stt-start":
@@ -372,7 +378,10 @@ public final class HaAssistClient {
                 String audio = tts == null ? data.optString("url", "")
                         : tts.optString("url", "");
                 if (!audio.isEmpty()) events.ttsUrl(audio);
-                else events.status("Home Assistant didn't return a TTS audio URL.");
+                else {
+                    events.status("Home Assistant didn't return a TTS audio URL.");
+                    events.speechMissing();
+                }
                 break;
             case "error":
                 if (microphoneMissing) {
