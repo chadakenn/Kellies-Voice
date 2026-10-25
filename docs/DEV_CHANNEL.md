@@ -1,5 +1,21 @@
 # Kellie's Voice development and testing lane
 
+## Combined one-install QA candidate: v0.16.12-dev.1 / build 40 (2026-10-25)
+
+**Stable main remains v0.16.11 (Android build 39).** This development candidate combines two separately CI-reviewed improvements:
+
+- **Grok PR #119**, ported from #87: OFF-by-default, selectable `Kellie's Voice Frigate` Android screensaver, local preview and safe camera snapshots or Frigate page. On some TV firmware the built-in Google screensaver blocks ordinary overlays: use Android **Settings → Display → Screensaver → Kellie's Voice Frigate** when available, rather than assuming an overlay will appear on Google's own screensaver. The microphone must never be opened.
+- **ChatGPT PR #120**, ported from #61: optional up to three D-pad focusable popup buttons. HA can send bounded `actions` in `kellies_voice.announce`, still camera or live camera. One authenticated, per-TV, expiring, one-use HA button acknowledgment event; no direct lock or garage service invocation. Plain popups without buttons must remain passive and cannot steal remote focus.
+
+**Build/installation:** After the dev branch CI succeeds, download `kellies-voice-dev-signed` artifact and install signed Android `v0.16.12-dev.1` **versionCode 40** over signed v0.16.11 code 39 or dev.7 code 38. Do not uninstall or clear pairing. These new scoped buttons require the matching **development HACS integration manifest 0.16.12-dev.1**, installed from the dev repository with a deliberate Home Assistant restart; the Frigate screensaver itself is Android-only. The developer must NOT overwrite public stable HACS unexpectedly, and the user must approve their test installation.
+
+**QA in one sitting:** (1) existing TALK, follow-up/mic STOP, 40% spoken announcement and TV alerts; (2) Frigate screensaver OFF unchanged, then ON → preview → Android actual screensaver selection → idle launch → Close/Back/return to video, without the microphone; (3) one harmless acknowledge button on text alert and camera snapshot/live, press OK once, verify one HA `kellies_voice_announcement_action` event; Back and timeout must emit zero; (4) ensure all Settings rows including the new 21-item menu open correctly; (5) after HA restart, verify receiver reconnect and normal voice camera scripts. **No dangerous button actions during testing.**
+
+New features are NOT hardware verified merely because CI succeeds. Do not publish to main or release until owner and other tester QA passes.
+[Action-button instructions](TV_ACTION_BUTTONS.md) · [Frigate screensaver guide](FRIGATE_SCREENSAVER.md).
+
+
+
 The public repository's default branch is **main**. **dev** is a staging branch
 for pre-release QA on the owner's onn 4K Pro. Changes under development must
 not appear in public GitHub Releases until approved.
