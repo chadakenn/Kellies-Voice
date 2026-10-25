@@ -86,6 +86,27 @@ Try the Google TV / Google Home phone remote keyboard on the same network. The p
 - If using local HTTP, it is **not encrypted**. Restrict to a trusted private LAN or prefer HTTPS.
 - If the screen still says disconnected, retry **SETTINGS → Connect / reconnect**.
 
+## First TALK after reboot is still connecting (#44)
+
+The Home Assistant voice WebSocket and TV-alert receiver are independent. A
+voice request right after boot or a Home Assistant restart may arrive before
+the voice WebSocket has authenticated or the Assist pipeline has loaded.
+
+- **Connecting to Home Assistant** means the authenticated voice session is
+  not ready. Full-screen users must press TALK again once the screen says Ready.
+- A newly pressed TALK in the user-launched floating overlay can be held for
+  **up to 30 seconds**. If the connection is not ready by then, the request
+  expires. The microphone must not start later without another user action.
+- **Assist pipeline is starting** is different from a missing pipeline, a
+  token rejection, an STT failure, an agent failure or a TTS failure. Consult
+  the matching Home Assistant configuration and logs.
+- If Home Assistant rejects the saved token, check SETTINGS rather than
+  repeatedly opening the microphone. Do not share credentials or signed URLs.
+
+These improved startup messages are currently development-only (#44).
+Other Android TV hardware and post-reboot behavior still require testing.
+The separate TV alert receiver status does not guarantee voice readiness.
+
 ## I can see "YOU SAID" but not the answer
 
 The original seven-button alpha pushed the response beneath the visible portion of the TV. Upgrade to the **signed compact UI** with three main buttons, where the answer appears **above** the transcript. Check whether the HA conversation agent returned an answer; an STT transcript does not automatically guarantee a successful intent or TTS response.
