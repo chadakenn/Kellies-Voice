@@ -1,22 +1,27 @@
-**Kellie's Voice Wiki**
+### 🎙️ Kellie's Voice
 
-* [Home](Home)
-* [Getting Started](Getting-Started)
-* [TV App and Permissions](TV-App-and-Permissions)
-* [Home Assistant HACS Setup](Home-Assistant-HACS-Setup)
-* [Voice and Timers](Voice-and-Timers)
-* [Cameras and Frigate](Cameras-and-Frigate)
-* [Announcements and Weather](Announcements-and-Weather)
-* [YAML Cookbook](YAML-Cookbook)
-* [Troubleshooting](Troubleshooting)
-* [Supported TVs and Testing](Supported-TVs-and-Testing)
-* [FAQ](FAQ)
+**Start here**
+- [🏠 Overview](Home.md)
+- [🚀 Getting Started](Getting-Started.md)
+- [📺 TV App & Permissions](TV-App-and-Permissions.md)
+- [🏡 Home Assistant Setup](Home-Assistant-HACS-Setup.md)
+
+**Features**
+- [🗣️ Voice & Timers](Voice-and-Timers.md)
+- [📷 Cameras & Frigate](Cameras-and-Frigate.md)
+- [📣 Announcements & Weather](Announcements-and-Weather.md)
+- [🧩 YAML Cookbook](YAML-Cookbook.md)
+
+**Help & Community**
+- [🛠️ Troubleshooting](Troubleshooting.md)
+- [✅ Supported TVs & Testing](Supported-TVs-and-Testing.md)
+- [❓ Frequently Asked Questions](FAQ.md)
+- [🐛 Report an issue](https://github.com/chadakenn/Kellies-Voice/issues)
 
 ---
 
-**Official repository docs**
+**Get the app**
+- [Signed APK / Releases](https://github.com/chadakenn/Kellies-Voice/releases/latest)
+- [Home Assistant HACS](https://my.home-assistant.io/redirect/hacs_repository/?owner=chadakenn&repository=Kellies-Voice&category=integration)
 
-* [README](https://github.com/chadakenn/Kellies-Voice)
-* [Install guide](https://github.com/chadakenn/Kellies-Voice/blob/main/docs/INSTALL.md)
-* [Troubleshooting](https://github.com/chadakenn/Kellies-Voice/blob/main/docs/TROUBLESHOOTING.md)
-* [Releases](https://github.com/chadakenn/Kellies-Voice/releases)
+<sub>Public guide: v0.16.9 · Experimental changes stay in dev.</sub>
