@@ -93,6 +93,7 @@ public final class TvEventsService extends Service {
             .build();
     private final Runnable reconnect = this::connect;
     private final Runnable connectionWatchdog = this::checkConnectionHealth;
+    private final Runnable recoveryMonitor = this::checkReceiverRecovery;
     private final Runnable dismiss = this::hideCard;
 
     private WindowManager windowManager;
@@ -127,6 +128,8 @@ public final class TvEventsService extends Service {
     private int notReadyAttempts;
     // Separate from ordinary network retries; auth_ok must not reset this.
     private int deniedAttempts;
+    private int connectionAttempts;
+    private long nextReconnectAtMs = -1L;
     private int generation;
     private boolean alertsSubscribed;
     private boolean terminalAlertError;
@@ -171,6 +174,8 @@ public final class TvEventsService extends Service {
                 && (!credentials.url.equals(saved.url) || !credentials.token.equals(saved.token))) {
             main.removeCallbacks(reconnect);
             main.removeCallbacks(connectionWatchdog);
+            nextReconnectAtMs = -1L;
+            connectionAttempts = 0;
             if (socket != null) {
                 socket.cancel();
                 socket = null;
@@ -197,6 +202,8 @@ public final class TvEventsService extends Service {
             return START_NOT_STICKY;
         }
         stopping = false;
+        main.removeCallbacks(recoveryMonitor);
+        main.postDelayed(recoveryMonitor, 20_000L);
         if (timerOverlay == null) timerOverlay = new TimerOverlayController(this, windowManager);
         TvEventsRestartReceiver.clearResume(this);
         if (ACTION_PREVIEW.equals(action)) {
@@ -270,6 +277,7 @@ public final class TvEventsService extends Service {
         main.removeCallbacks(connectionWatchdog);
         WebSocket old = socket;
         socket = null;
+        nextReconnectAtMs = -1L;
         clearConnectionTracking();
         terminalAlertError = false;
         failedAttempts = 0;
