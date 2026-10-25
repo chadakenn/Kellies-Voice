@@ -1,3 +1,32 @@
+## Issue #43: opt-in hands-free follow-up after spoken reply (development QA)
+
+These checks are **not yet completed on a real TV**. Existing spoken TV
+announcement success is a separate feature. Test only when we install a
+single owner-approved consolidated dev APK, not one APK per feature.
+
+- [ ] Feature is **OFF by default**; with OFF, a normal TALK interaction does
+  not reopen the microphone after Kellie's answer.
+- [ ] Set follow-up **ON (8 seconds)** on the TV. Ask a first question using
+  an explicitly launched voice session. After Kellie's speech playback really
+  finishes, the overlay enters the short listening preview. Ask **"What about
+  tomorrow?"** without pressing the remote again. Confirm a second, contextual
+  answer and that the same conversation context is retained.
+- [ ] Remain silent until 5, 8, 10 and 15-second windows expire; the mic
+  closes, the Android privacy indicator clears *after* the recorder stops,
+  and no empty Assist request is generated.
+- [ ] STOP, Back, Close, playback error, missing mic permission, and dropped
+  HA/Wi-Fi connection prevent any delayed microphone restart. Reconnect does
+  not reopen an expired follow-up.
+- [ ] During preview and handoff, Android shows an active microphone and never
+  falsely reports that capture is off. In the idle overlay with no capture,
+  the mic privacy indicator is not left on merely because a panel is visible.
+- [ ] YouTube audio focus fades only during capture/playback and recovers.
+- [ ] The HA **Follow-up silence** select changes seconds only when the TV
+  feature is locally ON. It may not remotely enable the microphone.
+- [ ] Regress the current 30-second post-boot auth limit (Issue #44), existing
+  16k/48k routing and disabled-microphone checks, and already-working spoken
+  Home Assistant announcements.
+
 **v0.16.8 #71: Philips audio-policy input allowlist field verification:** With
 `Echo Reference In` and `line_in` but no real mic on a Philips
 65PUS8507/12, TALK must show **No accessible microphone detected**
