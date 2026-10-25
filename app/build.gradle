@@ -10,8 +10,9 @@ android {
         applicationId 'com.example.tvvoiceprobe'
         minSdk 26
         targetSdk 35
-        versionCode 38
-        versionName '0.16.11-dev.7'
+        // Signed combined dev APK upgrades stable v0.16.11 (code 39).
+        versionCode 40
+        versionName '0.16.12-dev.1'
     }
 
     // The keystore is private and supplied from GitHub Actions secrets.
