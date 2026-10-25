@@ -541,6 +541,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                 "Home Assistant layout: " + (new OverlayPreferences(this).haManage() ? "ON" : "OFF"),
                 "TV announcements & cameras: " + (new OverlayPreferences(this).tvEvents() ? "ON" : "OFF"),
                 "Spoken announcements: " + (new OverlayPreferences(this).spokenAnnouncements() ? "ON" : "OFF"),
+                "Test spoken announcements locally",
                 "TV alert status",
                 "Live camera: " + LiveCameraMode.label(new OverlayPreferences(this).cameraMode()),
                 "Check for app updates: " + updateChannelLabel(),
@@ -562,14 +563,32 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                         case 8: chooseHaLayout(); break;
                         case 9: chooseTvNotifications(); break;
                         case 10: toggleSpokenAnnouncements(); break;
-                        case 11: showTvAlertStatus(); break;
-                        case 12: chooseCameraMode(); break;
-                        case 13: chooseUpdates(); break;
-                        case 14: promptInstallUpdate(); break;
-                        case 15: confirmForget(); break;
+                        case 11: testSpokenAnnouncements(); break;
+                        case 12: showTvAlertStatus(); break;
+                        case 13: chooseCameraMode(); break;
+                        case 14: chooseUpdates(); break;
+                        case 15: promptInstallUpdate(); break;
+                        case 16: confirmForget(); break;
                         default: break;
                     }
                 });
+    }
+
+    private void testSpokenAnnouncements() {
+        OverlayPreferences prefs = new OverlayPreferences(this);
+        if (!prefs.tvEvents() || !prefs.spokenAnnouncements()) {
+            status("Enable TV alerts and Spoken announcements before this local test.");
+            showSettingsMenu();
+            return;
+        }
+        try {
+            startForegroundService(new Intent(this, TvEventsService.class)
+                    .setAction(TvEventsService.ACTION_TEST_SPOKEN));
+            status("Local speech test requested. Check TV sound and TV alert status.");
+        } catch (RuntimeException ignored) {
+            status("Android could not start the TV alert speech self-test.");
+        }
+        showSettingsMenu();
     }
 
     private void toggleSpokenAnnouncements() {
