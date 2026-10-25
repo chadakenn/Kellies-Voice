@@ -1250,6 +1250,7 @@ public final class TvEventsService extends Service {
         main.removeCallbacksAndMessages(null);
         clearConnectionTracking();
         hideCard();
+        if (announcementSpeech != null) { announcementSpeech.shutdown(); announcementSpeech = null; }
         if (socket != null) {
             socket.close(1000, "Receiver stopped");
             socket = null;
@@ -1265,8 +1266,6 @@ public final class TvEventsService extends Service {
         stopForeground(STOP_FOREGROUND_REMOVE);
         super.onDestroy();
     }
-}
-
 
     private void maybeSpeak(String phrase) {
         if (phrase == null || phrase.isEmpty()) return;
@@ -1274,3 +1273,4 @@ public final class TvEventsService extends Service {
         if (!prefs.spokenAnnouncements()) return;
         if (announcementSpeech != null) announcementSpeech.speak(phrase);
     }
+}
