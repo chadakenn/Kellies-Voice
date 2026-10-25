@@ -706,6 +706,8 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         boolean signedIn = settings != null;
         String message = TvEventsRecovery.describe(prefs.tvEvents(),
                 Settings.canDrawOverlays(this), signedIn, TvEventsRecovery.runtime());
+        String diagnostic = TvEventsRecovery.diagnostics();
+        if (!diagnostic.isEmpty()) message += "\n\nLast receiver activity: " + diagnostic;
         AlertDialog.Builder dialog = new AlertDialog.Builder(this)
                 .setTitle("TV alert status")
                 .setMessage(message + "\n\nThis does not start the microphone. "
