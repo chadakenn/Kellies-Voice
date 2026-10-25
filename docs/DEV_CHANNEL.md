@@ -1,5 +1,8 @@
 # Kellie's Voice development and testing lane
 
+**Owner-approved v0.16.11 stable promotion (2026-10-25):** Signed dev.7 was hardware tested for an 8-second second follow-up question, silence timeout/mic privacy, STOP, and independent 40% HA announcement voice gain. The older dev.7 instructions below describe **historical pretest status**, not current acceptance. New experimental work still belongs on dev.
+
+
 The public repository's default branch is **main**. **dev** is a staging branch
 for pre-release QA on the owner's onn 4K Pro. Changes under development must
 not appear in public GitHub Releases until approved.
