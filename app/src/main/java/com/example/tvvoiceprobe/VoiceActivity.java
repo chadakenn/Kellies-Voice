@@ -138,18 +138,26 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         assist = new HaAssistClient(this, this);
         updater = new UpdateManager(this, new UpdateManager.Listener() {
             @Override public void onUpToDate(String message) {
-                rememberUpdateCheck();
+                if (UpdateChannel.allowsAutomaticCheck(new OverlayPreferences(VoiceActivity.this).updateChannel())) {
+                    rememberUpdateCheck();
+                }
                 if (manualUpdateCheck) status(message);
                 manualUpdateCheck = false;
             }
             @Override public void onAvailable(String version, String notes) {
-                rememberUpdateCheck();
+                boolean development = UpdateChannel.DEVELOPMENT.equals(
+                        new OverlayPreferences(VoiceActivity.this).updateChannel());
+                if (!development) rememberUpdateCheck();
                 manualUpdateCheck = false;
                 if (isFinishing() || isDestroyed()) return;
+                String shown = notes == null ? "" : notes.substring(0, Math.min(notes.length(), 700));
                 new AlertDialog.Builder(VoiceActivity.this)
-                        .setTitle("Kellie's Voice update available: " + version)
-                        .setMessage("Download the signed update from GitHub Releases?\n\n" +
-                                (notes == null ? "" : notes.substring(0, Math.min(notes.length(), 700))))
+                        .setTitle(development
+                                ? "Development update available: " + version
+                                : "Kellie's Voice update available: " + version)
+                        .setMessage(development
+                                ? "Download this published development prerelease? It is not a stable release.\n\n" + shown
+                                : "Download the signed update from GitHub Releases?\n\n" + shown)
                         .setNegativeButton("Later", null)
                         .setPositiveButton("Download update", (dialog, choice) -> {
                             status("Downloading verified update...");
@@ -244,7 +252,8 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
             long now = System.currentTimeMillis();
             android.content.SharedPreferences checks =
                     getSharedPreferences("tv_voice_update_checks", MODE_PRIVATE);
-            if (now - checks.getLong("last_checked", 0) >= 24L * 60 * 60 * 1000) {
+            if (UpdateChannel.allowsAutomaticCheck(new OverlayPreferences(this).updateChannel())
+                    && now - checks.getLong("last_checked", 0) >= 24L * 60 * 60 * 1000) {
                 root.post(() -> updater.check());
             }
         }
@@ -532,7 +541,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                 "TV announcements & cameras: " + (new OverlayPreferences(this).tvEvents() ? "ON" : "OFF"),
                 "TV alert status",
                 "Live camera: " + LiveCameraMode.label(new OverlayPreferences(this).cameraMode()),
-                "Check for app updates",
+                "Check for app updates: " + updateChannelLabel(),
                 "Install downloaded update",
                 "Forget saved connection"
         };
@@ -552,11 +561,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                         case 9: chooseTvNotifications(); break;
                         case 10: showTvAlertStatus(); break;
                         case 11: chooseCameraMode(); break;
-                        case 12:
-                            manualUpdateCheck = true;
-                            status("Checking GitHub Releases...");
-                            updater.check();
-                            break;
+                        case 12: chooseUpdates(); break;
                         case 13: promptInstallUpdate(); break;
                         case 14: confirmForget(); break;
                         default: break;
@@ -786,6 +791,43 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                     prefs.setNoise(values[which]);
                     pushLayout(HaLayout.NOISE);
                     status("Microphone sensitivity: " + OverlayPreferences.noiseLabel(prefs.noise()));
+                    showSettingsMenu();
+                });
+    }
+
+    private String updateChannelLabel() {
+        return UpdateChannel.DEVELOPMENT.equals(new OverlayPreferences(this).updateChannel())
+                ? "Development" : "Stable";
+    }
+
+    private void chooseUpdates() {
+        OverlayPreferences prefs = new OverlayPreferences(this);
+        boolean development = UpdateChannel.DEVELOPMENT.equals(prefs.updateChannel());
+        showCopperMenu("SETTINGS  ✦  APP UPDATES",
+                "Stable is the normal public release. Development looks only for a published prerelease and never checks by itself. "
+                        + "Neither choice uses a token. A signed Actions artifact is not an in-app update. "
+                        + "Android cannot install an older stable build over a newer development build.",
+                new String[] {
+                        development ? "✓  Development prereleases" : "     Development prereleases",
+                        development ? "     Stable public releases" : "✓  Stable public releases",
+                        "Check now",
+                        "Back to Settings"
+                }, which -> {
+                    if (which == 0 && !development) {
+                        prefs.setUpdateChannel(UpdateChannel.DEVELOPMENT);
+                        updater.clearOffer();
+                        status("Development updates on. Choose Check now. Nothing downloads until you say so.");
+                    } else if (which == 1 && development) {
+                        prefs.setUpdateChannel(UpdateChannel.STABLE);
+                        updater.clearOffer();
+                        status("Stable updates on. A newer stable release can replace this build. An older one cannot.");
+                    } else if (which == 2) {
+                        manualUpdateCheck = true;
+                        status(development
+                                ? "Checking published development prereleases..."
+                                : "Checking GitHub Releases...");
+                        updater.check();
+                    }
                     showSettingsMenu();
                 });
     }

@@ -18,6 +18,8 @@ The installed v0.10 and earlier updater may reject a release asset under the ren
 
 The updater requests `https://api.github.com/repos/chadakenn/Kellies-Voice/releases/latest` and allows release APK assets only at `https://github.com/chadakenn/Kellies-Voice/releases/download/`.
 
+A TV left on the default **Stable** channel never asks for prereleases. **Settings → Check for app updates → Development prereleases** is opt-in and only then reads the public release list. It still refuses drafts, stable tags, other hosts, and a download until the owner taps Download and Android's installer. It cannot see a private Actions artifact. See [DEV_CHANNEL.md](DEV_CHANNEL.md).
+
 The old **Julia-Voice** URL is no longer a fallback. It did not help TVs still running v0.10 or earlier — those builds have the old prefix compiled in and still need the one-time sideload above. A fallback in the new app only mattered when `Kellies-Voice` itself returned 404, which would also let a recreated `Julia-Voice` repository offer a download. After the SHA-256 check, the app now rejects an APK whose package name is not `com.example.tvvoiceprobe` or whose signing certificate does not match the installed app, before Android's installer opens.
 
 The GitHub rename has **already occurred**. Do not create a new repository at the old `Julia-Voice` path. For local clones, use `git remote set-url origin https://github.com/chadakenn/Kellies-Voice.git`.

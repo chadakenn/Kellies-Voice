@@ -51,6 +51,7 @@ public final class OverlayPreferences {
     private static final String KEY_WEATHER_SECONDS = "weather_seconds";
     private static final String KEY_CAMERA_MODE = "live_camera_decoder_mode";
     private static final String KEY_ALLOW_UNVERIFIED_MIC = "allow_unverified_mic";
+    private static final String KEY_UPDATE_CHANNEL = "update_channel";
     private final SharedPreferences preferences;
 
     public OverlayPreferences(Context context) {
@@ -284,5 +285,14 @@ public final class OverlayPreferences {
     public void setWeatherSeconds(int value) {
         preferences.edit().putInt(KEY_WEATHER_SECONDS,
                 value == 8 || value == 30 || value == 45 ? value : 20).apply();
+    }
+
+    /** Stable unless the owner explicitly chooses development. */
+    public String updateChannel() {
+        return UpdateChannel.normalize(preferences.getString(KEY_UPDATE_CHANNEL, UpdateChannel.STABLE));
+    }
+
+    public void setUpdateChannel(String channel) {
+        preferences.edit().putString(KEY_UPDATE_CHANNEL, UpdateChannel.normalize(channel)).apply();
     }
 }
