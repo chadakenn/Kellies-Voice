@@ -9,7 +9,7 @@ You need **both** parts of Kellie's Voice:
 1. The **signed Android TV / Google TV APK** (installed on the TV)
 2. The **matching Home Assistant custom integration** (installed via HACS)
 
-They are separate downloads. Installing one does not install the other. Always use matching versions (currently **v0.16.9**).
+They are separate downloads. Installing one does not install the other. Always use matching versions (currently **v0.16.11**).
 
 > **Julia is not required.** It is only the maintainer's personal assistant name. Use your own Home Assistant Assist pipeline.
 
