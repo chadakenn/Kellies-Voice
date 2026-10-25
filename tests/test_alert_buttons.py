@@ -1,12 +1,21 @@
 """Button approvals never directly execute a Home Assistant service."""
+import importlib.util
 import pathlib
 import sys
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[1] / "custom_components" / "kellies_voice"
-sys.path.insert(0, str(ROOT))
-from alert_actions import ActionLedger
-from validation import clean_actions
+# Never insert the component directory into sys.path: its select.py would
+# shadow Python's standard library select module in other test imports.
+def load(name, alias):
+    spec = importlib.util.spec_from_file_location(alias, ROOT / (name + ".py"))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+sys.modules.setdefault("const", load("const", "button_test_const"))
+ActionLedger = load("alert_actions", "button_test_ledger").ActionLedger
+clean_actions = load("validation", "button_test_validation").clean_actions
 
 class ActionButtonTests(unittest.TestCase):
     def test_validates_whitelisted_structure(self):
