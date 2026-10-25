@@ -102,11 +102,14 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
                     if (preferences != null && preferences.autoListen()) {
                         firstAutoListenPending = true;
                         firstAutoListenStarted = false;
-                        autoListenDeadlineMs = SystemClock.elapsedRealtime() + 30000L;
+                        autoListenDeadlineMs = SystemClock.elapsedRealtime()
+                                + AssistReadinessPolicy.PENDING_USER_REQUEST_MS;
                     }
                     if (assist.canReconnect()) {
                         assist.ensureConnected();
-                        status(AssistReadinessPolicy.waitingForConnection());
+                        status(preferences != null && preferences.autoListen()
+                                ? "Connecting to Home Assistant... listening if ready within 30 seconds."
+                                : AssistReadinessPolicy.waitingForConnection());
                     } else {
                         firstAutoListenPending = false;
                         status("Home Assistant login is unavailable. Open SETTINGS to reconnect.");
@@ -130,7 +133,8 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
         preferences = new OverlayPreferences(this);
         firstAutoListenPending = preferences.autoListen();
         firstAutoListenStarted = false;
-        autoListenDeadlineMs = SystemClock.elapsedRealtime() + 30000L;
+        autoListenDeadlineMs = SystemClock.elapsedRealtime()
+                                + AssistReadinessPolicy.PENDING_USER_REQUEST_MS;
         try {
             createNotificationChannel();
             Intent openApp = new Intent(this, VoiceActivity.class);
