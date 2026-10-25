@@ -40,6 +40,7 @@ public final class AnnouncementSpeech {
     public synchronized void speak(String phrase) {
         if (!enabled || phrase == null || phrase.isEmpty()) return;
         int gen = sessions.begin();
+        TvSpeechStatus.note("Starting Android speech engine");
         // Stop the old voice before acquiring focus for a new one.
         cancelFocusWatchdog();
         if (speaker != null) {
@@ -52,6 +53,7 @@ public final class AnnouncementSpeech {
             try {
                 speaker = new TextToSpeech(context, this::onInitialized);
             } catch (RuntimeException ignored) {
+                TvSpeechStatus.note("Android speech engine could not start");
                 fail(gen);
             }
         } else if (initialized) {
@@ -62,6 +64,9 @@ public final class AnnouncementSpeech {
 
     private synchronized void onInitialized(int status) {
         initialized = status == TextToSpeech.SUCCESS;
+        TvSpeechStatus.note(initialized
+                ? "Android speech engine initialized"
+                : "Android TTS initialization failed (check TTS engine)");
         if (!initialized) {
             sessions.cancel();
             pendingText = null;
@@ -86,21 +91,43 @@ public final class AnnouncementSpeech {
         pendingText = null;
         pendingGeneration = -1;
         try {
+            // TTS output uses assistant audio attributes; audio focus is transient.
+            speaker.setAudioAttributes(new AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_ASSISTANT)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build());
             speaker.setOnUtteranceProgressListener(new UtteranceProgressListener() {
-                @Override public void onStart(String id) { }
-                @Override public void onDone(String id) { complete(gen, id); }
-                @Override public void onError(String id) { complete(gen, id); }
-                @Override public void onError(String id, int code) { complete(gen, id); }
+                @Override public void onStart(String id) {
+                    if (sessions.isCurrent(gen))
+                        TvSpeechStatus.note("TTS started (sound not verified)");
+                }
+                @Override public void onDone(String id) {
+                    if (sessions.isCurrent(gen))
+                        TvSpeechStatus.note("TTS completed (sound not verified)");
+                    complete(gen, id);
+                }
+                @Override public void onError(String id) {
+                    if (sessions.isCurrent(gen))
+                        TvSpeechStatus.note("Android TTS reported an error");
+                    complete(gen, id);
+                }
+                @Override public void onError(String id, int code) {
+                    if (sessions.isCurrent(gen))
+                        TvSpeechStatus.note("Android TTS reported an error");
+                    complete(gen, id);
+                }
                 @Override public void onStop(String id, boolean interrupted) { complete(gen, id); }
             });
             acquireFocus(gen);
             scheduleFocusWatchdog(gen);
+            TvSpeechStatus.note("Speech submitted to Android engine");
             // speak() may return ERROR without ever producing an onError callback.
             if (speaker.speak(phrase, TextToSpeech.QUEUE_FLUSH, null, utteranceId)
                     != TextToSpeech.SUCCESS) {
+                TvSpeechStatus.note("Android TTS rejected the speech request");
                 complete(gen, utteranceId);
             }
         } catch (RuntimeException ignored) {
+            TvSpeechStatus.note("Android TTS request failed");
             fail(gen);
         }
     }
@@ -122,7 +149,10 @@ public final class AnnouncementSpeech {
         cancelFocusWatchdog();
         focusWatchdog = () -> {
             synchronized (AnnouncementSpeech.this) {
-                if (sessions.isCurrent(gen)) stop();
+                if (sessions.isCurrent(gen)) {
+                    TvSpeechStatus.note("Speech timed out; audio focus restored");
+                    stop();
+                }
             }
         };
         // Engine callbacks are not guaranteed. A bounded timeout avoids permanent ducking.
