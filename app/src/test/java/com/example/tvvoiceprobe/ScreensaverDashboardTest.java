@@ -20,6 +20,19 @@ public class ScreensaverDashboardTest {
         assertFalse(ScreensaverDashboard.keepAfterEarlyStop(0, 100));
     }
 
+    @Test public void desktopWebViewUsesInstalledChromeVersionAndSafeStaticViewport() {
+        String mobile = "Mozilla/5.0 (Linux; Android 14; Android TV) AppleWebKit/537.36 " +
+                "(KHTML, like Gecko) Version/4.0 Chrome/141.0.7390.0 Mobile Safari/537.36";
+        String desktop = ScreensaverDashboard.desktopUserAgent(mobile);
+        assertTrue(desktop.contains("X11; Linux x86_64"));
+        assertTrue(desktop.contains("Chrome/141.0.7390.0"));
+        assertFalse(desktop.contains("Android"));
+        assertFalse(desktop.contains("Mobile"));
+        assertEquals("unknown browser", ScreensaverDashboard.desktopUserAgent("unknown browser"));
+        assertTrue(ScreensaverDashboard.desktopViewportScript().contains("width=1440"));
+        assertFalse(ScreensaverDashboard.desktopViewportScript().contains("token"));
+    }
+
     @Test public void pageAddressRejectsTokensAndStrangeSchemes() {
         assertEquals("http://192.168.1.20:5000/",
                 ScreensaverDashboard.dashboardUrl(" http://192.168.1.20:5000/ "));
