@@ -34,6 +34,24 @@ Updated historical milestone: **2026-10-20**. Device: maintainer's **onn 4K Pro 
 
 Distinguish what has actually worked on hardware from compiled features. A green build is **not** proof of behavior on a TV.
 
+## #44 development QA: first voice request after boot
+
+- [ ] Immediately after an onn 4K Pro reboot, activate TALK before HA auth:
+  show Connecting and do not claim an answer is ready.
+- [ ] Full-screen TALK while disconnected does **not** queue microphone
+  activation; when the socket reports Ready, press TALK again.
+- [ ] Explicit floating overlay request with auto-listen enabled and HA auth
+  within 30 seconds starts the mic no more than once.
+- [ ] Wait past 30 seconds before allowing HA auth. The old request must
+  expire and no microphone may start until a fresh press of TALK.
+- [ ] Restart HA / interrupt Wi-Fi; existing 2–30-second retry still
+  recovers. No stale microphone or surprise recording.
+- [ ] Distinguish missing/loading Assist pipeline from STT/agent/TTS errors;
+  no raw private server messages may appear in on-screen diagnostics.
+- [ ] Recheck normal STT, TTS, timer/alert popups and Back/STOP behavior.
+
+**Pending real-TV testing, not a verified stable release fix.**
+
 ## v0.13 Home Assistant disconnection recovery (pending TV test)
 
 - [ ] With saved credentials, launch full-screen Kellie's Voice and verify Home Assistant changes to connected **without selecting Reconnect**
