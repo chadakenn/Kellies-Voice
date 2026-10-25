@@ -1279,7 +1279,10 @@ public final class TvEventsService extends Service {
     private void maybeSpeak(String phrase) {
         if (phrase == null || phrase.isEmpty()) return;
         OverlayPreferences prefs = new OverlayPreferences(this);
-        if (!prefs.spokenAnnouncements()) return;
+        if (!prefs.spokenAnnouncements()) {
+            TvSpeechStatus.note("Spoken announcements are OFF");
+            return;
+        }
         if (announcementSpeech != null) announcementSpeech.speak(phrase);
     }
 }

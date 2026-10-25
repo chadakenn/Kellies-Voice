@@ -216,6 +216,31 @@ a re-enabled USB microphone test, and onn 4K Pro normal mic regression.
 No tokens, audio files or personal device IDs should be included in reports.
 No stable release is authorized by this development candidate.
 
+### v0.16.11-dev.3: Android TTS engine discovery correction
+
+On the maintainer's onn 4K Pro, **v0.16.11-dev.2 displayed a raw,
+targeted spoken announcement but produced no audible speech** even with
+Spoken announcements ON. This is **FAILED physical acceptance**, not a
+shipping success. Dev.3 / `versionCode 34` adds the Android 11+ package
+visibility declaration for `android.intent.action.TTS_SERVICE`, required
+for apps targeting SDK 30+ to find the device's installed Android TTS
+engine. The Android SDK target is 35.
+
+Dev.3 also shows **Last spoken alert** under TV app → Settings →
+**TV alert status**, with fixed non-sensitive messages for initialization,
+engine errors, submitted speech, and completed speech. These status
+messages do not prove audio was actually audible and do not contain
+spoken text, Home Assistant credentials, addresses, or pairing IDs.
+
+**Single hardware retest:** install signed dev.3 over dev.2 without
+uninstalling; retain Spoken announcements ON; play YouTube and send a
+device-targeted `kellies_voice_announcement` event with both `text`
+and `speak`. Check audio duck, spoken message, and volume restoration.
+If still silent, open TV alert status and report **Last spoken alert**
+exactly; check that Android TV has a usable TTS engine configured.
+Do not mark the feature passed without audible speech. Stable main
+and the installed Home Assistant HACS integration remain unchanged.
+
 ### v0.16.11-dev.2: optional spoken announcements with camera speech
 
 This development-only candidate combines reviewed spoken announcements (PR #104)
