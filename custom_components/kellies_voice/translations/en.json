@@ -13,6 +13,10 @@
           "device_id": "TV pairing ID",
           "name": "TV name"
         }
+      },
+      "manual_confirm": {
+        "title": "Verify the TV pairing ID",
+        "description": "Manual pairing cannot verify that this TV is online. Compare this ID with the one shown on the TV under Kellie's Voice → Settings → Home Assistant layout → Show this TV's pairing ID: {pairing_id}. TV: {name}. If one character is wrong, actions may not reach the TV. Submit again only when the IDs match; otherwise go Back and correct the ID."
       }
     },
     "abort": {
