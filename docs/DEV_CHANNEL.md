@@ -1,5 +1,9 @@
 # Kellie's Voice development and testing lane
 
+## v0.16.12-dev.4 / build 43: Google TV ambient watcher recovery and diagnostics
+
+Re-enable the already-opted-in Frigate watcher after app updates/reboot (including when TV alert notifications are disabled), return `START_STICKY`, and show safe, in-process Diagnostics for service alive, overlay permission, Frigate config, last system dream event and overlay result. Adds **Test Frigate as TV overlay** independent of Google Ambient idle detection, to distinguish successful rendering from missing dream broadcasts. Android's Google TV Ambient Mode **Source** is not a third-party dream picker. Do not claim automatic Ambient Mode support until on-device QA confirms receipt of DREAMING_STARTED and a visible overlay. Signed build 43, app and HACS `0.16.12-dev.4`; does not alter existing HA or Frigate setup.
+
 ## v0.16.12-dev.3 / build 42: TV-size Frigate browser rendering
 
 A photo comparison found the Frigate webpage using a giant single-camera mobile layout on the onn TV while desktop Chrome on the laptop showed a live camera grid. The new **Frigate page layout → Desktop TV** (default, with **Automatic** fallback) requests a desktop Chromium user-agent based on the installed WebView, enables wide viewport and overview fit, then applies a wide CSS viewport on page load. Frigate page mode uses full-height WebView behind an overlay Close button. The authenticated Home Assistant snapshot grid is unchanged. Configure **Dashboard size → Large**, preview, verify actual camera streams and Back / Close on hardware. Signed development code **42** upgrades build 41 without uninstalling, and the matching HACS development manifest version is `0.16.12-dev.3`. This is still **not a public release**. Frigate group layouts are browser-local and might need initial TV arrangement.
