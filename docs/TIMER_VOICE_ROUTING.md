@@ -119,6 +119,41 @@ config flag is on and the registry device ID is known. Unregister on unload.
 - No microphone or wake-word side effects.
 - Existing manual actions and name-free "Timer" default still work.
 
+
+
+## Phase 2: opt-in native handler (implemented, disabled by default)
+
+`custom_components/kellies_voice/timer_handler.py` provides:
+
+- `TimerBridge` — translates STARTED / UPDATED / CANCELLED into the existing
+  `kellies_voice_timer` payloads. FINISHED is ignored so the TV owns the chime
+  (no double-ring). Stale cancels for unknown HA timer IDs are dropped.
+- `TimerHandlerRegistry` — registers against the **HA device-registry ID**
+  (never the TV pairing UUID) and unregisters cleanly on unload.
+- Integration wiring in `__init__.py` activates only when a config entry has
+  `options["native_timer_intents"] = True`. Default is off. On unload the
+  handler is unregistered and tracked timers are dropped.
+
+Multiple opted-in TVs are isolated by their registry device ID. Other Assist
+satellites are unaffected because nothing is registered for them.
+
+### Ollama and other conversation agents
+
+Native HA timer intents (`HassStartTimer`, `HassCancelTimer`) are only reached
+when the active conversation agent prefers local intent matching. Ollama and
+other LLM agents often handle the utterance themselves and never call the
+native intent. In that case the TimerHandler is never invoked, even if the TV
+is registered. This is a pipeline configuration issue, not a TV bug.
+
+Workarounds:
+- Use the custom-sentence + intent-script path in `docs/VOICE_TIMERS.md`
+  (recommended until device QA confirms native routing).
+- Or configure the Assist pipeline to prefer local intents for timer phrases
+  before falling back to the LLM.
+
+This draft does not promise that "set a five-minute pizza timer" works with
+every Ollama model or pipeline. Physical testing is still required.
+
 ## Constraints honored
 
 - No edits to spoken-announcement or audio-focus code (PR #104).

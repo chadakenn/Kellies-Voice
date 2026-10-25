@@ -146,7 +146,7 @@ Alerts stay silent unless overlay permission is granted and the attached complet
 ## Native Assist timer intents (Issue #57)
 
 Native "set a five-minute pizza timer" requires the TV to be registered as a
-Home Assistant timer-capable device. That registration is **not enabled** in
-this draft. See [TIMER_VOICE_ROUTING.md](TIMER_VOICE_ROUTING.md) for the
+Home Assistant timer-capable device. An opt-in handler is now implemented but **disabled by default**
+(`options.native_timer_intents`). Ollama agents may still bypass native intents. See [TIMER_VOICE_ROUTING.md](TIMER_VOICE_ROUTING.md) for the
 architecture, the dual-ownership limitation, and the safe custom-sentence
 alternative that reuses the existing `kellies_voice.start_timer` action.
