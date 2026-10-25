@@ -310,3 +310,15 @@ def _clean_line(value) -> str:
     if value is None:
         return ""
     return " ".join(str(value).split())
+
+def clean_speak(value) -> str:
+    """Return a short spoken sentence, or empty string if invalid/silent."""
+    if value is None or not isinstance(value, str):
+        return ""
+    text = " ".join(value.strip().split())
+    if not text or len(text) > 180:
+        return ""
+    lower = text.lower()
+    if "://" in lower or lower.startswith("http") or "www." in lower:
+        return ""
+    return text
