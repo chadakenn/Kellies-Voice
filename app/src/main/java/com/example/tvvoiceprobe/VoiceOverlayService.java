@@ -867,6 +867,23 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
             scheduleIdleDismiss();
             return;
         }
+        // Enforce the current device mic consent and route policy before
+        // opening a preview recorder, not merely when Assist later takes over.
+        if (MicRoutePolicy.manuallyBlocked(preferences.microphoneDisabled(),
+                preferences.allowUnverifiedMic())) {
+            followWindow = false;
+            status(MicRoutePolicy.MANUALLY_DISABLED_MESSAGE);
+            scheduleIdleDismiss();
+            return;
+        }
+        String blockedRoute = MicrophoneRouting.preflight(
+                this, preferences.allowUnverifiedMic());
+        if (blockedRoute != null) {
+            followWindow = false;
+            status(blockedRoute);
+            scheduleIdleDismiss();
+            return;
+        }
         if (!followUps.arm(preferences.followUp(), token)) {
             followWindow = false;
             status("Done. Press ⭐ again or choose TALK.");
