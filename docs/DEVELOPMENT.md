@@ -2,6 +2,15 @@
 
 This is an experimental **native Android TV** project targeting the **onn 4K Pro**. Code is Java, app module `app/`; the repository does not currently include a Gradle wrapper, so GitHub Actions supplies Gradle 8.9.
 
+## Development branch and test builds
+
+Use the [`dev` branch test lane](DEV_CHANNEL.md) for signed, owner-tested
+candidate APKs. On app changes, GitHub Actions builds
+`kellies-voice-dev-signed` without publishing a public Release.
+The ordinary in-app updater remains **stable-only**. Grok and ChatGPT
+should use distinct feature branches and target `dev` for test candidates.
+Do not push untested code to `main`.
+
 ## Build requirements
 
 - JDK 17
