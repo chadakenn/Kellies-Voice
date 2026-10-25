@@ -92,7 +92,11 @@ The companion Home Assistant integration can implement the
 `kellies_voice.announce` and `kellies_voice.show_camera` services. A seven-day forecast is a separate on-demand action, documented in [WEATHER_FORECAST.md](WEATHER_FORECAST.md). The
 Android side listens for the following raw **Home Assistant event bus** events:
 
-### Visual announcement (text only in phase 1)
+### Visual announcement
+
+
+**Optional spoken announcements** (v0.16.11+ draft): add a `speak` field to the announcement event. Enable in TV Settings → Spoken announcements. Audio is ducked transiently via AudioFocus and always restored. See YAML examples in the wiki.
+
 
 - Event type: `kellies_voice_announcement`
 - Data:
