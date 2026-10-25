@@ -1,0 +1,111 @@
+"""Manual pairing must require a second ID comparison before creating an HA entry.
+
+Runs without Home Assistant installed. Test the actual flow method AST, not a
+separate reimplementation, with small fakes for config-flow base methods.
+"""
+import ast
+import json
+import pathlib
+import unittest
+import uuid
+
+ROOT = pathlib.Path(__file__).resolve().parents[1] / "custom_components" / "kellies_voice"
+tree = ast.parse((ROOT / "config_flow.py").read_text(encoding="utf-8"))
+flow = next(n for n in tree.body if isinstance(n, ast.ClassDef)
+            and n.name == "KellieVoiceConfigFlow")
+methods = [n for n in flow.body if isinstance(n, ast.AsyncFunctionDef)
+           and n.name in {"async_step_user", "async_step_manual_confirm"}]
+assert len(methods) == 2
+
+class Vol:
+    @staticmethod
+    def Schema(x): return x
+    @staticmethod
+    def Required(name): return name
+    @staticmethod
+    def Optional(name, default=None): return name
+
+def clean_tv_device_id(value):
+    try:
+        parsed = uuid.UUID(str(value).strip())
+        if parsed.version != 4: raise ValueError()
+        return str(parsed)
+    except (ValueError, AttributeError):
+        raise ValueError("Invalid TV pairing ID.") from None
+
+namespace = {"vol": Vol, "clean_tv_device_id": clean_tv_device_id}
+exec(compile(ast.Module(body=methods, type_ignores=[]), "config_flow_methods", "exec"), namespace)
+
+class FakeFlow:
+    async_step_user = namespace["async_step_user"]
+    async_step_manual_confirm = namespace["async_step_manual_confirm"]
+
+    def __init__(self):
+        self._manual_device_id = ""
+        self._manual_name = ""
+        self.created = []
+        self.unique_ids = []
+
+    async def async_set_unique_id(self, value):
+        self.unique_ids.append(value)
+
+    def _abort_if_unique_id_configured(self):
+        pass
+
+    def async_show_form(self, **kwargs):
+        return {"type": "form", **kwargs}
+
+    def async_create_entry(self, **kwargs):
+        self.created.append(kwargs)
+        return {"type": "create_entry", **kwargs}
+
+
+class ManualConfirmationTests(unittest.IsolatedAsyncioTestCase):
+    async def test_valid_manual_id_shows_confirmation_without_creating(self):
+        flow = FakeFlow()
+        tv_id = str(uuid.uuid4())
+        first = await flow.async_step_user({"device_id": tv_id.upper(), "name": "Garage"})
+        self.assertEqual("form", first["type"])
+        self.assertEqual("manual_confirm", first["step_id"])
+        self.assertEqual(tv_id, first["description_placeholders"]["pairing_id"])
+        self.assertEqual("Garage", first["description_placeholders"]["name"])
+        self.assertEqual([], flow.created)
+        self.assertEqual([], flow.unique_ids)
+        last = await flow.async_step_manual_confirm({})
+        self.assertEqual("create_entry", last["type"])
+        self.assertEqual(tv_id, last["data"]["device_id"])
+        self.assertEqual("Garage", last["title"])
+        self.assertEqual([tv_id], flow.unique_ids)
+        self.assertEqual(1, len(flow.created))
+
+    async def test_invalid_manual_id_does_not_advance(self):
+        flow = FakeFlow()
+        form = await flow.async_step_user({"device_id": "wrong-id", "name": "TV"})
+        self.assertEqual("user", form["step_id"])
+        self.assertEqual("invalid_device_id", form["errors"]["device_id"])
+        self.assertEqual([], flow.created)
+
+    async def test_uninitialized_confirmation_does_not_create(self):
+        flow = FakeFlow()
+        view = await flow.async_step_manual_confirm({})
+        self.assertEqual("user", view["step_id"])
+        self.assertEqual([], flow.created)
+
+    async def test_long_name_does_not_advance(self):
+        flow = FakeFlow()
+        form = await flow.async_step_user({"device_id": str(uuid.uuid4()), "name": "X" * 65})
+        self.assertEqual("invalid_name", form["errors"]["name"])
+        self.assertEqual([], flow.created)
+
+    def test_text_of_confirmation_is_present_in_shipped_translations(self):
+        strings = json.loads((ROOT / "strings.json").read_text(encoding="utf-8"))
+        english = json.loads((ROOT / "translations" / "en.json").read_text(encoding="utf-8"))
+        self.assertEqual(strings, english)
+        description = english["config"]["step"]["manual_confirm"]["description"]
+        self.assertIn("{pairing_id}", description)
+        self.assertIn("cannot verify", description)
+        self.assertIn("Back", description)
+
+
+if __name__ == "__main__":
+    unittest.main()
