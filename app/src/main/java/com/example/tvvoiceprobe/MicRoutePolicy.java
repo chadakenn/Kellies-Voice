@@ -15,6 +15,16 @@ public final class MicRoutePolicy {
             + "use a TV microphone available to third-party apps. "
             + "Open Hardware microphone diagnostics for details.";
 
+    public static final String MANUALLY_DISABLED_MESSAGE =
+            "Microphone disabled on this TV in Kellie's Voice settings. "
+            + "Re-enable microphone capture under Mic input detection to use TALK.";
+
+    /** Explicit local microphone opt-out wins over any compatibility override. */
+    public static boolean manuallyBlocked(boolean disabledOnThisTv,
+            boolean allowUnverifiedMic) {
+        return disabledOnThisTv;
+    }
+
     private MicRoutePolicy() { }
 
     /** Recognized Android voice capture routes (input devices, not outputs). */
