@@ -12,7 +12,9 @@ final class ScreensaverSettingsEffects {
         if (HaLayout.SCREENSAVER_ENABLED.equals(changed)) {
             if (new OverlayPreferences(context).screensaverDashboard()) {
                 ScreensaverWatchService.startIfEnabled(context);
-            } else {
+            } else if (!new OverlayPreferences(context).haManage()) {
+                // Keep the HA-authorized watcher alive when HA owns this setting:
+                // otherwise an OFF command would make a later ON impossible remotely.
                 try {
                     context.startService(new Intent(context, ScreensaverWatchService.class)
                             .setAction(ScreensaverWatchService.ACTION_STOP));
