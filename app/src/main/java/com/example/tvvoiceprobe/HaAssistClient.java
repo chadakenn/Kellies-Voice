@@ -781,7 +781,10 @@ public final class HaAssistClient {
 
     private void stopForRunEnd() {
         int notify = -1;
+        FollowUpEar abandoned;
         synchronized (this) {
+            abandoned = pendingEar;
+            pendingEar = null;
             int run = currentRunId;
             boolean worker = captureStarted;
             runs.cancel(run, () -> {
@@ -796,6 +799,9 @@ public final class HaAssistClient {
             }
             if (!worker && run >= 0) notify = run;
         }
+        // Do not leave a preview recorder alive if HA rejects/ends the run
+        // before stt-start can hand its recorder to Assist.
+        if (abandoned != null) abandoned.stop();
         if (notify >= 0) events.captureReleased(notify);
     }
 
