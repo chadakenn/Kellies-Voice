@@ -6,6 +6,8 @@ Do not blindly forward arbitrary event data to ordinary Home Assistant users.
 
 import json
 
+from .validation import clean_actions
+
 from .const import (
     EVENT_ANNOUNCEMENT,
     EVENT_CAMERA_POPUP,
@@ -15,9 +17,9 @@ from .const import (
 )
 
 EVENT_FIELDS = {
-    EVENT_ANNOUNCEMENT: ("device_id", "title", "text", "speak", "duration_seconds"),
-    EVENT_CAMERA_POPUP: ("device_id", "entity_id", "title", "speak", "duration_seconds", "show_header", "image_fit", "refresh_seconds"),
-    EVENT_LIVE_CAMERA: ("device_id", "entity_id", "title", "speak", "duration_seconds", "show_header", "image_fit", "refresh_seconds"),
+    EVENT_ANNOUNCEMENT: ("device_id", "title", "text", "speak", "duration_seconds", "actions", "announcement_id"),
+    EVENT_CAMERA_POPUP: ("device_id", "entity_id", "title", "speak", "duration_seconds", "show_header", "image_fit", "refresh_seconds", "actions", "announcement_id"),
+    EVENT_LIVE_CAMERA: ("device_id", "entity_id", "title", "speak", "duration_seconds", "show_header", "image_fit", "refresh_seconds", "actions", "announcement_id"),
     EVENT_HIDE_CAMERA: ("device_id",),
     EVENT_FORECAST: ("device_id", "location", "units", "issued", "duration_seconds", "days"),
     "kellies_voice_timer": (
@@ -52,6 +54,17 @@ def sanitize_event(event_type: str, payload: dict, this_tv: str) -> dict | None:
         if key == "device_id" or key not in payload:
             continue
         value = payload[key]
+        if key == "actions":
+            try:
+                safe["actions"] = clean_actions(value)
+            except ValueError:
+                return None
+            continue
+        if key == "announcement_id":
+            if not isinstance(value, str) or len(value) != 32 or any(c not in "0123456789abcdef" for c in value):
+                return None
+            safe[key] = value
+            continue
         if key == "speak":
             # Explicit opt-in speech only. Never synthesize arbitrary URLs or
             # oversized strings from user-controlled HA automation payloads.

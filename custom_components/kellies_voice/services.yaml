@@ -68,6 +68,11 @@ announce:
       example: The washer is finished.
       selector:
         text:
+    actions:
+      description: "Optional list of up to three id/label button pairs; no action occurs until the user presses OK. A separate Home Assistant automation must handle the acknowledged event."
+      example: [{id: acknowledge, label: Acknowledge}]
+      selector:
+        object:
     device_id:
       example: ""
       selector:
@@ -116,6 +121,11 @@ show_camera:
       example: Someone is at the front door.
       selector:
         text:
+    actions:
+      description: "Optional list of up to three id/label button pairs; no action occurs until the user presses OK. A separate Home Assistant automation must handle the acknowledged event."
+      example: [{id: acknowledge, label: Acknowledge}]
+      selector:
+        object:
     device_id:
       example: ""
       selector:
@@ -164,6 +174,11 @@ show_live_camera:
       example: Someone is at the front door.
       selector:
         text:
+    actions:
+      description: "Optional list of up to three id/label button pairs; no action occurs until the user presses OK. A separate Home Assistant automation must handle the acknowledged event."
+      example: [{id: acknowledge, label: Acknowledge}]
+      selector:
+        object:
     device_id:
       example: ""
       selector:

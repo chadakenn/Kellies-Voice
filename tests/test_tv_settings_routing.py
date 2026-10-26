@@ -35,6 +35,8 @@ EXPECTED = [
     ("Live camera:", "chooseCameraMode"),
     ("Check for app updates:", "chooseUpdates"),
     ("Install downloaded update", "promptInstallUpdate"),
+    ("Frigate screensaver:", "showScreensaverSettings"),
+    ("Preview Frigate dashboard", "startActivity"),
     ("Forget saved connection", "confirmForget"),
 ]
 
@@ -63,6 +65,56 @@ class TvSettingsRoutingTest(unittest.TestCase):
             with self.subTest(index=index, label=prefix):
                 self.assertTrue(menu_labels[index].startswith(prefix))
                 self.assertEqual(action, handlers[index])
+
+    def test_frigate_settings_exposes_all_configuration_routes(self):
+        block = ACTIVITY.split("private void showScreensaverSettings() {", 1)[1].split(
+            "private EditText screensaverInput(", 1
+        )[0]
+        for option in (
+            "Frigate web URL:",
+            "Home Assistant cameras:",
+            "Dashboard size:",
+            "Frigate page layout:",
+            "Frigate page fit:",
+            "HA camera grid playback:",
+            "Choose Android screensaver",
+            "Preview Frigate dashboard",
+            "Screensaver status & permissions",
+            "Test Frigate as TV overlay",
+        ):
+            with self.subTest(option=option):
+                self.assertIn(option, block)
+        for method in (
+            "editScreensaverUrl",
+            "editScreensaverCameras",
+            "chooseScreensaverSize",
+            "toggleScreensaverDesktopPage",
+            "chooseScreensaverFit",
+            "chooseScreensaverLiveMode",
+            "openAndroidScreensaverList",
+            "showScreensaverDiagnostics",
+            "testScreensaverOverlay",
+        ):
+            with self.subTest(method=method):
+                self.assertIn(method + "();", block)
+
+    def test_screensaver_has_explicit_ambient_diagnostics_and_recovery(self):
+        root = ACTIVITY.split("private void showScreensaverDiagnostics()", 1)[1]
+        self.assertIn("ScreensaverWatchStatus.lastEvent()", root)
+        self.assertIn("ScreensaverWatchStatus.lastOverlay()", root)
+        self.assertIn("ScreensaverWatchService.ACTION_TEST_OVERLAY", root)
+        receiver = (
+            Path(__file__).resolve().parents[1]
+            / "app/src/main/java/com/example/tvvoiceprobe/TvEventsRestartReceiver.java"
+        ).read_text(encoding="utf-8")
+        self.assertIn("ScreensaverWatchService.startIfEnabled(context);", receiver)
+        service = (
+            Path(__file__).resolve().parents[1]
+            / "app/src/main/java/com/example/tvvoiceprobe/ScreensaverWatchService.java"
+        ).read_text(encoding="utf-8")
+        self.assertIn("return START_STICKY;", service)
+        self.assertIn("ACTION_TEST_OVERLAY", service)
+        self.assertIn("ScreensaverWatchStatus.event", service)
 
     def test_follow_up_is_opt_in_and_has_a_separate_mic_routing_menu(self):
         self.assertIn('prefs.setFollowUp(false)', ACTIVITY)

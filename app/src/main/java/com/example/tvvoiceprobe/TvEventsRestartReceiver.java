@@ -20,6 +20,10 @@ public final class TvEventsRestartReceiver extends BroadcastReceiver {
 
     @Override public void onReceive(Context context, Intent intent) {
         if (context == null || intent == null || !TvEventsRecovery.accepts(intent.getAction())) return;
+        // Independent of TV alerts. Restore the opted-in Frigate dream watcher
+        // after app updates/reboot even when announcements are disabled.
+        // Background start may still be denied by individual Android TV firmware.
+        ScreensaverWatchService.startIfEnabled(context);
         boolean overlay = Settings.canDrawOverlays(context);
         boolean signedIn = signedIn(context);
         String decision = TvEventsRecovery.decide(

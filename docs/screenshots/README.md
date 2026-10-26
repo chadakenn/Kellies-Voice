@@ -8,14 +8,19 @@ Phone photos from an onn 4K Pro are now in this folder and in the main README. T
 | [onn-voice-doorbell.gif](onn-voice-doorbell.gif) | Voice overlay while Home Assistant answers "Show me the doorbell camera." |
 | [onn-snapshot-popup.jpg](onn-snapshot-popup.jpg) | Still snapshot popup, "Snapshot Test After Reopening App." Not live video. |
 | [onn-live-doorbell.jpg](onn-live-doorbell.jpg) | Live doorbell card starting, muted, with the voice card still visible. One photo, not a motion recording. |
-
-**Additional real-device photos supplied for review:** the main connected screen, the scrollable TV settings menu (top and bottom), and the microphone routing dialog. These images are not yet checked into this public repository, so the gallery above continues to link only to files that actually exist. A text-only announcement and the Home Assistant device page are still wanted.
+| [onn-home-connected.jpg](onn-home-connected.jpg) | Main screen on the onn. Voice is connected and TV alerts show connected. The address is the normal `homeassistant.local` name, not a token. |
+| [onn-settings-menu.jpg](onn-settings-menu.jpg) | Settings list: connection, microphone, overlay, layout, TV alerts, and live-camera mode. |
+| [onn-mic-routing.jpg](onn-mic-routing.jpg) | Microphone routing. Safe checks are on. This does not capture the Google remote microphone. |
+| [onn-tv-alert-status.jpg](onn-tv-alert-status.jpg) | TV alert status while Home Assistant is denying legacy event subscriptions. Resume TV alerts is the button inside this dialog. |
+| [onn-live-camera-grid.jpg](onn-live-camera-grid.jpg) | Development build: four muted live cameras (living room, doorbell, driveway, back) with Close. Not part of stable v0.16.11. |
+| [onn-frigate-dashboard.jpg](onn-frigate-dashboard.jpg) | Development build: the Frigate website over the TV, with Kellie's Voice Close button. Private camera footage and people in the event strip are obscured. |
+| [onn-frigate-screensaver-diagnostics.jpg](onn-frigate-screensaver-diagnostics.jpg) | Frigate screensaver diagnostics. In this photo the watcher is not running and no Android dream event has arrived. |
 
 ## Requested captures
 
 | Screenshot / photo | What it should show | Proposed file |
 | --- | --- | --- |
-| TV app home/settings | Real on-TV app showing name, connection status and settings, no secrets | `actual-tv-settings.png` |
+| TV app home/settings | Real on-TV app showing name, connection status and settings, no secrets | Have [onn-home-connected.jpg](onn-home-connected.jpg) and [onn-settings-menu.jpg](onn-settings-menu.jpg) |
 | Voice overlay | Kellie's Voice overlay on Google TV with a harmless Assist request and reply | Have [onn-voice-time.jpg](onn-voice-time.jpg) and [onn-voice-doorbell.gif](onn-voice-doorbell.gif) |
 | Announcement popup | The opt-in on-screen text announcement above a TV app | Still wanted |
 | Frigate popup | A real camera **still snapshot** overlay | Have [onn-snapshot-popup.jpg](onn-snapshot-popup.jpg) |

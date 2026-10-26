@@ -2,8 +2,6 @@
 
 # Kellie's Voice for Home Assistant
 
-**Latest stable integration: v0.16.11.** Install the matching signed TV APK v0.16.11 (code 39), then update this HACS integration to 0.16.11 and restart Home Assistant. Text announcements remain silent unless you opt into `speak`; native timer bridge is OFF by default and hardware testing is pending. [Release notes](https://github.com/chadakenn/Kellies-Voice/blob/main/docs/releases/v0.16.11.md).
-
 **Give your TV a voice, useful popups, and quick access to security-camera views without replacing your TV launcher.** Kellie's Voice consists of a native Android TV/Google TV app and this Home Assistant integration. The TV handles speech and on-screen overlays; the integration lets HA automations and controls talk to it.
 
 **Why it matters:** ask your Assist agent about the house while a show plays, get a text alert when the washing machine finishes, or see a Frigate driveway/doorbell snapshot when a person approaches. On-demand live video is available as an **experimental** option; moving driveway **and doorbell** video is now confirmed on the onn 4K Pro with Android v0.16.1, though other cameras/devices need verification.
