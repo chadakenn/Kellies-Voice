@@ -1,13 +1,15 @@
 name: Publish opt-in Kellie's Voice dev prerelease
 
 # HACS lists GitHub Releases, not every non-default branch.
-# Only an explicit [publish-hacs-dev] dev commit or manual dev dispatch may publish.
+# Only an explicit [publish-hacs-dev] commit on dev may publish.
 on:
-  workflow_dispatch:
   push:
     branches: [dev]
     paths:
       - '.github/workflows/publish-hacs-beta.yml'
+      - 'app/build.gradle'
+      - 'custom_components/kellies_voice/manifest.json'
+      - 'docs/DEV_CHANNEL.md'
 
 permissions:
   contents: read
@@ -16,8 +18,7 @@ jobs:
   beta-release:
     if: >-
       github.ref == 'refs/heads/dev' &&
-      (github.event_name == 'workflow_dispatch' ||
-       contains(github.event.head_commit.message, '[publish-hacs-dev]'))
+      contains(github.event.head_commit.message, '[publish-hacs-dev]')
     runs-on: ubuntu-latest
     timeout-minutes: 35
     permissions:
