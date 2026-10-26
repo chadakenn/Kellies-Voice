@@ -105,6 +105,12 @@ final class ScreensaverLiveGrid {
         if (stopped || fullscreenSlot != slot || fullscreenSurface == null) return;
         player.setVolume(0f);
         player.setVideoTextureView(fullscreenSurface);
+        VideoSize currentSize = player.getVideoSize();
+        if (currentSize.width > 0 && currentSize.height > 0
+                && fullscreenSurface.getParent() instanceof AspectRatioFrameLayout) {
+            ((AspectRatioFrameLayout) fullscreenSurface.getParent()).setAspectRatio(
+                    currentSize.width * currentSize.pixelWidthHeightRatio / currentSize.height);
+        }
         surfaces[slot].setAlpha(0f);
         player.setTrackSelectionParameters(player.getTrackSelectionParameters().buildUpon()
                 .setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, false).build());
