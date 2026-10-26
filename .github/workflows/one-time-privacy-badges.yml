@@ -1,0 +1,96 @@
+name: One-time camera screenshot badge cleanup and wiki sync
+on:
+  push:
+    branches: [docs/onn-october-photos]
+    paths:
+      - '.github/workflows/one-time-privacy-badges.yml'
+permissions:
+  contents: write
+jobs:
+  sanitize:
+    if: contains(github.event.head_commit.message, '[privacy-badges-once]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Pillow
+        run: python -m pip install --disable-pip-version-check 'Pillow>=10,<13'
+      - name: Cover any unredacted home detail behind badges
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from PIL import Image, ImageDraw, ImageFont
+          root=Path('docs/screenshots')
+
+          def rect(image, xy):
+              w,h=image.size
+              return tuple(round(n*(w if i%2==0 else h)) for i,n in enumerate(xy))
+
+          def font(size):
+              return ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',size)
+
+          grid=root/'onn-live-camera-grid.jpg'
+          img=Image.open(grid).convert('RGB')
+          draw=ImageDraw.Draw(img)
+          tiles=[
+             ('livingroom', (0.0,0.080,0.498,0.335)),
+             ('doorbell',(0.509,0.080,0.994,0.335)),
+             ('driveway',(0.0,0.344,0.498,0.607)),
+             ('back_sub',(0.509,0.344,0.994,0.607))
+          ]
+          for name,(x1,y1,x2,y2) in tiles:
+              label=rect(img,(x1,y2-.057,x1+.135,y2))
+              badge=rect(img,(x2-.111,y1,x2,y1+.039))
+              draw.rectangle(label,fill=(19,24,31))
+              draw.rectangle(badge,fill=(19,24,31))
+              draw.text((label[0]+8,label[1]+8),name,font=font(24),fill='white')
+              draw.text((badge[0]+6,badge[1]+6),'LIVE · muted',font=font(22),fill='white')
+          img.save(grid,'JPEG',quality=89,optimize=True,progressive=True)
+
+          dashboard=root/'onn-frigate-dashboard.jpg'
+          img=Image.open(dashboard).convert('RGB')
+          draw=ImageDraw.Draw(img)
+          # Previous mask exposed a small strip of home around the button.
+          draw.rectangle(rect(img,(0.720,0.61,0.90,0.73)),fill=(16,21,27))
+          close=rect(img,(0.758,0.645,0.897,0.712))
+          draw.rounded_rectangle(close,radius=22,fill=(14,142,127))
+          label='Close'
+          f=font(29)
+          w=draw.textlength(label,font=f)
+          draw.text((round((close[0]+close[2]-w)/2),close[1]+18),label,font=f,fill='white')
+          img.save(dashboard,'JPEG',quality=89,optimize=True,progressive=True)
+          PY
+      - name: Try to replace already-public Wiki photos
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          git clone --quiet --depth 1 "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.wiki.git" wiki-tmp 2>/dev/null
+          if [ $? -ne 0 ]; then
+            echo 'WIKI_SYNC_UNAVAILABLE: Wiki clone/push credentials are not available to the CI token'
+            exit 0
+          fi
+          cp docs/screenshots/onn-live-camera-grid.jpg wiki-tmp/onn-live-camera-grid.jpg
+          cp docs/screenshots/onn-frigate-dashboard.jpg wiki-tmp/onn-frigate-dashboard.jpg
+          cd wiki-tmp || exit 1
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add onn-live-camera-grid.jpg onn-frigate-dashboard.jpg
+          git commit -qm 'docs(privacy): redact real-home camera photos'
+          git push --quiet origin HEAD 2>/dev/null
+          if [ $? -eq 0 ]; then echo 'WIKI_SYNC_SUCCESS'; else echo 'WIKI_SYNC_UNAVAILABLE: Wiki push was denied'; fi
+      - name: Commit cleansed repo images and remove temporary workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm -f .github/workflows/one-time-privacy-badges.yml
+          git add docs/screenshots/onn-live-camera-grid.jpg docs/screenshots/onn-frigate-dashboard.jpg
+          git commit -m 'docs(privacy): replace camera badge backgrounds with opaque labels'
+          git push origin HEAD:docs/onn-october-photos
