@@ -2,6 +2,18 @@
 
 **Status:** Development-only feature in signed v0.16.12-dev.4 (build 43); not in stable v0.16.11. Disabled by default. Dev.4 adds watcher recovery after boot/APK update plus diagnostics for Google TV Ambient Mode.
 
+## Development build 45: pick snapshot cameras from Home Assistant dropdowns
+
+With **Home Assistant HACS v0.16.12-dev.6**, open **Settings → Devices & services → Kellie's Voice → your TV**. There are now four **Frigate snapshot camera 1–4** dropdowns. Each dropdown automatically lists the camera entities already exposed by your HA instance, with their friendly names and entity IDs, so you no longer need to type a `camera.*` ID.
+
+Choose **camera 1 first**, then camera 2, 3, and 4 as needed. Choose **None** to remove a camera; remaining cameras move into the earlier slots. A camera may be selected only once. The choices refresh when HA camera entities appear/disappear and on regular HA updates; saved selections survive an HA restart through the existing `Frigate HA camera entities (manual override)` text entity. Manual editing remains possible as a fallback and updates the dropdown selections too.
+
+**These dropdowns configure only the Home Assistant snapshot grid.** A configured **Frigate web URL takes priority**; clear it to display the 1–4 HA camera snapshots instead. Selecting four snapshots does not rearrange Frigate's own Live webpage. For the Frigate webpage, change the selected Frigate camera group and use the TV's **Select camera** cursor to choose tiles.
+
+If the dropdown only says **None**, Home Assistant does not currently expose any `camera.*` entities. Add/expose the cameras through the existing Frigate or camera integration first. The TV never scans your network itself for camera credentials.
+
+This dev.6 release includes a re-signed Android build 45 only to keep published development versions aligned; **HACS dev.6 uses the same camera-list protocol as Android dev.5/build 44**. You can test the dropdown in HA without replacing build 44.
+
 ## Development build 44: Home Assistant and TV remote controls
 
 With **Android + HACS v0.16.12-dev.5** (development only), open Home Assistant → **Settings → Devices & services → Kellie's Voice → your TV → Controls**. After connecting the TV with its existing **Home Assistant layout** option, configure the per-TV entities:
