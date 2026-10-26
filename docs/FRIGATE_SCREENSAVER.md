@@ -1,6 +1,12 @@
 # Frigate screensaver (opt-in, development beta)
 
-**Status:** Signed development v0.16.12-dev.9 (build 48) adds remote camera selection and optional single-camera audio. Not in stable v0.16.11. The feature remains off by default. Four silent live streams, automatic screensaver start and reboot recovery were verified on the owner's TV in dev.8; the new full-screen/audio feature and adjusted layout require a fresh physical-TV acceptance test.
+**Status:** Development v0.16.12-dev.10 (build 49) repairs remote Back and visible focus on the full-screen camera footer. Not in stable v0.16.11. The feature remains opt-in. Four silent live streams, automatic ambient activation and reboot recovery passed on TV in dev.8; full-screen Doorbell with sound passed in dev.9; dev.10 Back and focus fixes still require real-TV verification.
+
+## Development build 49: remote Back and high-contrast focus controls
+
+The owner reported that dev.9's on-screen **Back to cameras** worked, but the TV remote **Back** key did not, and it was unclear whether Back or Close was focused. In dev.10, Back is intercepted before dispatch to a focused footer control; Android 13+ receives a window-attached overlay Back callback as a fallback. The selected live player should be muted and returned to the 2×2 grid without closing the screen. Both **Back to cameras** and **Close** use gold focus borders over dark teal backgrounds. D-pad Left/Right switches controls. Frigate webpage's browsing history remains supported.
+
+Test on a physical TV in **automatic** screensaver mode, not just manual preview: open Doorbell, verify sound, press the physical Back key, confirm muted four-camera grid. Reenter Doorbell, confirm yellow focus moves from Back to Close via Right then back via Left, and OK activates the focused button. Also test API 26–32 legacy key behavior, Preview, and Android native DreamService if available. The new behavior has Android CI coverage but is not hardware-verified yet.
 
 ## Development build 48: remote-selectable full-screen camera with audio
 
