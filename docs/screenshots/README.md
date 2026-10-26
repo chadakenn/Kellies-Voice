@@ -13,7 +13,7 @@ Phone photos from an onn 4K Pro are now in this folder and in the main README. T
 | [onn-mic-routing.jpg](onn-mic-routing.jpg) | Microphone routing. Safe checks are on. This does not capture the Google remote microphone. |
 | [onn-tv-alert-status.jpg](onn-tv-alert-status.jpg) | TV alert status while Home Assistant is denying legacy event subscriptions. Resume TV alerts is the button inside this dialog. |
 | [onn-live-camera-grid.jpg](onn-live-camera-grid.jpg) | Development build: four muted live cameras (living room, doorbell, driveway, back) with Close. Not part of stable v0.16.11. |
-| [onn-frigate-dashboard.jpg](onn-frigate-dashboard.jpg) | Development build: the Frigate website over the TV, with Kellie's Voice Close button. A person is visible in the event strip. |
+| [onn-frigate-dashboard.jpg](onn-frigate-dashboard.jpg) | Development build: the Frigate website over the TV, with Kellie's Voice Close button. Private camera footage and people in the event strip are obscured. |
 | [onn-frigate-screensaver-diagnostics.jpg](onn-frigate-screensaver-diagnostics.jpg) | Frigate screensaver diagnostics. In this photo the watcher is not running and no Android dream event has arrived. |
 
 ## Requested captures
