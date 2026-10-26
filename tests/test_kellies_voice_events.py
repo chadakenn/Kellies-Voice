@@ -55,6 +55,10 @@ class ForecastDeliveryTests(unittest.IsolatedAsyncioTestCase):
                          _LOGGER=logging.getLogger(__name__))
         self.presence = SimpleNamespace(seen={}, online=lambda device_id: False)
         namespace["tracker"] = lambda hass: self.presence
+        self.actions_ledger = SimpleNamespace(
+            issue=lambda device_id, actions, duration: "a" * 32 if actions else "",
+            clear=lambda device_id: None)
+        namespace["ledger"] = lambda hass: self.actions_ledger
         exec(compile(ast.Module(body=functions, type_ignores=[]), "services.py", "exec"), namespace)
         self.handler = namespace["_async_show_forecast"]
         self.timer_handlers = namespace
@@ -101,6 +105,17 @@ class ForecastDeliveryTests(unittest.IsolatedAsyncioTestCase):
         await self.timer_handlers["_async_dismiss_timers"](SimpleNamespace(hass=self.hass, data={
             "device_id": "living-room"}))
         self.assertEqual("dismiss", self.hass.bus.async_fire.call_args.args[1]["operation"])
+
+    async def test_action_buttons_are_inert_until_tv_click(self):
+        await self.timer_handlers["_async_announce"](SimpleNamespace(
+            hass=self.hass, data={"title": "Washer", "text": "Done",
+                "actions": [{"id":"acknowledge","label":"OK"}]}))
+        event, data = self.hass.bus.async_fire.call_args.args
+        self.assertEqual(const.EVENT_ANNOUNCEMENT, event)
+        self.assertEqual([{"id":"acknowledge","label":"OK"}], data["actions"])
+        self.assertEqual("a" * 32, data["announcement_id"])
+        self.assertNotIn("unlock", data)
+        self.assertEqual(1, self.hass.bus.async_fire.call_count)
 
     async def test_camera_speech_uses_same_popup_event(self):
         await self.timer_handlers["_async_show_camera"](SimpleNamespace(

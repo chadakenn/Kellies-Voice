@@ -322,3 +322,31 @@ def clean_speak(value) -> str:
     if "://" in lower or lower.startswith("http") or "www." in lower:
         return ""
     return text
+
+_ACTION_ID = re.compile(r"^[a-z][a-z0-9_]{0,31}$")
+
+
+def clean_actions(value) -> list:
+    """Accept up to three short, unique, inert button identifiers and labels."""
+    if value is None:
+        return []
+    if not isinstance(value, list) or len(value) > 3:
+        raise ValueError("Use at most three action buttons.")
+    safe, seen = [], set()
+    for item in value:
+        if not isinstance(item, dict) or set(item) != {"id", "label"}:
+            raise ValueError("Each button must contain only id and label.")
+        ident, label = item["id"], item["label"]
+        if not isinstance(ident, str) or not _ACTION_ID.fullmatch(ident):
+            raise ValueError("Button ID must be a lowercase word up to 32 characters.")
+        if not isinstance(label, str):
+            raise ValueError("Button label must be text.")
+        label = " ".join(label.strip().split())
+        lower = label.lower()
+        if not label or len(label) > 24 or "://" in lower or "www." in lower or lower.startswith("http"):
+            raise ValueError("Button label must be short and contain no URL.")
+        if ident in seen:
+            raise ValueError("Button IDs must be unique.")
+        safe.append({"id": ident, "label": label})
+        seen.add(ident)
+    return safe

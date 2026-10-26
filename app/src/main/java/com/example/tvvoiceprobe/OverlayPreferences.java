@@ -57,6 +57,13 @@ public final class OverlayPreferences {
     private static final String KEY_ALLOW_UNVERIFIED_MIC = "allow_unverified_mic";
     private static final String KEY_DISABLE_MIC_ON_TV = "disable_microphone_on_this_tv";
     private static final String KEY_UPDATE_CHANNEL = "update_channel";
+    private static final String KEY_SCREENSAVER = "screensaver_dashboard";
+    private static final String KEY_SCREENSAVER_URL = "screensaver_dashboard_url";
+    private static final String KEY_SCREENSAVER_CAMERAS = "screensaver_cameras";
+    private static final String KEY_SCREENSAVER_SIZE = "screensaver_size";
+    private static final String KEY_SCREENSAVER_DESKTOP = "screensaver_desktop_page";
+    private static final String KEY_SCREENSAVER_FIT = "screensaver_fit";
+    private static final String KEY_SCREENSAVER_LIVE = "screensaver_live_mode";
     private final SharedPreferences preferences;
 
     public OverlayPreferences(Context context) {
@@ -348,5 +355,72 @@ public final class OverlayPreferences {
 
     public void setUpdateChannel(String channel) {
         preferences.edit().putString(KEY_UPDATE_CHANNEL, UpdateChannel.normalize(channel)).apply();
+    }
+
+    /** Off until the owner asks for a Frigate page while the screensaver is running. */
+    public boolean screensaverDashboard() {
+        return preferences.getBoolean(KEY_SCREENSAVER, false);
+    }
+
+    public void setScreensaverDashboard(boolean enabled) {
+        preferences.edit().putBoolean(KEY_SCREENSAVER, enabled).apply();
+    }
+
+    public String screensaverUrl() {
+        return ScreensaverDashboard.dashboardUrl(preferences.getString(KEY_SCREENSAVER_URL, ""));
+    }
+
+    public void setScreensaverUrl(String value) {
+        preferences.edit().putString(KEY_SCREENSAVER_URL, ScreensaverDashboard.dashboardUrl(value)).apply();
+    }
+
+    public String screensaverCameras() {
+        return ScreensaverDashboard.cameras(preferences.getString(KEY_SCREENSAVER_CAMERAS, ""));
+    }
+
+    public void setScreensaverCameras(String value) {
+        preferences.edit().putString(KEY_SCREENSAVER_CAMERAS, ScreensaverDashboard.cameras(value)).apply();
+    }
+
+    /** TV-first default. Switching off restores the original embedded mobile layout. */
+    public boolean screensaverDesktopPage() {
+        return preferences.getBoolean(KEY_SCREENSAVER_DESKTOP, true);
+    }
+
+    public void setScreensaverDesktopPage(boolean desktop) {
+        preferences.edit().putBoolean(KEY_SCREENSAVER_DESKTOP, desktop).apply();
+    }
+
+    public String screensaverFit() {
+        String value = preferences.getString(KEY_SCREENSAVER_FIT, "Fit more cameras");
+        return "Balanced".equals(value) || "Larger text".equals(value) ? value : "Fit more cameras";
+    }
+
+    public void setScreensaverFit(String value) {
+        if ("Fit more cameras".equals(value) || "Balanced".equals(value)
+                || "Larger text".equals(value)) {
+            preferences.edit().putString(KEY_SCREENSAVER_FIT, value).apply();
+        }
+    }
+
+    public String screensaverLiveMode() {
+        return ScreensaverLiveMode.normalize(preferences.getString(
+                KEY_SCREENSAVER_LIVE, ScreensaverLiveMode.SNAPSHOTS));
+    }
+
+    public void setScreensaverLiveMode(String value) {
+        preferences.edit().putString(KEY_SCREENSAVER_LIVE,
+                ScreensaverLiveMode.normalize(value)).apply();
+    }
+
+    /** Large matches the original full-screen dashboard. */
+    public String screensaverSize() {
+        String size = ScreensaverDashboard.sizeKey(preferences.getString(KEY_SCREENSAVER_SIZE, "Large"));
+        return size.isEmpty() ? "large" : size;
+    }
+
+    public void setScreensaverSize(String value) {
+        String size = ScreensaverDashboard.sizeKey(value);
+        preferences.edit().putString(KEY_SCREENSAVER_SIZE, size.isEmpty() ? "large" : size).apply();
     }
 }

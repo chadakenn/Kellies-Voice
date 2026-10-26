@@ -4,7 +4,27 @@
 
 ---
 
-Kellie's Voice can show camera snapshots and experimental muted live HLS overlays over whatever you are already watching.
+Kellie's Voice can show camera snapshots, opt-in HLS camera overlays, and an optional automatic screensaver with up to four muted live cameras.
+
+## What it looks like on the TV
+
+These photos are from the owner's onn 4K Pro in October 2026. The four-camera grid and the Frigate website are included in the **stable v0.16.12** release, opt-in and subject to camera/decoder compatibility. The home camera feeds and event strip are deliberately obscured for privacy.
+
+![Four muted live cameras and a Close button](https://raw.githubusercontent.com/wiki/chadakenn/Kellies-Voice/onn-live-camera-grid.jpg)
+
+![Frigate website with the Kellie's Voice Close button](https://raw.githubusercontent.com/wiki/chadakenn/Kellies-Voice/onn-frigate-dashboard.jpg)
+
+![Frigate screensaver diagnostics. The watcher is not running in this photo](https://raw.githubusercontent.com/wiki/chadakenn/Kellies-Voice/onn-frigate-screensaver-diagnostics.jpg)
+
+The diagnostics photo is an example of the status screen, not a working screensaver. Here the watcher is stopped, Home Assistant layout sync has not started, and Android has not sent a dream event.
+
+## Live HA camera screensaver (opt-in, new in v0.16.12)
+
+Enable **Frigate screensaver** and **Home Assistant layout** in the TV's Kellie's Voice settings and grant **Display over other apps**. Select up to four Home Assistant camera entities for the paired TV in Home Assistant. Leave the **Frigate web URL blank** to use the HA-selected grid; a Frigate URL takes priority and shows the Frigate website instead.
+
+In the paired TV's Home Assistant controls choose **HA camera grid playback → Live (one camera)** first, then two or four (advanced) if the TV handles software-decoded HLS reliably. The overview is **muted**, and failed/unsupported HLS returns to snapshots. Use the remote D-pad to select a tile, press **OK** for full-screen and that camera's audio if the stream contains an audio track, and press **Back** to restore the muted 2×2 grid. **Close** ends the viewer. The focused footer control has a gold outline.
+
+On the maintainer's onn Google TV, all four live cameras launched automatically and returned after reboot. Full-screen Doorbell audio, remote Back and focus were field-tested. This does **not** establish other devices, all decoders or audio tracks. See [Frigate screensaver setup](https://github.com/chadakenn/Kellies-Voice/blob/main/docs/FRIGATE_SCREENSAVER.md) for the diagnostics and Resync HA cameras recovery.
 
 ## Snapshot popups
 

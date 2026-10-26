@@ -17,6 +17,8 @@
 - Optional follow-up listening after spoken responses, physically tested on v0.16.11
 - Spoken TV announcements with adjustable voice volume, physically tested on v0.16.11
 - Manual **Resume TV alerts** recovery (v0.16.8)
+- Four-camera live HLS screensaver, automatic idle and reboot recovery (dev.8 accepted)
+- Doorbell full-screen with audible audio and working physical Back/gold focus controls (dev.9/dev.10 accepted)
 
 ## Device compatibility matrix
 
@@ -37,7 +39,7 @@ This table distinguishes **maintainer-tested results** from **community testing 
 
 Other Android TV / Google TV / Fire TV models are welcome for community testing but are **not comprehensively verified**. Some Philips models have been used for camera and HDMI-safe decoder testing; microphone access is limited on devices that only expose echo-reference or line-in inputs. USB microphones may be required.
 
-## What is *not* in the public v0.16.11 release
+## What is *not* in the public v0.16.12 release
 
 - Always-on wake word
 - Automatic always-on follow-up without enabling the TV setting (the shipped opt-in follow-up is OFF by default)

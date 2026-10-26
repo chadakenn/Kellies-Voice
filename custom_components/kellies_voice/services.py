@@ -3,6 +3,8 @@
 import logging
 import time
 
+from .alert_actions import ledger
+
 import voluptuous as vol
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import ServiceValidationError
@@ -35,6 +37,7 @@ from .validation import (
     clean_duration,
     clean_text,
     clean_speak,
+    clean_actions,
     clean_title,
     clean_forecast_days,
     clean_forecast_duration,
@@ -61,6 +64,7 @@ ANNOUNCE_SCHEMA = vol.Schema(
             vol.Range(min=MIN_DURATION_SECONDS, max=MAX_DURATION_SECONDS),
         ),
         vol.Optional("speak"): cv.string,
+        vol.Optional("actions"): list,
         vol.Optional("device_id"): cv.string,
     }
 )
@@ -79,6 +83,7 @@ SHOW_CAMERA_SCHEMA = vol.Schema(
             vol.Range(min=MIN_DURATION_SECONDS, max=MAX_DURATION_SECONDS),
         ),
         vol.Optional("speak"): cv.string,
+        vol.Optional("actions"): list,
         vol.Optional("device_id"): cv.string,
     }
 )
@@ -97,6 +102,7 @@ SHOW_LIVE_SCHEMA = vol.Schema(
             vol.Coerce(int), vol.Range(min=MIN_LIVE_SECONDS, max=MAX_LIVE_SECONDS)
         ),
         vol.Optional("speak"): cv.string,
+        vol.Optional("actions"): list,
         vol.Optional("device_id"): cv.string,
     }
 )
@@ -240,10 +246,12 @@ async def _async_announce(call: ServiceCall) -> None:
             DEFAULT_ANNOUNCE_SECONDS,
         )
         speak = clean_speak(call.data.get("speak"))
+        actions = clean_actions(call.data.get("actions"))
         targets = _event_targets(call, call.data.get("device_id"))
     except ValueError as err:
         raise ServiceValidationError(str(err)) from None
     for device_id in targets:
+        issued = ledger(call.hass).issue(device_id, actions, duration)
         data = {
             "title": title,
             "text": text,
@@ -252,6 +260,8 @@ async def _async_announce(call: ServiceCall) -> None:
         }
         if speak:
             data["speak"] = speak
+        if issued:
+            data.update(actions=actions, announcement_id=issued)
         call.hass.bus.async_fire(EVENT_ANNOUNCEMENT, data)
     _LOGGER.debug("Fired %s for %s configured TV(s)", EVENT_ANNOUNCEMENT, len(targets))
 
@@ -271,12 +281,14 @@ async def _async_show_camera(call: ServiceCall) -> None:
             DEFAULT_CAMERA_SECONDS,
         )
         speak = clean_speak(call.data.get("speak"))
+        actions = clean_actions(call.data.get("actions"))
         targets = _event_targets(call, call.data.get("device_id"))
     except ValueError as err:
         raise ServiceValidationError(str(err)) from None
     if call.hass.states.get(entity_id) is None:
         raise ServiceValidationError("That camera is not in Home Assistant.")
     for device_id in targets:
+        issued = ledger(call.hass).issue(device_id, actions, duration)
         call.hass.bus.async_fire(
             EVENT_CAMERA_POPUP,
             {
@@ -288,6 +300,7 @@ async def _async_show_camera(call: ServiceCall) -> None:
                 "duration_seconds": duration,
                 "device_id": device_id,
                 **({"speak": speak} if speak else {}),
+                **({"actions": actions, "announcement_id": issued} if issued else {}),
             },
         )
     _LOGGER.debug("Fired %s for %s configured TV(s)", EVENT_CAMERA_POPUP, len(targets))
@@ -309,6 +322,7 @@ async def _async_show_live_camera(call: ServiceCall) -> None:
         if not MIN_LIVE_SECONDS <= duration <= MAX_LIVE_SECONDS:
             raise ValueError("Live duration must be from 4 to 180 seconds.")
         speak = clean_speak(call.data.get("speak"))
+        actions = clean_actions(call.data.get("actions"))
         targets = _event_targets(call, call.data.get("device_id"))
     except (ValueError, TypeError) as err:
         raise ServiceValidationError(str(err)) from None
@@ -319,6 +333,7 @@ async def _async_show_live_camera(call: ServiceCall) -> None:
     if not int(camera.attributes.get("supported_features", 0)) & 2:
         raise ServiceValidationError("This camera does not support live streams in Home Assistant.")
     for device_id in targets:
+        issued = ledger(call.hass).issue(device_id, actions, duration)
         call.hass.bus.async_fire(
             EVENT_LIVE_CAMERA,
             {
@@ -330,6 +345,7 @@ async def _async_show_live_camera(call: ServiceCall) -> None:
                 "duration_seconds": duration,
                 "device_id": device_id,
                 **({"speak": speak} if speak else {}),
+                **({"actions": actions, "announcement_id": issued} if issued else {}),
             },
         )
     _LOGGER.debug("Fired %s for %s configured TV(s)", EVENT_LIVE_CAMERA, len(targets))
@@ -346,6 +362,7 @@ async def _async_hide_camera(call: ServiceCall) -> None:
     except ValueError as err:
         raise ServiceValidationError(str(err)) from None
     for device_id in targets:
+        ledger(call.hass).clear(device_id)
         call.hass.bus.async_fire(EVENT_HIDE_CAMERA, {"device_id": device_id})
     _LOGGER.debug("Fired %s for %s configured TV(s)", EVENT_HIDE_CAMERA, len(targets))
 

@@ -13,7 +13,8 @@ from homeassistant.core import HomeAssistant, callback
 
 from .alert_transport import EVENT_FIELDS, sanitize_event
 from .alert_presence import receiver_connected, receiver_disconnected
-from .const import DOMAIN
+from .alert_actions import ledger
+from .const import DOMAIN, EVENT_ACTION_PRESSED
 from .validation import clean_tv_device_id
 
 _REGISTERED = "alert_ws_registered"
@@ -26,6 +27,7 @@ def async_register_alert_subscription(hass: HomeAssistant) -> None:
     if data.get(_REGISTERED):
         return
     websocket_api.async_register_command(hass, websocket_subscribe_alerts)
+    websocket_api.async_register_command(hass, websocket_press_alert_action)
     data[_REGISTERED] = True
 
 
@@ -117,3 +119,35 @@ def websocket_subscribe_alerts(hass: HomeAssistant,
     connection.send_result(msg["id"])
     # Only mark connected after successfully registering and acknowledging.
     receiver_connected(hass, device_id, connection_key)
+
+@websocket_api.websocket_command({
+    probatio.Required("type"): "kellies_voice/press_alert_action",
+    probatio.Required("device_id"): str,
+    probatio.Required("announcement_id"): str,
+    probatio.Required("action"): str,
+})
+@callback
+def websocket_press_alert_action(hass: HomeAssistant,
+                                 connection: websocket_api.ActiveConnection,
+                                 msg: dict) -> None:
+    """A TV may acknowledge only one issued, unexpired button once."""
+    try:
+        device_id = clean_tv_device_id(msg["device_id"])
+    except ValueError:
+        connection.send_error(msg["id"], websocket_api.ERR_INVALID_FORMAT,
+                              "Invalid TV pairing ID")
+        return
+    if not _tv_can_read(hass, connection.user, device_id):
+        connection.send_error(msg["id"], websocket_api.ERR_UNAUTHORIZED,
+                              "No read permission for this paired TV")
+        return
+    if not ledger(hass).claim(device_id, msg["announcement_id"], msg["action"]):
+        connection.send_error(msg["id"], websocket_api.ERR_INVALID_FORMAT,
+                              "No matching active TV button")
+        return
+    hass.bus.async_fire(EVENT_ACTION_PRESSED, {
+        "device_id": device_id,
+        "announcement_id": msg["announcement_id"],
+        "action": msg["action"],
+    })
+    connection.send_result(msg["id"])

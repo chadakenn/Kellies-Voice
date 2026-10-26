@@ -1,4 +1,4 @@
-**Now available: [v0.16.11](https://github.com/chadakenn/Kellies-Voice/releases/tag/v0.16.11)** with optional follow-up listening and spoken alert volume verified on onn 4K Pro. [Install the matching TV APK + HACS integration](Getting-Started.md), then see [Voice and Timers](Voice-and-Timers.md). Alternate TVs and optional native timer bridge still require testing.
+**Now available: [v0.16.12](https://github.com/chadakenn/Kellies-Voice/releases/tag/v0.16.12)** with opt-in four-live-camera screensaver, selected-camera full-screen sound, remote Back and focus controls verified on onn 4K Pro. [Install the matching TV APK + HACS integration](Getting-Started.md), then see [Voice and Timers](Voice-and-Timers.md). Alternate TVs and optional native timer bridge still require testing.
 
 ![Kellie's Voice: Your home, your voice, your way](https://raw.githubusercontent.com/chadakenn/Kellies-Voice/main/docs/branding/kellies-voice-approved-banner.webp)
 
@@ -31,13 +31,13 @@ _These photos are real onn 4K Pro captures, not design mockups. Camera and micro
 | **02 · Pair** | Install the companion HACS integration and pair your TV | [Home Assistant Setup](Home-Assistant-HACS-Setup.md) |
 | **03 · Try it** | Test a voice command, announcement or camera popup | [TV App & Permissions](TV-App-and-Permissions.md) · [YAML Cookbook](YAML-Cookbook.md) |
 
-> **Two components, one experience:** the Android TV app and the Home Assistant HACS integration are separate downloads. Use matching released versions. The current public release is **v0.16.11**; development-only features are not included.
+> **Two components, one experience:** the Android TV app and the Home Assistant HACS integration are separate downloads. Use matching released versions. The current public release is **v0.16.12**; experimental wake-word work is not included.
 
 ## Explore by what you want to do
 
 | 🗣️ Talk to your home | 📷 See what's happening |
 |:---|:---|
-| [**Voice & Timers**](Voice-and-Timers.md) <br> Ask questions, control devices, use countdown timers. | [**Cameras & Frigate**](Cameras-and-Frigate.md) <br> See snapshots and opt-in muted live camera views. |
+| [**Voice & Timers**](Voice-and-Timers.md) <br> Ask questions, control devices, use countdown timers. | [**Cameras & Frigate**](Cameras-and-Frigate.md) <br> See snapshots and up to four muted live screensaver feeds; select one full-screen for available audio. |
 
 | 📣 Get notifications | 🧩 Copy working examples |
 |:---|:---|
@@ -58,6 +58,6 @@ _These photos are real onn 4K Pro captures, not design mockups. Camera and micro
 
 ---
 
-**A note on features:** the Google Assistant remote microphone button is not automatically available to third-party apps. Optional hands-free follow-up listening is included in v0.16.11 (OFF by default). Always-on wake-word support, actionable popup buttons, and the Frigate screensaver remain experimental and are not in the public release. See the [FAQ](FAQ.md) for more.
+**A note on features:** the Google Assistant remote microphone button is not automatically available to third-party apps. Optional hands-free follow-up listening remains OFF by default. The opt-in HA/Frigate screensaver is included in v0.16.12; its four-camera live mode is advanced and may require stronger hardware. Always-on wake-word support remains an unreleased PR and unverified extra TV models need community testing. See the [FAQ](FAQ.md) for more.
 
 [**Begin installation →**](Getting-Started.md) · [**Back to the main repository**](https://github.com/chadakenn/Kellies-Voice)
