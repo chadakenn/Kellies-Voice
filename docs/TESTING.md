@@ -1,3 +1,15 @@
+## v0.16.12-dev.6 HACS auto-camera dropdowns (build 45; dev only)
+
+- [ ] Install HA HACS dev.6 and restart HA. In Kellie's Voice device Controls, confirm four **Frigate snapshot camera** selects appear with friendly names and HA camera IDs from the existing HA camera state registry.
+- [ ] Select camera 1 then camera 2. Confirm the existing **Frigate HA camera entities (manual override)** text shows the matching `camera.*` comma list; repeat for 3 and 4. Reboot HA and confirm all selections restore.
+- [ ] Select None for camera 1 or camera 2: remaining cameras shift forward. The same camera can't be selected twice. Picking camera 4 first should report "Choose earlier camera slots first."
+- [ ] Manually edit the legacy text field (including clearing it), and confirm all selects reflect the change without accidentally starting a microphone or showing a popup.
+- [ ] Add/rename/remove a Home Assistant camera entity, verify dropdown choices update, and keep an unavailable selected camera visible long enough to clear. No external camera-scanning credentials are used.
+- [ ] With the **Frigate web URL** filled, confirm snapshot selectors have no effect on the Frigate Live webpage. Clear the URL to switch to the 1–4 HA snapshot grid. Restore URL afterward if the owner wants Live mode.
+- [ ] Confirm two paired TVs keep independent selections. Verify existing overlay, voice, event popups and automatic Google TV Frigate overlay remain unchanged. Android build 44 can receive the identical `screensaver_cameras` wire format.
+
+**Do not promote this development-only feature to main before owner UI and hardware acceptance.**
+
 ## v0.16.12-dev.5 HA settings + Frigate remote navigation (build 44; dev only)
 
 - [ ] Install matching dev.5 HACS integration, restart Home Assistant and signed Android build 44. The TV's device page exposes Frigate screensaver switch, URL, cameras, size, layout, and fit preset. Check that the ordinary TV controls and existing announcements remain unchanged.

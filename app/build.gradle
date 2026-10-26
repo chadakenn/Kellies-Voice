@@ -11,8 +11,8 @@ android {
         minSdk 26
         targetSdk 35
         // Restart opted-in Frigate watcher on APK updates/reboot; ambient diagnostics.
-        versionCode 44
-        versionName '0.16.12-dev.5'
+        versionCode 45
+        versionName '0.16.12-dev.6'
     }
 
     // The keystore is private and supplied from GitHub Actions secrets.

@@ -1,5 +1,9 @@
 # Kellie's Voice development and testing lane
 
+## v0.16.12-dev.6 / build 45: Home Assistant camera dropdowns
+
+Owner reported the single HA `Frigate HA camera entities` text control was confusing. New HA **Frigate snapshot camera 1–4** selects automatically discover existing HA `camera.*` entities, present their friendly names with IDs, and write a validated, de-duplicated, ordered list through the existing paired TV text control. Changes to the legacy text entity automatically populate the dropdowns, and the text entity restores saved choices after HA restart. Invalid/duplicate IDs and skipping earlier slots are rejected. These dropdowns only affect the snapshot-grid mode; clear the Frigate web URL to use them. The Android build 44 protocol works with the new HA integration, but a signed build 45 keeps the matched beta release version. This needs owner testing before stable main.
+
 ## HACS dev prerelease picker
 
 HACS does **not** list arbitrary repository branches in its ordinary **Redownload → Need a different version?** picker. HACS lists recent published GitHub Releases and the default branch. The repo's `dev` branch is already directly installable without any release: Home Assistant → **Developer Tools → Actions** → `update.install` targeting **Kellie's Voice's HACS repository update entity**, with `version: dev`. Do not target the HACS application's own update entity. After download, restart Home Assistant.
