@@ -28,6 +28,19 @@ It is **not** the neighboring **TV announcements & cameras** toggle and **not** 
 
 Manual Resume has been confirmed on an onn 4K Pro. With v0.16.9, a Home Assistant restart also reproduced a misleading permission-denied status while the receiver was actually disconnected. Pressing Resume restored it without changing account permissions. The original [issue #78](https://github.com/chadakenn/Kellies-Voice/issues/78) is closed, but follow-up automatic recovery work is being tested on the `dev` branch. This is **not** proof that reconnection works after standby on every device.
 
+## Connected but no speech is recognized
+
+A TV can show **Home Assistant voice: ✓ connected** and **TV alerts: ✓ connected** while **YOU SAID: Nothing yet** stays unchanged. These labels confirm connections, not that Android has granted access to a usable microphone.
+
+1. Press **TALK**, say a short phrase, and check for a transcript under **YOU SAID**.
+2. Confirm Android has granted Kellie's Voice the **Microphone** permission.
+3. Open **SETTINGS → Hardware microphone diagnostics**. Check that an actual microphone is available, not only an echo-reference or audio playback input.
+4. Keep **Mic input detection: Safe checks ON** for normal use. **Try unverified microphone (compatibility override)** is for controlled tests of physically present, misclassified inputs; it cannot create a microphone when Android exposes none.
+5. If the device has no usable microphone, try a compatible USB mic. Google Assistant's remote microphone may be reserved for Google's own app.
+6. Report the *actual Android/Google TV device model*, Android version, APK/HACS versions and non-sensitive diagnostics in [issue #71](https://github.com/chadakenn/Kellies-Voice/issues/71).
+
+**Do not mistake remote focus for a setting:** a bright blue row is only the highlighted choice. **Disable microphone capture on this TV** deliberately blocks recording when activated. For the full menu see [Microphone routing](TV-App-and-Permissions.md#microphone-routing-and-phantom-inputs).
+
 ## Other common issues
 
 - **No microphone detected / silent STT** — some Philips TVs expose only echo-reference or line-in devices that are not usable for speech. As of v0.16.8, those TVs can still incorrectly show Listening; see [issue #71](https://github.com/chadakenn/Kellies-Voice/issues/71). Try a compatible USB microphone and share non-sensitive Hardware microphone diagnostics with the maintainers. Use the unverified microphone override only for troubleshooting genuine, misreported microphones. The Google Assistant remote button is not intercepted.
