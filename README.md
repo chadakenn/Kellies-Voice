@@ -83,7 +83,7 @@ TV alert status when Home Assistant reports the legacy event subscription denied
 
 ### Development camera grid
 
-These three are from the development build on this TV, not the stable v0.16.11 release. The Frigate page includes this home's cameras, and a person is visible in one event thumbnail.
+These three are from the development build on this TV, not the stable v0.16.11 release. The home camera views and event thumbnails are pixelated for privacy; the TV controls remain visible.
 
 ![Four muted live cameras with a Close button](docs/screenshots/onn-live-camera-grid.jpg)
 
