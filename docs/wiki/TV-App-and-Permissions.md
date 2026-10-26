@@ -12,6 +12,44 @@ The Android TV app handles the microphone, floating overlays, on-screen speech, 
 - **SETTINGS** — Home Assistant URL/token, layout control, announcements & cameras, TV alert status, diagnostics, updates, and more.
 - **Connect / reconnect** — manages the main Assist connection (not the alert receiver).
 
+## Settings menu map
+
+Open **Kellie's Voice → SETTINGS** with your TV remote. Use **Up / Down / OK / Back**. The menu **scrolls**: on smaller displays, lower rows are off-screen until you press **Down**.
+
+| Setting visible on the TV | What it does |
+| --- | --- |
+| **Home Assistant connection** | Configure the URL and authentication token. Keep your token private. |
+| **Connect / reconnect** | Reconnect the main voice/Assist connection (not the TV alert receiver). |
+| **Start new conversation** | Begin another conversation with the selected Assist pipeline. |
+| **Hardware microphone diagnostics** | Inspect which microphone inputs Android makes available. |
+| **Microphone sensitivity: Normal** | Set pause/speech sensitivity to match a quiet room or TV playback. This is not a mic selector. |
+| **Mic input detection: Safe checks ON** | Keep conservative checks that reject suspicious phantom audio inputs. |
+| **Open floating voice overlay** | Display the voice overlay above supported TV content. |
+| **Overlay appearance & position** | Adjust the voice overlay's location and styling. |
+| **Home Assistant layout: ON** | Let the paired Home Assistant device synchronize supported layout settings. |
+| **TV announcements & cameras: ON** | Enable the separate TV-alert receiver for eligible announcements and cameras. |
+| **TV alert status** | Inspect and, if needed, choose **Resume TV alerts** inside the dialog. |
+| **Live camera: Safe software (default)** | Set the camera player compatibility mode. |
+| **Check for app updates** | Check for a newer signed Android APK. |
+| **Install downloaded update** | Install an APK that has already downloaded. |
+| **Forget saved connection** | Remove stored Home Assistant pairing and authentication from the TV. |
+
+**What connected means:** A main screen showing **Home Assistant voice: ✓ connected** and **TV alerts: ✓ connected** confirms two connections, but **YOU SAID: Nothing yet** still means no transcript is displayed. The bright blue menu row indicates **selection focus**, not a toggle's ON state.
+
+## Microphone routing and phantom inputs
+
+Some Android TV devices expose echo-reference or playback inputs that cannot capture spoken commands. These may be mistaken for a built-in microphone.
+
+1. Open **SETTINGS → Hardware microphone diagnostics**, and check the listed input sources.
+2. Leave **Mic input detection: Safe checks ON** for normal usage and ensure Android microphone permission is granted.
+3. The **Microphone routing** screen offers **Disable microphone capture on this TV**, **Try unverified microphone (compatibility override)**, and **Open microphone diagnostics**.
+4. **Disable** intentionally prevents capture. The **unverified microphone** option is for troubleshooting a *real accessible mic* classified incorrectly; it **cannot bypass a device with no accessible microphone**.
+5. If no usable input appears, try a supported USB microphone. The Google Assistant remote microphone is often reserved by the operating system.
+
+Microphone support on some Philips setups remains under investigation in [issue #71](https://github.com/chadakenn/Kellies-Voice/issues/71). A photo of a Philips **display** does not tell you whether Kellie's Voice is running on a Philips Android TV or a separate Google TV box. When reporting a problem, specify the **actual Android TV/Google TV hardware model**.
+
+[Connected but no speech recognized?](Troubleshooting.md#connected-but-no-speech-is-recognized)
+
 ## Required permissions
 
 - **Microphone** — needed for voice. The app attempts to reject non-microphone inputs, but microphone detection is still being investigated on some Philips TVs in v0.16.8 ([issue #71](https://github.com/chadakenn/Kellies-Voice/issues/71)); those TVs may still show Listening and send silence. A compatible USB microphone may be needed.
