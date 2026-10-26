@@ -2,6 +2,16 @@
 
 **Status:** Development-only feature in signed v0.16.12-dev.4 (build 43); not in stable v0.16.11. Disabled by default. Dev.4 adds watcher recovery after boot/APK update plus diagnostics for Google TV Ambient Mode.
 
+## Development build 47: opt-in moving video from selected HA cameras
+
+**HACS and Android v0.16.12-dev.8** add **HA camera grid playback** to the paired TV's Home Assistant controls (and to the on-TV Frigate screensaver menu). When the Frigate web URL is blank, the four existing camera selectors supply entities to a mixed live/snapshot grid. Camera dropdowns retain "snapshot" in the label for backwards compatibility; with live playback enabled, their selected cameras actually play video.
+
+**First test:** Keep Frigate web URL blank, choose up to four HA camera entities, then select **HA camera grid playback → Live (one camera)**. The first camera streams Home Assistant HLS video, and remaining tiles continue five-second snapshots. Use Preview and confirm movement and Close. Next choose **Live (two cameras)** if performance permits. **Live (four cameras, advanced)** may tax four software video decoders on an onn box, and must never start by default. **Snapshots (reliable)** restores all snapshot tiles.
+
+When the TV's live-camera decoder mode is **Snapshots only**, none of these HLS players start regardless of the HA setting. Safe software mode allows only explicitly software-only video codecs (no silent fallback to risky HDMI hardware decoders). HLS URLs come from HA over its authenticated WebSocket and must have the same host and a validated API HLS path. Audio tracks are disabled. An unsupported stream, decoding error or no first frame within 18 seconds falls back to the already-working snapshot. Players and WebSocket close when the overlay exits or its source changes.
+
+**Frigate web URL still takes priority**. In web mode, Frigate itself controls live groups and Smart Streaming. This HLS feature affects only the four HA-selected camera tiles in camera-grid mode, not Frigate's own Live website page. Verify on the real onn 4K Pro before promoting this feature to stable main.
+
 ## Development build 46: diagnose blank camera-only screensaver
 
 **Owner report:** Home Assistant shows four selected camera entities with Frigate web URL cleared, yet no overlay appears when Google TV Ambient Mode starts. The previous code required a **TV-local** configured URL or camera list before opening the overlay, and the diagnostics did not say whether settings had reached the TV. This is a synchronization/configuration issue until on-device data proves otherwise, not proof cameras themselves are offline.
