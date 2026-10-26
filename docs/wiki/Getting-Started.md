@@ -31,13 +31,15 @@ They are separate downloads. Installing one does not install the other. Always u
 
 ## Step 2: Connect the TV to Home Assistant
 
-1. On the TV open **Kellie's Voice → SETTINGS → Configure Home Assistant**.
+1. On the TV open **Kellie's Voice → SETTINGS → Home Assistant connection**.
 2. Enter your Home Assistant base URL (e.g. `https://ha.example.net` or `http://homeassistant.local:8123`) and your long-lived access token.
 3. Choose **Save and connect**. You should see **Connected and authenticated**.
 4. Grant the microphone permission when prompted.
 5. Select **TALK** with the remote, speak a simple question such as "What time is it?", and confirm the answer appears (and is spoken if TTS is configured).
 
 **Note:** The Google Assistant microphone button on the remote usually still opens Google, not Kellie's Voice. Speak toward the TV's built-in microphone (or a USB microphone if needed). A remote's Bluetooth mic is often reserved for Google/Alexa and is not accessible to this app.
+
+> **Connected but nothing happens after TALK?** A successful Home Assistant connection does not prove microphone audio is reaching the app. If **YOU SAID** stays on **Nothing yet**, check the [microphone diagnostics guide](Troubleshooting.md#connected-but-no-speech-is-recognized) before changing your conversation agent.
 
 ## Step 3: Install the HACS integration
 
