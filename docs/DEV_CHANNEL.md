@@ -1,5 +1,9 @@
 # Kellie's Voice development and testing lane
 
+## v0.16.12-dev.7 / build 46: blank snapshot-grid troubleshooting
+
+When owner cleared a previously working Frigate web URL and selected 4 HA cameras, Google Ambient Mode displayed no Frigate overlay. The watcher previously skipped unconfigured local settings and the diagnostics only reported a generic configured boolean. This dev build displays **TV-local** camera count, mode, HA layout opt-in, HA socket health and redacted source-update status. A **Resync HA cameras** action reconnects the TV-only HA settings websocket without disrupting the dream receiver. HA-managed, feature-enabled TVs with no local configuration display a setup placeholder over ambient instead of silently disappearing, then rebuild when HA data arrives. The original Frigate Live URL mode is unchanged. Signed APK code 46, matching HACS dev.7. Field-test required; no automatic claim that a particular pairing/sync cause was proven.
+
 ## v0.16.12-dev.6 / build 45: Home Assistant camera dropdowns
 
 Owner reported the single HA `Frigate HA camera entities` text control was confusing. New HA **Frigate snapshot camera 1–4** selects automatically discover existing HA `camera.*` entities, present their friendly names with IDs, and write a validated, de-duplicated, ordered list through the existing paired TV text control. Changes to the legacy text entity automatically populate the dropdowns, and the text entity restores saved choices after HA restart. Invalid/duplicate IDs and skipping earlier slots are rejected. These dropdowns only affect the snapshot-grid mode; clear the Frigate web URL to use them. The Android build 44 protocol works with the new HA integration, but a signed build 45 keeps the matched beta release version. This needs owner testing before stable main.
