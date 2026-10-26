@@ -80,6 +80,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unloaded:
+        # Drop the camera-picker coordinator for this paired TV on integration reload.
+        # The snapshot camera list itself is restored by the existing text entity.
+        hass.data.setdefault(DOMAIN, {}).setdefault("frigate_camera_pickers", {}).pop(
+            entry.entry_id, None
+        )
         registries = hass.data.setdefault(DOMAIN, {}).setdefault(_TIMER_KEY, {})
         manager = registries.pop(entry.entry_id, None)
         if manager:
