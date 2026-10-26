@@ -42,6 +42,10 @@ See the [full release notes](releases/v0.16.11.md), [hardware checklist](TESTING
 1. Open the **[latest public Kellie's Voice release](https://github.com/chadakenn/Kellies-Voice/releases/latest)**. The current release is **v0.16.11** (community verification release).
 2. Download the release asset **`app-release.apk`**. Do **not** download a PR's `app-debug.apk` or GitHub Actions test artifact for a first installation.
 3. Transfer it to the TV. Options include a USB stick, a TV-compatible file manager, **Send Files to TV** on your phone and TV, or ADB (`adb install -r app-release.apk`).
+**Alternative: Downloader app.** On TVs where [Downloader](https://www.aftvnews.com/downloader/) is available, enter the official releases page URL `https://github.com/chadakenn/Kellies-Voice/releases/latest` in its browser, open the newest public release, and choose the asset named `app-release.apk`. GitHub redirects and TV browsers differ; if the APK does not download correctly, use **Send Files to TV**, USB, or the ADB option above. **There is no official Kellie's Voice Downloader short code** in this guide; do not rely on codes posted by unknown third parties.
+
+**ADB alternative from your computer:** If your TV's developer options and ADB network access are already enabled and the TV is reachable from your computer, download `app-release.apk` on the computer and run `adb install -r app-release.apk`. ADB connectivity and device pairing depend on your Android TV/Google TV model. Do not expose ADB over the public internet.
+
 4. On the TV, open the APK and grant **Install unknown apps** to the installer/file manager if Android asks. Complete the installer.
 5. Launch **Kellie's Voice** from the TV's Apps list.
 
