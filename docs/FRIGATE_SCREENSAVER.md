@@ -1,6 +1,21 @@
-# Frigate screensaver (opt-in, development beta)
+# Frigate / Home Assistant camera screensaver (opt-in, v0.16.12)
 
-**Status:** Development v0.16.12-dev.10 (build 49) repairs remote Back and visible focus on the full-screen camera footer. Not in stable v0.16.11. The feature remains opt-in. Four silent live streams, automatic ambient activation and reboot recovery passed on TV in dev.8; full-screen Doorbell with sound passed in dev.9; dev.10 Back and focus fixes still require real-TV verification.
+**Status:** Included in **stable v0.16.12 (build 50)**, OFF by default. The maintainer verified four simultaneous live cameras, automatic TV screensaver launch, reboot recovery, full-screen Doorbell with audible audio, physical remote Back and gold focus on an onn Google TV. Other TV models, performance and individual camera audio tracks need community testing.
+
+## Quick setup for new users
+
+1. Install the matching signed Android **v0.16.12 APK** and **v0.16.12 Home Assistant HACS integration**, then restart Home Assistant.
+2. In the TV app, enable **Frigate screensaver** and **Home Assistant layout**. Grant Android **Display over other apps** permission. Keep your TV paired and authenticated to HA.
+3. In Home Assistant open the Kellie's Voice TV device controls. Select up to four available **camera entities**. Leave **Frigate web URL** empty to use the HA-selected grid; specifying a Frigate website URL takes priority.
+4. Set **HA camera grid playback** to **Live (one camera)** and test; increase to two or four advanced only if your TV decodes HLS streams reliably. The default **Snapshots (reliable)** uses refreshed still images. The grid is always muted.
+5. Let the TV screensaver start naturally. Use D-pad to highlight a camera, press **OK** to expand it with its audio *if that stream has an audio track*. Press physical **Back** to return to the silent 2×2 grid or select **Close** to exit. The focused on-screen Back/Close button has a gold border.
+6. If HA shows cameras but TV shows nothing, open TV **Settings → Frigate screensaver → Screensaver status & permissions**, confirm **Cameras saved on TV**, overlay permission and watcher status, and use **Resync HA cameras** once. Report repeated startup problems.
+
+**Safety and limits:** The TV's microphone is not activated by video playback; no audio plays from unselected grid cameras. Streams are authenticated via your HA URL and validated HLS paths; unsupported video and no-first-frame cases fall back to snapshots. Four software HLS streams may overload weaker devices and audio cannot be invented when a camera has no sound track. Frigate website mode is a different, opt-in interface. Do not publicly share unblurred home camera images.
+
+## Historical development testing notes (dev.10 and earlier)
+
+The sections below preserve beta diagnostics and acceptance history. Their previous "not in stable" warnings describe older beta builds, not the current v0.16.12 stable release.
 
 ## Development build 49: remote Back and high-contrast focus controls
 
