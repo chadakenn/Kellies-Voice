@@ -8,6 +8,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 
 from .const import DOMAIN
+from .camera_picker import get_camera_picker
 from .layout_attrs import layout_attributes
 from .frigate_settings import validate_frigate_setting
 
@@ -61,10 +62,17 @@ class KellieFrigateText(TextEntity, RestoreEntity):
                 self._attr_native_value = ""
                 self._generation = 0
         self._attr_extra_state_attributes = self._attributes()
+        if self._setting == "screensaver_cameras":
+            picker = get_camera_picker(self.hass, self.platform.config_entry.entry_id)
+            picker.bind_text(self)
+            picker.load(self._attr_native_value)
+            self.async_on_remove(lambda: picker.unbind_text(self))
 
     async def async_set_value(self, value: str) -> None:
         checked = validate_frigate_setting(self._setting, value)
         self._attr_native_value = checked
+        if self._setting == "screensaver_cameras":
+            get_camera_picker(self.hass, self.platform.config_entry.entry_id).load(checked)
         self._generation += 1
         self._attr_extra_state_attributes = self._attributes()
         self.async_write_ha_state()
