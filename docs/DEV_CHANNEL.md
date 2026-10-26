@@ -1,5 +1,9 @@
 # Kellie's Voice development and testing lane
 
+## v0.16.12-dev.8 / build 47: HA selected live-camera grid
+
+HACS gains HA camera grid playback: Snapshots (reliable default), Live (one camera), Live (two cameras), Live (four cameras, advanced). The local TV settings menu offers the same options. When Frigate web URL is empty, Android requests authenticated HLS streams for up to the selected number of HA camera entities, uses Media3 TextureViews, and retains five-second snapshots for remaining and failed streams. Existing software-only video decoder selection (#67), muted audio, validated same-host HLS paths, 18-second first frame timeout and player/WebSocket cleanup on Close are enforced. Frigate Live webpage mode is not affected. Signed development Android build 47 and HACS dev.8 must be used for the new HA select. Owner should try one stream first, then two, optionally four before stable main.
+
 ## v0.16.12-dev.7 / build 46: blank snapshot-grid troubleshooting
 
 When owner cleared a previously working Frigate web URL and selected 4 HA cameras, Google Ambient Mode displayed no Frigate overlay. The watcher previously skipped unconfigured local settings and the diagnostics only reported a generic configured boolean. This dev build displays **TV-local** camera count, mode, HA layout opt-in, HA socket health and redacted source-update status. A **Resync HA cameras** action reconnects the TV-only HA settings websocket without disrupting the dream receiver. HA-managed, feature-enabled TVs with no local configuration display a setup placeholder over ambient instead of silently disappearing, then rebuild when HA data arrives. The original Frigate Live URL mode is unchanged. Signed APK code 46, matching HACS dev.7. Field-test required; no automatic claim that a particular pairing/sync cause was proven.
