@@ -29,7 +29,7 @@ class KellieFrigateText(TextEntity, RestoreEntity):
     _attr_entity_category = EntityCategory.CONFIG
     _attr_mode = TextMode.TEXT
     _attr_native_min = 0
-    _attr_native_max = 500
+    _attr_native_max = 255
 
     def __init__(self, entry: ConfigEntry, setting: str, name: str, icon: str):
         self._device_id = entry.data["device_id"]
