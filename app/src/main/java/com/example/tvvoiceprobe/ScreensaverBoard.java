@@ -131,7 +131,19 @@ final class ScreensaverBoard {
     /** One Back action for legacy remote keys and Android 13+ system Back. */
     private void onBack() {
         if (stopped) return;
-        if (!handleBack()) host.close();
+        if (handleBack()) return;
+        // Preserve the Frigate webpage's own remote browsing Back behavior.
+        if (browsing && web != null) {
+            if (web.canGoBack()) {
+                web.goBack();
+            } else {
+                browsing = false;
+                if (remotePointer != null) remotePointer.setVisibility(View.GONE);
+                root.requestFocus();
+            }
+            return;
+        }
+        host.close();
     }
 
     /** Consumed by the DreamService, overlay and preview before exiting the dashboard. */
