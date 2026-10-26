@@ -29,7 +29,7 @@ public class ScreensaverDashboardTest {
         assertFalse(desktop.contains("Android"));
         assertFalse(desktop.contains("Mobile"));
         assertEquals("unknown browser", ScreensaverDashboard.desktopUserAgent("unknown browser"));
-        assertTrue(ScreensaverDashboard.desktopViewportScript().contains("width=1440"));
+        assertTrue(ScreensaverDashboard.desktopViewportScript().contains("width=1920"));
         assertFalse(ScreensaverDashboard.desktopViewportScript().contains("token"));
     }
 
