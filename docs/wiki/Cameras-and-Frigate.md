@@ -8,7 +8,7 @@ Kellie's Voice can show camera snapshots and experimental muted live HLS overlay
 
 ## What it looks like on the TV
 
-These photos are from the owner's onn 4K Pro in October 2026. The four-camera grid and the Frigate website are on the **development** build, not stable v0.16.11. A person is visible in the Frigate event strip.
+These photos are from the owner's onn 4K Pro in October 2026. The four-camera grid and the Frigate website are on the **development** build, not stable v0.16.11. The home camera feeds and event strip are deliberately obscured for privacy.
 
 ![Four muted live cameras and a Close button](https://raw.githubusercontent.com/wiki/chadakenn/Kellies-Voice/onn-live-camera-grid.jpg)
 
