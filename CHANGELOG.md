@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.16.12 (2026-10-26) — Live screensaver cameras and full-screen audio
+
+- Signed Android stable `versionCode 50`, `versionName 0.16.12`, matching HACS integration `0.16.12`; preserve permanent APK signing identity and existing TV settings.
+- New **opt-in HA camera screensaver**: choose up to four HA cameras, with configurable snapshot/live HLS mode (1/2/4 live streams), validated same-origin Home Assistant HLS and timeout/snapshot fallback. Grid stays muted.
+- D-pad camera selection: **OK** opens a chosen live tile full-screen and enables only its available audio; **Back** returns to four muted streams; separate Close exits. Gold focus highlights are visible on footer buttons.
+- Owner's onn Google TV hardware tests: four simultaneous live camera tiles, automatic idle launch and reboot recovery, live Doorbell with sound and working physical Back/focus controls. No claim of universal device or camera audio support; four software HLS streams are performance intensive.
+- Reduced duplicate bottom space reservation in the grid; published privacy-pixelated home camera screenshots and added Frigate setup/troubleshooting documentation.
+- Known ongoing testing: #41 Fire TV, #57 native timers, #69 manual pairing, #71 hardware microphones, #92 optional update-channel behavior. Opt-in wake-word PR #59 was not promoted.
+- [Full v0.16.12 release notes](docs/releases/v0.16.12.md), [camera setup](docs/FRIGATE_SCREENSAVER.md), [install guide](docs/INSTALL.md).
+
+
 ## v0.16.11 (2026-10-25) — Owner-tested spoken TV alerts and follow-up
 
 - Android **versionCode 39**, signed `0.16.11` release, matching HACS manifest `0.16.11`. Preserve existing package ID and signing key.
