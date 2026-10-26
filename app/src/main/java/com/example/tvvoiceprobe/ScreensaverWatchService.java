@@ -24,6 +24,7 @@ public final class ScreensaverWatchService extends Service {
     static final String ACTION_START = "com.example.tvvoiceprobe.SCREENSAVER_START";
     static final String ACTION_STOP = "com.example.tvvoiceprobe.SCREENSAVER_STOP";
     static final String ACTION_TEST_OVERLAY = "com.example.tvvoiceprobe.SCREENSAVER_TEST_OVERLAY";
+    static final String ACTION_REFRESH_HA = "com.example.tvvoiceprobe.SCREENSAVER_REFRESH_HA";
     private static final String CHANNEL = "kellie_screensaver";
     private static final int NOTICE = 2244;
     private static final String DREAMING_STARTED = "android.intent.action.DREAMING_STARTED";
@@ -70,6 +71,16 @@ public final class ScreensaverWatchService extends Service {
         } catch (RuntimeException ignored) { }
     }
 
+    static void refreshFromHa(Context context) {
+        if (context == null) return;
+        OverlayPreferences prefs = new OverlayPreferences(context);
+        if (!prefs.screensaverDashboard() && !prefs.haManage()) return;
+        try {
+            context.startForegroundService(new Intent(context, ScreensaverWatchService.class)
+                    .setAction(ACTION_REFRESH_HA));
+        } catch (RuntimeException ignored) { }
+    }
+
     @Override public IBinder onBind(Intent intent) { return null; }
 
     @Override public int onStartCommand(Intent intent, int flags, int startId) {
@@ -85,6 +96,12 @@ public final class ScreensaverWatchService extends Service {
         }
         ScreensaverWatchStatus.serviceRunning(true);
         windows = getSystemService(WindowManager.class);
+        if (intent != null && ACTION_REFRESH_HA.equals(intent.getAction()) && settingsSync != null) {
+            // Explicit local user request to fetch HA settings again without
+            // interrupting the Google TV dream receiver or camera overlay.
+            settingsSync.stop();
+            settingsSync = null;
+        }
         if (prefs.haManage() && settingsSync == null) {
             settingsSync = new ScreensaverSettingsSync(this);
             settingsSync.start();
