@@ -251,5 +251,8 @@ class FrigateCameraSelect(SelectEntity):
         text_entity = picker.text_entity
         if text_entity is None:
             raise HomeAssistantError("Camera list is still loading. Reopen this control.")
-        proposed = picker.propose(self._slot, self._labels_to_entity[option])
+        try:
+            proposed = picker.propose(self._slot, self._labels_to_entity[option])
+        except ValueError as err:
+            raise HomeAssistantError(str(err)) from None
         await text_entity.async_set_value(proposed)
