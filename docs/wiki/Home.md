@@ -12,6 +12,17 @@ Turn an Android TV or Google TV into a voice companion for Home Assistant. Speak
 
 ---
 
+## 📺 See Kellie's Voice on a real TV
+
+| Voice answer above Google TV | Muted live doorbell popup |
+|:---:|:---:|
+| [![Actual Kellie's Voice Assist overlay](https://raw.githubusercontent.com/chadakenn/Kellies-Voice/main/docs/screenshots/onn-voice-time.jpg)](https://github.com/chadakenn/Kellies-Voice/blob/main/docs/screenshots/onn-voice-time.jpg) | [![Actual Kellie's Voice doorbell popup](https://raw.githubusercontent.com/chadakenn/Kellies-Voice/main/docs/screenshots/onn-live-doorbell.jpg)](https://github.com/chadakenn/Kellies-Voice/blob/main/docs/screenshots/onn-live-doorbell.jpg) |
+| **Ask a question without changing apps** | **Open a supported camera when you want** |
+
+[Still camera snapshot example](https://github.com/chadakenn/Kellies-Voice/blob/main/docs/screenshots/onn-snapshot-popup.jpg) · [TV settings tour](TV-App-and-Permissions.md#settings-menu-map) · [Microphone troubleshooting](Troubleshooting.md#connected-but-no-speech-is-recognized)
+
+_These photos are real onn 4K Pro captures, not design mockups. Camera and microphone behavior varies by device._
+
 ## 🚀 New here? Start in three steps
 
 | Step | What you'll do | Guide |
