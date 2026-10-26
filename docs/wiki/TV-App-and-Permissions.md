@@ -12,13 +12,13 @@ The Android TV app handles the microphone, floating overlays, on-screen speech, 
 - **SETTINGS** — Home Assistant URL/token, layout control, announcements & cameras, TV alert status, diagnostics, updates, and more.
 - **Connect / reconnect** — manages the main Assist connection (not the alert receiver).
 
-![Main screen on an onn 4K Pro, voice and TV alerts connected](https://github.com/chadakenn/Kellies-Voice/wiki/raw/master/onn-home-connected.jpg)
+![Main screen on an onn 4K Pro, voice and TV alerts connected](https://raw.githubusercontent.com/wiki/chadakenn/Kellies-Voice/onn-home-connected.jpg)
 
-![Settings menu on the TV](https://github.com/chadakenn/Kellies-Voice/wiki/raw/master/onn-settings-menu.jpg)
+![Settings menu on the TV](https://raw.githubusercontent.com/wiki/chadakenn/Kellies-Voice/onn-settings-menu.jpg)
 
 The settings list scrolls. Microphone routing is under **Mic input detection**.
 
-![Microphone routing choices, with safe checks available](https://github.com/chadakenn/Kellies-Voice/wiki/raw/master/onn-mic-routing.jpg)
+![Microphone routing choices, with safe checks available](https://raw.githubusercontent.com/wiki/chadakenn/Kellies-Voice/onn-mic-routing.jpg)
 
 ## Required permissions
 
