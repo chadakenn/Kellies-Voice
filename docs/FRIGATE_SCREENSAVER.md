@@ -2,6 +2,22 @@
 
 **Status:** Development-only feature in signed v0.16.12-dev.4 (build 43); not in stable v0.16.11. Disabled by default. Dev.4 adds watcher recovery after boot/APK update plus diagnostics for Google TV Ambient Mode.
 
+## Development build 46: diagnose blank camera-only screensaver
+
+**Owner report:** Home Assistant shows four selected camera entities with Frigate web URL cleared, yet no overlay appears when Google TV Ambient Mode starts. The previous code required a **TV-local** configured URL or camera list before opening the overlay, and the diagnostics did not say whether settings had reached the TV. This is a synchronization/configuration issue until on-device data proves otherwise, not proof cameras themselves are offline.
+
+With **Android v0.16.12-dev.7 / build 46**, check Kellie's Voice → **Settings → Frigate screensaver → Screensaver status & permissions**. It now shows:
+- **Home Assistant layout** ON/OFF. This must be ON to accept remotely selected cameras.
+- **Source on TV**, either Frigate web page, HA snapshot grid, or no source.
+- **Cameras saved on TV** (0–4, without disclosing names), **HA settings link** state, and **Last HA source** update.
+- Existing screensaver listener, permission, and dream event diagnostics.
+
+If HA shows four dropdowns but the TV shows 0 cameras, choose **Resync HA cameras** in the diagnostics. This uses the existing saved HA credential, refreshes that TV's HA entity states, and does not change the microphone, reset Frigate, or overwrite HA selections. A feature-enabled HA-managed TV no longer silently skips the overlay before its first settings sync: it shows a setup message which is replaced once valid camera settings arrive. The original Frigate Live web URL mode still takes priority and is unchanged.
+
+**Quick recovery:** Re-enter the known working local Frigate URL in the Home Assistant `Frigate web URL` text control to return to moving Frigate video. Clearing the URL is only necessary to test the alternative snapshot grid.
+
+Build 46 uses the existing HACS camera entity protocol. Published HACS dev.7 metadata matches Android dev.7, but the TV diagnostics fix does not require a new camera entity migration.
+
 ## Development build 45: pick snapshot cameras from Home Assistant dropdowns
 
 With **Home Assistant HACS v0.16.12-dev.6**, open **Settings → Devices & services → Kellie's Voice → your TV**. There are now four **Frigate snapshot camera 1–4** dropdowns. Each dropdown automatically lists the camera entities already exposed by your HA instance, with their friendly names and entity IDs, so you no longer need to type a `camera.*` ID.

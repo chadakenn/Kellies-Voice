@@ -35,6 +35,7 @@ final class ScreensaverSettingsSync {
     void start() {
         if (!stopped) return;
         stopped = false;
+        ScreensaverWatchStatus.settingsSync("Connecting to Home Assistant");
         connect();
     }
 
@@ -46,9 +47,15 @@ final class ScreensaverSettingsSync {
         } catch (Exception ignored) {
             saved = null;
         }
-        if (saved == null || saved.url == null || saved.token == null) return;
+        if (saved == null || saved.url == null || saved.token == null) {
+            ScreensaverWatchStatus.settingsSync("No saved Home Assistant credentials on this TV");
+            return;
+        }
         HttpUrl base = HttpUrl.parse(saved.url);
-        if (base == null || (!"http".equals(base.scheme()) && !"https".equals(base.scheme()))) return;
+        if (base == null || (!"http".equals(base.scheme()) && !"https".equals(base.scheme()))) {
+            ScreensaverWatchStatus.settingsSync("Invalid saved Home Assistant address");
+            return;
+        }
         final String token = saved.token;
         HttpUrl url = base.newBuilder().addPathSegment("api").addPathSegment("websocket").build();
         Request req = new Request.Builder().url(url).build();
@@ -69,10 +76,14 @@ final class ScreensaverSettingsSync {
                     return;
                 }
                 if ("auth_ok".equals(type)) {
+                    ScreensaverWatchStatus.settingsSync("Connected to Home Assistant, reading settings");
                     attempts = 0;
                     ws.send("{\"id\":2,\"type\":\"subscribe_events\",\"event_type\":\"state_changed\"}");
                     ws.send("{\"id\":3,\"type\":\"get_states\"}");
                     return;
+                }
+                if ("auth_invalid".equals(type)) {
+                    ScreensaverWatchStatus.settingsSync("Home Assistant rejected the saved sign-in");
                 }
                 if ("event".equals(type) && msg.optInt("id") == 2) {
                     JSONObject event = msg.optJSONObject("event");
@@ -87,10 +98,12 @@ final class ScreensaverSettingsSync {
             }
 
             @Override public void onFailure(WebSocket ws, Throwable t, Response response) {
+                ScreensaverWatchStatus.settingsSync("Home Assistant disconnected; retrying");
                 scheduleReconnect(ws);
             }
 
             @Override public void onClosed(WebSocket ws, int code, String reason) {
+                ScreensaverWatchStatus.settingsSync("Home Assistant connection closed; retrying");
                 scheduleReconnect(ws);
             }
         });
@@ -106,14 +119,27 @@ final class ScreensaverSettingsSync {
         if (!pairing.equals(attrs.optString("kellie_device_id", ""))) return;
         // Generation zero belongs to HA's default placeholder; never erase
         // previously configured local Frigate settings on first HA startup.
-        if (attrs.optInt("kellie_generation", 0) < 1) return;
+        if (attrs.optInt("kellie_generation", 0) < 1) {
+            if (HaLayout.SCREENSAVER_URL.equals(setting) || HaLayout.SCREENSAVER_CAMERAS.equals(setting)) {
+                ScreensaverWatchStatus.sourceSync("HA source has not been saved yet (generation 0)");
+            }
+            return;
+        }
         String value = state.optString("state", "");
         if ("unknown".equals(value) || "unavailable".equals(value)) return;
         main.post(() -> {
             if (stopped || !new OverlayPreferences(context).haManage()) return;
-            if (HaLayout.apply(new OverlayPreferences(context), setting, value)) {
-                ScreensaverSettingsEffects.apply(context, setting);
+            OverlayPreferences local = new OverlayPreferences(context);
+            boolean changed = HaLayout.apply(local, setting, value);
+            if (HaLayout.SCREENSAVER_URL.equals(setting)) {
+                ScreensaverWatchStatus.sourceSync(local.screensaverUrl().isEmpty()
+                        ? "HA URL received: cleared" : "HA URL received: web page selected");
+            } else if (HaLayout.SCREENSAVER_CAMERAS.equals(setting)) {
+                int selected = ScreensaverDashboard.cameraList(local.screensaverCameras()).length;
+                ScreensaverWatchStatus.sourceSync("HA camera list received: " + selected + " selected");
             }
+            ScreensaverWatchStatus.settingsSync("Connected to Home Assistant");
+            if (changed) ScreensaverSettingsEffects.apply(context, setting);
         });
     }
 
@@ -129,6 +155,7 @@ final class ScreensaverSettingsSync {
 
     void stop() {
         stopped = true;
+        ScreensaverWatchStatus.settingsSync("HA settings listener stopped");
         main.removeCallbacks(reconnect);
         if (socket != null) {
             socket.close(1000, "Frigate settings stopped");

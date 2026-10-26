@@ -24,6 +24,7 @@ public final class ScreensaverWatchService extends Service {
     static final String ACTION_START = "com.example.tvvoiceprobe.SCREENSAVER_START";
     static final String ACTION_STOP = "com.example.tvvoiceprobe.SCREENSAVER_STOP";
     static final String ACTION_TEST_OVERLAY = "com.example.tvvoiceprobe.SCREENSAVER_TEST_OVERLAY";
+    static final String ACTION_REFRESH_HA = "com.example.tvvoiceprobe.SCREENSAVER_REFRESH_HA";
     private static final String CHANNEL = "kellie_screensaver";
     private static final int NOTICE = 2244;
     private static final String DREAMING_STARTED = "android.intent.action.DREAMING_STARTED";
@@ -70,6 +71,16 @@ public final class ScreensaverWatchService extends Service {
         } catch (RuntimeException ignored) { }
     }
 
+    static void refreshFromHa(Context context) {
+        if (context == null) return;
+        OverlayPreferences prefs = new OverlayPreferences(context);
+        if (!prefs.screensaverDashboard() && !prefs.haManage()) return;
+        try {
+            context.startForegroundService(new Intent(context, ScreensaverWatchService.class)
+                    .setAction(ACTION_REFRESH_HA));
+        } catch (RuntimeException ignored) { }
+    }
+
     @Override public IBinder onBind(Intent intent) { return null; }
 
     @Override public int onStartCommand(Intent intent, int flags, int startId) {
@@ -85,12 +96,20 @@ public final class ScreensaverWatchService extends Service {
         }
         ScreensaverWatchStatus.serviceRunning(true);
         windows = getSystemService(WindowManager.class);
+        if (intent != null && ACTION_REFRESH_HA.equals(intent.getAction()) && settingsSync != null) {
+            // Explicit local user request to fetch HA settings again without
+            // interrupting the Google TV dream receiver or camera overlay.
+            settingsSync.stop();
+            settingsSync = null;
+        }
         if (prefs.haManage() && settingsSync == null) {
             settingsSync = new ScreensaverSettingsSync(this);
             settingsSync.start();
         } else if (!prefs.haManage() && settingsSync != null) {
             settingsSync.stop();
             settingsSync = null;
+        } else if (!prefs.haManage()) {
+            ScreensaverWatchStatus.settingsSync("Home Assistant layout is OFF on this TV");
         }
         if (!registered) {
             IntentFilter filter = new IntentFilter();
@@ -121,12 +140,16 @@ public final class ScreensaverWatchService extends Service {
         OverlayPreferences prefs = new OverlayPreferences(this);
         boolean configured = ScreensaverDashboard.configured(
                 prefs.screensaverUrl(), prefs.screensaverCameras());
+        // With HA layout explicitly opted in, do not silently ignore a missing
+        // source while the first camera-selection sync is arriving. A visible
+        // setup message explains why HA shows cameras but the TV does not.
+        boolean awaitingHaCameras = !configured && prefs.haManage();
         boolean overlayAllowed = Settings.canDrawOverlays(this);
         if (!ScreensaverDashboard.showOverlay(prefs.screensaverDashboard(), dreaming || manualTest,
                 manualTest ? false : ScreensaverSignals.dismissed(), ScreensaverSignals.ourDream(),
-                overlayAllowed, configured)) {
+                overlayAllowed, configured || awaitingHaCameras)) {
             if (!overlayAllowed) ScreensaverWatchStatus.overlay("Blocked: Display over other apps permission needed");
-            else if (!configured) ScreensaverWatchStatus.overlay("Blocked: configure Frigate URL or cameras");
+            else if (!configured) ScreensaverWatchStatus.overlay("Blocked: no local Frigate URL or camera list");
             else ScreensaverWatchStatus.overlay("Not shown: screensaver inactive or dismissed");
             return;
         }

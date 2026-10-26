@@ -109,7 +109,10 @@ final class ScreensaverBoard {
                 showMessage("This TV couldn't open the Frigate page.");
             }
         } else if (cameras.length > 0) showCameras(cameras);
-        else showMessage("Set a Frigate page or camera list in Kellie's Voice settings.");
+        else showMessage("No Frigate URL or HA cameras are saved on this TV.\n"
+                + "If you selected cameras in Home Assistant, turn on Home Assistant layout "
+                + "in Kellie's Voice settings, then check Screensaver status & permissions "
+                + "and choose Resync HA cameras.");
         if (web != null) root.addView(browseButton());
         root.addView(closeButton());
     }

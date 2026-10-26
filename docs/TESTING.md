@@ -1,3 +1,14 @@
+## v0.16.12-dev.7 camera-grid HA sync diagnostics (build 46, dev only)
+
+- [ ] Reproduce owner report: configure four HA cameras, clear Frigate web URL in HA, and let the onn Google TV idle. Record current TV diagnostics for **Home Assistant layout**, **Source on TV**, **Cameras saved on TV**, **HA settings link**, and **Last HA source** without disclosing camera IDs or tokens in public logs.
+- [ ] If local count is 0 but HA controls show 4, enable TV Home Assistant layout and use **Resync HA cameras**. Verify camera count becomes 4 and the overlay shows the 2×2 grid. Validate HA switching URL to blank is honored and live website does not remain cached.
+- [ ] During an intentionally delayed HA sync, verify the enabled HA-managed watcher shows an explanatory placeholder rather than silently dropping the overlay. It must refresh to camera grid on HA state arrival without a TV app restart.
+- [ ] Disable the Frigate screensaver. The fallback placeholder **must not** appear over normal TV playback. Verify **Display over other apps** permission is still honored and remote doesn't get trapped by empty grid.
+- [ ] Test one HA camera only, invalid/offline camera (tile may stay blank, but overlay and close button must exist), empty configuration, reconnection after HA reboot, OFF/ON, and Google dream-start/dream-stop.
+- [ ] Restore Frigate web URL and confirm live multi-camera page, remote cursor, Close, and existing TV alerts/voice behavior remain unchanged.
+
+**Release gate:** Real device verification is necessary. Clear docs that a URL-free grid is JPEG snapshots, not live video, until issue #130 is implemented. Do not claim root cause or real-world success from diagnostics alone.
+
 ## v0.16.12-dev.6 HACS auto-camera dropdowns (build 45; dev only)
 
 - [ ] Install HA HACS dev.6 and restart HA. In Kellie's Voice device Controls, confirm four **Frigate snapshot camera** selects appear with friendly names and HA camera IDs from the existing HA camera state registry.
