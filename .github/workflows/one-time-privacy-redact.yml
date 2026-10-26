@@ -1,0 +1,88 @@
+name: One-time privacy redaction of owner camera screenshots
+on:
+  push:
+    branches: [docs/onn-october-photos]
+    paths:
+      - '.github/workflows/one-time-privacy-redact.yml'
+permissions:
+  contents: write
+jobs:
+  redact:
+    if: contains(github.event.head_commit.message, '[privacy-redact-once]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Pillow
+        run: python -m pip install --disable-pip-version-check 'Pillow>=10,<13'
+      - name: Blur camera content, preserve controls
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from PIL import Image, ImageFilter, ImageOps
+          import hashlib
+
+          base = Path('docs/screenshots')
+
+          def scaled_box(im, box):
+              w,h=im.size
+              return tuple(round(n * (w if i%2==0 else h)) for i,n in enumerate(box))
+
+          def cover(im, box, cols=10, rows=6):
+              region=scaled_box(im,box)
+              patch=im.crop(region)
+              tiny=patch.resize((cols,rows), Image.Resampling.BOX)
+              safe=tiny.resize(patch.size, Image.Resampling.NEAREST)
+              safe=safe.filter(ImageFilter.GaussianBlur(5))
+              im.paste(safe,region)
+
+          def save(img,path):
+              img.save(path,format='JPEG',quality=88,optimize=True,progressive=True)
+              print('privacy redacted',path, img.size, 'sha256', hashlib.sha256(path.read_bytes()).hexdigest())
+
+          grid=base/'onn-live-camera-grid.jpg'
+          assert grid.is_file(), grid
+          img=ImageOps.exif_transpose(Image.open(grid)).convert('RGB')
+          # Four video tiles. Keep their native labels and LIVE/muted statuses.
+          tiles=[
+              (0.00,0.080,0.498,0.335),
+              (0.509,0.080,0.994,0.335),
+              (0.00,0.344,0.498,0.607),
+              (0.509,0.344,0.994,0.607),
+          ]
+          badges=[]
+          for x1,y1,x2,y2 in tiles:
+              badges.append((scaled_box(img,(x1,y2-0.057,x1+0.135,y2)),
+                             scaled_box(img,(x2-0.111,y1,x2,y1+0.039))))
+          snapshots=[[(rect,img.crop(rect)) for rect in item] for item in badges]
+          for box in tiles: cover(img,box)
+          for item in snapshots:
+              for rect,patch in item: img.paste(patch,rect)
+          save(img,grid)
+
+          frigate=base/'onn-frigate-dashboard.jpg'
+          assert frigate.is_file(),frigate
+          img=ImageOps.exif_transpose(Image.open(frigate)).convert('RGB')
+          # Camera thumbnails, live feeds, and event-person strip on the TV.
+          close_rect=scaled_box(img,(0.72,0.61,0.90,0.73))
+          close=img.crop(close_rect)
+          cover(img,(0.155,0.13,0.925,0.77),cols=13,rows=8)
+          img.paste(close,close_rect)  # Keep button label legible.
+          save(img,frigate)
+          PY
+      - name: Commit only redacted photos and remove one-time workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm -f .github/workflows/one-time-privacy-redact.yml
+          git add docs/screenshots/onn-live-camera-grid.jpg docs/screenshots/onn-frigate-dashboard.jpg
+          git commit -m 'docs(privacy): obscure home camera views in public photos'
+          git push origin HEAD:docs/onn-october-photos
