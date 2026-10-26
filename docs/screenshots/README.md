@@ -9,7 +9,7 @@ Phone photos from an onn 4K Pro are now in this folder and in the main README. T
 | [onn-snapshot-popup.jpg](onn-snapshot-popup.jpg) | Still snapshot popup, "Snapshot Test After Reopening App." Not live video. |
 | [onn-live-doorbell.jpg](onn-live-doorbell.jpg) | Live doorbell card starting, muted, with the voice card still visible. One photo, not a motion recording. |
 
-Still wanted: the settings screen, a text-only announcement with no camera picture, and the Home Assistant device page.
+**Additional real-device photos supplied for review:** the main connected screen, the scrollable TV settings menu (top and bottom), and the microphone routing dialog. These images are not yet checked into this public repository, so the gallery above continues to link only to files that actually exist. A text-only announcement and the Home Assistant device page are still wanted.
 
 ## Requested captures
 
