@@ -1598,8 +1598,9 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                 .setTitle("Frigate screensaver diagnostics")
                 .setMessage(info)
                 .setNegativeButton("Back", (d, w) -> showScreensaverSettings())
-                .setPositiveButton("Try to resume watcher", (d, w) -> {
-                    ScreensaverWatchService.startIfEnabled(this);
+                .setPositiveButton(prefs.haManage() ? "Resync HA cameras" : "Resume watcher", (d, w) -> {
+                    if (prefs.haManage()) ScreensaverWatchService.refreshFromHa(this);
+                    else ScreensaverWatchService.startIfEnabled(this);
                     showScreensaverSettings();
                 })
                 .show();
