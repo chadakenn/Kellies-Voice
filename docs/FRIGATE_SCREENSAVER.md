@@ -1,14 +1,14 @@
-# Frigate screensaver (opt-in, draft)
+# Frigate screensaver (opt-in, development beta)
 
-**Status:** Development-only feature in signed v0.16.12-dev.4 (build 43); not in stable v0.16.11. Disabled by default. Dev.4 adds watcher recovery after boot/APK update plus diagnostics for Google TV Ambient Mode.
+**Status:** Signed development v0.16.12-dev.9 (build 48) adds remote camera selection and optional single-camera audio. Not in stable v0.16.11. The feature remains off by default. Four silent live streams, automatic screensaver start and reboot recovery were verified on the owner's TV in dev.8; the new full-screen/audio feature and adjusted layout require a fresh physical-TV acceptance test.
 
-## Experimental remote-selectable camera view (draft, not yet in published dev.8)
+## Development build 48: remote-selectable full-screen camera with audio
 
 In Home Assistant camera-grid mode (Frigate web URL **blank**), the TV remote can focus any of the four camera tiles with the D-pad. A gold outline indicates the focused camera. Press **OK** to open the selected camera in an enlarged full-screen viewing area. Press **Back** or **Back to cameras** to restore the 2×2 grid. The **Close** button still exits the entire screensaver.
 
 All four grid streams are **muted by default**. Opening a live-streaming camera deliberately enables the chosen player's audio **only while full-screen**, if that Home Assistant HLS stream actually carries an audio track. The full-screen status says **Camera audio ON** if an audio track was selected, or reports that no audio track is present. Back and Close mute before leaving; other tiles never start audio. Home Assistant snapshots or an unavailable stream remain viewable enlarged but cannot supply sound. This does not open the microphone.
 
-This experiment reuses the already-running selected Media3 player, does not create another decoder, and retains safe software-only decoder mode, strict HA HLS URL validation, 18-second failure fallback, and cleanup when the screensaver ends. Remote Back needs to work for preview and Android DreamService, not only overlay mode. The video uses its intrinsic aspect ratio instead of being stretched. **Not merged or released:** owner QA is required for remote navigation, real audio from a camera with audio enabled, instant mute on exit, video return, and wake/reboot behavior. Works only for the HA-selected grid, not the Frigate webpage cursor.
+This experiment reuses the already-running selected Media3 player, does not create another decoder, and retains safe software-only decoder mode, strict HA HLS URL validation, 18-second failure fallback, and cleanup when the screensaver ends. Remote Back needs to work for preview and Android DreamService, not only overlay mode. The video uses its intrinsic aspect ratio instead of being stretched. **New in dev.9; not yet verified on TV:** owner QA is required for remote navigation, camera audio actually audible where an audio track exists, immediate mute on Back/Close, video return, and wake/reboot behavior. Works only for the HA-selected grid, not the Frigate webpage cursor.
 
 ## Development build 47: opt-in moving video from selected HA cameras
 
