@@ -1,5 +1,13 @@
 # Kellie's Voice development and testing lane
 
+## v0.16.12-dev.9 / build 48: full-screen HA camera + opt-in audio and larger grid
+
+Beta-only candidate, **not approved for stable main yet**. The previous dev.8 four-camera live grid already passed the owner's physical-TV 4-stream playback, natural Google Ambient activation and reboot recovery tests (issue #130 closed). This build combines the layout-only camera-grid bottom-spacing fix (#137) with TV remote camera selection / full-screen audio (#139).
+
+**On TV:** Leave Frigate web URL blank, choose HA cameras 1–4, set HA camera grid playback to Live (four cameras, advanced) and keep any existing safe decoder settings. The 2×2 grid remains muted and uses more of the screen with a single Close-button footer. D-pad highlights a tile in gold, **OK** opens the selected stream full-screen with sound only from that camera and only if Home Assistant's HLS stream contains an audio track; Back restores the 2×2 muted grid. If no audio track exists, expect an explicit no-audio status. No TV microphone activates. No extra decoder is created; previously verified authenticated HLS and screenshot fallback code remains in place.
+
+**Hardware acceptance gate (not yet performed for dev.9):** Verify D-pad navigation, view sizing, Back versus Close behavior during automatic Google Ambient mode and Preview, clear 2×2 grid after returning, live audio on an audio-equipped camera, instant mute on Back/Close, no HDMI blackouts, auto activation and reboot recovery. Stable v0.16.11 is unchanged.
+
 ## v0.16.12-dev.8 / build 47: HA selected live-camera grid
 
 HACS gains HA camera grid playback: Snapshots (reliable default), Live (one camera), Live (two cameras), Live (four cameras, advanced). The local TV settings menu offers the same options. When Frigate web URL is empty, Android requests authenticated HLS streams for up to the selected number of HA camera entities, uses Media3 TextureViews, and retains five-second snapshots for remaining and failed streams. Existing software-only video decoder selection (#67), muted audio, validated same-host HLS paths, 18-second first frame timeout and player/WebSocket cleanup on Close are enforced. Frigate Live webpage mode is not affected. Signed development Android build 47 and HACS dev.8 must be used for the new HA select. Owner should try one stream first, then two, optionally four before stable main.
