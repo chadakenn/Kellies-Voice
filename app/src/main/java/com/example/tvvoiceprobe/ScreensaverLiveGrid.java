@@ -115,7 +115,10 @@ final class ScreensaverLiveGrid {
         player.setTrackSelectionParameters(player.getTrackSelectionParameters().buildUpon()
                 .setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, false).build());
         player.setVolume(1f);
-        if (playing[slot]) fullscreenSurface.setAlpha(1f);
+        if (playing[slot]) {
+            fullscreenSurface.setAlpha(1f);
+            status(slot, "LIVE · selected");
+        }
         showAudioStatus("Checking camera audio…");
         showTracksIfReady(slot, player.getCurrentTracks());
     }
@@ -145,6 +148,7 @@ final class ScreensaverLiveGrid {
                     selected.setVideoTextureView(surfaces[slot]);
                     surfaces[slot].setAlpha(playing[slot] ? 1f : 0f);
                 }
+                if (playing[slot]) status(slot, "LIVE · muted");
             }
         }
         if (fullscreenSurface != null) fullscreenSurface.setAlpha(0f);
@@ -290,7 +294,11 @@ final class ScreensaverLiveGrid {
     }
 
     private void status(int slot, String value) {
-        if (!stopped && statuses[slot] != null) statuses[slot].setText(value);
+        if (stopped) return;
+        if (statuses[slot] != null) statuses[slot].setText(value);
+        if (fullscreenSlot == slot && !playing[slot] && value.startsWith("Snapshot")) {
+            showAudioStatus("Snapshot · no camera audio");
+        }
     }
 
     private void fallback(int slot, String reason) {
