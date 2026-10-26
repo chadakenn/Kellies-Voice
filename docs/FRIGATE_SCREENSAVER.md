@@ -2,6 +2,25 @@
 
 **Status:** Development-only feature in signed v0.16.12-dev.4 (build 43); not in stable v0.16.11. Disabled by default. Dev.4 adds watcher recovery after boot/APK update plus diagnostics for Google TV Ambient Mode.
 
+## Development build 44: Home Assistant and TV remote controls
+
+With **Android + HACS v0.16.12-dev.5** (development only), open Home Assistant → **Settings → Devices & services → Kellie's Voice → your TV → Controls**. After connecting the TV with its existing **Home Assistant layout** option, configure the per-TV entities:
+
+- **Frigate screensaver** switch (opt-in)
+- **Frigate web URL** text field (HTTP(S) only; never include credentials)
+- **Frigate HA camera entities** text field (zero to four comma-separated `camera.*` IDs)
+- **Frigate dashboard size** select (Large recommended)
+- **Frigate page layout** select (Desktop TV recommended)
+- **Frigate page fit** select (Fit more cameras recommended, Balanced = previous sizing, Larger text = fewer tiles)
+
+The TV's existing local settings stay available as a backup. A paired TV with **Home Assistant layout ON** keeps a read-scoped background settings subscription, independently of TV announcements, and listens only for this TV's configuration entities. The connection uses the previously saved HA login. There is no microphone capture. The HACS integration and APK **must both be dev.5**; restart Home Assistant after installing HACS. If changing the controls on the TV while the voice UI is open, its changes also publish back to HA.
+
+### Selecting Frigate cameras with the remote
+
+The full Frigate web-page mode now has a **Select camera** button in the lower-left corner alongside **Close**. Press **OK** on Select camera to enter a visible gold cursor mode, move the cursor with D-pad arrows, and press **OK** over a camera tile or a Frigate control to click. **Back** navigates within Frigate if the page has history, otherwise leaves selection mode; **Close** dismisses the dashboard. This is touch emulation rather than full Frigate UI keyboard support, so test actual camera tiles and return navigation on the onn box.
+
+If the bottom row is cut off, choose **Frigate page fit → Fit more cameras**. It uses a 1920 CSS-pixel page viewport; Balanced uses 1440 and Larger text 1200. Frigate's live layout may still need the camera group arranged once in its own TV browser storage. This setting does not change the underlying camera streams or your Frigate server.
+
 ## What it does
 
 When enabled, Kellie's Voice can show a Frigate page or up to four camera stills while the TV screensaver is running. It does **not** start the microphone.
