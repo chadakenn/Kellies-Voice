@@ -16,6 +16,10 @@ Camera, announcement, timer, and weather popups use a separate receiver from the
    (This is a separate SETTINGS item, below the **TV announcements & cameras** toggle.)
 4. In the **TV alert status** dialog, select the **Resume TV alerts** button at the bottom and press **OK**.
 
+![TV alert status dialog with Resume TV alerts. This photo shows legacy event subscriptions denied](https://github.com/chadakenn/Kellies-Voice/wiki/raw/master/onn-tv-alert-status.jpg)
+
+The photo above is that dialog while Home Assistant is reporting **Legacy event subscriptions denied**. Voice can still be connected. Resume retries immediately. No administrator token is required. This photo is not a successful resume.
+
 It is **not** the neighboring **TV announcements & cameras** toggle and **not** the main **Connect / reconnect** control.
 
 **If the Resume button is missing:**

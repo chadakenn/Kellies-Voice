@@ -65,6 +65,32 @@ An opt-in **still snapshot** popup, titled "Snapshot Test After Reopening App," 
 
 The muted live doorbell card opening on top of the voice overlay. The voice card still says the doorbell camera is live. This photo is one moment from that test, not a recording of the motion. Moving doorbell and driveway video was already checked on this TV with Android v0.16.1.
 
+### Settings and alert status
+
+Phone photos from the same onn 4K Pro. The picture is a Philips Roku TV; the app is running on the onn box.
+
+![Kellie's Voice main screen connected to Home Assistant](docs/screenshots/onn-home-connected.jpg)
+
+The main screen with voice connected and TV alerts connected.
+
+![Kellie's Voice settings menu on the TV](docs/screenshots/onn-settings-menu.jpg)
+
+Settings. Lower rows, including updates, are below the visible frame until you press Down.
+
+![TV alert status showing legacy event subscriptions denied](docs/screenshots/onn-tv-alert-status.jpg)
+
+TV alert status when Home Assistant reports the legacy event subscription denied. **Resume TV alerts** is the button inside this dialog.
+
+### Development camera grid
+
+These three are from the development build on this TV, not the stable v0.16.11 release. The Frigate page includes this home's cameras, and a person is visible in one event thumbnail.
+
+![Four muted live cameras with a Close button](docs/screenshots/onn-live-camera-grid.jpg)
+
+![Frigate website on the TV with the Kellie's Voice Close button](docs/screenshots/onn-frigate-dashboard.jpg)
+
+![Frigate screensaver diagnostics with the watcher not running](docs/screenshots/onn-frigate-screensaver-diagnostics.jpg)
+
 The older [illustrative concept previews](docs/screenshots/conversation-preview.svg) are still in the repo as design references only. See [docs/screenshots](docs/screenshots/README.md).
 
 ## How it works

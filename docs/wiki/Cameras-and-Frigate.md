@@ -6,6 +6,18 @@
 
 Kellie's Voice can show camera snapshots and experimental muted live HLS overlays over whatever you are already watching.
 
+## What it looks like on the TV
+
+These photos are from the owner's onn 4K Pro in October 2026. The four-camera grid and the Frigate website are on the **development** build, not stable v0.16.11. A person is visible in the Frigate event strip.
+
+![Four muted live cameras and a Close button](https://github.com/chadakenn/Kellies-Voice/wiki/raw/master/onn-live-camera-grid.jpg)
+
+![Frigate website with the Kellie's Voice Close button](https://github.com/chadakenn/Kellies-Voice/wiki/raw/master/onn-frigate-dashboard.jpg)
+
+![Frigate screensaver diagnostics. The watcher is not running in this photo](https://github.com/chadakenn/Kellies-Voice/wiki/raw/master/onn-frigate-screensaver-diagnostics.jpg)
+
+The diagnostics photo is an example of the status screen, not a working screensaver. Here the watcher is stopped, Home Assistant layout sync has not started, and Android has not sent a dream event.
+
 ## Snapshot popups
 
 Use `kellies_voice.show_camera`. This is a still image. Optional parameters (v0.16.5+):

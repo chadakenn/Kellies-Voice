@@ -34,6 +34,8 @@ They are separate downloads. Installing one does not install the other. Always u
 1. On the TV open **Kellie's Voice → SETTINGS → Configure Home Assistant**.
 2. Enter your Home Assistant base URL (e.g. `https://ha.example.net` or `http://homeassistant.local:8123`) and your long-lived access token.
 3. Choose **Save and connect**. You should see **Connected and authenticated**.
+
+![Connected main screen on the onn 4K Pro](https://github.com/chadakenn/Kellies-Voice/wiki/raw/master/onn-home-connected.jpg)
 4. Grant the microphone permission when prompted.
 5. Select **TALK** with the remote, speak a simple question such as "What time is it?", and confirm the answer appears (and is spoken if TTS is configured).
 
