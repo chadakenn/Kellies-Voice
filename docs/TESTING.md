@@ -1,3 +1,15 @@
+## v0.16.12-dev.8 opt-in HA camera-grid HLS (build 47, dev only)
+
+- [ ] Install Android build 47 and matching HACS dev.8. Keep HA dropdown selections; clear Frigate URL and confirm screensaver ON, HA layout ON.
+- [ ] Default Snapshots (reliable) stays unchanged, including after an APK upgrade.
+- [ ] Choose Live (one camera) in HA. First tile must show moving, muted HLS video; other three remain five-second JPEG snapshots. Verify on manual Preview and automatic Google Ambient activation.
+- [ ] On a missing HLS stream or software decoder error, snapshot fallback remains visible with a status. The previously reported HDMI blank decoder failure (#67) must not recur.
+- [ ] TV live-camera decoder mode Snapshots only overrides HLS settings. Safe software mode may have no video codec on some devices; show snapshots rather than silently using a hardware decoder.
+- [ ] Try Live (two cameras) after one stream succeeds, monitor five minutes of playback and Close. Test expired auth, HA restarts, missing camera, network drops and a stalled stream (18-second fallback).
+- [ ] Opt in to Live (four cameras, advanced) only after stable one/two playback. Stop if overheating, HDMI loss, decoder errors or TV stutter. Use Frigate Live webpage for Frigate's own efficient smart streams if necessary.
+- [ ] Switching from grid to web URL releases HLS players. Verify muted audio, same-host HLS URL validation, close/back, and no microphone activation.
+- [ ] Stable main must not receive this development feature until real TV QA.
+
 ## v0.16.12-dev.7 camera-grid HA sync diagnostics (build 46, dev only)
 
 - [ ] Reproduce owner report: configure four HA cameras, clear Frigate web URL in HA, and let the onn Google TV idle. Record current TV diagnostics for **Home Assistant layout**, **Source on TV**, **Cameras saved on TV**, **HA settings link**, and **Last HA source** without disclosing camera IDs or tokens in public logs.
