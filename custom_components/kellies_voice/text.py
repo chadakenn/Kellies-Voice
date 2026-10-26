@@ -20,7 +20,7 @@ async def async_setup_entry(
 ) -> None:
     async_add_entities([
         KellieFrigateText(entry, "screensaver_url", "Frigate web URL", "mdi:web"),
-        KellieFrigateText(entry, "screensaver_cameras", "Frigate HA camera entities", "mdi:cctv"),
+        KellieFrigateText(entry, "screensaver_cameras", "Frigate HA camera entities (manual override)", "mdi:cctv"),
     ])
 
 
