@@ -4,6 +4,7 @@
 - [🏠 Overview](Home.md)
 - [🚀 Getting Started](Getting-Started.md)
 - [📺 TV App & Permissions](TV-App-and-Permissions.md)
+- [🎛️ TV Settings & Microphone](TV-App-and-Permissions.md#settings-menu-map)
 - [🏡 Home Assistant Setup](Home-Assistant-HACS-Setup.md)
 
 **Features**
