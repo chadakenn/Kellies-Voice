@@ -1,5 +1,14 @@
 # Kellie's Voice development and testing lane
 
+## HACS dev prerelease picker
+
+HACS does **not** list arbitrary repository branches in its ordinary **Redownload → Need a different version?** picker. HACS lists recent published GitHub Releases and the default branch. The repo's `dev` branch is already directly installable without any release: Home Assistant → **Developer Tools → Actions** → `update.install` targeting **Kellie's Voice's HACS repository update entity**, with `version: dev`. Do not target the HACS application's own update entity. After download, restart Home Assistant.
+
+For a **visible beta option** (after owner approval), the `dev` branch has a dedicated [signed dev prerelease workflow](../.github/workflows/publish-hacs-beta.yml). Only an explicit `[publish-hacs-dev]` commit on `dev` or a manual workflow dispatch on `dev` may publish. It verifies the Android `versionName` matches the HACS integration manifest, reruns Android/HA tests, signs with the existing keystore, checks signature, creates SHA-256 `update.json`, and publishes a GitHub **prerelease** (never GitHub Latest) tagged `v0.16.12-dev.5` or the actual next bumped dev version. The prerelease includes the signed Android APK so the TV's deliberately opt-in Development channel can also consume it. It never updates stable `main`.
+
+After publication: **HACS → Kellie's Voice → ⋮ → Redownload → Need a different version? → Show beta versions → `v0.16.12-dev.5` → Download**. Beta choices may require refreshing HACS metadata. Restart HA after the download. When back on stable, choose public `v0.16.11` and restart HA; maintain Android matching versions and don't downgrade an Android `versionCode` by uninstalling.
+
+
 ## v0.16.12-dev.5 / build 44: Home Assistant Frigate controls and remote navigation
 
 HA adds paired per-TV screensaver ON/OFF, URL, camera IDs, size, desktop layout and fit entities. Android consumes validated changes from a dedicated saved-login WebSocket even while the voice activity is closed, provided Home Assistant layout was explicitly enabled on the TV. The OFF switch does not destroy the settings channel, so a later ON can reactivate it. The Frigate web page adds a D-pad-driven selection cursor and OK-to-tap camera navigation. "Fit more cameras" widens the responsive viewport to 1920 CSS pixels for a less cropped view, with 1440/1200 fallbacks. Requires matching Android and HACS dev.5 and owner device testing before stable release.
