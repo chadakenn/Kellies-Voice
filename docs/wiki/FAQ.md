@@ -10,6 +10,15 @@ No. Julia is only the maintainer's personal name for their own Home Assistant vo
 **Does the Google Assistant button on the remote work with Kellie's Voice?**  
 No. It usually still launches Google. Use the on-screen **TALK** button and speak toward the TV's built-in microphone (or a USB mic if needed).
 
+**The screen says “connected” and “Nothing yet.” Is Home Assistant broken?**  
+Not necessarily. The voice connection may be authenticated even when no speech has been captured. Select TALK and test a short phrase. If no transcript appears, see [microphone troubleshooting](Troubleshooting.md#connected-but-no-speech-is-recognized).
+
+**Should I select “Try unverified microphone” or “Disable microphone capture”?**  
+Run Hardware microphone diagnostics first. **Disable** deliberately prevents recording. The **unverified** override is for troubleshooting a real microphone that Android reports incorrectly, not a workaround for hardware the app cannot access. Keep Safe checks ON for normal use.
+
+**Why is the bottom of SETTINGS missing?**  
+The settings list scrolls. Press **Down** on your remote to reach TV alert status and the update buttons. See the [TV settings map](TV-App-and-Permissions.md#settings-menu-map).
+
 **Can I use spoken timers with no extra setup?**  
 No. Direct `kellies_voice.start_timer` actions work from Home Assistant. Ordinary phrases like "set a five-minute timer" often hit Home Assistant's native timer intent, which replies that the device does not support timers. Optional custom sentences or automations are required for voice routing and must be configured carefully.
 
