@@ -29,8 +29,19 @@ public class ScreensaverDashboardTest {
         assertFalse(desktop.contains("Android"));
         assertFalse(desktop.contains("Mobile"));
         assertEquals("unknown browser", ScreensaverDashboard.desktopUserAgent("unknown browser"));
-        assertTrue(ScreensaverDashboard.desktopViewportScript().contains("width=1440"));
+        assertTrue(ScreensaverDashboard.desktopViewportScript().contains("width=1920"));
         assertFalse(ScreensaverDashboard.desktopViewportScript().contains("token"));
+    }
+
+    @Test public void fitPresetsChangeViewportAndFallbackSafely() {
+        assertEquals(1920, ScreensaverDashboard.viewportWidth("Fit more cameras"));
+        assertEquals(1440, ScreensaverDashboard.viewportWidth("Balanced"));
+        assertEquals(1200, ScreensaverDashboard.viewportWidth("Larger text"));
+        assertEquals(1920, ScreensaverDashboard.viewportWidth("bad"));
+        assertTrue(ScreensaverDashboard.desktopViewportScript(1920).contains("width=1920"));
+        assertTrue(ScreensaverDashboard.desktopViewportScript(1440).contains("width=1440"));
+        assertTrue(ScreensaverDashboard.desktopViewportScript(1200).contains("width=1200"));
+        assertTrue(ScreensaverDashboard.desktopViewportScript(-1).contains("width=1920"));
     }
 
     @Test public void pageAddressRejectsTokensAndStrangeSchemes() {

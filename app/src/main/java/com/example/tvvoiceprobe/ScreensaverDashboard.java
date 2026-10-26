@@ -57,11 +57,22 @@ public final class ScreensaverDashboard {
                 "(KHTML, like Gecko) Chrome/" + browser.group(1) + " Safari/537.36";
     }
 
+    /** Fit more columns/rows without clipping the bottom camera tiles. */
+    public static int viewportWidth(String fit) {
+        if ("Balanced".equals(fit)) return 1440;
+        if ("Larger text".equals(fit)) return 1200;
+        return 1920;
+    }
+
     /** Frigate uses a responsive viewport; request a TV-sized CSS viewport for its grid. */
     public static String desktopViewportScript() {
+        return desktopViewportScript(1920);
+    }
+
+    public static String desktopViewportScript(int width) {
         return "(function(){var m=document.querySelector(\'meta[name=\\\"viewport\\\"]\');" +
                 "if(!m){m=document.createElement(\'meta\');m.name=\'viewport\';document.head.appendChild(m);}" +
-                "m.setAttribute(\'content\',\'width=1440, initial-scale=1\');})();";
+                "m.setAttribute(\'content\',\'width=" + (width == 1200 || width == 1440 ? width : 1920) + ", initial-scale=1\');})();";
     }
 
     public static boolean showOverlay(boolean enabled, boolean dreaming, boolean dismissed,

@@ -640,6 +640,11 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                 }, which -> {
                     if (which == 0) {
                         prefs.setHaManage(!on);
+                        if (prefs.haManage() || prefs.screensaverDashboard()) {
+                            ScreensaverWatchService.startIfEnabled(this);
+                        } else {
+                            stopService(new Intent(this, ScreensaverWatchService.class));
+                        }
                         HaDiscovery.setWanted(this, prefs.haManage());
                         if (assist != null) assist.setLayoutSync(prefs.haManage());
                         status(prefs.haManage()
@@ -1403,6 +1408,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                         "Home Assistant cameras: " + cameras.length + " configured (edit / clear)",
                         "Dashboard size: " + ScreensaverDashboard.sizeLabel(prefs.screensaverSize()),
                         "Frigate page layout: " + (prefs.screensaverDesktopPage() ? "Desktop TV" : "Automatic"),
+                        "Frigate page fit: " + prefs.screensaverFit(),
                         "Choose Android screensaver",
                         "Preview Frigate dashboard",
                         "Screensaver status & permissions",
@@ -1415,11 +1421,12 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                         case 2: editScreensaverCameras(); break;
                         case 3: chooseScreensaverSize(); break;
                         case 4: toggleScreensaverDesktopPage(); break;
-                        case 5: openAndroidScreensaverList(); break;
-                        case 6: startActivity(new Intent(this, ScreensaverPreviewActivity.class)); break;
-                        case 7: showScreensaverDiagnostics(); break;
-                        case 8: testScreensaverOverlay(); break;
-                        case 9: showSettingsMenu(); break;
+                        case 5: chooseScreensaverFit(); break;
+                        case 6: openAndroidScreensaverList(); break;
+                        case 7: startActivity(new Intent(this, ScreensaverPreviewActivity.class)); break;
+                        case 8: showScreensaverDiagnostics(); break;
+                        case 9: testScreensaverOverlay(); break;
+                        case 10: showSettingsMenu(); break;
                         default: break;
                     }
                 });
@@ -1468,6 +1475,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                         return;
                     }
                     prefs.setScreensaverUrl(safe);
+                    pushLayout(HaLayout.SCREENSAVER_URL);
                     ScreensaverSignals.settingsChanged();
                     showScreensaverSettings();
                 })
@@ -1503,6 +1511,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                         return;
                     }
                     prefs.setScreensaverCameras(typed);
+                    pushLayout(HaLayout.SCREENSAVER_CAMERAS);
                     ScreensaverSignals.settingsChanged();
                     showScreensaverSettings();
                 })
@@ -1521,6 +1530,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                 "Small leaves more TV content visible; Large fills the screen.",
                 labels, which -> {
                     prefs.setScreensaverSize(sizes[which]);
+                    pushLayout(HaLayout.SCREENSAVER_SIZE);
                     ScreensaverSignals.settingsChanged();
                     showScreensaverSettings();
                 });
@@ -1529,8 +1539,23 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
     private void toggleScreensaverDesktopPage() {
         OverlayPreferences prefs = new OverlayPreferences(this);
         prefs.setScreensaverDesktopPage(!prefs.screensaverDesktopPage());
+        pushLayout(HaLayout.SCREENSAVER_PAGE_LAYOUT);
         ScreensaverSignals.settingsChanged();
         showScreensaverSettings();
+    }
+
+    private void chooseScreensaverFit() {
+        OverlayPreferences prefs = new OverlayPreferences(this);
+        String[] options = {"Fit more cameras", "Balanced", "Larger text"};
+        showCopperMenu("FRIGATE  ✦  PAGE FIT",
+                "Fit more cameras shows more of Frigate's live grid without scrolling. "
+                        + "Balanced matches the previous view, while Larger text is easier to read.",
+                options, which -> {
+                    prefs.setScreensaverFit(options[which]);
+                    pushLayout(HaLayout.SCREENSAVER_FIT);
+                    ScreensaverSignals.settingsChanged();
+                    showScreensaverSettings();
+                });
     }
 
     private void openAndroidScreensaverList() {
@@ -1616,7 +1641,8 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         OverlayPreferences prefs = new OverlayPreferences(this);
         boolean next = !prefs.screensaverDashboard();
         prefs.setScreensaverDashboard(next);
-        if (next) ScreensaverWatchService.startIfEnabled(this);
+        pushLayout(HaLayout.SCREENSAVER_ENABLED);
+        if (next || prefs.haManage()) ScreensaverWatchService.startIfEnabled(this);
         else stopService(new Intent(this, ScreensaverWatchService.class)
                 .setAction(ScreensaverWatchService.ACTION_STOP));
         ScreensaverSignals.settingsChanged();

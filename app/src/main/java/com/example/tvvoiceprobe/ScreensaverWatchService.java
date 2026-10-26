@@ -31,9 +31,15 @@ public final class ScreensaverWatchService extends Service {
 
     private WindowManager windows;
     private ScreensaverBoard board;
+    private ScreensaverSettingsSync settingsSync;
     private boolean registered;
     private boolean dreaming;
     private long shownAtMs;
+    private final Runnable onSettings = () -> {
+        OverlayPreferences prefs = new OverlayPreferences(this);
+        if (!prefs.screensaverDashboard()) hide();
+        else if (dreaming && board == null) showIfWanted(false);
+    };
 
     private final BroadcastReceiver dreams = new BroadcastReceiver() {
         @Override public void onReceive(Context context, Intent intent) {
@@ -55,7 +61,9 @@ public final class ScreensaverWatchService extends Service {
     };
 
     static void startIfEnabled(Context context) {
-        if (context == null || !new OverlayPreferences(context).screensaverDashboard()) return;
+        if (context == null) return;
+        OverlayPreferences prefs = new OverlayPreferences(context);
+        if (!prefs.screensaverDashboard() && !prefs.haManage()) return;
         try {
             context.startForegroundService(new Intent(context, ScreensaverWatchService.class)
                     .setAction(ACTION_START));
@@ -66,8 +74,9 @@ public final class ScreensaverWatchService extends Service {
 
     @Override public int onStartCommand(Intent intent, int flags, int startId) {
         startForeground(NOTICE, notice());
+        OverlayPreferences prefs = new OverlayPreferences(this);
         if ((intent != null && ACTION_STOP.equals(intent.getAction()))
-                || !new OverlayPreferences(this).screensaverDashboard()) {
+                || (!prefs.screensaverDashboard() && !prefs.haManage())) {
             hide();
             ScreensaverWatchStatus.serviceRunning(false);
             stopForeground(STOP_FOREGROUND_REMOVE);
@@ -76,6 +85,13 @@ public final class ScreensaverWatchService extends Service {
         }
         ScreensaverWatchStatus.serviceRunning(true);
         windows = getSystemService(WindowManager.class);
+        if (prefs.haManage() && settingsSync == null) {
+            settingsSync = new ScreensaverSettingsSync(this);
+            settingsSync.start();
+        } else if (!prefs.haManage() && settingsSync != null) {
+            settingsSync.stop();
+            settingsSync = null;
+        }
         if (!registered) {
             IntentFilter filter = new IntentFilter();
             filter.addAction(DREAMING_STARTED);
@@ -87,6 +103,7 @@ public final class ScreensaverWatchService extends Service {
             }
             registered = true;
             ScreensaverSignals.setListener(this::hideBecauseOurDream);
+            ScreensaverSignals.listen(onSettings);
         }
         if (intent != null && ACTION_TEST_OVERLAY.equals(intent.getAction())) {
             // Explicit local test, not evidence of an ambient-mode event.
@@ -161,7 +178,7 @@ public final class ScreensaverWatchService extends Service {
         return new Notification.Builder(this, CHANNEL)
                 .setSmallIcon(android.R.drawable.ic_menu_view)
                 .setContentTitle("Frigate screensaver armed")
-                .setContentText("Opens only while the screensaver is on. The microphone stays off.")
+                .setContentText("Frigate screensaver and optional HA configuration. No microphone.")
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
                 .build();
@@ -169,8 +186,13 @@ public final class ScreensaverWatchService extends Service {
 
     @Override public void onDestroy() {
         hide();
+        if (settingsSync != null) {
+            settingsSync.stop();
+            settingsSync = null;
+        }
         try { stopForeground(STOP_FOREGROUND_REMOVE); } catch (RuntimeException ignored) { }
         ScreensaverSignals.setListener(null);
+        ScreensaverSignals.unlisten(onSettings);
         ScreensaverWatchStatus.serviceRunning(false);
         if (registered) {
             try { unregisterReceiver(dreams); } catch (RuntimeException ignored) { }

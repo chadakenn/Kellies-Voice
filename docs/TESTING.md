@@ -1,3 +1,16 @@
+## v0.16.12-dev.5 HA settings + Frigate remote navigation (build 44; dev only)
+
+- [ ] Install matching dev.5 HACS integration, restart Home Assistant and signed Android build 44. The TV's device page exposes Frigate screensaver switch, URL, cameras, size, layout, and fit preset. Check that the ordinary TV controls and existing announcements remain unchanged.
+- [ ] With **Home Assistant layout ON** on the TV, change fit, size, and page layout in HA while normal Google Ambient Mode runs. Dashboard should update without opening a voice session or activating the microphone.
+- [ ] Toggle Frigate OFF then ON from HA while the TV screen is idle. The HA settings sync service must remain running after OFF, and must honor the later ON. Test HA reconnect and app update/TV reboot.
+- [ ] Enter invalid URL tokens or noncamera IDs in HA and ensure rejected inputs do not propagate to the TV; clear the URL to activate the 1–4 camera snapshot grid.
+- [ ] Set Large + Desktop TV + Fit more cameras: the lower camera row should be more visible. Compare with Balanced and Larger text; no scrolling shortcuts that trap the user.
+- [ ] In webpage mode, select **Select camera** → OK, use arrows to position the gold cursor over a Frigate tile, OK opens it. Test choosing another tile, Back, and Close, then normal TV playback. Ensure no accidental selection without entering browser mode.
+- [ ] Run without HA controls enabled, or with screensaver OFF, and check the TV continues behaving as before.
+- [ ] Verify no token, IP, or camera text appears in debug logs or issue comments.
+
+**Owner onn hardware verification is required before publishing to main.**
+
 ## v0.16.12-dev.4 Google TV Ambient Mode watcher recovery (build 43, dev only)
 
 The owner's onn Google TV only exposes Google's Ambient Mode sources (Photos, Art Gallery and Custom AI Art) instead of third-party DreamServices. Frigate Preview renders, and existing announcement overlays show during Ambient Mode, but the dashboard doesn't appear automatically. The old watcher only started when the feature was toggled and wasn't recovered following APK update/reboot.

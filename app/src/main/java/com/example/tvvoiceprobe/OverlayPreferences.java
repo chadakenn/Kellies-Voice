@@ -62,6 +62,7 @@ public final class OverlayPreferences {
     private static final String KEY_SCREENSAVER_CAMERAS = "screensaver_cameras";
     private static final String KEY_SCREENSAVER_SIZE = "screensaver_size";
     private static final String KEY_SCREENSAVER_DESKTOP = "screensaver_desktop_page";
+    private static final String KEY_SCREENSAVER_FIT = "screensaver_fit";
     private final SharedPreferences preferences;
 
     public OverlayPreferences(Context context) {
@@ -387,6 +388,18 @@ public final class OverlayPreferences {
 
     public void setScreensaverDesktopPage(boolean desktop) {
         preferences.edit().putBoolean(KEY_SCREENSAVER_DESKTOP, desktop).apply();
+    }
+
+    public String screensaverFit() {
+        String value = preferences.getString(KEY_SCREENSAVER_FIT, "Fit more cameras");
+        return "Balanced".equals(value) || "Larger text".equals(value) ? value : "Fit more cameras";
+    }
+
+    public void setScreensaverFit(String value) {
+        if ("Fit more cameras".equals(value) || "Balanced".equals(value)
+                || "Larger text".equals(value)) {
+            preferences.edit().putString(KEY_SCREENSAVER_FIT, value).apply();
+        }
     }
 
     /** Large matches the original full-screen dashboard. */

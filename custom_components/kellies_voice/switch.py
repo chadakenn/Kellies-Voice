@@ -16,7 +16,7 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    async_add_entities([KellieAutoListen(entry)])
+    async_add_entities([KellieAutoListen(entry), KellieScreensaverSwitch(entry)])
 
 
 class KellieAutoListen(SwitchEntity, RestoreEntity):
@@ -28,6 +28,7 @@ class KellieAutoListen(SwitchEntity, RestoreEntity):
     def __init__(self, entry: ConfigEntry) -> None:
         device_id = entry.data["device_id"]
         self._device_id = device_id
+        self._setting = "auto_listen"
         self._generation = 0
         self._attr_name = "Auto-listen"
         self._attr_unique_id = f"{device_id}_auto_listen"
@@ -44,7 +45,7 @@ class KellieAutoListen(SwitchEntity, RestoreEntity):
         registry = None
         if self.registry_entry is not None and self.registry_entry.device_id:
             registry = self.registry_entry.device_id
-        return layout_attributes(self._device_id, "auto_listen", self._generation, registry)
+        return layout_attributes(self._device_id, self._setting, self._generation, registry)
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
@@ -68,3 +69,16 @@ class KellieAutoListen(SwitchEntity, RestoreEntity):
         self._generation += 1
         self._attr_extra_state_attributes = self._attributes()
         self.async_write_ha_state()
+
+class KellieScreensaverSwitch(KellieAutoListen):
+    """Per-TV opt-in Frigate screensaver. Never starts the microphone."""
+
+    _attr_icon = "mdi:monitor-eye"
+
+    def __init__(self, entry: ConfigEntry) -> None:
+        super().__init__(entry)
+        self._setting = "screensaver_enabled"
+        self._attr_name = "Frigate screensaver"
+        self._attr_unique_id = f"{self._device_id}_screensaver_enabled"
+        self._attr_is_on = False
+        self._attr_extra_state_attributes = self._attributes()

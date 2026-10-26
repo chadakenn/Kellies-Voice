@@ -1,7 +1,7 @@
 """Option text shared with the Android TV app. Do not rename values."""
 
 DOMAIN = "kellies_voice"
-PLATFORMS = ["select", "switch", "binary_sensor"]
+PLATFORMS = ["select", "switch", "text", "binary_sensor"]
 
 POSITIONS = [
     "Original location",
@@ -21,6 +21,12 @@ SELECTS = (
     ("size", "Overlay size", SIZES, "mdi:relative-scale"),
     ("style", "Overlay style", STYLES, "mdi:palette"),
     ("auto_hide", "Overlay auto-hide", HIDE_TIMES, "mdi:timer-outline"),
+)
+
+FRIGATE_SELECTS = (
+    ("screensaver_size", "Frigate dashboard size", SIZES, "mdi:resize", "Large"),
+    ("screensaver_page_layout", "Frigate page layout", ["Desktop TV", "Automatic"], "mdi:monitor", "Desktop TV"),
+    ("screensaver_fit", "Frigate page fit", ["Fit more cameras", "Balanced", "Larger text"], "mdi:fit-to-screen", "Fit more cameras"),
 )
 
 # Separate from the voice overlay. Top right and Medium match the TV's current popup.

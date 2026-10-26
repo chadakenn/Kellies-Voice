@@ -1,5 +1,9 @@
 # Kellie's Voice development and testing lane
 
+## v0.16.12-dev.5 / build 44: Home Assistant Frigate controls and remote navigation
+
+HA adds paired per-TV screensaver ON/OFF, URL, camera IDs, size, desktop layout and fit entities. Android consumes validated changes from a dedicated saved-login WebSocket even while the voice activity is closed, provided Home Assistant layout was explicitly enabled on the TV. The OFF switch does not destroy the settings channel, so a later ON can reactivate it. The Frigate web page adds a D-pad-driven selection cursor and OK-to-tap camera navigation. "Fit more cameras" widens the responsive viewport to 1920 CSS pixels for a less cropped view, with 1440/1200 fallbacks. Requires matching Android and HACS dev.5 and owner device testing before stable release.
+
 ## v0.16.12-dev.4 / build 43: Google TV ambient watcher recovery and diagnostics
 
 Re-enable the already-opted-in Frigate watcher after app updates/reboot (including when TV alert notifications are disabled), return `START_STICKY`, and show safe, in-process Diagnostics for service alive, overlay permission, Frigate config, last system dream event and overlay result. Adds **Test Frigate as TV overlay** independent of Google Ambient idle detection, to distinguish successful rendering from missing dream broadcasts. Android's Google TV Ambient Mode **Source** is not a third-party dream picker. Do not claim automatic Ambient Mode support until on-device QA confirms receipt of DREAMING_STARTED and a visible overlay. Signed build 43, app and HACS `0.16.12-dev.4`; does not alter existing HA or Frigate setup.
