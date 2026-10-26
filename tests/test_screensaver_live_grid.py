@@ -49,11 +49,43 @@ class ScreensaverLiveGridSourceTests(unittest.TestCase):
         self.assertIn("android.R.attr.state_focused", board)
         self.assertIn("Back to cameras", board)
         self.assertIn("private void exitFullscreen()", board)
-        self.assertIn("if (!handleBack()) host.close();", board)
+        self.assertIn("if (handleBack()) return;", board)
         self.assertIn("board.handleBack()", dream)
         self.assertIn("board.handleBack()", preview)
         self.assertIn("gridCells[slot].requestFocus()", board)
         self.assertIn("AspectRatioFrameLayout.RESIZE_MODE_FIT", board)
+
+    def test_remote_back_reaches_board_even_when_child_button_is_focused(self):
+        board = (JAVA / "ScreensaverBoard.java").read_text()
+        # The old root OnKeyListener lost Back events while a footer button had
+        # focus. ViewGroup dispatchKeyEvent sees the event before its children.
+        self.assertIn("@Override public boolean dispatchKeyEvent(KeyEvent event)", board)
+        self.assertIn("if (event.getKeyCode() == KeyEvent.KEYCODE_BACK)", board)
+        self.assertIn("event.getAction() == KeyEvent.ACTION_UP && !event.isCanceled()", board)
+        self.assertIn("return true; // Consume DOWN and UP", board)
+        self.assertNotIn("root.setOnKeyListener((view, key, event)", board)
+        # Android 13+ system Back does not always send a legacy key event.
+        self.assertIn("view.findOnBackInvokedDispatcher()", board)
+        self.assertIn("dispatcher.registerOnBackInvokedCallback(", board)
+        self.assertIn("overlayBackDispatcher.unregisterOnBackInvokedCallback(", board)
+        self.assertIn("context instanceof ScreensaverWatchService", board)
+        # Shared handler must not break Frigate webpage remote browsing.
+        self.assertIn("if (handleBack()) return;", board)
+        self.assertIn("if (browsing && web != null)", board)
+        self.assertIn("if (web.canGoBack())", board)
+        self.assertIn("host.close();", board)
+
+    def test_fullscreen_and_close_buttons_have_visible_tv_remote_focus(self):
+        board = (JAVA / "ScreensaverBoard.java").read_text()
+        self.assertIn("back.setBackground(controlBackground(", board)
+        self.assertIn("close.setBackground(controlBackground(", board)
+        self.assertIn("0xFFFFD166", board)  # Amber focused border.
+        self.assertIn("android.R.attr.state_focused", board)
+        self.assertIn("back.setNextFocusRightId(closeControl.getId());", board)
+        self.assertIn("closeControl.setNextFocusLeftId(back.getId());", board)
+        self.assertIn("back.post(() -> { if (!stopped && fullscreenSlot == slot) back.requestFocus(); });", board)
+        self.assertIn("closeControl.setNextFocusLeftId(View.NO_ID);", board)
+        self.assertIn("if (liveGrid != null) liveGrid.clearFullscreen();", board)
 
     def test_fullscreen_audio_is_explicit_and_always_muted_on_exit(self):
         board = (JAVA / "ScreensaverBoard.java").read_text()
