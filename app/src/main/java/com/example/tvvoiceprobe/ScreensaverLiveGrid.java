@@ -13,6 +13,9 @@ import androidx.media3.common.MediaItem;
 import androidx.media3.common.MimeTypes;
 import androidx.media3.common.PlaybackException;
 import androidx.media3.common.Player;
+import androidx.media3.common.Tracks;
+import androidx.media3.common.VideoSize;
+import androidx.media3.ui.AspectRatioFrameLayout;
 import androidx.media3.exoplayer.DefaultRenderersFactory;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.exoplayer.mediacodec.MediaCodecInfo;
@@ -32,7 +35,8 @@ import okhttp3.WebSocketListener;
 
 /**
  * Bounded HA-camera HLS streams for the opt-in screensaver grid.
- * Video stays muted. On unsupported HA streams, late frames or decoder errors
+ * The grid stays muted. The user can select one camera full-screen to opt in
+ * to its stream audio. On unsupported streams, late frames or decoder errors
  * each tile keeps its preexisting authenticated snapshot fallback.
  */
 final class ScreensaverLiveGrid {
@@ -52,6 +56,9 @@ final class ScreensaverLiveGrid {
     private final OkHttpClient http = new OkHttpClient();
     private WebSocket socket;
     private boolean stopped;
+    private int fullscreenSlot = -1;
+    private TextureView fullscreenSurface;
+    private TextView fullscreenAudioStatus;
 
     ScreensaverLiveGrid(Context context, CredentialStore.Connection connection, String[] cameras,
             TextureView[] surfaces, ImageView[] snapshots, TextView[] statuses,
@@ -70,6 +77,84 @@ final class ScreensaverLiveGrid {
 
     boolean isLive(int index) {
         return index >= 0 && index < playing.length && playing[index];
+    }
+
+    boolean hasLiveSlot(int index) {
+        return !stopped && index >= 0 && index < limit && surfaces[index] != null;
+    }
+
+    /** Opt-in sound for one chosen camera. No other tile may produce audio. */
+    void selectFullscreen(int slot, TextureView target, TextView audioStatus) {
+        clearFullscreen();
+        if (stopped || !hasLiveSlot(slot) || target == null) {
+            if (audioStatus != null) audioStatus.setText("Snapshot · audio unavailable");
+            return;
+        }
+        fullscreenSlot = slot;
+        fullscreenSurface = target;
+        fullscreenAudioStatus = audioStatus;
+        ExoPlayer selected = players[slot];
+        if (selected == null) {
+            showAudioStatus("Waiting for live camera…");
+            return;
+        }
+        moveToFullscreen(slot, selected);
+    }
+
+    private void moveToFullscreen(int slot, ExoPlayer player) {
+        if (stopped || fullscreenSlot != slot || fullscreenSurface == null) return;
+        player.setVolume(0f);
+        player.setVideoTextureView(fullscreenSurface);
+        VideoSize currentSize = player.getVideoSize();
+        if (currentSize.width > 0 && currentSize.height > 0
+                && fullscreenSurface.getParent() instanceof AspectRatioFrameLayout) {
+            ((AspectRatioFrameLayout) fullscreenSurface.getParent()).setAspectRatio(
+                    currentSize.width * currentSize.pixelWidthHeightRatio / currentSize.height);
+        }
+        surfaces[slot].setAlpha(0f);
+        player.setTrackSelectionParameters(player.getTrackSelectionParameters().buildUpon()
+                .setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, false).build());
+        player.setVolume(1f);
+        if (playing[slot]) {
+            fullscreenSurface.setAlpha(1f);
+            status(slot, "LIVE · selected");
+        }
+        showAudioStatus("Checking camera audio…");
+        showTracksIfReady(slot, player.getCurrentTracks());
+    }
+
+    private void showAudioStatus(String label) {
+        if (!stopped && fullscreenAudioStatus != null) fullscreenAudioStatus.setText(label);
+    }
+
+    private void showTracksIfReady(int slot, Tracks tracks) {
+        if (stopped || fullscreenSlot != slot || fullscreenAudioStatus == null
+                || tracks == null || tracks.isEmpty()) return;
+        showAudioStatus(tracks.isTypeSelected(C.TRACK_TYPE_AUDIO)
+                ? "Camera audio ON" : "No audio track in camera stream");
+    }
+
+    /** Always mute before leaving full-screen or releasing a video surface. */
+    void clearFullscreen() {
+        int slot = fullscreenSlot;
+        if (slot >= 0 && slot < players.length) {
+            ExoPlayer selected = players[slot];
+            if (selected != null) {
+                selected.setVolume(0f);
+                selected.setTrackSelectionParameters(
+                        selected.getTrackSelectionParameters().buildUpon()
+                                .setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, true).build());
+                if (surfaces[slot] != null) {
+                    selected.setVideoTextureView(surfaces[slot]);
+                    surfaces[slot].setAlpha(playing[slot] ? 1f : 0f);
+                }
+                if (playing[slot]) status(slot, "LIVE · muted");
+            }
+        }
+        if (fullscreenSurface != null) fullscreenSurface.setAlpha(0f);
+        fullscreenSlot = -1;
+        fullscreenSurface = null;
+        fullscreenAudioStatus = null;
     }
 
     void start() {
@@ -165,8 +250,23 @@ final class ScreensaverLiveGrid {
                     if (stopped || players[slot] != player) return;
                     playing[slot] = true;
                     snapshots[slot].setVisibility(View.INVISIBLE);
-                    surface.setAlpha(1f);
-                    status(slot, "LIVE · muted");
+                    if (fullscreenSlot == slot && fullscreenSurface != null) {
+                        fullscreenSurface.setAlpha(1f);
+                    } else {
+                        surface.setAlpha(1f);
+                    }
+                    status(slot, fullscreenSlot == slot ? "LIVE · selected" : "LIVE · muted");
+                }
+                @Override public void onVideoSizeChanged(VideoSize size) {
+                    if (stopped || players[slot] != player || size.height <= 0 || size.width <= 0) return;
+                    if (fullscreenSlot == slot && fullscreenSurface != null
+                            && fullscreenSurface.getParent() instanceof AspectRatioFrameLayout) {
+                        ((AspectRatioFrameLayout) fullscreenSurface.getParent())
+                                .setAspectRatio(size.width * size.pixelWidthHeightRatio / size.height);
+                    }
+                }
+                @Override public void onTracksChanged(Tracks tracks) {
+                    if (!stopped && players[slot] == player) showTracksIfReady(slot, tracks);
                 }
                 @Override public void onPlayerError(PlaybackException error) {
                     if (stopped || players[slot] != player) return;
@@ -181,6 +281,7 @@ final class ScreensaverLiveGrid {
                     .setMimeType(MimeTypes.APPLICATION_M3U8).build());
             player.prepare();
             player.play();
+            if (fullscreenSlot == slot) moveToFullscreen(slot, player);
             status(slot, "Connecting to live…");
             main.postDelayed(() -> {
                 if (!stopped && players[slot] == player && !playing[slot]) {
@@ -193,17 +294,30 @@ final class ScreensaverLiveGrid {
     }
 
     private void status(int slot, String value) {
-        if (!stopped && statuses[slot] != null) statuses[slot].setText(value);
+        if (stopped) return;
+        if (statuses[slot] != null) statuses[slot].setText(value);
+        if (fullscreenSlot == slot && !playing[slot] && value.startsWith("Snapshot")) {
+            showAudioStatus("Snapshot · no camera audio");
+        }
     }
 
     private void fallback(int slot, String reason) {
         playing[slot] = false;
         if (surfaces[slot] != null) surfaces[slot].setAlpha(0f);
         if (snapshots[slot] != null) snapshots[slot].setVisibility(View.VISIBLE);
+        if (fullscreenSlot == slot) {
+            if (fullscreenSurface != null) fullscreenSurface.setAlpha(0f);
+            showAudioStatus("Snapshot · no camera audio");
+        }
         ExoPlayer old = players[slot];
         players[slot] = null;
         if (old != null) {
-            if (surfaces[slot] != null) old.clearVideoTextureView(surfaces[slot]);
+            old.setVolume(0f);
+            if (fullscreenSlot == slot && fullscreenSurface != null) {
+                old.clearVideoTextureView(fullscreenSurface);
+            } else if (surfaces[slot] != null) {
+                old.clearVideoTextureView(surfaces[slot]);
+            }
             old.release();
         }
         status(slot, reason);
@@ -211,6 +325,7 @@ final class ScreensaverLiveGrid {
 
     void stop() {
         if (stopped) return;
+        clearFullscreen();
         stopped = true;
         main.removeCallbacksAndMessages(null);
         if (socket != null) {

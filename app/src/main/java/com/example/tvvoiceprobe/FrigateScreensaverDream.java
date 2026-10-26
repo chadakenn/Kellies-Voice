@@ -31,7 +31,7 @@ public final class FrigateScreensaverDream extends DreamService {
     @Override public boolean dispatchKeyEvent(KeyEvent event) {
         if (event.getKeyCode() == KeyEvent.KEYCODE_BACK
                 && event.getAction() == KeyEvent.ACTION_UP) {
-            finish();
+            if (board == null || !board.handleBack()) finish();
             return true;
         }
         return super.dispatchKeyEvent(event);

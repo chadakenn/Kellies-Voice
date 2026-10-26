@@ -14,6 +14,11 @@ public final class ScreensaverPreviewActivity extends Activity {
         board.start();
     }
 
+    @Override public void onBackPressed() {
+        if (board != null && board.handleBack()) return;
+        super.onBackPressed();
+    }
+
     @Override protected void onDestroy() {
         if (board != null) board.stop();
         super.onDestroy();

@@ -6,6 +6,7 @@ import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.StateListDrawable;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
@@ -26,6 +27,8 @@ import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+
+import androidx.media3.ui.AspectRatioFrameLayout;
 
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
@@ -57,6 +60,13 @@ final class ScreensaverBoard {
     private OkHttpClient http;
     private WebView web;
     private ScreensaverLiveGrid liveGrid;
+    private ImageView[] gridPhotos;
+    private View[] gridCells;
+    private View firstGridCell;
+    private FrameLayout fullscreenPanel;
+    private ImageView fullscreenPhoto;
+    private View fullscreenBack;
+    private int fullscreenSlot = -1;
     private TextView remotePointer;
     private boolean browsing;
     private final ScreensaverRemoteCursor cursor = new ScreensaverRemoteCursor();
@@ -74,7 +84,7 @@ final class ScreensaverBoard {
         root.setFocusable(true);
         root.setOnKeyListener((view, key, event) -> {
             if (key == KeyEvent.KEYCODE_BACK && event.getAction() == KeyEvent.ACTION_UP) {
-                host.close();
+                if (!handleBack()) host.close();
                 return true;
             }
             return false;
@@ -83,6 +93,13 @@ final class ScreensaverBoard {
     }
 
     View view() { return root; }
+
+    /** Consumed by the DreamService, overlay and preview before exiting the dashboard. */
+    boolean handleBack() {
+        if (fullscreenSlot < 0) return false;
+        exitFullscreen();
+        return true;
+    }
 
     void start() {
         // A camera-list/size preference update must not leak the old refresh
@@ -95,6 +112,13 @@ final class ScreensaverBoard {
         generation++;
         OverlayPreferences prefs = new OverlayPreferences(context);
         root.removeAllViews();
+        gridPhotos = null;
+        gridCells = null;
+        firstGridCell = null;
+        fullscreenPanel = null;
+        fullscreenPhoto = null;
+        fullscreenBack = null;
+        fullscreenSlot = -1;
         remotePointer = null;
         browsing = false;
         if (!prefs.screensaverDashboard()) {
@@ -117,12 +141,22 @@ final class ScreensaverBoard {
                 + "and choose Resync HA cameras.");
         if (web != null) root.addView(browseButton());
         root.addView(closeButton());
+        if (firstGridCell != null) firstGridCell.post(() -> {
+            if (!stopped && fullscreenSlot < 0) firstGridCell.requestFocus();
+        });
     }
 
     void stop() {
         stopped = true;
         browsing = false;
         remotePointer = null;
+        fullscreenSlot = -1;
+        fullscreenPanel = null;
+        fullscreenPhoto = null;
+        fullscreenBack = null;
+        gridPhotos = null;
+        gridCells = null;
+        firstGridCell = null;
         generation++;
         ScreensaverSignals.unlisten(onSettings);
         main.removeCallbacksAndMessages(null);
@@ -292,6 +326,8 @@ final class ScreensaverBoard {
         grid.setPadding(dp(8), dp(8), dp(8), 0);
         grid.setBackgroundColor(Color.BLACK);
         ImageView[] photos = new ImageView[cameras.length];
+        gridPhotos = photos;
+        gridCells = new View[cameras.length];
         TextureView[] surfaces = new TextureView[cameras.length];
         TextView[] liveStatuses = new TextView[cameras.length];
         OverlayPreferences prefs = new OverlayPreferences(context);
@@ -306,7 +342,22 @@ final class ScreensaverBoard {
             LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f);
             for (int column = 0; column < 2 && index < cameras.length; column++) {
+                final int slot = index;
                 FrameLayout cell = new FrameLayout(context);
+                cell.setFocusable(true);
+                cell.setClickable(true);
+                cell.setOnClickListener(v -> showFullscreen(slot, cameras[slot]));
+                GradientDrawable focused = new GradientDrawable();
+                focused.setColor(Color.TRANSPARENT);
+                focused.setStroke(dp(4), 0xFFFFD166);
+                GradientDrawable normal = new GradientDrawable();
+                normal.setColor(Color.TRANSPARENT);
+                StateListDrawable focusRing = new StateListDrawable();
+                focusRing.addState(new int[] { android.R.attr.state_focused }, focused);
+                focusRing.addState(new int[] {}, normal);
+                cell.setForeground(focusRing);
+                gridCells[index] = cell;
+                if (firstGridCell == null) firstGridCell = cell;
                 ImageView photo = new ImageView(context);
                 photo.setScaleType(ImageView.ScaleType.CENTER_CROP);
                 photo.setBackgroundColor(0xFF141414);
@@ -367,6 +418,89 @@ final class ScreensaverBoard {
         }
     }
 
+    /** The grid always stays muted; opening a chosen live tile enables only its audio. */
+    private void showFullscreen(int slot, String entity) {
+        if (stopped || fullscreenSlot >= 0 || gridPhotos == null
+                || slot < 0 || slot >= gridPhotos.length) return;
+        fullscreenSlot = slot;
+        FrameLayout panel = new FrameLayout(context);
+        panel.setBackgroundColor(Color.BLACK);
+        ImageView photo = new ImageView(context);
+        photo.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        photo.setImageDrawable(gridPhotos[slot].getDrawable());
+        panel.addView(photo, new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+        fullscreenPhoto = photo;
+        TextureView fullVideo = null;
+        if (liveGrid != null && liveGrid.hasLiveSlot(slot)) {
+            AspectRatioFrameLayout aspect = new AspectRatioFrameLayout(context);
+            aspect.setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_FIT);
+            aspect.setAspectRatio(16f / 9f);
+            FrameLayout.LayoutParams videoParams = new FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT);
+            videoParams.gravity = Gravity.CENTER;
+            panel.addView(aspect, videoParams);
+            fullVideo = new TextureView(context);
+            fullVideo.setOpaque(false);
+            fullVideo.setAlpha(0f);
+            aspect.addView(fullVideo, new FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+        }
+        TextView cameraName = new TextView(context);
+        cameraName.setText(label(entity));
+        cameraName.setTextColor(Color.WHITE);
+        cameraName.setTextSize(22);
+        cameraName.setPadding(dp(12), dp(8), dp(12), dp(8));
+        cameraName.setBackgroundColor(0xAA000000);
+        FrameLayout.LayoutParams nameParams = new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.TOP | Gravity.START);
+        panel.addView(cameraName, nameParams);
+        TextView audioLabel = new TextView(context);
+        audioLabel.setText(fullVideo == null ? "Snapshot · no audio" : "Checking camera audio…");
+        audioLabel.setTextColor(Color.WHITE);
+        audioLabel.setTextSize(15);
+        audioLabel.setPadding(dp(8), dp(5), dp(8), dp(5));
+        audioLabel.setBackgroundColor(0xAA000000);
+        FrameLayout.LayoutParams audioParams = new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.TOP | Gravity.END);
+        panel.addView(audioLabel, audioParams);
+        root.addView(panel, cardParams());
+        fullscreenPanel = panel;
+
+        if (liveGrid != null) liveGrid.selectFullscreen(slot, fullVideo, audioLabel);
+
+        Button back = new Button(context);
+        back.setText("Back to cameras");
+        back.setTextColor(Color.WHITE);
+        back.setAllCaps(false);
+        back.setFocusable(true);
+        back.setOnClickListener(v -> exitFullscreen());
+        FrameLayout.LayoutParams backParams = new FrameLayout.LayoutParams(dp(216), dp(52));
+        backParams.gravity = Gravity.BOTTOM | Gravity.START;
+        backParams.setMargins(dp(16), dp(16), dp(16), dp(16));
+        root.addView(back, backParams);
+        fullscreenBack = back;
+        back.post(() -> { if (!stopped && fullscreenSlot == slot) back.requestFocus(); });
+    }
+
+    private void exitFullscreen() {
+        if (fullscreenSlot < 0) return;
+        int slot = fullscreenSlot;
+        // Mute and move the video surface back before destroying the full-screen view.
+        if (liveGrid != null) liveGrid.clearFullscreen();
+        fullscreenSlot = -1;
+        if (fullscreenBack != null) root.removeView(fullscreenBack);
+        if (fullscreenPanel != null) root.removeView(fullscreenPanel);
+        fullscreenBack = null;
+        fullscreenPanel = null;
+        fullscreenPhoto = null;
+        if (!stopped && gridCells != null && slot < gridCells.length) {
+            gridCells[slot].requestFocus();
+        }
+    }
+
     private void refresh(CredentialStore.Connection connection, String[] cameras,
             ImageView[] photos, int current) {
         if (stopped || current != generation) return;
@@ -417,8 +551,13 @@ final class ScreensaverBoard {
                     Bitmap bitmap = BitmapFactory.decodeByteArray(raw, 0, raw.length, options);
                     if (bitmap == null) return;
                     main.post(() -> {
-                        if (!stopped && current == generation) photo.setImageBitmap(bitmap);
-                        else bitmap.recycle();
+                        if (!stopped && current == generation) {
+                            photo.setImageBitmap(bitmap);
+                            if (fullscreenSlot >= 0 && gridPhotos != null
+                                    && gridPhotos[fullscreenSlot] == photo && fullscreenPhoto != null) {
+                                fullscreenPhoto.setImageBitmap(bitmap);
+                            }
+                        } else bitmap.recycle();
                     });
                 } catch (Exception ignored) { }
             }
@@ -477,7 +616,7 @@ final class ScreensaverBoard {
         params.gravity = Gravity.BOTTOM | Gravity.END;
         params.setMargins(dp(16), dp(16), dp(24), dp(16));
         close.setLayoutParams(params);
-        close.post(() -> close.requestFocus());
+        if (firstGridCell == null) close.post(() -> close.requestFocus());
         return close;
     }
 
