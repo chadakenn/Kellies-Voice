@@ -287,7 +287,9 @@ final class ScreensaverBoard {
     private void showCameras(String[] cameras) {
         LinearLayout grid = new LinearLayout(context);
         grid.setOrientation(LinearLayout.VERTICAL);
-        grid.setPadding(dp(16), dp(16), dp(16), dp(72));
+        // cardParams() already reserves the Close-button strip in Large mode.
+        // A second bottom inset here previously squeezed the two camera rows upward.
+        grid.setPadding(dp(8), dp(8), dp(8), 0);
         grid.setBackgroundColor(Color.BLACK);
         ImageView[] photos = new ImageView[cameras.length];
         TextureView[] surfaces = new TextureView[cameras.length];
