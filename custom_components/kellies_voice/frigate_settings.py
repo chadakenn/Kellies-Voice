@@ -12,7 +12,7 @@ def validate_frigate_setting(setting: str, value: str) -> str:
     if not isinstance(value, str):
         raise ValueError("Value must be text.")
     value = value.strip()
-    if len(value) > 500:
+    if len(value) > 255:
         raise ValueError("Frigate setting is too long.")
     if setting == "screensaver_url":
         if not value:
