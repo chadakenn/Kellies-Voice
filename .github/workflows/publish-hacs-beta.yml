@@ -1,0 +1,146 @@
+name: Publish opt-in Kellie's Voice dev prerelease
+
+# HACS lists GitHub Releases, not every non-default branch.
+# Only an explicit [publish-hacs-dev] dev commit or manual dev dispatch may publish.
+on:
+  workflow_dispatch:
+  push:
+    branches: [dev]
+    paths:
+      - '.github/workflows/publish-hacs-beta.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  beta-release:
+    if: >-
+      github.ref == 'refs/heads/dev' &&
+      (github.event_name == 'workflow_dispatch' ||
+       contains(github.event.head_commit.message, '[publish-hacs-dev]'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    permissions:
+      contents: write
+    steps:
+      - name: Check out exact approved dev commit
+        uses: actions/checkout@v4
+
+      - name: Verify matched development versions and unpublished tag
+        id: version
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          APP_NAME=$(sed -nE "s/.*versionName '([^']+)'.*/\1/p" app/build.gradle | head -1)
+          APP_CODE=$(sed -nE 's/.*versionCode ([0-9]+).*/\1/p' app/build.gradle | head -1)
+          HA_NAME=$(python3 -c 'import json; print(json.load(open("custom_components/kellies_voice/manifest.json"))["version"])')
+          if [[ ! "$APP_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+-dev\.[0-9]+$ ]] || [[ "$APP_CODE" != +([0-9]) ]]; then
+            echo "::error::This workflow publishes only numeric -dev.N builds." && exit 1
+          fi
+          if [[ "$APP_NAME" != "$HA_NAME" ]]; then
+            echo "::error::Android and HACS dev versions must match." && exit 1
+          fi
+          TAG="v$APP_NAME"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "::error::Prerelease $TAG already exists. Bump dev version first." && exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "app_name=$APP_NAME" >> "$GITHUB_OUTPUT"
+          echo "app_code=$APP_CODE" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+
+      - name: Install Android SDK 35
+        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Run Android and Home Assistant tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle --no-daemon :app:assembleDebug :app:testDebugUnitTest
+          python3 -m compileall -q custom_components/kellies_voice
+          python3 -m unittest discover -s tests -p 'test_*.py' -v
+
+      - name: Restore existing signing identity
+        shell: bash
+        env:
+          TV_KEY_B64: ${{ secrets.TV_SIGNING_KEYSTORE_B64 }}
+          TV_SIGNING_PASSWORD: ${{ secrets.TV_SIGNING_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$TV_KEY_B64" || -z "$TV_SIGNING_PASSWORD" ]]; then
+            echo "::error::Signing secrets missing. No beta release published." && exit 1
+          fi
+          printf '%s' "$TV_KEY_B64" | base64 --decode > "$RUNNER_TEMP/kellies-voice-signing.p12"
+          chmod 600 "$RUNNER_TEMP/kellies-voice-signing.p12"
+          keytool -list -storetype PKCS12 -keystore "$RUNNER_TEMP/kellies-voice-signing.p12" \
+            -storepass "$TV_SIGNING_PASSWORD" -alias tvvoice >/dev/null
+          echo "TV_SIGNING_KEYSTORE_PATH=$RUNNER_TEMP/kellies-voice-signing.p12" >> "$GITHUB_ENV"
+
+      - name: Build signed prerelease APK
+        env:
+          TV_SIGNING_PASSWORD: ${{ secrets.TV_SIGNING_PASSWORD }}
+        run: gradle --no-daemon :app:assembleRelease
+
+      - name: Verify APK signature
+        run: |
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose \
+            app/build/outputs/apk/release/app-release.apk
+
+      - name: Create integrity metadata and opt-in beta release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+          APP_NAME: ${{ steps.version.outputs.app_name }}
+          APP_CODE: ${{ steps.version.outputs.app_code }}
+        run: |
+          set -euo pipefail
+          mkdir -p release-files
+          cp app/build/outputs/apk/release/app-release.apk release-files/app-release.apk
+          python3 - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          apk = Path("release-files/app-release.apk")
+          assert apk.stat().st_size > 4096
+          payload = {
+              "tag": os.environ["RELEASE_TAG"],
+              "versionName": os.environ["APP_NAME"],
+              "versionCode": int(os.environ["APP_CODE"]),
+              "sha256": hashlib.sha256(apk.read_bytes()).hexdigest(),
+          }
+          Path("release-files/update.json").write_text(json.dumps(payload, indent=2) + "\n")
+          PY
+          cat > release-files/notes.md <<'EOF'
+          **Development prerelease for opt-in Home Assistant HACS and Android TV testers.**
+
+          Home Assistant: HACS → Kellie's Voice → Redownload →
+          Need a different version? → enable beta releases → select this dev version.
+          Restart Home Assistant after HACS installs the matching integration.
+          The public stable release remains unchanged.
+
+          Android TV: optional same-signed development APK attached.
+          Backup Home Assistant first. Do not install on TVs not participating in testing.
+          EOF
+          gh release create "$RELEASE_TAG" \
+            release-files/app-release.apk release-files/update.json \
+            --target "$GITHUB_SHA" \
+            --title "Kellie's Voice $RELEASE_TAG (DEV / Beta)" \
+            --notes-file release-files/notes.md \
+            --prerelease --latest=false
