@@ -167,7 +167,7 @@ For weather, the recommended initial test is **Developer tools → Actions**, no
 | **Known public-release issues** | Philips microphone route detection still fails on some Philips TVs (#71); v0.16.9 alert retry needs real HA restart/TV validation (#78); native Assist may intercept generic timer speech |
 | **Code/CI in review; NOT shipped in v0.16.9** | Opt-in follow-up listening/microphone privacy [#62](https://github.com/chadakenn/Kellies-Voice/pull/62) / [#63](https://github.com/chadakenn/Kellies-Voice/pull/63); optional “Okay Nabu” wake word [#59](https://github.com/chadakenn/Kellies-Voice/pull/59); spoken/actionable TV buttons [#51](https://github.com/chadakenn/Kellies-Voice/pull/51) / [#61](https://github.com/chadakenn/Kellies-Voice/pull/61) |
 
-**Do not mistake a passing PR build, a debug APK, or a draft integration branch for a public release.** PR #64's old v0.16.4 preview was closed. Install the signed public **v0.16.9 GitHub Release** unless you're explicitly testing a newer branch.
+**Do not mistake a passing PR build, a debug APK, or a draft integration branch for a public release.** PR #64's old v0.16.4 preview was closed. Install the latest signed public **v0.16.12 GitHub Release** unless you're explicitly testing a newer development branch.
 
 ## New tester checklist
 
