@@ -90,6 +90,7 @@ class TvSettingsRoutingTest(unittest.TestCase):
             "chooseScreensaverSize",
             "toggleScreensaverDesktopPage",
             "chooseScreensaverFit",
+            "chooseScreensaverLiveMode",
             "openAndroidScreensaverList",
             "showScreensaverDiagnostics",
             "testScreensaverOverlay",
