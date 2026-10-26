@@ -1576,17 +1576,24 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         boolean overlay = Settings.canDrawOverlays(this);
         boolean configured = ScreensaverDashboard.configured(
                 prefs.screensaverUrl(), prefs.screensaverCameras());
+        int localCameras = ScreensaverDashboard.cameraList(prefs.screensaverCameras()).length;
+        String source = !prefs.screensaverUrl().isEmpty() ? "Frigate web page"
+                : localCameras > 0 ? "HA snapshot grid" : "NONE - no source on this TV";
         String info = "Frigate feature: " + (prefs.screensaverDashboard() ? "ON" : "OFF")
-                + "\nWatcher service: " + (ScreensaverWatchStatus.running() ? "RUNNING" : "NOT RUNNING")
-                + "\nDisplay over other apps: " + (overlay ? "ALLOWED" : "NOT ALLOWED")
-                + "\nDashboard address/cameras: " + (configured ? "Configured" : "Not configured")
+                + "\nWatcher: " + (ScreensaverWatchStatus.running() ? "RUNNING" : "NOT RUNNING")
+                + "\nOverlay permission: " + (overlay ? "ALLOWED" : "NOT ALLOWED")
+                + "\nHome Assistant layout: " + (prefs.haManage() ? "ON" : "OFF")
+                + "\nSource on TV: " + source
+                + "\nCameras saved on TV: " + localCameras
+                + "\nConfigured: " + (configured ? "YES" : "NO")
+                + "\nHA settings link: " + ScreensaverWatchStatus.settingsSync()
+                + "\nLast HA source: " + ScreensaverWatchStatus.sourceSync()
                 + "\nLast Android dream event: " + ScreensaverWatchStatus.lastEvent()
                 + "\nLast overlay outcome: " + ScreensaverWatchStatus.lastOverlay()
-                + "\n\nGoogle TV Ambient Mode may not send Android dream events. "
-                + "If you wait for its normal art screensaver and this still says "
-                + "no DREAMING_STARTED, that is the next compatibility problem to solve. "
-                + "The manual overlay test checks drawing only, not the idle trigger. "
-                + "Neither test activates a microphone.";
+                + "\n\nIf HA shows four cameras but the TV reports zero, "
+                + "enable Home Assistant layout on this TV, then reopen diagnostics. "
+                + "The snapshot grid requires the saved HA connection; "
+                + "the Frigate website uses its own URL. No microphone is activated.";
         new AlertDialog.Builder(this)
                 .setTitle("Frigate screensaver diagnostics")
                 .setMessage(info)
