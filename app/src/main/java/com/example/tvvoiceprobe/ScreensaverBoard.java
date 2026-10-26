@@ -7,6 +7,7 @@ import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.StateListDrawable;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
@@ -17,6 +18,8 @@ import android.view.MotionEvent;
 import android.view.TextureView;
 import android.view.View;
 import android.view.ViewGroup;
+import android.window.OnBackInvokedCallback;
+import android.window.OnBackInvokedDispatcher;
 import android.webkit.CookieManager;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
@@ -66,6 +69,9 @@ final class ScreensaverBoard {
     private FrameLayout fullscreenPanel;
     private ImageView fullscreenPhoto;
     private View fullscreenBack;
+    private Button closeControl;
+    private OnBackInvokedDispatcher overlayBackDispatcher;
+    private OnBackInvokedCallback overlayBackCallback;
     private int fullscreenSlot = -1;
     private TextView remotePointer;
     private boolean browsing;
@@ -79,20 +85,54 @@ final class ScreensaverBoard {
     ScreensaverBoard(Context context, Host host) {
         this.context = context;
         this.host = host;
-        root = new FrameLayout(context);
+        root = new FrameLayout(context) {
+            // The focused camera tile or footer button receives key events before
+            // a root OnKeyListener. Intercept before dispatching to children.
+            @Override public boolean dispatchKeyEvent(KeyEvent event) {
+                if (event.getKeyCode() == KeyEvent.KEYCODE_BACK) {
+                    if (event.getAction() == KeyEvent.ACTION_UP && !event.isCanceled()) {
+                        onBack();
+                    }
+                    return true; // Consume DOWN and UP, not just the release.
+                }
+                return super.dispatchKeyEvent(event);
+            }
+        };
         root.setBackgroundColor(Color.BLACK);
         root.setFocusable(true);
-        root.setOnKeyListener((view, key, event) -> {
-            if (key == KeyEvent.KEYCODE_BACK && event.getAction() == KeyEvent.ACTION_UP) {
-                if (!handleBack()) host.close();
-                return true;
+        root.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
+            @Override public void onViewAttachedToWindow(View view) {
+                // Android 13+ can deliver Back through the window dispatcher,
+                // including the focusable TYPE_APPLICATION_OVERLAY service.
+                if (Build.VERSION.SDK_INT >= 33 && context instanceof ScreensaverWatchService) {
+                    OnBackInvokedDispatcher dispatcher = view.findOnBackInvokedDispatcher();
+                    if (dispatcher != null) {
+                        overlayBackDispatcher = dispatcher;
+                        overlayBackCallback = ScreensaverBoard.this::onBack;
+                        dispatcher.registerOnBackInvokedCallback(
+                                OnBackInvokedDispatcher.PRIORITY_DEFAULT, overlayBackCallback);
+                    }
+                }
             }
-            return false;
+            @Override public void onViewDetachedFromWindow(View view) {
+                if (Build.VERSION.SDK_INT >= 33 && overlayBackDispatcher != null
+                        && overlayBackCallback != null) {
+                    overlayBackDispatcher.unregisterOnBackInvokedCallback(overlayBackCallback);
+                }
+                overlayBackCallback = null;
+                overlayBackDispatcher = null;
+            }
         });
         ScreensaverSignals.listen(onSettings);
     }
 
     View view() { return root; }
+
+    /** One Back action for legacy remote keys and Android 13+ system Back. */
+    private void onBack() {
+        if (stopped) return;
+        if (!handleBack()) host.close();
+    }
 
     /** Consumed by the DreamService, overlay and preview before exiting the dashboard. */
     boolean handleBack() {
@@ -112,6 +152,7 @@ final class ScreensaverBoard {
         generation++;
         OverlayPreferences prefs = new OverlayPreferences(context);
         root.removeAllViews();
+        closeControl = null;
         gridPhotos = null;
         gridCells = null;
         firstGridCell = null;
@@ -140,7 +181,8 @@ final class ScreensaverBoard {
                 + "in Kellie's Voice settings, then check Screensaver status & permissions "
                 + "and choose Resync HA cameras.");
         if (web != null) root.addView(browseButton());
-        root.addView(closeButton());
+        closeControl = closeButton();
+        root.addView(closeControl);
         if (firstGridCell != null) firstGridCell.post(() -> {
             if (!stopped && fullscreenSlot < 0) firstGridCell.requestFocus();
         });
@@ -154,6 +196,7 @@ final class ScreensaverBoard {
         fullscreenPanel = null;
         fullscreenPhoto = null;
         fullscreenBack = null;
+        closeControl = null;
         gridPhotos = null;
         gridCells = null;
         firstGridCell = null;
@@ -474,14 +517,26 @@ final class ScreensaverBoard {
         Button back = new Button(context);
         back.setText("Back to cameras");
         back.setTextColor(Color.WHITE);
+        back.setTextSize(17);
+        back.setTypeface(Typeface.DEFAULT_BOLD);
         back.setAllCaps(false);
+        back.setBackgroundTintList(null);
+        back.setBackground(controlBackground(0xFF174844, 0xFF177A65));
         back.setFocusable(true);
+        back.setFocusableInTouchMode(true);
         back.setOnClickListener(v -> exitFullscreen());
         FrameLayout.LayoutParams backParams = new FrameLayout.LayoutParams(dp(216), dp(52));
         backParams.gravity = Gravity.BOTTOM | Gravity.START;
         backParams.setMargins(dp(16), dp(16), dp(16), dp(16));
         root.addView(back, backParams);
         fullscreenBack = back;
+        if (closeControl != null) {
+            // Don't rely on spatial guessing between the two footer buttons.
+            back.setId(View.generateViewId());
+            closeControl.setId(View.generateViewId());
+            back.setNextFocusRightId(closeControl.getId());
+            closeControl.setNextFocusLeftId(back.getId());
+        }
         back.post(() -> { if (!stopped && fullscreenSlot == slot) back.requestFocus(); });
     }
 
@@ -496,6 +551,7 @@ final class ScreensaverBoard {
         fullscreenBack = null;
         fullscreenPanel = null;
         fullscreenPhoto = null;
+        if (closeControl != null) closeControl.setNextFocusLeftId(View.NO_ID);
         if (!stopped && gridCells != null && slot < gridCells.length) {
             gridCells[slot].requestFocus();
         }
@@ -606,10 +662,8 @@ final class ScreensaverBoard {
         close.setTextSize(18);
         close.setTypeface(Typeface.DEFAULT_BOLD);
         close.setAllCaps(false);
-        GradientDrawable shape = new GradientDrawable();
-        shape.setColor(0xFF1F6B4A);
-        shape.setCornerRadius(dp(12));
-        close.setBackground(shape);
+        close.setBackgroundTintList(null);
+        close.setBackground(controlBackground(0xFF1F6B4A, 0xFF19836B));
         close.setFocusable(true);
         close.setOnClickListener(v -> host.close());
         FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(dp(180), dp(52));
@@ -618,6 +672,22 @@ final class ScreensaverBoard {
         close.setLayoutParams(params);
         if (firstGridCell == null) close.post(() -> close.requestFocus());
         return close;
+    }
+
+    /** Strong, theme-independent D-pad focus contrast on BOTH footer controls. */
+    private StateListDrawable controlBackground(int normalColor, int focusedColor) {
+        GradientDrawable focused = new GradientDrawable();
+        focused.setColor(focusedColor);
+        focused.setCornerRadius(dp(12));
+        focused.setStroke(dp(4), 0xFFFFD166);
+        GradientDrawable regular = new GradientDrawable();
+        regular.setColor(normalColor);
+        regular.setCornerRadius(dp(12));
+        StateListDrawable states = new StateListDrawable();
+        states.addState(new int[] { android.R.attr.state_focused }, focused);
+        states.addState(new int[] { android.R.attr.state_pressed }, focused);
+        states.addState(new int[] {}, regular);
+        return states;
     }
 
     private static String label(String entity) {
