@@ -28,7 +28,7 @@ These are genuine captures from the maintainer's **onn 4K Pro**, not UI mockups.
 </tr>
 </table>
 
-The animated [voice-to-doorbell example](docs/screenshots/onn-voice-doorbell.gif) and [additional screenshots](docs/screenshots/README.md) show real device tests. Automatic security-camera alerts use **still snapshots**; muted **live** camera overlays are separately available on demand with compatible Home Assistant camera streams.
+See the [four-live-camera screensaver on a real TV](docs/screenshots/onn-live-camera-grid.jpg) (home footage pixelated for privacy), the animated [voice-to-doorbell example](docs/screenshots/onn-voice-doorbell.gif), and the [full screenshot gallery](docs/screenshots/README.md). Automatic security-camera alerts use **still snapshots**; muted **live** camera overlays are separately available on demand with compatible Home Assistant camera streams.
 
 ## What can it do?
 
@@ -38,11 +38,11 @@ The animated [voice-to-doorbell example](docs/screenshots/onn-voice-doorbell.gif
 | **Floating voice overlay** | Read and hear replies without switching away from your TV app when Android permits overlays. |
 | **TV announcements** | Opt-in, on-screen messages. Optional spoken announcements with adjustable speech gain; text-only is silent by default. |
 | **Doorbell and Frigate snapshots** | Automations can send opt-in still camera popups. |
-| **Live camera on request** | Experimental muted live HLS window for supported HA cameras, with on-demand dismissal. |
+| **Live cameras and screensaver** | Opt-in up to four HA-selected live HLS cameras in a TV screensaver, with snapshot fallback; D-pad/OK opens a chosen camera full-screen with sound when its stream has audio. |
 | **Weather and timers** | Seven-day weather and named TV timers via configured Home Assistant scripts/actions. |
 | **TV-specific controls** | HA device controls for voice overlays, alert placement, sensitivity, and more. |
 
-**Verified hardware:** Voice replies, snapshot and live doorbell/driveway camera overlays, and several alert/timer behaviors have been tested on the maintainer's **onn 4K Pro**. Optional **follow-up listening** and **spoken announcement volume** were tested with **v0.16.11**; follow-up is **OFF by default**. Other devices, combinations of streaming apps and microphone sources need community tests. This is not a claim of universal Android TV compatibility.
+**Verified hardware:** Voice replies, snapshot and live camera overlays, plus the four-camera automatic screensaver, reboot recovery, full-screen Doorbell with audio, remote Back and focus controls, have been tested on the maintainer's **onn 4K Pro**. Optional **follow-up listening** and **spoken announcement volume** were tested with **v0.16.11**; follow-up is **OFF by default**. Other devices, combinations of streaming apps and microphone sources need community tests. This is not a claim of universal Android TV compatibility.
 
 ## Install in three steps
 
@@ -50,7 +50,7 @@ The animated [voice-to-doorbell example](docs/screenshots/onn-voice-doorbell.gif
 2. **Connect:** Open Kellie's Voice → **SETTINGS → Home Assistant connection**. Enter your Home Assistant URL and a long-lived access token from your HA profile. Grant microphone permission. Press **TALK** and confirm a short phrase appears under **YOU SAID**, then an answer under **HOME ASSISTANT SAYS**. A displayed **Connected** status by itself doesn't prove microphone capture works.
 3. **Home Assistant:** In HACS, add `https://github.com/chadakenn/Kellies-Voice` as a **custom Integration repository**, install the **matching released integration**, restart HA, then pair the TV under **Settings → Devices & services**. Enable **TV announcements & cameras** on the TV, and allow Android **Display over other apps** if you want popups.
 
-**Current stable at documentation review (October 26, 2026):** **[v0.16.11](https://github.com/chadakenn/Kellies-Voice/releases/tag/v0.16.11)** for the signed APK and HACS integration. Always check [latest releases](https://github.com/chadakenn/Kellies-Voice/releases/latest) instead of assuming this text is current forever.
+**Current stable at this release:** **[v0.16.12](https://github.com/chadakenn/Kellies-Voice/releases/tag/v0.16.12)** for the signed APK and HACS integration. Always check [latest releases](https://github.com/chadakenn/Kellies-Voice/releases/latest) instead of assuming this text is current forever.
 
 [**Full installation guide**](docs/INSTALL.md) · [**HACS pairing details**](docs/wiki/Home-Assistant-HACS-Setup.md) · [**TV settings tour**](docs/wiki/TV-App-and-Permissions.md#settings-menu-map) · [**Troubleshooting**](docs/wiki/Troubleshooting.md)
 
@@ -82,11 +82,11 @@ Replace example entity IDs with your own. The target TV can be selected through 
 
 ## Compatibility and honest limits
 
-| Capability | Tested/available on public v0.16.11 | Important limitation |
+| Capability | Tested/available on public v0.16.12 | Important limitation |
 | --- | --- | --- |
 | Voice answers and TV audio | Onn 4K Pro field-tested | Other TV microphones, especially some Philips inputs, need testing [#71](https://github.com/chadakenn/Kellies-Voice/issues/71) |
 | Still camera alerts | Onn 4K Pro field-tested | Popup receiver is opt-in; Android standby can stop it |
-| Muted on-demand live camera | Moving doorbell and driveway video verified on onn 4K Pro | HLS support and protected-TV-app overlays differ by hardware |
+| Opt-in live camera/screensaver | 4-camera live grid, natural idle, reboot recovery and full-screen Doorbell sound verified on onn 4K Pro | Four HLS decoders can be demanding; safe software mode and snapshot fallback, no guaranteed audio on all cameras |
 | Optional spoken alerts and follow-up listening | Onn 4K Pro tests on v0.16.11 | Follow-up OFF by default; no always-on wake word |
 | Named TV timers | Direct HA actions and scripts tested | Natural-language timer routing depends on configured Assist scripts |
 | Fire TV / Fire OS | Community testing requested | Not guaranteed; overlays and microphone access may be restricted |
@@ -107,7 +107,7 @@ If camera popups stop after standby or an HA restart, use **TV app → SETTINGS 
 
 ## Development and what's next
 
-The project is evolving. Priorities include reliability across more TVs, microphone input detection, manual pairing feedback, voice-to-timer routing and Frigate screensaver camera behavior. Some ideas have branches or pull requests; **planned and experimental work is not a released promise**. Follow the [open issues](https://github.com/chadakenn/Kellies-Voice/issues), [release history](CHANGELOG.md) and [release-specific notes](docs/releases/v0.16.11.md).
+The project is evolving. Priorities include reliability across more TVs, microphone input detection, manual pairing feedback, voice-to-timer routing and wider Frigate screensaver compatibility. Some ideas have branches or pull requests; **planned and experimental work is not a released promise**. Follow the [open issues](https://github.com/chadakenn/Kellies-Voice/issues), [release history](CHANGELOG.md) and [release-specific notes](docs/releases/v0.16.12.md).
 
 Want to help? Start with the [contribution guide](CONTRIBUTING.md), [device report template](https://github.com/chadakenn/Kellies-Voice/issues/new/choose), or [wiki](docs/wiki/Home.md). Real-world results from Google TV, Android TV and Fire TV devices are valuable.
 
