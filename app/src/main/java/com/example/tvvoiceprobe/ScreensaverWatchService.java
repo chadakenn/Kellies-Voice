@@ -35,6 +35,11 @@ public final class ScreensaverWatchService extends Service {
     private boolean registered;
     private boolean dreaming;
     private long shownAtMs;
+    private final Runnable onSettings = () -> {
+        OverlayPreferences prefs = new OverlayPreferences(this);
+        if (!prefs.screensaverDashboard()) hide();
+        else if (dreaming && board == null) showIfWanted(false);
+    };
 
     private final BroadcastReceiver dreams = new BroadcastReceiver() {
         @Override public void onReceive(Context context, Intent intent) {
@@ -98,6 +103,7 @@ public final class ScreensaverWatchService extends Service {
             }
             registered = true;
             ScreensaverSignals.setListener(this::hideBecauseOurDream);
+            ScreensaverSignals.listen(onSettings);
         }
         if (intent != null && ACTION_TEST_OVERLAY.equals(intent.getAction())) {
             // Explicit local test, not evidence of an ambient-mode event.
@@ -186,6 +192,7 @@ public final class ScreensaverWatchService extends Service {
         }
         try { stopForeground(STOP_FOREGROUND_REMOVE); } catch (RuntimeException ignored) { }
         ScreensaverSignals.setListener(null);
+        ScreensaverSignals.unlisten(onSettings);
         ScreensaverWatchStatus.serviceRunning(false);
         if (registered) {
             try { unregisterReceiver(dreams); } catch (RuntimeException ignored) { }
