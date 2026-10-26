@@ -1,5 +1,13 @@
 # Kellie's Voice development and testing lane
 
+## v0.16.12-dev.10 / build 49: TV remote Back and footer focus repair
+
+Development-only follow-up to owner field test of dev.9. **Doorbell full-screen with audible camera sound passed on an actual onn TV**, but the physical **Back** key did nothing while a footer button had focus. The onscreen "Back to cameras" button worked yet had no visible focus style, making it impossible to distinguish from Close.
+
+Fix PR #140 (merged into dev): intercept physical Back before dispatch to a focused child button; register an attach-scoped Android 13+ `OnBackInvokedCallback` for the fullscreen overlay service; preserve Frigate website remote-browsing history; and add visible gold-ring/high-contrast backgrounds plus Left/Right focus movement for **Back to cameras** and **Close**. Keep the previously verified 4-camera HLS/snapshot grid, opt-in only single-camera audio, immediate mute on return, Home Assistant pairing and stable main unchanged.
+
+**New field acceptance still needed:** In full-screen Doorbell, press the *physical* remote Back and verify instant return to four **muted** live cameras. Select Doorbell again; press Left/Right to see the gold border clearly follow the on-screen Back/Close controls, use OK on Back, and confirm Close exits. Test automatic screensaver mode and TV reboot. Screensaver Preview and Frigate webpage mode should also still handle Back correctly. No microphone activates.
+
 ## v0.16.12-dev.9 / build 48: full-screen HA camera + opt-in audio and larger grid
 
 Beta-only candidate, **not approved for stable main yet**. The previous dev.8 four-camera live grid already passed the owner's physical-TV 4-stream playback, natural Google Ambient activation and reboot recovery tests (issue #130 closed). This build combines the layout-only camera-grid bottom-spacing fix (#137) with TV remote camera selection / full-screen audio (#139).
