@@ -60,9 +60,11 @@ class FrigateCameraPicker:
         if entity_id:
             validate_frigate_setting("screensaver_cameras", entity_id)
         values = list(self._camera_ids)
-        for other in range(SLOTS):
-            if other != slot and values[other] == entity_id:
-                values[other] = ""
+        if entity_id and slot > sum(bool(camera) for camera in values):
+            raise ValueError("Choose earlier camera slots first.")
+        if entity_id and any(i != slot and camera == entity_id
+                             for i, camera in enumerate(values)):
+            raise ValueError("This camera is already selected.")
         values[slot] = entity_id
         return validate_frigate_setting("screensaver_cameras", ",".join(v for v in values if v))
 
