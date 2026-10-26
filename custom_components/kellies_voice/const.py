@@ -27,6 +27,7 @@ FRIGATE_SELECTS = (
     ("screensaver_size", "Frigate dashboard size", SIZES, "mdi:resize", "Large"),
     ("screensaver_page_layout", "Frigate page layout", ["Desktop TV", "Automatic"], "mdi:monitor", "Desktop TV"),
     ("screensaver_fit", "Frigate page fit", ["Fit more cameras", "Balanced", "Larger text"], "mdi:fit-to-screen", "Fit more cameras"),
+    ("screensaver_live_mode", "HA camera grid playback", ["Snapshots (reliable)", "Live (one camera)", "Live (two cameras)", "Live (four cameras, advanced)"], "mdi:video-wireless", "Snapshots (reliable)"),
 )
 
 # Separate from the voice overlay. Top right and Medium match the TV's current popup.

@@ -13,6 +13,7 @@ import android.util.DisplayMetrics;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
+import android.view.TextureView;
 import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.CookieManager;
@@ -55,6 +56,7 @@ final class ScreensaverBoard {
     private final List<Call> calls = new ArrayList<>();
     private OkHttpClient http;
     private WebView web;
+    private ScreensaverLiveGrid liveGrid;
     private TextView remotePointer;
     private boolean browsing;
     private final ScreensaverRemoteCursor cursor = new ScreensaverRemoteCursor();
@@ -130,6 +132,10 @@ final class ScreensaverBoard {
             calls.clear();
         }
         for (Call call : pending) call.cancel();
+        if (liveGrid != null) {
+            liveGrid.stop();
+            liveGrid = null;
+        }
         if (http != null) {
             http.dispatcher().executorService().shutdown();
             http.connectionPool().evictAll();
@@ -284,6 +290,12 @@ final class ScreensaverBoard {
         grid.setPadding(dp(16), dp(16), dp(16), dp(72));
         grid.setBackgroundColor(Color.BLACK);
         ImageView[] photos = new ImageView[cameras.length];
+        TextureView[] surfaces = new TextureView[cameras.length];
+        TextView[] liveStatuses = new TextView[cameras.length];
+        OverlayPreferences prefs = new OverlayPreferences(context);
+        String decoder = prefs.cameraMode();
+        int liveLimit = ScreensaverLiveMode.streamLimit(
+                prefs.screensaverLiveMode(), decoder, cameras.length);
         int rows = (cameras.length + 1) / 2;
         int index = 0;
         for (int row = 0; row < rows; row++) {
@@ -298,6 +310,27 @@ final class ScreensaverBoard {
                 photo.setBackgroundColor(0xFF141414);
                 cell.addView(photo, new FrameLayout.LayoutParams(
                         FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+                if (index < liveLimit) {
+                    TextureView surface = new TextureView(context);
+                    surface.setOpaque(false);
+                    surface.setAlpha(0f);
+                    cell.addView(surface, new FrameLayout.LayoutParams(
+                            FrameLayout.LayoutParams.MATCH_PARENT,
+                            FrameLayout.LayoutParams.MATCH_PARENT));
+                    surfaces[index] = surface;
+                    TextView status = new TextView(context);
+                    status.setText("Snapshot · connecting to live");
+                    status.setTextColor(Color.WHITE);
+                    status.setTextSize(12);
+                    status.setPadding(dp(6), dp(4), dp(6), dp(4));
+                    status.setBackgroundColor(0x99000000);
+                    FrameLayout.LayoutParams statusParams = new FrameLayout.LayoutParams(
+                            FrameLayout.LayoutParams.WRAP_CONTENT,
+                            FrameLayout.LayoutParams.WRAP_CONTENT);
+                    statusParams.gravity = Gravity.TOP | Gravity.END;
+                    cell.addView(status, statusParams);
+                    liveStatuses[index] = status;
+                }
                 TextView name = new TextView(context);
                 name.setText(label(cameras[index]));
                 name.setTextColor(Color.WHITE);
@@ -325,12 +358,21 @@ final class ScreensaverBoard {
         http = new OkHttpClient();
         int current = generation;
         refresh(connection, cameras, photos, current);
+        if (liveLimit > 0) {
+            liveGrid = new ScreensaverLiveGrid(context, connection, cameras,
+                    surfaces, photos, liveStatuses, liveLimit, decoder);
+            liveGrid.start();
+        }
     }
 
     private void refresh(CredentialStore.Connection connection, String[] cameras,
             ImageView[] photos, int current) {
         if (stopped || current != generation) return;
-        for (int i = 0; i < cameras.length; i++) fetch(connection, cameras[i], photos[i], current);
+        for (int i = 0; i < cameras.length; i++) {
+            if (liveGrid == null || !liveGrid.isLive(i)) {
+                fetch(connection, cameras[i], photos[i], current);
+            }
+        }
         main.postDelayed(() -> refresh(connection, cameras, photos, current), REFRESH_MS);
     }
 

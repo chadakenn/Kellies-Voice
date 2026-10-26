@@ -63,6 +63,7 @@ public final class OverlayPreferences {
     private static final String KEY_SCREENSAVER_SIZE = "screensaver_size";
     private static final String KEY_SCREENSAVER_DESKTOP = "screensaver_desktop_page";
     private static final String KEY_SCREENSAVER_FIT = "screensaver_fit";
+    private static final String KEY_SCREENSAVER_LIVE = "screensaver_live_mode";
     private final SharedPreferences preferences;
 
     public OverlayPreferences(Context context) {
@@ -400,6 +401,16 @@ public final class OverlayPreferences {
                 || "Larger text".equals(value)) {
             preferences.edit().putString(KEY_SCREENSAVER_FIT, value).apply();
         }
+    }
+
+    public String screensaverLiveMode() {
+        return ScreensaverLiveMode.normalize(preferences.getString(
+                KEY_SCREENSAVER_LIVE, ScreensaverLiveMode.SNAPSHOTS));
+    }
+
+    public void setScreensaverLiveMode(String value) {
+        preferences.edit().putString(KEY_SCREENSAVER_LIVE,
+                ScreensaverLiveMode.normalize(value)).apply();
     }
 
     /** Large matches the original full-screen dashboard. */
