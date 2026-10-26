@@ -76,6 +76,7 @@ class TvSettingsRoutingTest(unittest.TestCase):
             "Dashboard size:",
             "Frigate page layout:",
             "Frigate page fit:",
+            "HA camera grid playback:",
             "Choose Android screensaver",
             "Preview Frigate dashboard",
             "Screensaver status & permissions",
