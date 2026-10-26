@@ -36,7 +36,7 @@ jobs:
           APP_NAME=$(sed -nE "s/.*versionName '([^']+)'.*/\1/p" app/build.gradle | head -1)
           APP_CODE=$(sed -nE 's/.*versionCode ([0-9]+).*/\1/p' app/build.gradle | head -1)
           HA_NAME=$(python3 -c 'import json; print(json.load(open("custom_components/kellies_voice/manifest.json"))["version"])')
-          if [[ ! "$APP_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+-dev\.[0-9]+$ ]] || [[ "$APP_CODE" != +([0-9]) ]]; then
+          if [[ ! "$APP_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+-dev\.[0-9]+$ ]] || [[ ! "$APP_CODE" =~ ^[0-9]+$ ]]; then
             echo "::error::This workflow publishes only numeric -dev.N builds." && exit 1
           fi
           if [[ "$APP_NAME" != "$HA_NAME" ]]; then
