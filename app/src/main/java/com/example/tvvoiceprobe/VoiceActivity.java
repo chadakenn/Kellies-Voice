@@ -1409,6 +1409,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                         "Dashboard size: " + ScreensaverDashboard.sizeLabel(prefs.screensaverSize()),
                         "Frigate page layout: " + (prefs.screensaverDesktopPage() ? "Desktop TV" : "Automatic"),
                         "Frigate page fit: " + prefs.screensaverFit(),
+                        "HA camera grid playback: " + prefs.screensaverLiveMode(),
                         "Choose Android screensaver",
                         "Preview Frigate dashboard",
                         "Screensaver status & permissions",
@@ -1422,11 +1423,12 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                         case 3: chooseScreensaverSize(); break;
                         case 4: toggleScreensaverDesktopPage(); break;
                         case 5: chooseScreensaverFit(); break;
-                        case 6: openAndroidScreensaverList(); break;
-                        case 7: startActivity(new Intent(this, ScreensaverPreviewActivity.class)); break;
-                        case 8: showScreensaverDiagnostics(); break;
-                        case 9: testScreensaverOverlay(); break;
-                        case 10: showSettingsMenu(); break;
+                        case 6: chooseScreensaverLiveMode(); break;
+                        case 7: openAndroidScreensaverList(); break;
+                        case 8: startActivity(new Intent(this, ScreensaverPreviewActivity.class)); break;
+                        case 9: showScreensaverDiagnostics(); break;
+                        case 10: testScreensaverOverlay(); break;
+                        case 11: showSettingsMenu(); break;
                         default: break;
                     }
                 });
@@ -1553,6 +1555,23 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                 options, which -> {
                     prefs.setScreensaverFit(options[which]);
                     pushLayout(HaLayout.SCREENSAVER_FIT);
+                    ScreensaverSignals.settingsChanged();
+                    showScreensaverSettings();
+                });
+    }
+
+    private void chooseScreensaverLiveMode() {
+        OverlayPreferences prefs = new OverlayPreferences(this);
+        String[] options = {ScreensaverLiveMode.SNAPSHOTS, ScreensaverLiveMode.ONE,
+                ScreensaverLiveMode.TWO, ScreensaverLiveMode.FOUR};
+        showCopperMenu("FRIGATE  ✦  CAMERA GRID",
+                "Without a Frigate URL, request muted live streams for selected HA cameras. "
+                        + "Test one live camera first. Other tiles remain snapshots. "
+                        + "Four live streams are advanced and may overload some TVs. "
+                        + "Any failed stream falls back to snapshots.",
+                options, which -> {
+                    prefs.setScreensaverLiveMode(options[which]);
+                    pushLayout(HaLayout.SCREENSAVER_LIVE);
                     ScreensaverSignals.settingsChanged();
                     showScreensaverSettings();
                 });
