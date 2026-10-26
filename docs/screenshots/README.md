@@ -1,6 +1,6 @@
 # Real-device screenshot gallery 📸
 
-Phone photos from an onn 4K Pro are now in this folder and in the main README. The SVG previews and `night-signal.png` are still **design references**, not photos of the TV.
+Phone photos from an onn 4K Pro are in this folder; a small selection appears in the main README. The SVG previews and `night-signal.png` are still **design references**, not photos of the TV.
 
 | File | What it is |
 | --- | --- |
@@ -12,8 +12,8 @@ Phone photos from an onn 4K Pro are now in this folder and in the main README. T
 | [onn-settings-menu.jpg](onn-settings-menu.jpg) | Settings list: connection, microphone, overlay, layout, TV alerts, and live-camera mode. |
 | [onn-mic-routing.jpg](onn-mic-routing.jpg) | Microphone routing. Safe checks are on. This does not capture the Google remote microphone. |
 | [onn-tv-alert-status.jpg](onn-tv-alert-status.jpg) | TV alert status while Home Assistant is denying legacy event subscriptions. Resume TV alerts is the button inside this dialog. |
-| [onn-live-camera-grid.jpg](onn-live-camera-grid.jpg) | Development build: four muted live cameras (living room, doorbell, driveway, back) with Close. Not part of stable v0.16.11. |
-| [onn-frigate-dashboard.jpg](onn-frigate-dashboard.jpg) | Development build: the Frigate website over the TV, with Kellie's Voice Close button. Private camera footage and people in the event strip are obscured. |
+| [onn-live-camera-grid.jpg](onn-live-camera-grid.jpg) | Owner-tested four muted live cameras (living room, doorbell, driveway, back) with Close; camera footage pixelated for privacy. Included in stable v0.16.12. |
+| [onn-frigate-dashboard.jpg](onn-frigate-dashboard.jpg) | The opt-in Frigate website over the TV, with Kellie's Voice Close button. Private camera footage and people in the event strip are obscured. |
 | [onn-frigate-screensaver-diagnostics.jpg](onn-frigate-screensaver-diagnostics.jpg) | Frigate screensaver diagnostics. In this photo the watcher is not running and no Android dream event has arrived. |
 
 ## Requested captures
