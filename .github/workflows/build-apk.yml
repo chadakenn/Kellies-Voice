@@ -24,6 +24,11 @@ jobs:
   signed-release:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+      artifact-metadata: write
     steps:
       - name: Check out source
         uses: actions/checkout@v4
@@ -75,6 +80,11 @@ jobs:
       - name: Verify APK signature
         run: |
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose app/build/outputs/apk/release/app-release.apk
+
+      - name: Attest signed APK build provenance
+        uses: actions/attest@v4
+        with:
+          subject-path: app/build/outputs/apk/release/app-release.apk
 
       - name: Upload installable signed APK
         uses: actions/upload-artifact@v4
