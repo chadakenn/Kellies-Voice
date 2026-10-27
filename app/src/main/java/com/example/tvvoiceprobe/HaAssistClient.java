@@ -57,7 +57,8 @@ public final class HaAssistClient {
     }
 
     private final Context context;
-    private final Events events;
+    // Wake-only preconnection can be handed to the overlay without reopening HA.
+    private volatile Events events;
     private final SpeechFocus listeningFocus;
     private final RunGate runs = new RunGate();
     private volatile FollowUpEar pendingEar;
@@ -118,6 +119,12 @@ public final class HaAssistClient {
     }
 
     public boolean isConnected() { return authenticated; }
+
+    /** Rebind callbacks when an already-authenticated wake connection is claimed. */
+    public void setEvents(Events receiver) {
+        if (receiver == null) throw new IllegalArgumentException("Events required");
+        this.events = receiver;
+    }
 
     /** Whether reconnection is enabled; rejected credentials must not be retried. */
     public synchronized boolean canReconnect() {
