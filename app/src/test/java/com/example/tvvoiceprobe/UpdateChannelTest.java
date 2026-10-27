@@ -124,7 +124,7 @@ public class UpdateChannelTest {
                 .replace("https://github.com/chadakenn/Kellies-Voice/releases/download/v0.16.12-dev.12/app-release.apk",
                         "https://evil.example/untrusted.apk");
         String draft = assetRelease("v0.16.12-dev.13", true)
-                .replace("\\"draft\\":false", "\\"draft\\":true");
+                .replace("\"draft\":false", "\"draft\":true");
         String tooLarge = assetRelease("v99999999999999999999999.0.0-dev.9", true);
         String stable = assetRelease("v0.17.0", false);
         String list = "[" + missingMetadata + "," + unsafe + "," + draft
