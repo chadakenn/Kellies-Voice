@@ -61,7 +61,7 @@ jobs:
           echo "TV_SIGNING_KEYSTORE_PATH=$RUNNER_TEMP/kellies-voice-signing.p12" >> "$GITHUB_ENV"
 
       - name: Test Android and Home Assistant before public release
-        if: (github.event_name == 'workflow_dispatch' && inputs.publish_release == true) || (github.event_name == 'push' && contains(github.event.head_commit.message, '[publish-release]'))
+        if: (github.event_name == 'workflow_dispatch' && inputs.publish_release == true)
         run: |
           ./gradlew --no-daemon -PskipWakeNative=true :app:assembleDebug :app:testDebugUnitTest
           python3 -m compileall -q custom_components/kellies_voice
@@ -88,7 +88,9 @@ jobs:
           if-no-files-found: error
 
   publish-release:
-    if: github.ref == 'refs/heads/main' && ((github.event_name == 'workflow_dispatch' && inputs.publish_release == true) || (github.event_name == 'push' && contains(github.event.head_commit.message, '[publish-release]')))
+    # Publishing requires a deliberate manual workflow-dispatch approval.
+    # Never infer authorization from a commit message on main.
+    if: github.ref == 'refs/heads/main' && ((github.event_name == 'workflow_dispatch' && inputs.publish_release == true))
     needs: signed-release
     runs-on: ubuntu-latest
     permissions:
