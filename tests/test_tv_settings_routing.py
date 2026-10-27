@@ -16,56 +16,64 @@ ACTIVITY = (
     / "app/src/main/java/com/example/tvvoiceprobe/VoiceActivity.java"
 ).read_text(encoding="utf-8")
 
-EXPECTED = [
-    ("Home Assistant connection", "configure"),
-    ("Connect / reconnect", "connect"),
-    ("Start new conversation", "newConversation"),
-    ("Hardware microphone diagnostics", "startActivity"),
-    ("Microphone sensitivity:", "chooseMicSensitivity"),
-    ("Follow-up listening:", "chooseFollowUp"),
-    ("Mic input detection:", "chooseMicrophoneDetection"),
-    ("Open floating voice overlay", "launchOverlay"),
-    ("Overlay appearance & position", "showOverlayPreferences"),
-    ("Home Assistant layout:", "chooseHaLayout"),
-    ("TV announcements & cameras:", "chooseTvNotifications"),
-    ("Spoken announcements:", "toggleSpokenAnnouncements"),
-    ("Announcement voice volume:", "chooseAnnouncementVolume"),
-    ("Test spoken announcements locally", "testSpokenAnnouncements"),
-    ("TV alert status", "showTvAlertStatus"),
-    ("Live camera:", "chooseCameraMode"),
-    ("Check for app updates:", "chooseUpdates"),
-    ("Install downloaded update", "promptInstallUpdate"),
-    ("Frigate screensaver:", "showScreensaverSettings"),
-    ("Preview Frigate dashboard", "startActivity"),
-    ("Wake word:", "chooseWakeWord"),
-    ("Forget saved connection", "confirmForget"),
-]
+EXPECTED_CATEGORIES = (
+    "HOME", "VOICE", "OVERLAY", "ALERTS", "SCREEN", "SYSTEM",
+)
+
+# These are existing entry points. Redesign must not silently orphan a setting.
+EXPECTED_ACTIONS = {
+    "HOME": ("connect", "configure", "newConversation", "chooseHaLayout"),
+    "VOICE": ("chooseMicSensitivity", "chooseFollowUp",
+              "chooseMicrophoneDetection", "startActivity", "chooseWakeWord"),
+    "OVERLAY": ("launchOverlay", "showOverlayPreferences"),
+    "ALERTS": ("chooseTvNotifications", "toggleSpokenAnnouncements",
+               "chooseAnnouncementVolume", "testSpokenAnnouncements",
+               "showTvAlertStatus", "chooseCameraMode"),
+    "SCREEN": ("showScreensaverSettings", "startActivity"),
+    "SYSTEM": ("chooseUpdates", "promptInstallUpdate", "confirmForget"),
+}
 
 
 class TvSettingsRoutingTest(unittest.TestCase):
-    def test_all_displayed_settings_open_matching_actions(self):
-        block = ACTIVITY.split("private void showSettingsMenu() {", 1)[1].split(
+    def test_settings_hub_is_grouped_and_accessible_by_remote(self):
+        root = ACTIVITY.split("private void showSettingsDashboard() {", 1)[1].split(
+            "private int menuDp(", 1)[0]
+        self.assertIn("activeSettingsSection = null;", root)
+        self.assertIn("SettingsSection.values()", root)
+        self.assertIn("settingsCategoryCard(section, colors)", root)
+        self.assertIn("first.requestFocus()", root)
+        self.assertIn("Close settings", root)
+        self.assertIn("setContentDescription(", ACTIVITY)
+        enum = ACTIVITY.split("private enum SettingsSection {", 1)[1].split(
+            "final String title;", 1)[0]
+        names = re.findall(r"^        ([A-Z]+)[(]", enum, re.MULTILINE)
+        self.assertEqual(list(EXPECTED_CATEGORIES), names)
+        self.assertIn("addButton(toolbar, \"SETTINGS\", v -> showSettingsDashboard());", ACTIVITY)
+
+    def test_each_original_settings_action_has_a_destination(self):
+        category = ACTIVITY.split("private void showSettingsSection(SettingsSection section) {", 1)[1].split(
             "private void chooseAnnouncementVolume()", 1
         )[0]
-        labels = block.split("String[] entries = new String[] {", 1)[1].split("};", 1)[0]
-        # All top-level menu items are indented exactly 16 spaces.
-        menu_labels = re.findall(r'^ {16}"([^"]+)"', labels, re.MULTILINE)
-        self.assertEqual(
-            len(EXPECTED), len(menu_labels),
-            "Adding a settings row requires assigning its click handler",
+        # Find dispatch (the second switch on section, after menu labels).
+        dispatch = category.split("entries, which -> {", 1)[1]
+        matches = re.findall(
+            r"^                        case ([A-Z]+):\s*(.*?)"
+            r"(?=^                        case [A-Z]+:|^                        default:)",
+            dispatch, re.MULTILINE | re.DOTALL
         )
-        dispatch = block.split("switch (which) {", 1)[1].split("default: break;", 1)[0]
-        handlers = {
-            int(index): method
-            for index, method in re.findall(
-                r"case\s+(\d+)\s*:\s*([A-Za-z]\w*)\s*\(", dispatch
-            )
-        }
-        self.assertEqual(list(range(len(EXPECTED))), sorted(handlers))
-        for index, (prefix, action) in enumerate(EXPECTED):
-            with self.subTest(index=index, label=prefix):
-                self.assertTrue(menu_labels[index].startswith(prefix))
-                self.assertEqual(action, handlers[index])
+        self.assertEqual(list(EXPECTED_CATEGORIES), [x[0] for x in matches])
+        for section, code in matches:
+            for action in EXPECTED_ACTIONS[section]:
+                with self.subTest(section=section, action=action):
+                    self.assertIn(action + "(", code)
+        self.assertIn("this::showSettingsDashboard", category)
+        self.assertIn('"Wake word: " + (!prefs.wakeWord()', category)
+
+    def test_child_menu_back_returns_to_selected_category(self):
+        self.assertIn("activeSettingsSection == null ? null : this::showSettingsMenu", ACTIVITY)
+        self.assertIn("dialog.setOnCancelListener", ACTIVITY)
+        self.assertIn("onBack.run();", ACTIVITY)
+        self.assertIn("showSettingsSection(activeSettingsSection);", ACTIVITY)
 
     def test_frigate_settings_exposes_all_configuration_routes(self):
         block = ACTIVITY.split("private void showScreensaverSettings() {", 1)[1].split(
