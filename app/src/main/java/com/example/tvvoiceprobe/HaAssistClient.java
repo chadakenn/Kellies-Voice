@@ -654,18 +654,11 @@ public final class HaAssistClient {
                 final String noiseMode = roomNoise;
                 byte[] devicePcm = new byte[capturedRate == 16000 ? 3200 : 9600];
                 byte[] pcm = new byte[devicePcm.length + 4];
-                long observedMs = 0L;
-                long voiceMs = 0L;
-                long quietMs = 0L;
-                boolean heardUtterance = false;
-                double backgroundRms = 0.002;
+                EnergyVad energy = new EnergyVad();
                 if (lead != null && SpeechBuffer.containsSpeech(lead, 16000)) {
                     boolean sent = runs.send(runId, handlerAtStart,
                             () -> writePcm(lead, handlerAtStart));
-                    if (sent) {
-                        heardUtterance = true;
-                        observedMs = 400L;
-                    }
+                    if (sent) energy.noteLead();
                 }
                 while (runs.isRecording(runId, handlerAtStart)) {
                     int deviceBytes = recorder.read(devicePcm, 0, devicePcm.length);
@@ -675,45 +668,11 @@ public final class HaAssistClient {
                     int read = samples.process(devicePcm, deviceBytes, pcm);
                     if (read == 0) continue;
 
-                    if (autoEndSpeech) {
-                        long chunkMs = Math.max(1, read / 32);
-                        observedMs += chunkMs;
-                        double power = 0d;
-                        for (int sample = 0; sample + 1 < read; sample += 2) {
-                            short value = (short) ((pcm[sample] & 255) |
-                                    (pcm[sample + 1] << 8));
-                            double normalized = value / 32768.0;
-                            power += normalized * normalized;
-                        }
-                        double rms = Math.sqrt(power / Math.max(1, read / 2));
-                        boolean television = OverlayPreferences.NOISE_TV.equals(noiseMode);
-                        boolean quietRoom = OverlayPreferences.NOISE_QUIET.equals(noiseMode);
-                        // TV mode learns its background for the first 600 ms;
-                        // Normal mode retains existing thresholds and behavior.
-                        if (television && observedMs < 600) {
-                            backgroundRms = backgroundRms * 0.8 + rms * 0.2;
-                        } else if (!heardUtterance && rms < backgroundRms * 2.2) {
-                            backgroundRms = backgroundRms * 0.96 + rms * 0.04;
-                        }
-                        if (!(television && observedMs < 600)) {
-                            double floor = quietRoom ? 0.003 : television ? 0.01 : 0.0045;
-                            double times = quietRoom ? 1.9 : television ? 3.0 : 2.4;
-                            long needVoice = quietRoom ? 140 : television ? 280 : 180;
-                            long needQuiet = quietRoom ? 1100 : television ? 2000 : 1550;
-                            boolean voice = rms > Math.max(floor, backgroundRms * times);
-                            if (!heardUtterance) {
-                                voiceMs = voice ? voiceMs + chunkMs : Math.max(0, voiceMs - chunkMs);
-                                if (voiceMs >= needVoice) heardUtterance = true;
-                            } else {
-                                quietMs = voice ? 0 : quietMs + chunkMs;
-                            }
-                            if (heardUtterance && quietMs >= needQuiet && observedMs >= 1100) {
-                                events.status("Voice pause detected. Processing your question...");
-                                events.localSilence();
-                                endRequested = true;
-                                runs.stopAudio(runId, () -> recording.set(false));
-                            }
-                        }
+                    if (autoEndSpeech && energy.observe(pcm, read, noiseMode)) {
+                        events.status("Voice pause detected. Processing your question...");
+                        events.localSilence();
+                        endRequested = true;
+                        runs.stopAudio(runId, () -> recording.set(false));
                     }
                     final int chunk = read;
                     final byte[] audio = new byte[chunk + 1];

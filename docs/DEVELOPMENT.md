@@ -28,6 +28,7 @@ Do **not** hand out `app-debug.apk` files from temporary GitHub runners. The ori
 | --- | --- |
 | `app/src/main/java/com/example/tvvoiceprobe/VoiceActivity.java` | Main TV D-pad TALK/STOP/SETTINGS screen, HA config, transcript, answer and Android TTS playback |
 | `app/src/main/java/com/example/tvvoiceprobe/HaAssistClient.java` | HA WebSocket authentication, `assist_pipeline/run` event handling, binary PCM framing, conversation state |
+| `app/src/main/java/com/example/tvvoiceprobe/EnergyVad.java` | Auto-stop energy detector. Thresholds are unchanged. Assist `stt-vad-end` is still a separate server signal |
 | `app/src/main/java/com/example/tvvoiceprobe/CredentialStore.java` | Device-local encrypted HA credentials via Android Keystore |
 | `app/src/main/java/com/example/tvvoiceprobe/MainActivity.java` | Legacy mic/button and Android input diagnostics, opened from settings |
 | `app/src/main/java/com/example/tvvoiceprobe/VoiceOverlayService.java` | Explicit opt-in floating panel over other TV apps, microphone-typed foreground service, D-pad TALK / STOP / CLOSE, HA TTS playback |
