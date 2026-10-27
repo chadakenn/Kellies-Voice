@@ -2,12 +2,8 @@ package com.example.tvvoiceprobe;
 
 import android.Manifest;
 import android.app.Activity;
-import android.content.BroadcastReceiver;
-import android.content.Context;
-import android.content.IntentFilter;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -22,7 +18,17 @@ import android.widget.Toast;
 public final class OverlayShortcutActivity extends Activity {
     private boolean started;
     private final Handler handler = new Handler(Looper.getMainLooper());
-    private BroadcastReceiver overlayEvents;
+    private final OverlayLaunch.Observer overlayEvents = failed -> {
+        handler.removeCallbacks(giveUp);
+        OverlayLaunch.clear(overlayEvents);
+        if (failed) {
+            Toast.makeText(this, "Overlay didn't open. Opening Kellie's Voice.",
+                    Toast.LENGTH_LONG).show();
+            startActivity(new Intent(this, VoiceActivity.class)
+                    .setAction("com.example.tvvoiceprobe.OPEN_SETTINGS"));
+        }
+        finish();
+    };
     private final Runnable giveUp = () -> {
         unregisterOverlayEvents();
         Toast.makeText(this, "Overlay didn't open. Opening Kellie's Voice.",
@@ -85,33 +91,11 @@ public final class OverlayShortcutActivity extends Activity {
     }
 
     private void registerOverlayEvents() {
-        overlayEvents = new BroadcastReceiver() {
-            @Override public void onReceive(Context context, Intent intent) {
-                handler.removeCallbacks(giveUp);
-                unregisterOverlayEvents();
-                if (VoiceOverlayService.ACTION_OVERLAY_FAILED.equals(intent.getAction())) {
-                    Toast.makeText(OverlayShortcutActivity.this,
-                            "Overlay didn't open. Opening Kellie's Voice.",
-                            Toast.LENGTH_LONG).show();
-                    startActivity(new Intent(OverlayShortcutActivity.this, VoiceActivity.class)
-                            .setAction("com.example.tvvoiceprobe.OPEN_SETTINGS"));
-                }
-                finish();
-            }
-        };
-        IntentFilter filter = new IntentFilter(VoiceOverlayService.ACTION_OVERLAY_READY);
-        filter.addAction(VoiceOverlayService.ACTION_OVERLAY_FAILED);
-        if (Build.VERSION.SDK_INT >= 33) {
-            registerReceiver(overlayEvents, filter, Context.RECEIVER_NOT_EXPORTED);
-        } else {
-            registerReceiver(overlayEvents, filter);
-        }
+        OverlayLaunch.set(overlayEvents);
     }
 
     private void unregisterOverlayEvents() {
-        if (overlayEvents == null) return;
-        try { unregisterReceiver(overlayEvents); } catch (Exception ignored) { }
-        overlayEvents = null;
+        OverlayLaunch.clear(overlayEvents);
     }
 
     @Override protected void onDestroy() {

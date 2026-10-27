@@ -60,8 +60,9 @@ import okhttp3.WebSocketListener;
 
 /**
  * Opt-in, microphone-free foreground listener for authenticated Home
- * Assistant events. Popup windows are non-focusable and never intercept the
- * remote or take audio focus away from a video.
+ * Assistant events. A plain announcement is non-focusable. A forecast card
+ * and a popup with action buttons take focus so Back and the buttons work.
+ * Whether the app underneath pauses is up to that app.
  *
  * Android can still stop this service. If alerts were already enabled, a
  * reboot or app-update broadcast may start it again. That is not guaranteed,
@@ -190,12 +191,7 @@ public final class TvEventsService extends Service {
                 socket = null;
             }
             clearConnectionTracking();
-            terminalAlertError = false;
-            failedAttempts = 0;
-            notReadyAttempts = 0;
-            deniedAttempts = 0;
-            missingScopedAttempts = 0;
-            legacyFallbackAttempted = false;
+            resetBackoff();
         }
         credentials = saved;
         try {
@@ -250,6 +246,12 @@ public final class TvEventsService extends Service {
     private void createChannel() {
         NotificationManager manager = getSystemService(NotificationManager.class);
         if (manager == null) return;
+        NotificationChannel existing = manager.getNotificationChannel(CHANNEL);
+        // The resume receiver used to create this same id at default importance.
+        // Recreate it so reconnect text stays quiet. The resume notice has its own id.
+        if (existing != null && existing.getImportance() != NotificationManager.IMPORTANCE_LOW) {
+            manager.deleteNotificationChannel(CHANNEL);
+        }
         NotificationChannel channel = new NotificationChannel(CHANNEL,
                 "Kellie's Voice TV alerts", NotificationManager.IMPORTANCE_LOW);
         channel.setDescription("Opt-in Home Assistant announcements and camera popups");
@@ -273,6 +275,7 @@ public final class TvEventsService extends Service {
                         android.R.drawable.ic_menu_close_clear_cancel,
                         "Disable alerts", stopPending).build())
                 .setOngoing(true)
+                .setOnlyAlertOnce(true)
                 .build();
     }
 
@@ -292,6 +295,15 @@ public final class TvEventsService extends Service {
         legacyDenied = false;
     }
 
+    private void resetBackoff() {
+        terminalAlertError = false;
+        failedAttempts = 0;
+        notReadyAttempts = 0;
+        deniedAttempts = 0;
+        missingScopedAttempts = 0;
+        legacyFallbackAttempted = false;
+    }
+
     /** Abort even a half-open transport; late callbacks are ignored by identity. */
     private void forceReconnect() {
         main.removeCallbacks(reconnect);
@@ -300,12 +312,7 @@ public final class TvEventsService extends Service {
         socket = null;
         nextReconnectAtMs = -1L;
         clearConnectionTracking();
-        terminalAlertError = false;
-        failedAttempts = 0;
-        notReadyAttempts = 0;
-        deniedAttempts = 0;
-        missingScopedAttempts = 0;
-        legacyFallbackAttempted = false;
+        resetBackoff();
         if (old != null) old.cancel();
         if (stopping) return;
         TvEventsRecovery.note(TvEventsRecovery.RECONNECTING);
@@ -411,7 +418,24 @@ public final class TvEventsService extends Service {
         socket = http.newWebSocket(new Request.Builder().url(address).build(),
                 new WebSocketListener() {
                     @Override public void onMessage(WebSocket ws, String text) {
-                        main.post(() -> handleMessage(ws, text));
+                        JSONObject message;
+                        try { message = new JSONObject(text); }
+                        catch (Exception ignored) { return; }
+                        if ("result".equals(message.optString("type"))
+                                && message.optInt("id", -1) == LAYOUT_STATES_ID) {
+                            JSONArray states = message.optBoolean("success", false)
+                                    ? message.optJSONArray("result") : null;
+                            JSONArray mine = kellieStates(states);
+                            main.post(() -> {
+                                if (stopping || ws != socket) return;
+                                layoutStatesId = -1;
+                                for (int i = 0; i < mine.length(); i++) {
+                                    applyAlertState(mine.optJSONObject(i));
+                                }
+                            });
+                            return;
+                        }
+                        main.post(() -> handleMessage(ws, message));
                     }
                     @Override public void onFailure(WebSocket ws, Throwable problem,
                             Response response) {
@@ -437,10 +461,21 @@ public final class TvEventsService extends Service {
         scheduleReconnect(delay);
     }
 
-    private void handleMessage(WebSocket ws, String json) {
+    private static JSONArray kellieStates(JSONArray states) {
+        JSONArray mine = new JSONArray();
+        if (states == null) return mine;
+        for (int i = 0; i < states.length(); i++) {
+            JSONObject state = states.optJSONObject(i);
+            if (state == null) continue;
+            JSONObject attributes = state.optJSONObject("attributes");
+            if (attributes != null && attributes.has("kellie_device_id")) mine.put(state);
+        }
+        return mine;
+    }
+
+    private void handleMessage(WebSocket ws, JSONObject message) {
         if (stopping || ws != socket) return;
         try {
-            JSONObject message = new JSONObject(json);
             String type = message.optString("type");
             if ("auth_required".equals(type)) {
                 ws.send(new JSONObject().put("type", "auth")
@@ -758,7 +793,7 @@ public final class TvEventsService extends Service {
                 parsed);
         if (forecast == null) return;
         hideCard();
-        int current = ++generation;
+        ++generation;
         OverlayPreferences placement = new OverlayPreferences(this);
         boolean aurora = OverlayPreferences.SKIN_AURORA.equals(placement.skin());
         LinearLayout panel = new LinearLayout(this);
@@ -807,7 +842,6 @@ public final class TvEventsService extends Service {
             card = panel;
             cameraVisible = false;
             main.postDelayed(dismiss, forecast.seconds * 1000L);
-            if (generation != current) hideCard();
         } catch (RuntimeException ignored) {
             card = null;
         }
@@ -1252,6 +1286,11 @@ public final class TvEventsService extends Service {
         // supply a URL, hostname, protocol, file path, or bearer token.
         HttpUrl url = base.newBuilder().addPathSegment("api")
                 .addPathSegment("camera_proxy").addPathSegment(entity).build();
+        int targetWidth = target.getWidth();
+        if (targetWidth <= 0) {
+            targetWidth = Math.max(1, getResources().getDisplayMetrics().widthPixels / 2);
+        }
+        final int wanted = targetWidth;
         Request request = new Request.Builder().url(url)
                 .header("Authorization", "Bearer " + credentials.token)
                 .header("Cache-Control", "no-cache").build();
@@ -1281,8 +1320,7 @@ public final class TvEventsService extends Service {
                     BitmapFactory.Options options = new BitmapFactory.Options();
                     options.inJustDecodeBounds = true;
                     BitmapFactory.decodeByteArray(raw, 0, raw.length, options);
-                    int largest = Math.max(options.outWidth, options.outHeight);
-                    options.inSampleSize = largest > 1920 ? 4 : largest > 960 ? 2 : 1;
+                    options.inSampleSize = SnapshotSample.size(options.outWidth, options.outHeight, wanted);
                     options.inJustDecodeBounds = false;
                     Bitmap bitmap = BitmapFactory.decodeByteArray(raw, 0, raw.length, options);
                     if (bitmap != null) main.post(() -> {

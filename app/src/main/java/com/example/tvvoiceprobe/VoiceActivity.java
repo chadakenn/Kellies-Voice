@@ -3,9 +3,7 @@ package com.example.tvvoiceprobe;
 import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.content.BroadcastReceiver;
 import android.content.Context;
-import android.content.IntentFilter;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
@@ -32,9 +30,7 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import okhttp3.HttpUrl;
 
@@ -45,7 +41,7 @@ import okhttp3.HttpUrl;
 public class VoiceActivity extends Activity implements HaAssistClient.Events {
     private static final int MIC_PERMISSION_REQUEST = 17;
     private static final int OVERLAY_MIC_PERMISSION_REQUEST = 18;
-    private static final int OVERLAY_SETTINGS_REQUEST = 19;
+    private static final int NOTIFICATION_PERMISSION_REQUEST = 21;
     private final List<Button> buttons = new ArrayList<>();
     private int selected = 0;
     private TextView status;
@@ -54,6 +50,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
     private TextView answerHeading;
     private TextView transcriptHeading;
     private TextView recognized;
+    private ScrollView answerScroller;
     private TextView response;
     private TextView connection;
     private CredentialStore store;
@@ -76,7 +73,6 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
             mainHandler.postDelayed(this, 2_000L);
         }
     };
-    private BroadcastReceiver overlayLaunchReceiver;
     private final Runnable overlayLaunchTimeout = () -> {
         stopListeningForOverlay();
         if (transparentShortcut) openNormalAppFromShortcut();
@@ -179,7 +175,8 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(34, 22, 34, 22);
+        int densityPad = Math.round(getResources().getDisplayMetrics().density);
+        root.setPadding(34 * densityPad, 22 * densityPad, 34 * densityPad, 22 * densityPad);
         mainRoot = root;
         AppPalette palette = currentPalette();
         root.setBackgroundColor(palette.screen);
@@ -196,6 +193,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         // Prioritize the conversation on small TV screens. The large seven-button
         // diagnostic layout hid all but the first line of the recognized speech.
         ScrollView scroller = new ScrollView(this);
+        answerScroller = scroller;
         scroller.setFocusable(false);
         scroller.setFillViewport(true);
         LinearLayout history = new LinearLayout(this);
@@ -394,12 +392,19 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
 
     @Override public boolean dispatchKeyEvent(KeyEvent event) {
         int code = event.getKeyCode();
+        if (code == KeyEvent.KEYCODE_DPAD_UP || code == KeyEvent.KEYCODE_DPAD_DOWN) {
+            if (event.getAction() == KeyEvent.ACTION_DOWN && answerScroller != null) {
+                int step = Math.round(48 * getResources().getDisplayMetrics().density);
+                answerScroller.smoothScrollBy(0, code == KeyEvent.KEYCODE_DPAD_DOWN ? step : -step);
+            }
+            return true;
+        }
         if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
-            if (code == KeyEvent.KEYCODE_DPAD_DOWN || code == KeyEvent.KEYCODE_DPAD_RIGHT) {
+            if (code == KeyEvent.KEYCODE_DPAD_RIGHT) {
                 focus(selected + 1);
                 return true;
             }
-            if (code == KeyEvent.KEYCODE_DPAD_UP || code == KeyEvent.KEYCODE_DPAD_LEFT) {
+            if (code == KeyEvent.KEYCODE_DPAD_LEFT) {
                 focus(selected - 1);
                 return true;
             }
@@ -409,9 +414,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                 return true;
             }
         }
-        // Ignore key release for navigation/selection to avoid duplicate activation.
-        if (code == KeyEvent.KEYCODE_DPAD_DOWN || code == KeyEvent.KEYCODE_DPAD_RIGHT
-                || code == KeyEvent.KEYCODE_DPAD_UP || code == KeyEvent.KEYCODE_DPAD_LEFT
+        if (code == KeyEvent.KEYCODE_DPAD_RIGHT || code == KeyEvent.KEYCODE_DPAD_LEFT
                 || code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER
                 || code == KeyEvent.KEYCODE_NUMPAD_ENTER || code == KeyEvent.KEYCODE_BUTTON_A) {
             return true;
@@ -504,7 +507,10 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         b.setTextSize(17);
         b.setTextColor(currentPalette().text);
         b.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
-        b.setPadding(22, 10, 22, 10);
+        b.setPadding(Math.round(22 * getResources().getDisplayMetrics().density),
+                Math.round(10 * getResources().getDisplayMetrics().density),
+                Math.round(22 * getResources().getDisplayMetrics().density),
+                Math.round(10 * getResources().getDisplayMetrics().density));
         b.setMinHeight(0);
         b.setMinimumHeight(0);
         b.setFocusable(true);
@@ -525,60 +531,60 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         return shape;
     }
 
+    private static final class MenuRow {
+        final String label;
+        final Runnable action;
+        MenuRow(String label, Runnable action) {
+            this.label = label;
+            this.action = action;
+        }
+    }
+
+    private void showCopperMenu(String heading, String subtitle, MenuRow[] rows) {
+        String[] labels = new String[rows.length];
+        for (int i = 0; i < rows.length; i++) labels[i] = rows[i].label;
+        showCopperMenu(heading, subtitle, labels, which -> {
+            if (which >= 0 && which < rows.length && rows[which].action != null) rows[which].action.run();
+        });
+    }
+
     private void showSettingsMenu() {
-        String[] entries = new String[] {
-                "Home Assistant connection",
-                "Connect / reconnect",
-                "Start new conversation",
-                "Hardware microphone diagnostics",
-                "Microphone sensitivity: " + OverlayPreferences.noiseLabel(
-                        new OverlayPreferences(this).noise()),
-                "Follow-up listening: " + followUpLabel(),
-                "Mic input detection: " + (new OverlayPreferences(this).microphoneDisabled()
-                        ? "Microphone DISABLED" : new OverlayPreferences(this).allowUnverifiedMic()
-                        ? "Override ON" : "Safe checks ON"),
-                "Open floating voice overlay",
-                "Overlay appearance & position",
-                "Home Assistant layout: " + (new OverlayPreferences(this).haManage() ? "ON" : "OFF"),
-                "TV announcements & cameras: " + (new OverlayPreferences(this).tvEvents() ? "ON" : "OFF"),
-                "Spoken announcements: " + (new OverlayPreferences(this).spokenAnnouncements() ? "ON" : "OFF"),
-                "Announcement voice volume: " + new OverlayPreferences(this).spokenAnnouncementVolume() + "%",
-                "Test spoken announcements locally",
-                "TV alert status",
-                "Live camera: " + LiveCameraMode.label(new OverlayPreferences(this).cameraMode()),
-                "Check for app updates: " + updateChannelLabel(),
-                "Install downloaded update",
-                "Frigate screensaver: " + (new OverlayPreferences(this).screensaverDashboard() ? "ON" : "OFF"),
-                "Preview Frigate dashboard",
-                "Forget saved connection"
-        };
+        OverlayPreferences prefs = new OverlayPreferences(this);
         showCopperMenu("KELLIE'S VOICE  ✦  SETTINGS",
-                "Warm, simple controls for your TV. Choose with the remote.", entries,
-                which -> {
-                    switch (which) {
-                        case 0: configure(); break;
-                        case 1: connect(); break;
-                        case 2: newConversation(); break;
-                        case 3: startActivity(new Intent(this, MainActivity.class)); break;
-                        case 4: chooseMicSensitivity(); break;
-                        case 5: chooseFollowUp(); break;
-                        case 6: chooseMicrophoneDetection(); break;
-                        case 7: launchOverlay(); break;
-                        case 8: showOverlayPreferences(); break;
-                        case 9: chooseHaLayout(); break;
-                        case 10: chooseTvNotifications(); break;
-                        case 11: toggleSpokenAnnouncements(); break;
-                        case 12: chooseAnnouncementVolume(); break;
-                        case 13: testSpokenAnnouncements(); break;
-                        case 14: showTvAlertStatus(); break;
-                        case 15: chooseCameraMode(); break;
-                        case 16: chooseUpdates(); break;
-                        case 17: promptInstallUpdate(); break;
-                        case 18: showScreensaverSettings(); break;
-                        case 19: startActivity(new Intent(this, ScreensaverPreviewActivity.class)); break;
-                        case 20: confirmForget(); break;
-                        default: break;
-                    }
+                "Warm, simple controls for your TV. Choose with the remote.",
+                new MenuRow[] {
+                        new MenuRow("Home Assistant connection", this::configure),
+                        new MenuRow("Connect / reconnect", this::connect),
+                        new MenuRow("Start new conversation", this::newConversation),
+                        new MenuRow("Hardware microphone diagnostics",
+                                () -> startActivity(new Intent(this, MainActivity.class))),
+                        new MenuRow("Microphone sensitivity: " + OverlayPreferences.noiseLabel(prefs.noise()),
+                                this::chooseMicSensitivity),
+                        new MenuRow("Follow-up listening: " + followUpLabel(), this::chooseFollowUp),
+                        new MenuRow("Mic input detection: " + (prefs.microphoneDisabled()
+                                ? "Microphone DISABLED" : prefs.allowUnverifiedMic()
+                                ? "Override ON" : "Safe checks ON"), this::chooseMicrophoneDetection),
+                        new MenuRow("Open floating voice overlay", this::launchOverlay),
+                        new MenuRow("Overlay appearance & position", this::showOverlayPreferences),
+                        new MenuRow("Home Assistant layout: " + (prefs.haManage() ? "ON" : "OFF"),
+                                this::chooseHaLayout),
+                        new MenuRow("TV announcements & cameras: " + (prefs.tvEvents() ? "ON" : "OFF"),
+                                this::chooseTvNotifications),
+                        new MenuRow("Spoken announcements: " + (prefs.spokenAnnouncements() ? "ON" : "OFF"),
+                                this::toggleSpokenAnnouncements),
+                        new MenuRow("Announcement voice volume: " + prefs.spokenAnnouncementVolume() + "%",
+                                this::chooseAnnouncementVolume),
+                        new MenuRow("Test spoken announcements locally", this::testSpokenAnnouncements),
+                        new MenuRow("TV alert status", this::showTvAlertStatus),
+                        new MenuRow("Live camera: " + LiveCameraMode.label(prefs.cameraMode()),
+                                this::chooseCameraMode),
+                        new MenuRow("Check for app updates: " + updateChannelLabel(), this::chooseUpdates),
+                        new MenuRow("Install downloaded update", this::promptInstallUpdate),
+                        new MenuRow("Frigate screensaver: " + (prefs.screensaverDashboard() ? "ON" : "OFF"),
+                                this::showScreensaverSettings),
+                        new MenuRow("Preview Frigate dashboard",
+                                () -> startActivity(new Intent(this, ScreensaverPreviewActivity.class))),
+                        new MenuRow("Forget saved connection", this::confirmForget)
                 });
     }
 
@@ -703,6 +709,12 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                                         }
                                     }).show();
                         } else {
+                            if (Build.VERSION.SDK_INT >= 33
+                                    && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                                    != PackageManager.PERMISSION_GRANTED) {
+                                requestPermissions(new String[] {Manifest.permission.POST_NOTIFICATIONS},
+                                        NOTIFICATION_PERMISSION_REQUEST);
+                            }
                             prefs.setTvEvents(true);
                             try {
                                 startForegroundService(new Intent(this, TvEventsService.class)
@@ -1133,36 +1145,25 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         }
     }
 
+    private final OverlayLaunch.Observer overlayObserver = failed -> {
+        stopListeningForOverlay();
+        if (failed) {
+            if (transparentShortcut) openNormalAppFromShortcut();
+            else status("Couldn't start the overlay. Check connection and permissions.");
+        } else if (!isFinishing() && !isDestroyed()) {
+            moveTaskToBack(true);
+        }
+    };
+
     private void listenForOverlayThenBackground() {
         stopListeningForOverlay();
-        overlayLaunchReceiver = new BroadcastReceiver() {
-            @Override public void onReceive(Context context, Intent intent) {
-                boolean failed = VoiceOverlayService.ACTION_OVERLAY_FAILED.equals(intent.getAction());
-                stopListeningForOverlay();
-                if (failed) {
-                    if (transparentShortcut) openNormalAppFromShortcut();
-                    else status("Couldn't start the overlay. Check connection and permissions.");
-                } else if (!isFinishing() && !isDestroyed()) {
-                    moveTaskToBack(true);
-                }
-            }
-        };
-        IntentFilter filter = new IntentFilter(VoiceOverlayService.ACTION_OVERLAY_READY);
-        filter.addAction(VoiceOverlayService.ACTION_OVERLAY_FAILED);
-        if (Build.VERSION.SDK_INT >= 33) {
-            registerReceiver(overlayLaunchReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
-        } else {
-            registerReceiver(overlayLaunchReceiver, filter);
-        }
+        OverlayLaunch.set(overlayObserver);
         mainHandler.postDelayed(overlayLaunchTimeout, 8000L);
     }
 
     private void stopListeningForOverlay() {
         mainHandler.removeCallbacks(overlayLaunchTimeout);
-        if (overlayLaunchReceiver != null) {
-            try { unregisterReceiver(overlayLaunchReceiver); } catch (Exception ignored) { }
-            overlayLaunchReceiver = null;
-        }
+        OverlayLaunch.clear(overlayObserver);
     }
 
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -1229,6 +1230,21 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
     }
 
     private void persistAndConnect(String url, String token) {
+        status("Checking the Home Assistant login...");
+        new Thread(() -> {
+            String failure = HaLoginProbe.check(url, token);
+            runOnUiThread(() -> {
+                if (isDestroyed()) return;
+                if (failure != null) {
+                    status(failure);
+                    return;
+                }
+                saveCheckedLogin(url, token);
+            });
+        }, "ha-login-probe").start();
+    }
+
+    private void saveCheckedLogin(String url, String token) {
         try {
             store.save(url, token);
             settings = store.load();
@@ -1241,6 +1257,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                 } catch (RuntimeException ignored) { }
             }
             connect();
+            status("Home Assistant accepted the login.");
         } catch (Exception e) {
             status("Couldn't safely save connection. Try again.");
         }
@@ -1312,6 +1329,9 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                     if (speechFocus != null) speechFocus.release();
                     new OverlayPreferences(this).setTvEvents(false);
                     stopService(new Intent(this, TvEventsService.class));
+                    stopService(new Intent(this, VoiceOverlayService.class));
+                    stopService(new Intent(this, ScreensaverWatchService.class)
+                            .setAction(ScreensaverWatchService.ACTION_STOP));
                     store.clear();
                     settings = null;
                     updateConnectionLabel();
@@ -1360,9 +1380,8 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
             player.setAudioAttributes(new AudioAttributes.Builder()
                     .setUsage(AudioAttributes.USAGE_ASSISTANT)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build());
-            Map<String, String> headers = new HashMap<>();
-            headers.put("Authorization", "Bearer " + settings.token);
-            player.setDataSource(this, Uri.parse(playback.toString()), headers);
+            // The /api/tts_proxy/ path already carries its own short-lived token.
+            player.setDataSource(this, Uri.parse(playback.toString()));
             player.setOnPreparedListener(p -> { status("Speaking..."); p.start(); });
             player.setOnCompletionListener(p -> {
                 if (speechFocus != null) speechFocus.release();
@@ -1402,35 +1421,27 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                 "Choose one view: a Frigate web page, or up to four Home Assistant camera " +
                 "snapshots. A saved Frigate URL takes priority; clear it to use the camera grid. " +
                 "No microphone is started.",
-                new String[] {
-                        prefs.screensaverDashboard() ? "Turn Frigate screensaver OFF" : "Turn Frigate screensaver ON",
-                        "Frigate web URL: " + (prefs.screensaverUrl().isEmpty() ? "Not set" : "Configured (edit / clear)"),
-                        "Home Assistant cameras: " + cameras.length + " configured (edit / clear)",
-                        "Dashboard size: " + ScreensaverDashboard.sizeLabel(prefs.screensaverSize()),
-                        "Frigate page layout: " + (prefs.screensaverDesktopPage() ? "Desktop TV" : "Automatic"),
-                        "Frigate page fit: " + prefs.screensaverFit(),
-                        "HA camera grid playback: " + prefs.screensaverLiveMode(),
-                        "Choose Android screensaver",
-                        "Preview Frigate dashboard",
-                        "Screensaver status & permissions",
-                        "Test Frigate as TV overlay",
-                        "Back to Settings"
-                }, which -> {
-                    switch (which) {
-                        case 0: toggleScreensaver(); break;
-                        case 1: editScreensaverUrl(); break;
-                        case 2: editScreensaverCameras(); break;
-                        case 3: chooseScreensaverSize(); break;
-                        case 4: toggleScreensaverDesktopPage(); break;
-                        case 5: chooseScreensaverFit(); break;
-                        case 6: chooseScreensaverLiveMode(); break;
-                        case 7: openAndroidScreensaverList(); break;
-                        case 8: startActivity(new Intent(this, ScreensaverPreviewActivity.class)); break;
-                        case 9: showScreensaverDiagnostics(); break;
-                        case 10: testScreensaverOverlay(); break;
-                        case 11: showSettingsMenu(); break;
-                        default: break;
-                    }
+                new MenuRow[] {
+                        new MenuRow(prefs.screensaverDashboard()
+                                ? "Turn Frigate screensaver OFF" : "Turn Frigate screensaver ON",
+                                this::toggleScreensaver),
+                        new MenuRow("Frigate web URL: " + (prefs.screensaverUrl().isEmpty()
+                                ? "Not set" : "Configured (edit / clear)"), this::editScreensaverUrl),
+                        new MenuRow("Home Assistant cameras: " + cameras.length + " configured (edit / clear)",
+                                this::editScreensaverCameras),
+                        new MenuRow("Dashboard size: " + ScreensaverDashboard.sizeLabel(prefs.screensaverSize()),
+                                this::chooseScreensaverSize),
+                        new MenuRow("Frigate page layout: " + (prefs.screensaverDesktopPage()
+                                ? "Desktop TV" : "Automatic"), this::toggleScreensaverDesktopPage),
+                        new MenuRow("Frigate page fit: " + prefs.screensaverFit(), this::chooseScreensaverFit),
+                        new MenuRow("HA camera grid playback: " + prefs.screensaverLiveMode(),
+                                this::chooseScreensaverLiveMode),
+                        new MenuRow("Choose Android screensaver", this::openAndroidScreensaverList),
+                        new MenuRow("Preview Frigate dashboard",
+                                () -> startActivity(new Intent(this, ScreensaverPreviewActivity.class))),
+                        new MenuRow("Screensaver status & permissions", this::showScreensaverDiagnostics),
+                        new MenuRow("Test Frigate as TV overlay", this::testScreensaverOverlay),
+                        new MenuRow("Back to Settings", this::showSettingsMenu)
                 });
     }
 

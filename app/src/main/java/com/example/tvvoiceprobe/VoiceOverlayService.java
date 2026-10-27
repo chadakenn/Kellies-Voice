@@ -31,9 +31,7 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import okhttp3.HttpUrl;
 
@@ -174,7 +172,7 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
     }
 
     private void notifyLauncher(String action) {
-        sendBroadcast(new Intent(action).setPackage(getPackageName()));
+        OverlayLaunch.deliver(ACTION_OVERLAY_FAILED.equals(action));
     }
 
     private Notification buildNotification(String message) {
@@ -809,9 +807,7 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
             player.setAudioAttributes(new AudioAttributes.Builder()
                     .setUsage(AudioAttributes.USAGE_ASSISTANT)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build());
-            Map<String,String> headers = new HashMap<>();
-            headers.put("Authorization", "Bearer " + connection.token);
-            player.setDataSource(this, Uri.parse(playback.toString()), headers);
+            player.setDataSource(this, Uri.parse(playback.toString()));
             player.setOnPreparedListener(p -> {
                 status("SPEAKING • Home Assistant is answering");
                 if (wave != null) wave.setMode(VoiceWaveView.SPEAKING);

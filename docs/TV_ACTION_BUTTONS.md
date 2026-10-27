@@ -7,7 +7,7 @@ to current development code and must pass signed onn 4K Pro hardware testing.
 You can add up to **three optional focusable buttons** to a normal text
 announcement, still camera or live camera. A popup without an `actions` list
 is unchanged: it remains non-focusable, silent unless `speak` is set, and
-never steals remote input. Alerts do not start the microphone.
+never steals remote input. The weather forecast card does take focus, so Back can close it. A focused card may pause the app underneath. That has not been tested on YouTube, Netflix, or Plex. Alerts do not start the microphone.
 
 ## Home Assistant action example
 

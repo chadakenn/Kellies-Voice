@@ -16,7 +16,7 @@ import android.provider.Settings;
  * points at the app. Android TV may hide that notice outside the notification list.
  */
 public final class TvEventsRestartReceiver extends BroadcastReceiver {
-    static final String CHANNEL = "kellie_tv_events";
+    static final String CHANNEL = "kellie_tv_resume";
 
     @Override public void onReceive(Context context, Intent intent) {
         if (context == null || intent == null || !TvEventsRecovery.accepts(intent.getAction())) return;
@@ -57,7 +57,7 @@ public final class TvEventsRestartReceiver extends BroadcastReceiver {
         NotificationManager manager = context.getSystemService(NotificationManager.class);
         if (manager == null) return;
         NotificationChannel channel = new NotificationChannel(CHANNEL,
-                "Kellie's Voice TV alerts", NotificationManager.IMPORTANCE_DEFAULT);
+                "Resume Kellie's Voice TV alerts", NotificationManager.IMPORTANCE_DEFAULT);
         channel.setDescription("Opt-in Home Assistant announcements and camera popups");
         manager.createNotificationChannel(channel);
         Intent open = new Intent(context, VoiceActivity.class)
