@@ -20,6 +20,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
 import android.text.InputType;
+import android.text.InputFilter;
 import android.view.KeyEvent;
 import android.view.Gravity;
 import android.view.WindowManager;
@@ -66,6 +67,8 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
     private UpdateManager updater;
     private boolean manualUpdateCheck;
     private boolean transparentShortcut;
+    private Button typeButton;
+    private boolean typedInputDialogOpen;
     private boolean initialConnectionRequested;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     // TV alerts use a different WebSocket from Assist. Refresh the two visible
@@ -87,6 +90,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         super.onStart();
         // Apply saved preferences on returning from another app or system screen.
         applyMainPalette();
+        refreshTypeButton();
         HaDiscovery.setWanted(this, new OverlayPreferences(this).haManage());
         HaDiscovery.acquire(this);
         if (assist != null) assist.setLayoutSync(new OverlayPreferences(this).haManage());
@@ -222,6 +226,9 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         addButton(toolbar, "TALK", v -> startTalk());
         addButton(toolbar, "STOP", v -> assist.finishTalking());
         addButton(toolbar, "SETTINGS", v -> showSettingsMenu());
+        addButton(toolbar, "TYPE", v -> showTypedInput());
+        typeButton = buttons.get(buttons.size() - 1);
+        refreshTypeButton();
         root.addView(toolbar, new LinearLayout.LayoutParams(-1, -2));
 
         // A short, focus-safe welcome view on ordinary full-screen launches.
@@ -378,13 +385,28 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
 
     private void focus(int index) {
         if (buttons.isEmpty()) return;
-        selected = Math.max(0, Math.min(index, buttons.size() - 1));
+        int direction = index < selected ? -1 : 1;
+        int target = Math.max(0, Math.min(index, buttons.size() - 1));
+        while (target >= 0 && target < buttons.size()
+                && buttons.get(target).getVisibility() != View.VISIBLE) {
+            target += direction;
+        }
+        if (target < 0 || target >= buttons.size()) target = selected;
+        if (buttons.get(target).getVisibility() != View.VISIBLE) target = 0;
+        selected = target;
         buttons.get(selected).requestFocus();
+    }
+
+    private void refreshTypeButton() {
+        if (typeButton == null) return;
+        boolean enabled = new OverlayPreferences(this).typedAssistEnabled();
+        typeButton.setVisibility(enabled ? View.VISIBLE : View.GONE);
+        if (!enabled && selected == buttons.indexOf(typeButton)) focus(0);
     }
 
     @Override public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
-        if (hasFocus && !buttons.isEmpty()) {
+        if (hasFocus && !typedInputDialogOpen && !buttons.isEmpty()) {
             View now = getCurrentFocus();
             if (!(now instanceof Button) || !buttons.contains(now)) {
                 buttons.get(selected).post(() -> focus(selected));
@@ -393,6 +415,8 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
     }
 
     @Override public boolean dispatchKeyEvent(KeyEvent event) {
+        // Let the Android TV keyboard and its dialog own D-pad/Enter while open.
+        if (typedInputDialogOpen) return super.dispatchKeyEvent(event);
         int code = event.getKeyCode();
         if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
             if (code == KeyEvent.KEYCODE_DPAD_DOWN || code == KeyEvent.KEYCODE_DPAD_RIGHT) {
@@ -550,7 +574,9 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                 "Install downloaded update",
                 "Frigate screensaver: " + (new OverlayPreferences(this).screensaverDashboard() ? "ON" : "OFF"),
                 "Preview Frigate dashboard",
-                "Forget saved connection"
+                "Forget saved connection",
+                "Type to Kellie: " + (new OverlayPreferences(this).typedAssistEnabled()
+                        ? "ON" : "OFF (opt in)")
         };
         showCopperMenu("KELLIE'S VOICE  ✦  SETTINGS",
                 "Warm, simple controls for your TV. Choose with the remote.", entries,
@@ -577,9 +603,106 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                         case 18: showScreensaverSettings(); break;
                         case 19: startActivity(new Intent(this, ScreensaverPreviewActivity.class)); break;
                         case 20: confirmForget(); break;
+                        case 21: toggleTypedInput(); break;
                         default: break;
                     }
                 });
+    }
+
+    /** Opt-in is local to this TV; no HA service can secretly enable it. */
+    private void toggleTypedInput() {
+        OverlayPreferences prefs = new OverlayPreferences(this);
+        if (prefs.typedAssistEnabled()) {
+            prefs.setTypedAssistEnabled(false);
+            refreshTypeButton();
+            status("Type to Kellie disabled on this TV.");
+            showSettingsMenu();
+            return;
+        }
+        new AlertDialog.Builder(this)
+                .setTitle("Enable Type to Kellie?")
+                .setMessage("Adds a TYPE button to the main TV screen. "
+                        + "Typed questions go to your Home Assistant Assist agent "
+                        + "and can control exposed devices, just like spoken commands. "
+                        + "No microphone is opened for typed requests. "
+                        + "Only this TV is changed; you can disable it here anytime.")
+                .setNegativeButton("Cancel", null)
+                .setPositiveButton("Enable", (dialog, which) -> {
+                    prefs.setTypedAssistEnabled(true);
+                    refreshTypeButton();
+                    status("Type to Kellie enabled. Select TYPE on the main screen.");
+                    showSettingsMenu();
+                })
+                .show();
+    }
+
+    /** D-pad accessible Android TV IME; no text storage and no mic permission. */
+    private void showTypedInput() {
+        if (!new OverlayPreferences(this).typedAssistEnabled()) {
+            status("Enable Type to Kellie in Settings first.");
+            refreshTypeButton();
+            return;
+        }
+        if (assist == null || !assist.isConnected()) {
+            status("Connect to Home Assistant before typing.");
+            return;
+        }
+        if (!assist.pipelineIdle()) {
+            status("Finish the current Assist request before typing.");
+            return;
+        }
+        final EditText entry = new EditText(this);
+        entry.setSingleLine(true);
+        entry.setHint("Ask Kellie something...");
+        entry.setInputType(InputType.TYPE_CLASS_TEXT
+                | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
+        entry.setFilters(new InputFilter[] {
+                new InputFilter.LengthFilter(TypedAssistInput.MAX_LENGTH)
+        });
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("TYPE TO KELLIE")
+                .setMessage("Send a typed request to Home Assistant without using the microphone.")
+                .setView(entry)
+                .setNegativeButton("Cancel", null)
+                .setPositiveButton("Send", null)
+                .create();
+        dialog.setOnShowListener(ignored -> {
+            entry.requestFocus();
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(view -> {
+                String prompt = TypedAssistInput.clean(entry.getText().toString());
+                if (prompt.isEmpty()) {
+                    entry.setError("Type a short request before sending.");
+                    return;
+                }
+                if (!new OverlayPreferences(this).typedAssistEnabled()) {
+                    status("Typed input is now disabled.");
+                    dialog.dismiss();
+                    return;
+                }
+                if (assist == null || !assist.pipelineIdle()) {
+                    status("Finish the active Assist request before sending text.");
+                    dialog.dismiss();
+                    return;
+                }
+                if (assist.submitTyped(prompt)) {
+                    if (recognized != null) recognized.setText(prompt);
+                    if (response != null) response.setText("Waiting for Home Assistant...");
+                    if (player != null) { player.release(); player = null; }
+                    if (speechFocus != null) speechFocus.release();
+                    dialog.dismiss();
+                }
+            });
+            if (dialog.getWindow() != null) {
+                dialog.getWindow().setSoftInputMode(
+                        WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+            }
+        });
+        dialog.setOnDismissListener(ignored -> {
+            typedInputDialogOpen = false;
+            if (!isFinishing()) focus(selected);
+        });
+        typedInputDialogOpen = true;
+        dialog.show();
     }
 
     private void chooseAnnouncementVolume() {
