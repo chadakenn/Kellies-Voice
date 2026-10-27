@@ -2,6 +2,8 @@
 
 **Public stable: [v0.16.12](https://github.com/chadakenn/Kellies-Voice/releases/tag/v0.16.12).** Both the signed Android TV APK (build 50) and Home Assistant HACS integration are stable v0.16.12. If you just want to use Kellie's Voice, stay on stable. You do **not** need to enable betas to get stable updates.
 
+**Next opt-in beta candidate:** **v0.16.13-dev.1 (Android build 53)**, which is *newer* than stable v0.16.12 for HACS prerelease update ordering. Old v0.16.12-dev.N builds have a lower prerelease precedence than stable v0.16.12, so they are historical manual-selection builds, not the new beta channel. Only use v0.16.13-dev.1 once its signed GitHub prerelease and both APK/HACS versions have actually been published and verified.
+
 ## Join the beta (optional)
 
 Only testers who explicitly choose a development release should receive one. Beta features can break TV voice, overlays, reconnection, or Home Assistant integration, so keep a Home Assistant backup and share non-sensitive test observations on [GitHub Issues](https://github.com/chadakenn/Kellies-Voice/issues).
@@ -18,7 +20,7 @@ Only testers who explicitly choose a development release should receive one. Bet
 1. Stable is the default app update channel. Open **Kellie's Voice → SETTINGS → Check for app updates** and stay on **Stable** for normal use.
 2. Testers can explicitly select **Development (opt-in)** before **Check**. The TV requests a published, signed prerelease; it does **not** install one automatically. Android asks you to approve its package install.
 3. Install the **same-version signed APK** as the HACS integration wherever a feature requires matching Android and HA changes. HACS cannot install the TV APK, and the TV updater cannot install a HACS integration.
-4. Return the update channel to **Stable** when testing ends. **Warning:** Android does not install an APK with a *lower* versionCode over a higher build. Public v0.16.12 is code **50**, while dev.11 is **51**. Do **not** install dev.11 on your only stable TV expecting to roll back in-place to build 50. Wait for a future stable code greater than 51, or use a dedicated beta TV.
+4. Return the update channel to **Stable** when testing ends. **Warning:** Android does not install an APK with a *lower* versionCode over a higher build. Public v0.16.12 is code **50**, older dev.11 is **51**, and the next v0.16.13-dev.1 beta is code **53**. Do **not** install build 53 on your only stable TV expecting to roll back in-place to build 50. Wait for a future stable code greater than 53, or use a dedicated beta TV.
 
 HACS and the TV have **separate** beta opt-in controls. Enabling one does not enable the other. The beta feature is not an invitation to turn on microphones or any experimental wake word: wake listening needs additional explicit TV consent and is not part of stable v0.16.12.
 
