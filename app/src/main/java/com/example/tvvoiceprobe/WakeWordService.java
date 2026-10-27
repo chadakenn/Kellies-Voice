@@ -41,6 +41,21 @@ public final class WakeWordService extends Service {
     private volatile String failureNotice;
     private Thread worker;
     private AudioRecord recorder;
+    private static volatile WakeWordService current;
+
+    /**
+     * Take the microphone from the wake listener only after its AudioRecord
+     * has been released. Returns false when another user owner already holds it.
+     */
+    public static boolean handoffTo(String owner) {
+        if (MicLease.acquire(owner)) return true;
+        if (!MicLease.isWaiting(owner)) return false;
+        WakeWordService service = current;
+        if (service != null) service.stopRecorder();
+        boolean held = MicLease.awaitHeld(owner, 1500L);
+        if (!held) MicLease.release(owner);
+        return held;
+    }
 
     @Override public IBinder onBind(Intent intent) { return null; }
 
@@ -55,6 +70,7 @@ public final class WakeWordService extends Service {
             stopSelf();
             return START_NOT_STICKY;
         }
+        current = this;
         Notification notice = buildNotice();
         if (Build.VERSION.SDK_INT >= 29) {
             startForeground(NOTICE_ID, notice, ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE);
@@ -115,7 +131,8 @@ public final class WakeWordService extends Service {
                     }
                 }
                 if (!WakeWordSession.shouldCapture(true,
-                        VoiceOverlayService.isOpen() || MicLease.heldByOther(MicLease.WAKE))) {
+                        VoiceOverlayService.isOpen() || MicLease.heldByOther(MicLease.WAKE)
+                                || MicLease.wakeShouldStop())) {
                     releaseRecorder();
                     MicLease.release(MicLease.WAKE);
                     sleep(200);
@@ -123,17 +140,23 @@ public final class WakeWordService extends Service {
                 }
                 if (!MicLease.acquire(MicLease.WAKE)) {
                     releaseRecorder();
+                    MicLease.release(MicLease.WAKE);
                     sleep(200);
                     continue;
                 }
-                int read;
+                AudioRecord currentRecorder;
                 synchronized (micLock) {
                     if (!ensureRecorder()) {
                         notifyFailure("The microphone could not open at 16 kHz. Wake word is off.");
                         prefs.setWakeWord(false);
                         break;
                     }
-                    read = recorder.read(chunk, 0, CHUNK);
+                    currentRecorder = recorder;
+                }
+                int read = currentRecorder.read(chunk, 0, CHUNK);
+                if (MicLease.wakeShouldStop() || recorder != currentRecorder) {
+                    releaseRecorder();
+                    continue;
                 }
                 if (read < 0) {
                     // ERROR_DEAD_OBJECT or another capture failure must not spin
@@ -215,6 +238,7 @@ public final class WakeWordService extends Service {
                 return false;
             }
             recorder = created;
+            MicLease.wakeRecorderOpened();
             return true;
         }
     }
@@ -231,6 +255,20 @@ public final class WakeWordService extends Service {
         } catch (RuntimeException ignored) {
         }
         held.release();
+        MicLease.wakeRecorderReleased();
+    }
+
+    /** Unblock a read so the wake thread can release the recorder itself. */
+    private void stopRecorder() {
+        AudioRecord held;
+        synchronized (micLock) {
+            held = recorder;
+        }
+        if (held == null) return;
+        try {
+            held.stop();
+        } catch (RuntimeException ignored) {
+        }
     }
 
     private String readAsset(String path) throws java.io.IOException {
@@ -310,6 +348,7 @@ public final class WakeWordService extends Service {
 
     @Override public void onDestroy() {
         running = false;
+        if (current == this) current = null;
         releaseRecorder();
         MicLease.release(MicLease.WAKE);
         super.onDestroy();

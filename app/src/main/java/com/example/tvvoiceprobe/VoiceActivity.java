@@ -1281,7 +1281,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
             if (player != null) { player.release(); player = null; }
             if (speechFocus != null) speechFocus.release();
             assist.setRoomNoise(new OverlayPreferences(this).noise());
-            if (!MicLease.acquire(MicLease.TALK)) {
+            if (!WakeWordService.handoffTo(MicLease.TALK)) {
                 status("The microphone is in use. Close the overlay or leave diagnostics first.");
                 return;
             }

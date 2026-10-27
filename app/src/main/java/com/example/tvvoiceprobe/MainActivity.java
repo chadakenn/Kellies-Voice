@@ -41,7 +41,7 @@ public class MainActivity extends Activity {
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
-        if (!MicLease.acquire(MicLease.DIAGNOSTICS)) {
+        if (!WakeWordService.handoffTo(MicLease.DIAGNOSTICS)) {
             // The screen still opens. A capture test refuses while another owner holds the mic.
         }
         palette = AppPalette.forSkin(new OverlayPreferences(this).skin());
