@@ -152,6 +152,7 @@ public final class WakeWordService extends Service {
     @Override public IBinder onBind(Intent intent) { return null; }
 
     @Override public int onStartCommand(Intent intent, int flags, int startId) {
+        WakeAudioDucking.recover(this);
         String action = intent == null ? null : intent.getAction();
         if (ACTION_STOP.equals(action) || !allowed(action)) {
             // Don't leave Settings claiming ON after a denied explicit start.
@@ -160,6 +161,7 @@ public final class WakeWordService extends Service {
             WakeAssistConnection.stop();
             releaseRecorder();
             MicLease.release(MicLease.WAKE);
+            if (!VoiceOverlayService.isOpen()) WakeAudioDucking.end(this);
             // Timely stop of a rejected explicit start. Promoting a microphone
             // FGS without RECORD_AUDIO is forbidden on modern Android.
             stopSelfResult(startId);
@@ -180,6 +182,7 @@ public final class WakeWordService extends Service {
             WakeAssistConnection.stop();
             releaseRecorder();
             MicLease.release(MicLease.WAKE);
+            if (!VoiceOverlayService.isOpen()) WakeAudioDucking.end(this);
             stopSelfResult(startId);
             return START_NOT_STICKY;
         }
@@ -288,7 +291,11 @@ public final class WakeWordService extends Service {
                 short[] samples = read == CHUNK ? chunk : java.util.Arrays.copyOf(chunk, read);
                 if (!session.onChunk(engine.processAudio(samples))) continue;
                 engine.reset();
+                // Lower playback only AFTER detection. The wake listener never
+                // keeps the TV permanently quiet while waiting for a phrase.
+                WakeAudioDucking.begin(this, prefs.wakeDuckingPercent());
                 if (!bufferCommandUntilOverlayClaimsIt(chunk)) {
+                    WakeAudioDucking.end(this);
                     sleep(2000);
                     continue;
                 }
@@ -311,6 +318,7 @@ public final class WakeWordService extends Service {
             MicLease.release(MicLease.WAKE);
             if (engine != null) engine.close();
             WakeAssistConnection.stop();
+            if (!VoiceOverlayService.isOpen()) WakeAudioDucking.end(this);
             stopForeground(STOP_FOREGROUND_REMOVE);
             if (failureNotice != null) publishFailure(failureNotice);
             stopSelf();
@@ -354,7 +362,10 @@ public final class WakeWordService extends Service {
             // Assist claims this buffer only after the overlay is actually up.
             // If the overlay never appeared, drop the audio. Do not upload it later.
             if (opened && overlaySeen) WakeCommandLead.finish();
-            else WakeCommandLead.discard();
+            else {
+                WakeCommandLead.discard();
+                WakeAudioDucking.end(this);
+            }
         }
         return opened;
     }
@@ -528,6 +539,7 @@ public final class WakeWordService extends Service {
     @Override public void onDestroy() {
         running = false;
         WakeAssistConnection.stop();
+        if (!VoiceOverlayService.isOpen()) WakeAudioDucking.end(this);
         if (current == this) current = null;
         releaseRecorder();
         MicLease.release(MicLease.WAKE);
