@@ -600,9 +600,11 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
         if (wave != null) wave.setMode(VoiceWaveView.CONNECTING);
         status(followUpTurn ? "Listening for a follow-up" : "Checking microphone route...");
         assist.setRoomNoise(preferences.noise());
+        assist.setWakeLeadForNextRun(fromWake);
         if (!assist.pipelineIdle() ||
                 !assist.talk(WakeWordSession.stopOnSilence(
                         followUpTurn || preferences.autoListen(), fromWake), handoff)) {
+            assist.setWakeLeadForNextRun(false);
             if (handoff != null) handoff.stop();
             if (fromWake) MicLease.release(MicLease.OVERLAY);
             listening = false;
