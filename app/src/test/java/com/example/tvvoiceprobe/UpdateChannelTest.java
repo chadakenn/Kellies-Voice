@@ -102,6 +102,41 @@ public class UpdateChannelTest {
         }
     }
 
+    @Test public void developmentChoosesHighestNumericVersionNotFirstRelease() {
+        // Real GitHub feed order on October 26: dev.9, dev.8 ... dev.10.
+        String list = "[" + STABLE + ","
+                + assetRelease("v0.16.12-dev.9", true) + ","
+                + assetRelease("v0.16.12-dev.8", true) + ","
+                + assetRelease("v0.16.12-dev.10", true) + "]";
+        assertEquals("v0.16.12-dev.10",
+                UpdateChannel.select(UpdateChannel.DEVELOPMENT, list).tag);
+        assertTrue(UpdateChannel.compareDevTags("v0.16.12-dev.10", "v0.16.12-dev.9") > 0);
+        assertTrue(UpdateChannel.compareDevTags("v0.17.0-dev.1", "v0.16.12-dev.999") > 0);
+        assertTrue(UpdateChannel.compareDevTags("v1.0.0-dev.1", "v0.99.99-dev.99") > 0);
+        assertEquals(0, UpdateChannel.compareDevTags("v0.16.12-dev.10", "v0.16.12-dev.10"));
+    }
+
+    @Test public void unsafeOrInvalidHigherPrereleaseCannotDisplaceSafeRelease() {
+        String good = assetRelease("v0.16.12-dev.9", true);
+        String missingMetadata = assetRelease("v0.16.12-dev.11", true)
+                .replace("update.json", "missing.json");
+        String unsafe = assetRelease("v0.16.12-dev.12", true)
+                .replace("https://github.com/chadakenn/Kellies-Voice/releases/download/v0.16.12-dev.12/app-release.apk",
+                        "https://evil.example/untrusted.apk");
+        String draft = assetRelease("v0.16.12-dev.13", true)
+                .replace("\\"draft\\":false", "\\"draft\\":true");
+        String tooLarge = assetRelease("v99999999999999999999999.0.0-dev.9", true);
+        String stable = assetRelease("v0.17.0", false);
+        String list = "[" + missingMetadata + "," + unsafe + "," + draft
+                + "," + stable + "," + tooLarge + "," + good + "]";
+        assertEquals("v0.16.12-dev.9",
+                UpdateChannel.select(UpdateChannel.DEVELOPMENT, list).tag);
+        assertEquals("v0.16.12-dev.9",
+                UpdateChannel.select(UpdateChannel.DEVELOPMENT, "[" + good + "," + unsafe + "]").tag);
+        assertEquals("v0.16.12-dev.9",
+                UpdateChannel.select(UpdateChannel.DEVELOPMENT, "[" + tooLarge + "," + good + "]").tag);
+    }
+
     @Test public void malformedMetadataAndDowngradesAreRejected() {
         String good = "{\"versionCode\":27,\"versionName\":\"0.16.10-dev.1\","
                 + "\"tag\":\"v0.16.10-dev.1\",\"sha256\":\"" + hash() + "\"}";
