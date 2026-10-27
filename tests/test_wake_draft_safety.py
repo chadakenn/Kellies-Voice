@@ -62,6 +62,32 @@ class WakeDraftSafetyTests(unittest.TestCase):
         self.assertLess(overlay.index("if (assist != null) { assist.shutdown(); assist = null; }"),
                         overlay.rindex("WakeAssistConnection.preconnect(this);"))
 
+    def test_ducking_is_opt_in_wake_only_with_careful_volume_restore(self):
+        wake = (SRC / "WakeWordService.java").read_text()
+        overlay = (SRC / "VoiceOverlayService.java").read_text()
+        ui = (SRC / "VoiceActivity.java").read_text()
+        prefs = (SRC / "OverlayPreferences.java").read_text()
+        duck = (SRC / "WakeAudioDucking.java").read_text()
+        levels = (SRC / "WakeDuckingLevels.java").read_text()
+        manifest = (ROOT / "app/src/main/AndroidManifest.xml").read_text()
+
+        self.assertIn('getInt(KEY_WAKE_DUCK, 0)', prefs)
+        self.assertIn('WakeDuckingLevels.normalize(percent)', prefs)
+        self.assertIn('{0, 25, 50, 75}', levels)
+        self.assertIn('private void chooseWakeAudioDucking()', ui)
+        self.assertIn('Wake audio ducking:', ui)
+        self.assertIn('WakeAudioDucking.begin(this, prefs.wakeDuckingPercent());', wake)
+        self.assertLess(wake.index('session.onChunk(engine.processAudio(samples))'),
+                        wake.index('WakeAudioDucking.begin(this, prefs.wakeDuckingPercent());'))
+        self.assertIn('WakeAudioDucking.end(this);', wake)
+        self.assertIn('WakeAudioDucking.end(this);', overlay)
+        self.assertIn('WakeAudioDucking.recover(this);', ui)
+        self.assertIn('if (active) return;', duck)
+        self.assertIn('getStreamVolume(AudioManager.STREAM_MUSIC) == applied', duck)
+        self.assertIn('getBoolean(PENDING, false)', duck)
+        self.assertIn('android.permission.MODIFY_AUDIO_SETTINGS', manifest)
+        self.assertNotIn('WakeAudioDucking.begin(', overlay)
+
     def test_sideloadable_debug_build_has_no_hwasan_runtime_requirement(self):
         cmake = CMAKE.read_text()
         self.assertNotIn("-fsanitize=hwaddress", cmake)
