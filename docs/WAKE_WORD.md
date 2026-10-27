@@ -6,6 +6,10 @@
 
 Kellie's Voice can listen on the TV for **Okay Nabu** using microWakeWord, the same small on-device model the Home Assistant Android app uses. The model runs on the TV. No audio is sent to Home Assistant until the phrase is recognized and the normal voice overlay opens. The overlay then uses the existing Assist connection.
 
+While the user explicitly arms the wake listener, the draft app now also keeps a **pre-authenticated Home Assistant WebSocket** open so the next wake does not have to establish a new connection after "Okay Nabu". This connection transmits authentication/pings, **not microphone audio**. The wake phrase still opens the usual Assist microphone after handoff. When the overlay closes, its WebSocket is shut down and a new idle connection is warmed for the next wake. When wake listening is stopped or the app is killed, the idle socket is closed.
+
+**Hardware validation is still required:** preconnection may be unavailable just after opting in, after Wi-Fi changes, or if Android suspends the listener; the existing 10-second request deadline and short wake audio buffer still apply. Neither a green CI build nor this code alone proves that an immediate "Okay Nabu, turn on office lights" transcript is complete.
+
 The switch is **off** by default.
 
 - Settings → **Wake word** → **Turn wake word ON** starts it.
