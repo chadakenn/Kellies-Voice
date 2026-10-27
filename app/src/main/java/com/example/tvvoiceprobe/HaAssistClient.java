@@ -73,6 +73,7 @@ public final class HaAssistClient {
     private volatile boolean captureStarted;
     private volatile boolean autoEndSpeech;
     private volatile boolean microphoneMissing;
+    private volatile boolean typedRun;
     private volatile String roomNoise = OverlayPreferences.NOISE_NORMAL;
     private final AtomicBoolean recording = new AtomicBoolean(false);
     private final AtomicBoolean ended = new AtomicBoolean(false);
@@ -316,6 +317,11 @@ public final class HaAssistClient {
                 && !"run-end".equals(eventType)) return;
         switch (eventType) {
             case "run-start":
+                if (typedRun) {
+                    // Intent-stage text requests have no microphone or STT handler.
+                    events.status("Processing typed request...");
+                    break;
+                }
                 JSONObject runner = data.optJSONObject("runner_data");
                 int id = runner == null ? -1 : runner.optInt("stt_binary_handler_id", -1);
                 if (id < 0 || id > 255) {
@@ -335,6 +341,7 @@ public final class HaAssistClient {
                 events.status("Audio handler ready. Preparing microphone...");
                 break;
             case "stt-start":
+                if (typedRun) break; // Never open AudioRecord for text-only Assist.
                 if (endRequested) sendEndOfAudio(currentRunId);
                 else beginCapture(currentRunId);
                 break;
@@ -523,7 +530,82 @@ public final class HaAssistClient {
         }
     }
 
+    /**
+     * Send a text command directly to HA intent. No RECORD_AUDIO permission,
+     * AudioRecord, mic handoff, microphone focus, or STT stage is involved.
+     */
+    public synchronized boolean submitTyped(String raw) {
+        String text = TypedAssistInput.clean(raw);
+        if (text.isEmpty()) {
+            events.status("Enter a request up to " + TypedAssistInput.MAX_LENGTH + " characters.");
+            return false;
+        }
+        if (!new OverlayPreferences(context).typedAssistEnabled()) {
+            events.status("Enable Type to Kellie in TV settings first.");
+            return false;
+        }
+        if (!authenticated || socket == null || disposed) {
+            events.status("Connect to Home Assistant before sending text.");
+            return false;
+        }
+        if (currentRunId != -1) {
+            events.status("Finish the current Assist request first.");
+            return false;
+        }
+        int id = commandId++;
+        try {
+            JSONObject request = new JSONObject();
+            request.put("id", id);
+            request.put("type", "assist_pipeline/run");
+            request.put("start_stage", "intent");
+            request.put("end_stage", "tts");
+            request.put("input", new JSONObject().put("text", text));
+            request.put("timeout", 60);
+            if (conversationId != null) request.put("conversation_id", conversationId);
+            if (layoutSync) {
+                String registryId = new OverlayPreferences(context).registryDeviceId();
+                if (!registryId.isEmpty()) request.put("device_id", registryId);
+            }
+            currentRunId = id;
+            typedRun = true;
+            ended.set(false);
+            microphoneMissing = false;
+            // Unlike talk(), do NOT call runs.open, beginCapture or acquire mic focus.
+            if (!socket.send(request.toString())) {
+                currentRunId = -1;
+                typedRun = false;
+                events.status("Couldn\'t send typed Assist request.");
+                return false;
+            }
+            events.status("Processing typed request...");
+            return true;
+        } catch (Exception error) {
+            currentRunId = -1;
+            typedRun = false;
+            events.status("Couldn\'t start typed Assist request.");
+            return false;
+        }
+    }
+
     public void finishTalking() {
+        synchronized (this) {
+            if (typedRun && currentRunId >= 0) {
+                // HA subscriptions support unsubscribe_events to cancel a run.
+                // Stop it locally even if the socket is already disconnected.
+                int run = currentRunId;
+                try {
+                    if (socket != null) {
+                        socket.send(new JSONObject().put("id", commandId++)
+                                .put("type", "unsubscribe_events")
+                                .put("subscription", run).toString());
+                    }
+                } catch (Exception ignored) { }
+                stopForRunEnd();
+                events.status("Typed request stopped.");
+                events.runEnded();
+                return;
+            }
+        }
         int run;
         int handler;
         boolean started;
@@ -787,6 +869,7 @@ public final class HaAssistClient {
             pendingEar = null;
             int run = currentRunId;
             boolean worker = captureStarted;
+            boolean textRun = typedRun;
             runs.cancel(run, () -> {
                 recording.set(false);
                 listeningFocus.release();
@@ -794,10 +877,11 @@ public final class HaAssistClient {
             if (currentRunId == run) {
                 handlerId = -1;
                 currentRunId = -1;
+                typedRun = false;
                 captureStarted = false;
                 endRequested = false;
             }
-            if (!worker && run >= 0) notify = run;
+            if (!worker && !textRun && run >= 0) notify = run;
         }
         // Do not leave a preview recorder alive if HA rejects/ends the run
         // before stt-start can hand its recorder to Assist.
