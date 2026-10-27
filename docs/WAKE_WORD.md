@@ -10,6 +10,16 @@ While the user explicitly arms the wake listener, the draft app now also keeps a
 
 **Hardware validation is still required:** preconnection may be unavailable just after opting in, after Wi-Fi changes, or if Android suspends the listener. The onn clip still needed a pause before the command. This draft keeps recording the question until Assist claims it, for at most eight seconds after detection, so that pause should not be required. A television still has to prove the full sentence "Okay Nabu, turn on office lights" with no pause.
 
+## Experimental volume ducking (new draft-only option)
+
+The onn 4K Pro owner's wake-word activation improved when the box was moved away from the TV speakers. Optional **Wake audio ducking** is a separate experiment to reduce competing TV playback **AFTER** Okay Nabu fires, helping Kellie capture the rest of a command. It **cannot help** the detector hear "Okay Nabu" beforehand.
+
+- Open **Settings → Wake word → Wake audio ducking**, then choose **OFF (default), 25%, 50%, or 75% quieter**. Percent is the reduction from the current local media volume, not the final output percentage.
+- When an opted-in wake phrase is detected, the app attempts to lower Android's local `STREAM_MUSIC` volume. It stores the previous level and restores it when the overlay closes or a failed wake cleans up. If the user changes the volume manually during the command, that new level takes precedence. A pending recovery record can restore the previous level on the next app launch after a process kill, only when the volume still matches the applied ducked level.
+- **Not guaranteed on all TVs:** fixed-volume Android TV/HDMI devices and HDMI-CEC audio routing may not honor the volume change. This is *not* app-specific YouTube volume mixing, and different volume steps mean the audible reduction can be approximate. There is no claim of a guaranteed exact duck percent.
+- This option is only for a recognized wake phrase; it does not lower volume for ordinary TALK, background listening, other TV alerts, or TV audio before the wake. A force-stop can leave a previously reduced system volume until the app next opens, so test restoration carefully.
+- Check both media volume and the ability to hear the assistant's answer. Wake OFF and ordinary media playback should remain unchanged.
+
 The switch is **off** by default.
 
 - Settings → **Wake word** → **Turn wake word ON** starts it.
@@ -50,7 +60,8 @@ Install the GitHub Actions **debug** APK from this pull request. Its package is 
 1. Confirm the settings row says **Wake word: OFF**. Say "Okay Nabu" and confirm nothing opens.
 2. Turn it on. The row should say **LISTENING**, and the microphone privacy indicator should stay on.
 3. Say "Okay Nabu", pause a beat, then "What time is it?" The overlay should open, a short beep should play, and the transcript should contain the question, not only the wake phrase.
-4. Say the question immediately after the wake phrase. Note whether the first words are missing.
+4. Say the question immediately after the wake phrase. The owner reported a successful no-pause office-lights command on the onn 4K Pro using the October 27 build, but repeatability still needs checking.
+   With TV audio playing, test the same command with wake audio ducking **OFF**, then **50%**, and verify audible reduction after detection and reliable restoration when the overlay closes.
 5. Press TALK while it is LISTENING, then run one microphone diagnostic. Only one capture should be live, and the listener should return to LISTENING afterward.
 6. Force-stop the debug app. The row should say **STOPPED**. Resume it from the menu. Reboot the TV and confirm it stays off.
 7. Turn **Disable microphone capture** on and confirm the listener stops. Turn the wake word off when you are done.
