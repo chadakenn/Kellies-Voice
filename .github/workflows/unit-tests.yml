@@ -31,6 +31,10 @@ jobs:
         # The previous skipWakeNative assembleDebug uploaded an APK with NO
         # libmicrowakeword.so; it could not test wake-word capture on a TV.
         run: ./gradlew --no-daemon :app:assembleDebug
+
+      - name: Verify APK contains both wake-word JNI libraries and model
+        shell: bash
+        run: bash .github/scripts/verify-wake-apk.sh app/build/outputs/apk/debug/app-debug.apk
       - name: Save test APK
         uses: actions/upload-artifact@v4
         with:
