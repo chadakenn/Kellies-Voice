@@ -138,6 +138,7 @@ public final class TvEventsService extends Service {
     private boolean legacyFallbackAttempted;
     private int connectionAttempts;
     private long nextReconnectAtMs = -1L;
+    private HaNetworkWatch networks;
     private int generation;
     private AnnouncementSpeech announcementSpeech;
     private boolean alertsSubscribed;
@@ -213,6 +214,8 @@ public final class TvEventsService extends Service {
             return START_NOT_STICKY;
         }
         stopping = false;
+        if (networks == null) networks = new HaNetworkWatch(this, main, this::onNetworkReady);
+        networks.start();
         main.removeCallbacks(recoveryMonitor);
         main.postDelayed(recoveryMonitor, 20_000L);
         if (timerOverlay == null) timerOverlay = new TimerOverlayController(this, windowManager);
@@ -290,6 +293,14 @@ public final class TvEventsService extends Service {
         legacyMode = false;
         legacyPending = 0;
         legacyDenied = false;
+    }
+
+    private void onNetworkReady() {
+        if (stopping || terminalAlertError || socket != null) return;
+        main.removeCallbacks(reconnect);
+        nextReconnectAtMs = -1L;
+        connectionNotice("Network is back. Reconnecting to Home Assistant");
+        connect();
     }
 
     /** Abort even a half-open transport; late callbacks are ignored by identity. */
@@ -432,7 +443,8 @@ public final class TvEventsService extends Service {
         if (stopping || terminalAlertError) return;
         TvEventsRecovery.note(TvEventsRecovery.RECONNECTING);
         connectionNotice("Reconnecting to Home Assistant");
-        long delay = TvAlertConnectionPolicy.retryDelayMs(failedAttempts++);
+        long delay = RetryTiming.withJitter(
+                TvAlertConnectionPolicy.retryDelayMs(failedAttempts++), 30_000L, Math.random());
         TvEventsRecovery.diagnostic("Network reconnect scheduled in " + (delay / 1000L) + "s");
         scheduleReconnect(delay);
     }
@@ -1330,6 +1342,7 @@ public final class TvEventsService extends Service {
 
     @Override public void onDestroy() {
         stopping = true;
+        if (networks != null) networks.stop();
         if (timerOverlay != null) { timerOverlay.close(!new OverlayPreferences(this).tvEvents()); timerOverlay = null; }
         main.removeCallbacksAndMessages(null);
         clearConnectionTracking();

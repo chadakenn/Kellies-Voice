@@ -1291,14 +1291,13 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
     private void newConversation() {
         if (player != null) { player.release(); player = null; }
         if (speechFocus != null) speechFocus.release();
-        assist.disconnect();
+        assist.clearConversation();
+        if (!assist.pipelineIdle()) assist.finishTalking();
         recognized.setText("Nothing yet");
         response.setText("Ready for a fresh conversation.");
-        if (settings != null) {
-            connect();
-        } else {
-            status("Conversation cleared. Configure Home Assistant to continue.");
-        }
+        status(settings == null
+                ? "Conversation cleared. Configure Home Assistant to continue."
+                : "Started a new conversation.");
     }
 
     private void confirmForget() {
