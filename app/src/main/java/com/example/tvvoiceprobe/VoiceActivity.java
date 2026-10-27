@@ -1345,8 +1345,8 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                         + "Off until you turn it on. A reboot or app update does not start it. "
                         + "While it is LISTENING, the microphone stays in use and Android's privacy indicator stays on. "
                         + "Hey Google is separate and can still take the microphone. "
-                        + "Nothing is sent until the phrase is recognized. Then at most two seconds of the following audio, "
-                        + "plus the rest of the question, goes to your Assist pipeline. "
+                        + "Nothing is sent until the phrase is recognized. The recorder then keeps that question until Assist takes it, for at most eight seconds. "
+                        + "That clip, plus whatever is still being said, goes to your Assist pipeline. "
                         + "A short beep means the microphone is ready. Not tested on this TV yet.",
                 new String[] {
                         enabled && active ? "Turn wake word OFF"

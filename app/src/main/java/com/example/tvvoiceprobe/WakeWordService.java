@@ -129,8 +129,8 @@ public final class WakeWordService extends Service {
     }
 
     /**
-     * Audio captured after Okay Nabu, at most two seconds, then the wake
-     * recorder is released. Empty when no wake command is in progress.
+     * Audio captured after Okay Nabu until Assist claims it, at most
+     * {@link WakeCommandLead#MAX_MS}. Empty when no wake command is in progress.
      * Safe to call from the Assist capture thread. Do not call it from the UI.
      */
     public static byte[] claimCommandLead(long timeoutMs) {
@@ -139,6 +139,14 @@ public final class WakeWordService extends Service {
         WakeWordService service = current;
         if (service != null) service.stopRecorder();
         return WakeCommandLead.await(timeoutMs);
+    }
+
+    /** Drop a wake question that will not be sent. Does nothing if none is pending. */
+    public static void abandonCommandLead() {
+        if (!WakeCommandLead.isActive() && !WakeCommandLead.isReady()) return;
+        WakeCommandLead.discard();
+        WakeWordService service = current;
+        if (service != null) service.stopRecorder();
     }
 
     @Override public IBinder onBind(Intent intent) { return null; }
@@ -310,9 +318,10 @@ public final class WakeWordService extends Service {
     }
 
     /**
-     * Keep the same recorder for at most 2.5 seconds after Okay Nabu so the
-     * start of the question is not dropped while the overlay connects.
-     * The recorder is released before this returns, so Assist can open its own.
+     * Keep the same recorder after Okay Nabu until Assist claims the audio,
+     * or until {@link WakeCommandLead#MAX_MS}. The recorder is released
+     * before this returns, so Assist can open its own. Audio from before
+     * detection is not kept.
      */
     private boolean bufferCommandUntilOverlayClaimsIt(short[] chunk) {
         WakeCommandLead.begin();
@@ -321,11 +330,14 @@ public final class WakeWordService extends Service {
         synchronized (micLock) {
             currentRecorder = recorder;
         }
-        long deadline = android.os.SystemClock.elapsedRealtime() + 2500L;
+        long started = android.os.SystemClock.elapsedRealtime();
+        boolean overlaySeen = VoiceOverlayService.isOpen();
         try {
             while (running && opened && currentRecorder != null
-                    && !WakeCommandLead.stopRequested()
-                    && android.os.SystemClock.elapsedRealtime() < deadline) {
+                    && !WakeCommandLead.stopRequested()) {
+                long elapsed = android.os.SystemClock.elapsedRealtime() - started;
+                if (elapsed >= WakeCommandLead.MAX_MS) break;
+                if (VoiceOverlayService.isOpen()) overlaySeen = true;
                 int read;
                 try {
                     read = currentRecorder.read(chunk, 0, CHUNK);
@@ -333,12 +345,15 @@ public final class WakeWordService extends Service {
                     break;
                 }
                 if (read > 0) WakeCommandLead.append(chunk, read);
-                if (read < 0 || WakeCommandLead.stopRequested()) break;
+                if (read < 0) break;
             }
         } finally {
+            if (VoiceOverlayService.isOpen()) overlaySeen = true;
             releaseRecorder();
             MicLease.release(MicLease.WAKE);
-            if (opened) WakeCommandLead.finish();
+            // Assist claims this buffer only after the overlay is actually up.
+            // If the overlay never appeared, drop the audio. Do not upload it later.
+            if (opened && overlaySeen) WakeCommandLead.finish();
             else WakeCommandLead.discard();
         }
         return opened;
@@ -348,8 +363,8 @@ public final class WakeWordService extends Service {
         if (!new OverlayPreferences(this).wakeWord()) return false;
         if (VoiceOverlayService.isOpen()) return true;
         try {
-            // The wake recorder was released immediately before this call.
-            // Deliver a one-shot explicit detection, not a normal idle launch.
+            // The question is still being recorded. Assist claims that audio
+            // before it opens a second recorder.
             startForegroundService(new Intent(this, VoiceOverlayService.class)
                     .setAction(WakeWordSession.ACTION_DETECTED));
             return true;

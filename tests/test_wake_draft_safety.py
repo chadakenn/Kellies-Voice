@@ -51,8 +51,12 @@ class WakeDraftSafetyTests(unittest.TestCase):
         self.assertIn("WakeAssistConnection.take(this)", overlay)
         self.assertIn("fromWake ? WakeAssistConnection.take(this) : null", overlay)
         self.assertIn("assist.isConnected()", overlay)
-        self.assertIn("private volatile Events events;", client)
-        self.assertIn("public void setEvents(Events receiver)", client)
+        self.assertIn("created.useAsStandby()", warm)
+        self.assertIn("client.attachEvents(receiver)", warm)
+        self.assertIn("if (VoiceOverlayService.isOpen()) return;", warm)
+        self.assertIn("authReady.onAuthenticated(uiOwner)", client)
+        self.assertIn("WakeCommandLead.MAX_MS", (SRC / "WakeWordService.java").read_text())
+        self.assertIn("void setEvents(Events receiver)", client)
 
         # No audio session may be returned to background warm ownership.
         self.assertLess(overlay.index("if (assist != null) { assist.shutdown(); assist = null; }"),

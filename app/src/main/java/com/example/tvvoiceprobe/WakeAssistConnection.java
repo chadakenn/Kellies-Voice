@@ -24,6 +24,8 @@ final class WakeAssistConnection {
 
     static synchronized void preconnect(Context context) {
         if (standby != null || !WakeWordService.isListening()) return;
+        // The overlay already owns the socket it took. Do not open a second one.
+        if (VoiceOverlayService.isOpen()) return;
         OverlayPreferences prefs = new OverlayPreferences(context);
         if (!prefs.wakeWord() || prefs.microphoneDisabled()) return;
         CredentialStore.Connection login;
@@ -34,16 +36,28 @@ final class WakeAssistConnection {
         }
         if (login == null) return;
         HaAssistClient created = new HaAssistClient(context.getApplicationContext(), QUIET);
+        created.useAsStandby();
         standby = created;
         created.connect(login.url, login.token);
     }
 
+    /** A claimed socket plus whether the overlay must run its ready callback now. */
+    static final class Claimed {
+        final HaAssistClient client;
+        final boolean startNow;
+
+        Claimed(HaAssistClient client, boolean startNow) {
+            this.client = client;
+            this.startNow = startNow;
+        }
+    }
+
     /** Take only for a real wake detection. A normal overlay makes its own connection. */
-    static synchronized HaAssistClient take(HaAssistClient.Events receiver) {
+    static synchronized Claimed take(HaAssistClient.Events receiver) {
         HaAssistClient client = standby;
         standby = null;
-        if (client != null) client.setEvents(receiver);
-        return client;
+        if (client == null) return null;
+        return new Claimed(client, client.attachEvents(receiver));
     }
 
     static synchronized void stop() {

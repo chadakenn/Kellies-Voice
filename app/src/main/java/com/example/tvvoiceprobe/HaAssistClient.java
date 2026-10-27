@@ -59,6 +59,9 @@ public final class HaAssistClient {
     private final Context context;
     // Wake-only preconnection can be handed to the overlay without reopening HA.
     private volatile Events events;
+    private final AuthReady authReady = new AuthReady();
+    /** False only for the idle wake socket, which must not start Assist. */
+    private boolean uiOwner = true;
     private final SpeechFocus listeningFocus;
     private final RunGate runs = new RunGate();
     private volatile FollowUpEar pendingEar;
@@ -121,9 +124,24 @@ public final class HaAssistClient {
     public boolean isConnected() { return authenticated; }
 
     /** Rebind callbacks when an already-authenticated wake connection is claimed. */
-    public void setEvents(Events receiver) {
+    public synchronized void setEvents(Events receiver) {
         if (receiver == null) throw new IllegalArgumentException("Events required");
         this.events = receiver;
+    }
+
+    /**
+     * The voice overlay is taking a standby socket.
+     * @return true when login already succeeded and the overlay must run ready() once
+     */
+    public synchronized boolean attachEvents(Events receiver) {
+        setEvents(receiver);
+        uiOwner = true;
+        return authReady.ownerAttached();
+    }
+
+    /** Call before connect(). This socket must not start a microphone or Assist. */
+    synchronized void useAsStandby() {
+        uiOwner = false;
     }
 
     /** Whether reconnection is enabled; rejected credentials must not be retried. */
@@ -230,6 +248,7 @@ public final class HaAssistClient {
             if (ws != socket || disposed) return;
             socket = null;
             authenticated = false;
+            authReady.reset();
             connecting = false;
             layoutSubscribed = false;
             layoutStatesId = -1;
@@ -250,6 +269,7 @@ public final class HaAssistClient {
         if (wasLive) {
             socket = null;
             authenticated = false;
+            authReady.reset();
             connecting = false;
             layoutSubscribed = false;
             layoutStatesId = -1;
@@ -290,6 +310,8 @@ public final class HaAssistClient {
             return;
         }
         if ("auth_ok".equals(type)) {
+            boolean deliver;
+            Events listener;
             synchronized (this) {
                 if (!isCurrent(ws)) return;
                 authenticated = true;
@@ -297,9 +319,11 @@ public final class HaAssistClient {
                 failures = 0;
                 reconnectHandler.removeCallbacks(reconnectTask);
                 reconnectScheduled = false;
+                deliver = authReady.onAuthenticated(uiOwner);
+                listener = events;
             }
-            events.status("Connected and authenticated. Ready.");
-            events.ready();
+            listener.status("Connected and authenticated. Ready.");
+            if (deliver) listener.ready();
             requestLayout();
             return;
         }
@@ -626,6 +650,9 @@ public final class HaAssistClient {
             AudioRecord recorder = null;
             AcousticEchoCanceler echo = null;
             NoiseSuppressor noise = null;
+            // Consume the one-shot flag immediately so a failed run cannot
+            // send this question on a later TALK or follow-up.
+            boolean takeLead = wakeLeadForNextRun.getAndSet(false);
             try {
                 FollowUpEar handoff;
                 synchronized (HaAssistClient.this) {
@@ -634,6 +661,7 @@ public final class HaAssistClient {
                 }
                 if (handoff != null && !runs.owns(runId, handlerAtStart)) {
                     handoff.stop();
+                    if (takeLead) WakeWordService.abandonCommandLead();
                     return;
                 }
                 OverlayPreferences micSettings = new OverlayPreferences(context);
@@ -643,12 +671,13 @@ public final class HaAssistClient {
                     events.status(MicRoutePolicy.MANUALLY_DISABLED_MESSAGE);
                     events.processing();
                     if (handoff != null) handoff.stop();
+                    if (takeLead) WakeWordService.abandonCommandLead();
                     return;
                 }
                 // Audio after Okay Nabu, recorded by the wake listener and
                 // released before this recorder opens. Empty for a normal TALK.
-                byte[] wakeLead = wakeLeadForNextRun.getAndSet(false)
-                        ? WakeWordService.claimCommandLead(1500L) : new byte[0];
+                byte[] wakeLead = takeLead
+                        ? WakeWordService.claimCommandLead(3_000L) : new byte[0];
                 // claimOpen blocks. The run gate stays free so STOP can cancel.
                 OpenCapture open = handoff == null ? null : handoff.claimOpen();
                 if (!runs.arm(runId, handlerAtStart, () -> recording.set(true))) {
@@ -738,7 +767,7 @@ public final class HaAssistClient {
                             () -> writePcm(wakeLead, handlerAtStart, packet));
                     if (sent) {
                         heardUtterance = true;
-                        observedMs = Math.min(2000L, wakeLead.length / 32L);
+                        observedMs = Math.min(WakeCommandLead.MAX_MS, wakeLead.length / 32L);
                     }
                 }
                 if (lead != null && SpeechBuffer.containsSpeech(lead, 16000)) {
@@ -862,12 +891,14 @@ public final class HaAssistClient {
 
     private void stopForRunEnd() {
         int notify = -1;
+        boolean captureHadStarted = false;
         FollowUpEar abandoned;
         synchronized (this) {
             abandoned = pendingEar;
             pendingEar = null;
             int run = currentRunId;
             boolean worker = captureStarted;
+            captureHadStarted = worker;
             runs.cancel(run, () -> {
                 recording.set(false);
                 listeningFocus.release();
@@ -879,7 +910,9 @@ public final class HaAssistClient {
                 endRequested = false;
             }
             if (!worker && run >= 0) notify = run;
+            if (!worker) wakeLeadForNextRun.set(false);
         }
+        if (!captureHadStarted) WakeWordService.abandonCommandLead();
         // Do not leave a preview recorder alive if HA rejects/ends the run
         // before stt-start can hand its recorder to Assist.
         if (abandoned != null) abandoned.stop();
@@ -1024,6 +1057,7 @@ public final class HaAssistClient {
         savedBaseUrl = null;
         savedToken = null;
         authenticated = false;
+        authReady.reset();
         conversationId = null;
         conversationTouchedMs = 0L;
         discardConversationUpdate = false;

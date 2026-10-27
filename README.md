@@ -239,7 +239,7 @@ On the device page, **Forecast source** is the weather entity used when a script
 
 ## Wake word (not in the installed release)
 
-Kellie's Voice can listen on the TV for **Okay Nabu**, the same microWakeWord model the Home Assistant Android app uses. It is **off** until you turn it on at **Settings → Wake word**. The row then reads OFF, LISTENING, or STOPPED. A reboot does not start it. While it is LISTENING, the microphone stays open and Android's privacy indicator stays on. Audio from before the phrase is not sent. After the phrase, at most two seconds is kept and then sent with the rest of the question to your Assist pipeline. A short beep means the overlay microphone is recording. Hey Google is separate and can still take the microphone.
+Kellie's Voice can listen on the TV for **Okay Nabu**, the same microWakeWord model the Home Assistant Android app uses. It is **off** until you turn it on at **Settings → Wake word**. The row then reads OFF, LISTENING, or STOPPED. A reboot does not start it. While it is LISTENING, the microphone stays open and Android's privacy indicator stays on. Audio from before the phrase is not sent. After the phrase, the same recorder keeps the question until Assist takes it, at most eight seconds, and that audio is sent with the rest of the question. A short beep means the overlay microphone is recording. Hey Google is separate and can still take the microphone.
 
 Turn it off in that same menu. Force-stopping the app or rebooting the TV leaves it off. The listener needs a microphone that can record 16 kHz. It has **not** been tried on the onn. Loud TV audio can miss the phrase or hear it by mistake. There is no "Hey Kellie" model. Details are in [docs/WAKE_WORD.md](docs/WAKE_WORD.md).
 

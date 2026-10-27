@@ -8,7 +8,7 @@ Kellie's Voice can listen on the TV for **Okay Nabu** using microWakeWord, the s
 
 While the user explicitly arms the wake listener, the draft app now also keeps a **pre-authenticated Home Assistant WebSocket** open so the next wake does not have to establish a new connection after "Okay Nabu". This connection transmits authentication/pings, **not microphone audio**. The wake phrase still opens the usual Assist microphone after handoff. When the overlay closes, its WebSocket is shut down and a new idle connection is warmed for the next wake. When wake listening is stopped or the app is killed, the idle socket is closed.
 
-**Hardware validation is still required:** preconnection may be unavailable just after opting in, after Wi-Fi changes, or if Android suspends the listener; the existing 10-second request deadline and short wake audio buffer still apply. Neither a green CI build nor this code alone proves that an immediate "Okay Nabu, turn on office lights" transcript is complete.
+**Hardware validation is still required:** preconnection may be unavailable just after opting in, after Wi-Fi changes, or if Android suspends the listener. The onn clip still needed a pause before the command. This draft keeps recording the question until Assist claims it, for at most eight seconds after detection, so that pause should not be required. A television still has to prove the full sentence "Okay Nabu, turn on office lights" with no pause.
 
 The switch is **off** by default.
 
@@ -33,7 +33,7 @@ The capture rate is 16 kHz. If this TV cannot open a 16 kHz microphone, the list
 ## Privacy and what is sent
 
 - **The wake listener records locally while it is LISTENING.** That audio is scored on the TV. It is not uploaded.
-- After the local detector fires, the same recorder keeps at most **two seconds** of 16 kHz PCM. That clip can include the tail of "Nabu" and the start of the question. Assist sends that clip, then the rest of the question, to whatever speech-to-text your pipeline uses. Audio from before the detector fires is discarded. If the overlay never starts, the clip is discarded too.
+- After the local detector fires, the same recorder keeps the question until Assist claims it, at most **eight seconds** of 16 kHz PCM. That clip can include the tail of "Nabu" and the start of the question. Assist sends that clip, then the rest of the question, to whatever speech-to-text your pipeline uses. Audio from before the detector fires is discarded. If the overlay never starts, the clip is discarded too.
 - A short beep plays when the overlay microphone is actually recording. The TV microphone can hear that beep.
 - Cloud speech-to-text, if that is your pipeline, receives the question audio. A false wake can therefore send room audio. Prefer a local speech-to-text engine if that matters.
 - **Disable microphone capture**, forgetting the Home Assistant login, or losing microphone or overlay permission turns the listener off.

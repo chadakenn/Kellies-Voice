@@ -2,12 +2,14 @@ package com.example.tvvoiceprobe;
 
 /**
  * Audio recorded after Okay Nabu, before Assist opens its own microphone.
- * At most two seconds of 16 kHz PCM16. Nothing recorded before detection
+ * At most eight seconds of 16 kHz PCM16. Nothing recorded before detection
  * is stored here, and a discarded buffer is never uploaded.
  */
 public final class WakeCommandLead {
-    /** 16 kHz, 16-bit mono, two seconds. */
-    public static final int MAX_BYTES = 16000 * 2 * 2;
+    /** How long the wake recorder may keep the question before Assist claims it. */
+    public static final int MAX_MS = 8000;
+    /** 16 kHz, 16-bit mono. */
+    public static final int MAX_BYTES = 16000 * 2 * MAX_MS / 1000;
 
     private static boolean active;
     private static boolean stop;
@@ -63,7 +65,7 @@ public final class WakeCommandLead {
     public static synchronized void discard() {
         active = false;
         ready = false;
-        stop = false;
+        stop = true;
         length = 0;
         WakeCommandLead.class.notifyAll();
     }

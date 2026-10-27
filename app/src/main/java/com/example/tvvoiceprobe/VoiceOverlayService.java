@@ -220,21 +220,23 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
         try {
             // Only an explicit wake detection may claim this pre-authenticated
             // socket. Ordinary TALK keeps its existing connection behavior.
-            HaAssistClient warmed = fromWake ? WakeAssistConnection.take(this) : null;
-            assist = warmed == null ? new HaAssistClient(this, this) : warmed;
+            WakeAssistConnection.Claimed warmed =
+                    fromWake ? WakeAssistConnection.take(this) : null;
+            assist = warmed == null ? new HaAssistClient(this, this) : warmed.client;
             assist.setLayoutSync(preferences.haManage());
             HaDiscovery.setWanted(this, preferences.haManage());
             HaDiscovery.acquire(this);
             if (warmed == null) {
                 assist.connect(connection.url, connection.token);
-            } else if (assist.isConnected()) {
-                // Authentication may have finished before callbacks were
-                // transferred from the wake service: explicitly consume it.
+            } else if (warmed.startNow) {
+                // Login finished while the idle listener owned the socket.
+                // Its ready callback was swallowed, so deliver it exactly once.
                 ready();
-            } else if (assist.canReconnect()) {
-                assist.ensureConnected();
+            } else if (assist.isConnected() || assist.canReconnect()) {
+                // Still authenticating. auth_ok will call ready() on this overlay.
+                // A dead socket must not sit here pretending it will reconnect.
+                if (!assist.isConnected()) assist.ensureConnected();
             } else {
-                // A stale/failed warm session must never block a fresh login.
                 assist.connect(connection.url, connection.token);
             }
             notifyLauncher(ACTION_OVERLAY_READY);
