@@ -31,13 +31,13 @@ Imagine you're watching YouTube and want to turn on the garage lights. Instead o
 | You want to… | Kellie's Voice can… |
 | --- | --- |
 | Ask "Turn off the kitchen lights" or "What's the weather?" | Send your question to your configured Home Assistant Assist pipeline, then show and speak the response. Actual answers and device control depend on that pipeline and its tools. |
-| Know when laundry finishes | Show a brief text announcement from a Home Assistant automation. |
+| Know when laundry finishes | Show a popup; optionally speak a short sentence when **Spoken announcements** is enabled on the TV and `speak:` is provided. |
 | See who's approaching the front door | Display a short **camera snapshot popup** when a Frigate person sensor triggers. |
 | Check the driveway on demand | Request an **experimental muted live camera overlay**, without leaving the current TV app. Moving live video **verified with driveway and doorbell cameras on onn 4K Pro using v0.16.1**. Other devices still need testing. |
 | Move the assistant out of the way | Set voice-overlay position, size, appearance, auto-hide, and auto-listen from Home Assistant. |
 | Stay current | Check for a signed Android app update right inside Kellie's Voice. HACS updates its *separate* Home Assistant component. |
 
-**A key distinction:** automatic Frigate alerts currently show **still snapshots**, not live video. Live HLS streaming is a separate, **on-demand** feature, confirmed playing moving driveway **and doorbell** video on the onn 4K Pro in Android v0.16.1 (HA integration v0.16.0). Other cameras/devices remain unverified. Camera windows are Android overlays, not native system picture-in-picture. Announcements are **on-screen text**, not spoken TTS broadcasts.
+**A key distinction:** automatic Frigate alerts currently show **still snapshots**, not live video. Live HLS streaming is a separate, **on-demand** feature, confirmed playing moving driveway **and doorbell** video on the onn 4K Pro in Android v0.16.1 (HA integration v0.16.0). Other cameras/devices remain unverified. Camera windows are Android overlays, not native system picture-in-picture. Announcements show on-screen text by default. **Optional on-TV speech is supported**: enable **Settings → Spoken announcements** and provide a `speak:` sentence in the HA action. TV speech uses Android TTS, not a microphone or HA-wide broadcast.
 
 ## See it in action 📸
 
@@ -79,7 +79,7 @@ Android TV / Google TV
   Devices, automations, Frigate cameras
            ▲
   Kellie's Voice HACS integration
-  TV settings + announce / snapshot / experimental live actions
+  TV settings + text/spoken announcements + camera/live actions
 ```
 
 Kellie's Voice uses **your existing Home Assistant Assist pipeline**. It works with the conversation agent and speech components you configure in Home Assistant. Local Ollama/LLM agents are optional, not required, and aren't installed by the Android APK.
@@ -115,7 +115,7 @@ The full camera script examples, including close and a 30 second view, are in [d
 
 ## Get started: install both parts
 
-**New testers:** follow the complete [v0.16.9 setup and hardware-testing checklist](docs/INSTALL.md), including TV permissions, HA connection, HACS pairing, and known limitations. The quick steps below are a short reference.
+**New testers:** follow the [complete setup and hardware-testing checklist](docs/INSTALL.md), including TV permissions, HA connection, HACS pairing, and known limitations. The quick steps below are a short reference.
 
 The Android app and the HACS integration are **two different downloads**. You need both for Home Assistant-controlled overlay settings and camera announcements.
 
@@ -132,7 +132,7 @@ The Android app and the HACS integration are **two different downloads**. You ne
 [![Open Kellie's Voice in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=chadakenn&repository=Kellies-Voice&category=integration)
 
 1. If this is your first installation: **HACS → ⋮ → Custom repositories → Add**, paste `https://github.com/chadakenn/Kellies-Voice` and select **Integration**.
-2. Open Kellie's Voice in HACS and download the **matching v0.16.9 integration**. Restart Home Assistant.
+2. Open Kellie's Voice in HACS and download the **matching stable v0.16.12 integration** for the [v0.16.12 signed TV APK](https://github.com/chadakenn/Kellies-Voice/releases/tag/v0.16.12). Restart Home Assistant. Beta/prerelease builds are opt-in and should match their TV app.
 3. Go to **Settings → Devices & services**, choose the discovered Kellie's Voice TV and add it. If mDNS discovery doesn't work, select **Add Integration → Kellie's Voice** and enter the ID shown under the TV app's **Settings → Home Assistant layout → Show this TV's pairing ID**.
 4. Open the registered TV device in Home Assistant. Configure voice-overlay position, size, style, auto-hide and auto-listen. You can now call the actions below.
 
@@ -148,8 +148,11 @@ action: kellies_voice.announce
 data:
   title: Laundry
   text: The washer has finished.
+  speak: The washer is finished.
   duration_seconds: 10
 ```
+
+Enable **Settings → Spoken announcements** on the TV for `speak:` to play. Without opt-in, the popup remains silent. The spoken sentence uses the TV's local Android speech engine; it does not start a microphone.
 
 </details>
 
@@ -194,7 +197,7 @@ See [TV event setup](docs/TV_EVENTS.md), [HA service details](custom_components/
 | Home Assistant voice conversation and TV speech | **Tested** on onn 4K Pro |
 | Floating overlay, remote scrolling, YouTube audio behavior | **Tested** on onn 4K Pro |
 | HA changing the assistant overlay position | **Tested** on onn 4K Pro |
-| Targeted text announcements over TV | **Tested** on onn 4K Pro |
+| Text announcements and optional on-TV spoken TTS | **Text alerts tested**; speech is opt-in per TV and requires an explicit `speak:` field |
 | Frigate still-image camera popups | **Tested** with driveway camera on onn 4K Pro |
 | Person-detection automations for driveway and doorbell | **Configured** in HA; natural detection end-to-end test pending |
 | Live HLS camera overlay | **Verified** moving driveway and doorbell video on onn 4K Pro with Android v0.16.1; other cameras and TV devices still need testing |
@@ -232,24 +235,23 @@ On the device page, **Forecast source** is the weather entity used when a script
 | Tue 27 | ❄ | 42° / 31° | 40% |
 | Wed 28 | ☾ | 45° / 33° | — |
 
-**Development testing (#44):** The first voice query after a TV reboot can
+**Historical development test (#44):** The first voice query after a TV reboot can
 arrive before the Home Assistant voice WebSocket or Assist pipeline is ready.
 A dev-only candidate improves Connecting/Ready, pipeline and STT/agent/TTS
 diagnostics and expires a pending overlay request after 30 seconds instead
-of recording unexpectedly later. [QA checklist](docs/TESTING.md). This change
-is **not included in stable v0.16.10**.
+of recording unexpectedly later. [QA checklist](docs/TESTING.md). This historical note is retained for context; use the current release notes to determine what shipped.
 
 ## Project status and contributing
 
-### Current release: v0.16.9 (October 24, 2026)
+### Current stable release: v0.16.12 (October 26, 2026)
 
-**Android TV APK v0.16.9 + matching Home Assistant integration v0.16.9 are publicly available.** New in v0.16.9: [#50](https://github.com/chadakenn/Kellies-Voice/pull/50) passes the TV's Home Assistant device-registry ID to Assist when layout sync is enabled so area-aware commands can use the TV's room; [#86](https://github.com/chadakenn/Kellies-Voice/pull/86) retries TV alert registration when Home Assistant's TV controls aren't ready yet instead of showing a permanent permission denial. Both changes require matching Android and HACS updates and **still need a real-TV restart/room-awareness retest**. Existing features include named countdowns and ringing alerts, seven-day weather, Aurora Glass, camera overlays and announcements. On the maintainer's onn 4K Pro, the countdown and chimes, Back-to-dismiss, forecast card, voice questions, and moving driveway/doorbell live camera popups have been tested. Named timer **voice** start/stop worked after the maintainer added Home Assistant automations, not with zero additional setup.
+**Signed Android TV APK v0.16.12 (build 50) and matching HACS integration v0.16.12 are publicly available.** Highlights include the opt-in Frigate/HA screensaver, a four-camera grid with **Snapshots / Live 1 / Live 2 / Live 4** modes, selected full-screen camera audio when a stream provides an audio track, D-pad navigation, reboot recovery, and HA-controlled camera choices. These live/screen-saver features were tested on the maintainer's onn Google TV but are not guaranteed on all Android TV models. [Read the full v0.16.12 release notes](https://github.com/chadakenn/Kellies-Voice/releases/tag/v0.16.12). Existing features include voice Assist, named timers with the documented HA scripts, forecast popups, text and **opt-in spoken announcements**, and temporary live camera popups. A dedicated **TV alert receiver connected** HA diagnostic reports the authenticated receiver socket, **not** proof any particular popup appeared.
 
 **Experimental native TV timers (development only):** a separate, opt-in Home Assistant timer bridge is under review for the next batched test build. It remains OFF by default, cannot force Ollama or another LLM to choose Home Assistant's native timer intents, and still needs physical TV testing. See [Native Assist timer bridge](docs/TIMER_NATIVE_BRIDGE.md) or continue using the existing per-TV named timer script route in [Voice timers](docs/VOICE_TIMERS.md).
 
-**Experimental opt-in follow-up listening (#43, development only):** After Kellie's *spoken answer finishes*, an optional 5/8/10/15-second listening window can capture another question without pressing TALK. Default is OFF; enable it on the TV in **Settings → Follow-up listening**. Home Assistant's **Follow-up silence** control may adjust the delay but cannot enable the TV microphone. The full Android microphone privacy/recorder-release behavior still needs device QA. See [test checklist](docs/TESTING.md); no script is required. This is **not** in a public stable APK yet.
+**Optional follow-up listening:** Configure it on the TV under **Settings → Follow-up listening**. It is an explicit microphone-related opt-in, separate from popups and spoken announcements. Check the installed version and the [testing guide](docs/TESTING.md) for supported behavior and constraints.
 
-**Known limitations:** Philips microphone detection remains unresolved on some TVs despite the v0.16.8 allowlist change (#71); the new automatic TV alert reconnection after HA restart has not yet passed physical device retesting (#78); the timer alert **OK/Dismiss** fix still needs testing on other TVs (#54); ordinary timer phrases may invoke Home Assistant's unsupported native timer intent until routed to Kellie's Voice. Follow-up listening, wake-word support, and actionable announcement buttons are **not** included in this public release, even though draft PRs and test builds exist.
+**Known limitations:** Microphone access is hardware-dependent (#71), Fire TV testing is incomplete (#41), wrong manual pairing IDs need better validation (#69), and native timer phrasing needs an HA routing rule (#57). Google remote microphone interception and an always-listening wake word are **not** included in stable v0.16.12; the separate wake-word PR #59 remains unmerged. Some optional modes, including multiple simultaneous software-decoded live cameras, can stress less powerful TVs. Test on your specific device.
 
 For a complete **first-time installation and testing checklist**, start with **[Install Kellie's Voice: new testers](docs/INSTALL.md)**. Other Android/Google/Fire TV models, audio behavior, camera compatibility, and longer-running reliability especially need real tester reports. [Open a GitHub issue](https://github.com/chadakenn/Kellies-Voice/issues) with device model, app/HACS version, reproducible steps and redacted screenshots.
 
