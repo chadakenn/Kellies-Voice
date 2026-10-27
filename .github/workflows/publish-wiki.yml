@@ -1,6 +1,6 @@
 name: Publish reviewed Kellie's Voice Wiki
 
-# Owner-gated publishing: manual PUBLISH or an explicitly approved main release commit. No dev side effect.
+# Owner-gated publishing: manual PUBLISH confirmation only; no push can publish.
 on:
   workflow_dispatch:
     inputs:
