@@ -32,11 +32,13 @@ public final class WakeWordService extends Service {
     public static final String ACTION_STOP = WakeWordSession.ACTION_STOP;
     private static final String CHANNEL_ID = "ha_tv_wake_word";
     private static final int NOTICE_ID = 2251;
+    private static final int FAILURE_NOTICE_ID = 2252;
     private static final int SAMPLE_RATE = 16000;
     private static final int CHUNK = 160;
 
     private final Object micLock = new Object();
     private volatile boolean running;
+    private volatile String failureNotice;
     private Thread worker;
     private AudioRecord recorder;
 
@@ -74,13 +76,28 @@ public final class WakeWordService extends Service {
 
     private void listen() {
         MicroWakeWord engine = null;
+        OverlayPreferences prefs = new OverlayPreferences(this);
         try {
+            android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_URGENT_AUDIO);
             WakeWordConfig config = WakeWordConfig.parse(readAsset("wakeword/okay_nabu.json"));
             engine = new MicroWakeWord(loadModel("wakeword/" + config.model),
                     config.featureStepSizeMs, config.probabilityCutoff, config.slidingWindowSize);
             WakeWordSession session = new WakeWordSession();
             short[] chunk = new short[CHUNK];
-            while (running && new OverlayPreferences(this).wakeWord()) {
+            int permissionCheck = 0;
+            while (running && prefs.wakeWord()) {
+                // Android may revoke mic/overlay permission while the listener is armed.
+                // Check each ~1s (10ms audio chunks), not only at service startup.
+                if (++permissionCheck >= 100) {
+                    permissionCheck = 0;
+                    if (checkSelfPermission(Manifest.permission.RECORD_AUDIO)
+                            != PackageManager.PERMISSION_GRANTED
+                            || !android.provider.Settings.canDrawOverlays(this)) {
+                        notifyFailure("Microphone or overlay permission was revoked. Wake word off.");
+                        prefs.setWakeWord(false);
+                        break;
+                    }
+                }
                 if (!WakeWordSession.shouldCapture(true, VoiceOverlayService.isOpen())) {
                     releaseRecorder();
                     sleep(200);
@@ -90,12 +107,19 @@ public final class WakeWordService extends Service {
                 synchronized (micLock) {
                     if (!ensureRecorder()) {
                         notifyFailure("The microphone could not open at 16 kHz. Wake word is off.");
-                        new OverlayPreferences(this).setWakeWord(false);
+                        prefs.setWakeWord(false);
                         break;
                     }
                     read = recorder.read(chunk, 0, CHUNK);
                 }
-                if (read <= 0) continue;
+                if (read < 0) {
+                    // ERROR_DEAD_OBJECT or another capture failure must not spin
+                    // indefinitely with a hot microphone-service notification.
+                    notifyFailure("Microphone capture stopped unexpectedly. Wake word off.");
+                    prefs.setWakeWord(false);
+                    break;
+                }
+                if (read == 0) { sleep(30); continue; }
                 short[] samples = read == CHUNK ? chunk : java.util.Arrays.copyOf(chunk, read);
                 if (!session.onChunk(engine.processAudio(samples))) continue;
                 engine.reset();
@@ -110,18 +134,19 @@ public final class WakeWordService extends Service {
                     sleep(100);
                 }
                 while (running && VoiceOverlayService.isOpen()
-                        && new OverlayPreferences(this).wakeWord()) {
+                        && prefs.wakeWord()) {
                     sleep(200);
                 }
             }
         } catch (Throwable ignored) {
             notifyFailure("Wake word stopped. Turn it on again from Settings.");
-            new OverlayPreferences(this).setWakeWord(false);
+            prefs.setWakeWord(false);
         } finally {
             running = false;
             releaseRecorder();
             if (engine != null) engine.close();
             stopForeground(STOP_FOREGROUND_REMOVE);
+            if (failureNotice != null) publishFailure(failureNotice);
             stopSelf();
         }
     }
@@ -224,13 +249,20 @@ public final class WakeWordService extends Service {
     }
 
     private void notifyFailure(String message) {
+        // Store the reason until AFTER stopForeground removes NOTICE_ID.
+        // Posting it under that same ID before cleanup would erase it.
+        failureNotice = message;
+    }
+
+    private void publishFailure(String message) {
         createChannel();
         NotificationManager manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         if (manager == null) return;
-        manager.notify(NOTICE_ID, new Notification.Builder(this, CHANNEL_ID)
+        manager.notify(FAILURE_NOTICE_ID, new Notification.Builder(this, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.ic_btn_speak_now)
-                .setContentTitle("Kellie's Voice wake word")
+                .setContentTitle("Kellie's Voice wake word stopped")
                 .setContentText(message)
+                .setAutoCancel(true)
                 .setOngoing(false)
                 .build());
     }
