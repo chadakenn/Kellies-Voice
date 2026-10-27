@@ -272,8 +272,14 @@ public final class WakeWordService extends Service {
                 created.release();
                 return false;
             }
+            if (!MicLease.wakeRecorderOpened()) {
+                // A stale/cancelled wake open must never coexist with another
+                // owner. Release before returning to the capture loop.
+                try { created.stop(); } catch (RuntimeException ignored) { }
+                created.release();
+                return false;
+            }
             recorder = created;
-            MicLease.wakeRecorderOpened();
             return true;
         }
     }
