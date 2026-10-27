@@ -1132,7 +1132,6 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         }
         try {
             Intent start = new Intent(this, VoiceOverlayService.class);
-            WakeWordService.yieldMicrophone(120_000L);
             listenForOverlayThenBackground();
             startForegroundService(start);
             status("Starting voice overlay... CLOSE or BACK dismisses it.");
@@ -1282,8 +1281,11 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
             if (player != null) { player.release(); player = null; }
             if (speechFocus != null) speechFocus.release();
             assist.setRoomNoise(new OverlayPreferences(this).noise());
-            WakeWordService.yieldMicrophone(120_000L);
-            assist.talk();
+            if (!MicLease.acquire(MicLease.TALK)) {
+                status("The microphone is in use. Close the overlay or leave diagnostics first.");
+                return;
+            }
+            if (!assist.talk()) MicLease.release(MicLease.TALK);
         }
     }
 
@@ -1389,6 +1391,14 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                     updateConnectionLabel();
                     status("Saved connection deleted.");
                 }).show();
+    }
+
+    @Override public void captureReleased(int runId) {
+        MicLease.release(MicLease.TALK);
+    }
+
+    @Override public void runEnded() {
+        MicLease.release(MicLease.TALK);
     }
 
     @Override public void haLayout(String setting) {

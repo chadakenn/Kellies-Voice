@@ -179,6 +179,12 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
             }
             showPanel();
             markOpen();
+            if (!MicLease.acquire(MicLease.OVERLAY)) {
+                status("The microphone is in use. Leave diagnostics or stop TALK first.");
+                notifyLauncher(ACTION_OVERLAY_FAILED);
+                stopSelf();
+                return START_NOT_STICKY;
+            }
             assist = new HaAssistClient(this, this);
             assist.setLayoutSync(preferences.haManage());
             HaDiscovery.setWanted(this, preferences.haManage());
@@ -977,6 +983,7 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
 
     @Override public void onDestroy() {
         markClosed();
+        MicLease.release(MicLease.OVERLAY);
         closing = true;
         pendingWakeCapture = false;
         endFollowUps();

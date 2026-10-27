@@ -43,6 +43,20 @@ jobs:
           if [[ "$APP_NAME" != "$HA_NAME" ]]; then
             echo "::error::Android and HACS dev versions must match." && exit 1
           fi
+          # For opt-in HACS updates the prerelease MUST target a later core
+          # version than Latest stable. 0.16.12-dev.11 sorts BELOW 0.16.12.
+          STABLE_TAG="$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name)"
+          APP_NAME="$APP_NAME" STABLE_TAG="$STABLE_TAG" python3 - <<'PY'
+          import os, re, sys
+          beta = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)-dev\.(\d+)", os.environ["APP_NAME"])
+          stable = re.fullmatch(r"v(\d+)\.(\d+)\.(\d+)", os.environ["STABLE_TAG"])
+          if beta is None or stable is None:
+              sys.exit("Invalid beta/stable version; cannot publish.")
+          base = tuple(map(int, beta.groups()[:3]))
+          current = tuple(map(int, stable.groups()))
+          if base <= current:
+              sys.exit("Beta base must be newer than stable for HACS opt-in update checks.")
+          PY
           TAG="v$APP_NAME"
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "::error::Prerelease $TAG already exists. Bump dev version first." && exit 1
@@ -129,13 +143,19 @@ jobs:
           cat > release-files/notes.md <<'EOF'
           **Development prerelease for opt-in Home Assistant HACS and Android TV testers.**
 
-          Home Assistant: HACS → Kellie's Voice → Redownload →
-          Need a different version? → enable beta releases → select this dev version.
-          Restart Home Assistant after HACS installs the matching integration.
-          The public stable release remains unchanged.
+          Stable stays the default. To opt into **beta update checks**, enable
+          Kellie's Voice's per-repository Pre-release switch in Home Assistant.
+          For a one-off install: HACS → Kellie's Voice → ⋮ → Redownload →
+          Need a different version? → Release → select this prerelease.
+          Restart Home Assistant after installing the matching integration.
 
-          Android TV: optional same-signed development APK attached.
-          Backup Home Assistant first. Do not install on TVs not participating in testing.
+          Android TV: choose **Development (opt-in)** only on a test device,
+          manually check/install the attached same-signed APK. It never
+          auto-installs. Android versionCodes cannot be downgraded in place:
+          wait for a later stable build if returning from this beta.
+
+          Review docs/BETA_TESTING.md before testing. Home Assistant backup
+          recommended. Public stable Latest remains unchanged.
           EOF
           gh release create "$RELEASE_TAG" \
             release-files/app-release.apk release-files/update.json \

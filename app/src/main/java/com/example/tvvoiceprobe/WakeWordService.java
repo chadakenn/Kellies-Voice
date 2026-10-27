@@ -42,18 +42,6 @@ public final class WakeWordService extends Service {
     private Thread worker;
     private AudioRecord recorder;
 
-    private static volatile long yieldUntilMs;
-
-    /** Full-screen TALK borrows the microphone. The listener resumes after this. */
-    public static void yieldMicrophone(long forMs) {
-        long until = android.os.SystemClock.elapsedRealtime() + Math.max(0L, forMs);
-        if (until > yieldUntilMs) yieldUntilMs = until;
-    }
-
-    private static boolean yielding() {
-        return android.os.SystemClock.elapsedRealtime() < yieldUntilMs;
-    }
-
     @Override public IBinder onBind(Intent intent) { return null; }
 
     @Override public int onStartCommand(Intent intent, int flags, int startId) {
@@ -63,6 +51,7 @@ public final class WakeWordService extends Service {
             if (ACTION_START.equals(action)) new OverlayPreferences(this).setWakeWord(false);
             running = false;
             releaseRecorder();
+            MicLease.release(MicLease.WAKE);
             stopSelf();
             return START_NOT_STICKY;
         }
@@ -125,7 +114,14 @@ public final class WakeWordService extends Service {
                         break;
                     }
                 }
-                if (!WakeWordSession.shouldCapture(true, VoiceOverlayService.isOpen() || yielding())) {
+                if (!WakeWordSession.shouldCapture(true,
+                        VoiceOverlayService.isOpen() || MicLease.heldByOther(MicLease.WAKE))) {
+                    releaseRecorder();
+                    MicLease.release(MicLease.WAKE);
+                    sleep(200);
+                    continue;
+                }
+                if (!MicLease.acquire(MicLease.WAKE)) {
                     releaseRecorder();
                     sleep(200);
                     continue;
@@ -151,6 +147,7 @@ public final class WakeWordService extends Service {
                 if (!session.onChunk(engine.processAudio(samples))) continue;
                 engine.reset();
                 releaseRecorder();
+                MicLease.release(MicLease.WAKE);
                 if (!openOverlay()) {
                     sleep(2000);
                     continue;
@@ -171,6 +168,7 @@ public final class WakeWordService extends Service {
         } finally {
             running = false;
             releaseRecorder();
+            MicLease.release(MicLease.WAKE);
             if (engine != null) engine.close();
             stopForeground(STOP_FOREGROUND_REMOVE);
             if (failureNotice != null) publishFailure(failureNotice);
@@ -313,6 +311,7 @@ public final class WakeWordService extends Service {
     @Override public void onDestroy() {
         running = false;
         releaseRecorder();
+        MicLease.release(MicLease.WAKE);
         super.onDestroy();
     }
 }

@@ -41,7 +41,9 @@ public class MainActivity extends Activity {
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
-        WakeWordService.yieldMicrophone(120_000L);
+        if (!MicLease.acquire(MicLease.DIAGNOSTICS)) {
+            // The screen still opens. A capture test refuses while another owner holds the mic.
+        }
         palette = AppPalette.forSkin(new OverlayPreferences(this).skin());
         LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
@@ -208,6 +210,12 @@ public class MainActivity extends Activity {
         log("A Bluetooth remote may use vendor GATT instead of appearing in this list.");
     }
 
+    @Override public void onDestroy() {
+        probing = false;
+        MicLease.release(MicLease.DIAGNOSTICS);
+        super.onDestroy();
+    }
+
     private void requestAudio(int source) {
         if (probing) { log("Mic test already running"); return; }
         pendingAudioSource = source;
@@ -232,6 +240,10 @@ public class MainActivity extends Activity {
     }
 
     private void micTest(int source) {
+        if (!MicLease.DIAGNOSTICS.equals(MicLease.holder())) {
+            log("Microphone is in use by another Kellie's Voice listener.");
+            return;
+        }
         probing = true;
         new Thread(() -> {
             AudioRecord rec = null;
