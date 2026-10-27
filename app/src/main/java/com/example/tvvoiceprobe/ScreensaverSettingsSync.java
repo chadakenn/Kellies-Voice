@@ -159,8 +159,11 @@ final class ScreensaverSettingsSync {
     }
 
     private void onNetworkReady() {
-        if (stopped || socket != null) return;
+        if (stopped) return;
+        WebSocket old = socket;
+        socket = null;
         main.removeCallbacks(reconnect);
+        if (old != null) old.cancel();
         ScreensaverWatchStatus.settingsSync("Network is back. Reconnecting");
         connect();
     }

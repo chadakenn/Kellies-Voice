@@ -7,7 +7,9 @@ import android.os.Handler;
 
 /**
  * Fires once when a lost default network comes back. The first callback after
- * registration is ignored, so a healthy connection is not restarted.
+ * registration is ignored, so attaching the watcher does not restart a healthy
+ * socket. Callers must still replace a socket that is open, because that
+ * socket is bound to the network that was just lost.
  */
 final class HaNetworkWatch {
     private final Context context;

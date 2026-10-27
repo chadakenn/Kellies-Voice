@@ -231,11 +231,24 @@ public final class HaAssistClient {
     }
 
     private synchronized void onNetworkReady() {
-        if (disposed || !reconnectEnabled || authenticated || connecting || savedToken == null) return;
+        if (disposed || !reconnectEnabled || savedToken == null) return;
+        // onLost already happened. A socket that has not failed yet is still
+        // bound to the network that just went away.
+        WebSocket stale = socket;
+        if (stale != null || authenticated || connecting) {
+            socket = null;
+            authenticated = false;
+            connecting = false;
+            layoutSubscribed = false;
+            layoutStatesId = -1;
+            layoutEntities.clear();
+            stopForRunEnd();
+        }
         if (reconnectScheduled) {
             reconnectHandler.removeCallbacks(reconnectTask);
             reconnectScheduled = false;
         }
+        if (stale != null) stale.cancel();
         openConnection();
     }
 
@@ -737,6 +750,7 @@ public final class HaAssistClient {
                             double floor = quietRoom ? 0.003 : television ? 0.01 : 0.0045;
                             double times = quietRoom ? 1.9 : television ? 3.0 : 2.4;
                             long needVoice = quietRoom ? 140 : television ? 280 : 180;
+                            long needQuiet = quietRoom ? 1100 : television ? 2000 : 1550;
                             boolean voice = rms > Math.max(floor, backgroundRms * times);
                             if (!heardUtterance) {
                                 voiceMs = voice ? voiceMs + chunkMs : Math.max(0, voiceMs - chunkMs);
@@ -744,7 +758,7 @@ public final class HaAssistClient {
                             } else {
                                 quietMs = voice ? 0 : quietMs + chunkMs;
                             }
-                            if (SpeechPause.fallback(heardUtterance, quietMs, observedMs, noiseMode)) {
+                            if (heardUtterance && quietMs >= needQuiet && observedMs >= 1100) {
                                 events.status("Voice pause detected. Processing your question...");
                                 events.localSilence();
                                 endRequested = true;

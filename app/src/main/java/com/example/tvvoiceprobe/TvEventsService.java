@@ -296,9 +296,13 @@ public final class TvEventsService extends Service {
     }
 
     private void onNetworkReady() {
-        if (stopping || terminalAlertError || socket != null) return;
+        if (stopping || terminalAlertError) return;
+        WebSocket old = socket;
+        socket = null;
         main.removeCallbacks(reconnect);
         nextReconnectAtMs = -1L;
+        clearConnectionTracking();
+        if (old != null) old.cancel();
         connectionNotice("Network is back. Reconnecting to Home Assistant");
         connect();
     }
