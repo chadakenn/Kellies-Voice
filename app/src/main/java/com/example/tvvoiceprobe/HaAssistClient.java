@@ -224,6 +224,7 @@ public final class HaAssistClient {
             layoutSubscribed = false;
             layoutStatesId = -1;
             layoutEntities.clear();
+            layoutWrites.clear(); // Results from a lost socket can never arrive.
             stopForRunEnd();
             if (reconnectEnabled) scheduleReconnect();
         }
@@ -235,14 +236,17 @@ public final class HaAssistClient {
         // onLost already happened. A socket that has not failed yet is still
         // bound to the network that just went away.
         WebSocket stale = socket;
-        if (stale != null || authenticated || connecting) {
+        boolean wasLive = stale != null || authenticated || connecting;
+        if (wasLive) {
             socket = null;
             authenticated = false;
             connecting = false;
             layoutSubscribed = false;
             layoutStatesId = -1;
             layoutEntities.clear();
+            layoutWrites.clear(); // Do not retain unacknowledged old-transport writes.
             stopForRunEnd();
+            events.connectionLost(); // Release overlay mic/listening UI on Wi-Fi recovery.
         }
         if (reconnectScheduled) {
             reconnectHandler.removeCallbacks(reconnectTask);
