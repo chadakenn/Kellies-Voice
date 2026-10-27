@@ -184,7 +184,7 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
             if (wakeTriggered) {
                 // The wake listener is still recording the start of the question.
                 // Stopping it here would drop those words. Capture claims them later.
-                attachAssist();
+                attachAssist(true);
             } else {
                 status("Waiting for the microphone...");
                 micHandoff = WakeWordService.requestHandoff(MicLease.OVERLAY, new WakeWordService.Handoff() {
@@ -195,7 +195,7 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
                                 if (!closing) stopSelf();
                                 return;
                             }
-                            attachAssist();
+                            attachAssist(false);
                         });
                     }
 
@@ -216,13 +216,27 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
         return START_NOT_STICKY;
     }
 
-    private void attachAssist() {
+    private void attachAssist(boolean fromWake) {
         try {
-            assist = new HaAssistClient(this, this);
+            // Only an explicit wake detection may claim this pre-authenticated
+            // socket. Ordinary TALK keeps its existing connection behavior.
+            HaAssistClient warmed = fromWake ? WakeAssistConnection.take(this) : null;
+            assist = warmed == null ? new HaAssistClient(this, this) : warmed;
             assist.setLayoutSync(preferences.haManage());
             HaDiscovery.setWanted(this, preferences.haManage());
             HaDiscovery.acquire(this);
-            assist.connect(connection.url, connection.token);
+            if (warmed == null) {
+                assist.connect(connection.url, connection.token);
+            } else if (assist.isConnected()) {
+                // Authentication may have finished before callbacks were
+                // transferred from the wake service: explicitly consume it.
+                ready();
+            } else if (assist.canReconnect()) {
+                assist.ensureConnected();
+            } else {
+                // A stale/failed warm session must never block a fresh login.
+                assist.connect(connection.url, connection.token);
+            }
             notifyLauncher(ACTION_OVERLAY_READY);
         } catch (Exception ignored) {
             notifyLauncher(ACTION_OVERLAY_FAILED);
@@ -1069,6 +1083,10 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
         connection = null;
         actions.clear();
         stopForeground(STOP_FOREGROUND_REMOVE);
+        // Reconnect for the *next* wake only if the listener is still armed.
+        // The old overlay socket was shut down before this, avoiding a live
+        // STT run or microphone crossing back into the wake service.
+        WakeAssistConnection.preconnect(this);
         super.onDestroy();
     }
 
