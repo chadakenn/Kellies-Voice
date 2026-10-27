@@ -67,6 +67,27 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
     private boolean manualUpdateCheck;
     private boolean transparentShortcut;
     private boolean initialConnectionRequested;
+    /** Only the UI navigation state; no settings or HA data are changed by entering sections. */
+    private SettingsSection activeSettingsSection;
+
+    private enum SettingsSection {
+        HOME("Home Assistant", "Connection, pairing and conversation", "01"),
+        VOICE("Voice & microphone", "Speech pickup, follow-ups and input checks", "02"),
+        OVERLAY("Overlay & appearance", "Voice popup, size, position and shortcuts", "03"),
+        ALERTS("Alerts & cameras", "TV notifications, speech and live video", "04"),
+        SCREEN("Screensaver", "Frigate dashboard, cameras and preview", "05"),
+        SYSTEM("Updates & account", "Versions, installation and saved login", "06");
+
+        final String title;
+        final String detail;
+        final String number;
+
+        SettingsSection(String title, String detail, String number) {
+            this.title = title;
+            this.detail = detail;
+            this.number = number;
+        }
+    }
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     // TV alerts use a different WebSocket from Assist. Refresh the two visible
     // states while this Activity is open, even when no voice event fires.
@@ -221,7 +242,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         toolbar.setOrientation(LinearLayout.HORIZONTAL);
         addButton(toolbar, "TALK", v -> startTalk());
         addButton(toolbar, "STOP", v -> assist.finishTalking());
-        addButton(toolbar, "SETTINGS", v -> showSettingsMenu());
+        addButton(toolbar, "SETTINGS", v -> showSettingsDashboard());
         root.addView(toolbar, new LinearLayout.LayoutParams(-1, -2));
 
         // A short, focus-safe welcome view on ordinary full-screen launches.
@@ -447,6 +468,15 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
      */
     private void showCopperMenu(String heading, String subtitle,
             String[] entries, java.util.function.IntConsumer onSelect) {
+        // Child setting screens return to their category instead of dumping
+        // the user out to the TV conversation screen.
+        showCopperMenu(heading, subtitle, entries, onSelect,
+                activeSettingsSection == null ? null : this::showSettingsMenu);
+    }
+
+    private void showCopperMenu(String heading, String subtitle,
+            String[] entries, java.util.function.IntConsumer onSelect,
+            Runnable onBack) {
         AlertDialog dialog = new AlertDialog.Builder(this).create();
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(false);
@@ -481,8 +511,14 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
             body.addView(option, row);
             if (first == null) first = option;
         }
-        Button done = copperMenuButton("←  Back / Done");
-        done.setOnClickListener(v -> dialog.dismiss());
+        Button done = copperMenuButton(onBack == null ? "←  Close" : "←  Back");
+        done.setOnClickListener(v -> {
+            dialog.dismiss();
+            if (onBack != null) onBack.run();
+        });
+        dialog.setOnCancelListener(ignored -> {
+            if (onBack != null) onBack.run();
+        });
         body.addView(done, new LinearLayout.LayoutParams(-1, -2));
         scroll.addView(body);
         dialog.setView(scroll, 0, 0, 0, 0);
@@ -525,61 +561,242 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         return shape;
     }
 
+
+    /** The settings landing screen: only six clear destinations, not 21 mixed actions. */
+    private void showSettingsDashboard() {
+        activeSettingsSection = null;
+        AppPalette colors = currentPalette();
+        int pad = menuDp(18);
+        AlertDialog dialog = new AlertDialog.Builder(this).create();
+        ScrollView scroll = new ScrollView(this);
+        scroll.setFillViewport(false);
+        scroll.setVerticalScrollBarEnabled(true);
+        LinearLayout body = new LinearLayout(this);
+        body.setOrientation(LinearLayout.VERTICAL);
+        body.setPadding(pad, pad, pad, pad);
+        GradientDrawable background = new GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                new int[] {colors.menuStart, colors.menuEnd});
+        background.setCornerRadius(menuDp(20));
+        background.setStroke(menuDp(1), colors.stroke);
+        body.setBackground(background);
+
+        TextView kicker = label("KELLIE'S VOICE  /  SETTINGS", 14, colors.accent);
+        kicker.setTypeface(null, android.graphics.Typeface.BOLD);
+        body.addView(kicker);
+        TextView title = label("Make Kellie yours.", 29, colors.text);
+        title.setTypeface(null, android.graphics.Typeface.BOLD);
+        title.setPadding(0, menuDp(3), 0, menuDp(2));
+        body.addView(title);
+        TextView description = label("Choose an area below. Press OK to open it, or Back to leave.", 15,
+                colors.muted);
+        description.setPadding(0, 0, 0, menuDp(13));
+        body.addView(description);
+
+        OverlayPreferences prefs = new OverlayPreferences(this);
+        String statusText = "VOICE  " + (settings == null ? "Not configured"
+                : assist != null && assist.isConnected() ? "Connected" : "Saved")
+                + "     •     TV ALERTS  " + (prefs.tvEvents() ? "On" : "Off");
+        TextView indicator = label(statusText, 13, colors.text);
+        indicator.setPadding(menuDp(14), menuDp(10), menuDp(14), menuDp(10));
+        GradientDrawable chip = new GradientDrawable();
+        chip.setColor(colors.menuButton);
+        chip.setCornerRadius(menuDp(10));
+        indicator.setBackground(chip);
+        LinearLayout.LayoutParams infoParams = new LinearLayout.LayoutParams(-1, -2);
+        infoParams.bottomMargin = menuDp(12);
+        body.addView(indicator, infoParams);
+
+        LinearLayout first = null;
+        for (SettingsSection section : SettingsSection.values()) {
+            LinearLayout card = settingsCategoryCard(section, colors);
+            LinearLayout.LayoutParams row = new LinearLayout.LayoutParams(-1, -2);
+            row.bottomMargin = menuDp(8);
+            body.addView(card, row);
+            card.setOnClickListener(v -> {
+                dialog.dismiss();
+                activeSettingsSection = section;
+                showSettingsMenu();
+            });
+            if (first == null) first = card;
+        }
+
+        Button close = copperMenuButton("←  Close settings");
+        close.setOnClickListener(v -> dialog.dismiss());
+        LinearLayout.LayoutParams closeRow = new LinearLayout.LayoutParams(-1, -2);
+        closeRow.topMargin = menuDp(6);
+        body.addView(close, closeRow);
+        scroll.addView(body);
+        dialog.setView(scroll, 0, 0, 0, 0);
+        dialog.show();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+            int width = getResources().getDisplayMetrics().widthPixels;
+            dialog.getWindow().setLayout(Math.min(menuDp(880), width - 2 * pad),
+                    WindowManager.LayoutParams.WRAP_CONTENT);
+        }
+        if (first != null) first.requestFocus();
+    }
+
+    private int menuDp(int value) {
+        return Math.max(1, Math.round(value * getResources().getDisplayMetrics().density));
+    }
+
+    /** One large, focus-visible, two-line target per remote action. */
+    private LinearLayout settingsCategoryCard(SettingsSection section, AppPalette colors) {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.HORIZONTAL);
+        card.setGravity(Gravity.CENTER_VERTICAL);
+        card.setPadding(menuDp(18), menuDp(11), menuDp(14), menuDp(11));
+        card.setFocusable(true);
+        card.setFocusableInTouchMode(true);
+        card.setClickable(true);
+        card.setBackground(menuRowBackground(false));
+
+        TextView number = label(section.number, 15, colors.accent);
+        number.setTypeface(null, android.graphics.Typeface.BOLD);
+        number.setPadding(0, 0, menuDp(19), 0);
+        card.addView(number);
+        LinearLayout copy = new LinearLayout(this);
+        copy.setOrientation(LinearLayout.VERTICAL);
+        TextView name = label(section.title, 20, colors.text);
+        name.setTypeface(null, android.graphics.Typeface.BOLD);
+        copy.addView(name);
+        TextView detail = label(section.detail, 14, colors.muted);
+        copy.addView(detail);
+        card.addView(copy, new LinearLayout.LayoutParams(0, -2, 1));
+        TextView arrow = label("›", 27, colors.accent);
+        arrow.setPadding(menuDp(12), 0, 0, 0);
+        card.addView(arrow);
+        card.setContentDescription(section.title + ". " + section.detail);
+        card.setOnFocusChangeListener((v, focused) -> {
+            card.setBackground(menuRowBackground(focused));
+            name.setTextColor(focused ? colors.accent : colors.text);
+            detail.setTextColor(focused ? colors.text : colors.muted);
+        });
+        return card;
+    }
+
+    /** Called by existing option screens to return to the current section. */
     private void showSettingsMenu() {
-        String[] entries = new String[] {
-                "Home Assistant connection",
-                "Connect / reconnect",
-                "Start new conversation",
-                "Hardware microphone diagnostics",
-                "Microphone sensitivity: " + OverlayPreferences.noiseLabel(
-                        new OverlayPreferences(this).noise()),
-                "Follow-up listening: " + followUpLabel(),
-                "Mic input detection: " + (new OverlayPreferences(this).microphoneDisabled()
-                        ? "Microphone DISABLED" : new OverlayPreferences(this).allowUnverifiedMic()
-                        ? "Override ON" : "Safe checks ON"),
-                "Open floating voice overlay",
-                "Overlay appearance & position",
-                "Home Assistant layout: " + (new OverlayPreferences(this).haManage() ? "ON" : "OFF"),
-                "TV announcements & cameras: " + (new OverlayPreferences(this).tvEvents() ? "ON" : "OFF"),
-                "Spoken announcements: " + (new OverlayPreferences(this).spokenAnnouncements() ? "ON" : "OFF"),
-                "Announcement voice volume: " + new OverlayPreferences(this).spokenAnnouncementVolume() + "%",
-                "Test spoken announcements locally",
-                "TV alert status",
-                "Live camera: " + LiveCameraMode.label(new OverlayPreferences(this).cameraMode()),
-                "Check for app updates: " + updateChannelLabel(),
-                "Install downloaded update",
-                "Frigate screensaver: " + (new OverlayPreferences(this).screensaverDashboard() ? "ON" : "OFF"),
-                "Preview Frigate dashboard",
-                "Forget saved connection"
-        };
-        showCopperMenu("KELLIE'S VOICE  ✦  SETTINGS",
-                "Warm, simple controls for your TV. Choose with the remote.", entries,
-                which -> {
-                    switch (which) {
-                        case 0: configure(); break;
-                        case 1: connect(); break;
-                        case 2: newConversation(); break;
-                        case 3: startActivity(new Intent(this, MainActivity.class)); break;
-                        case 4: chooseMicSensitivity(); break;
-                        case 5: chooseFollowUp(); break;
-                        case 6: chooseMicrophoneDetection(); break;
-                        case 7: launchOverlay(); break;
-                        case 8: showOverlayPreferences(); break;
-                        case 9: chooseHaLayout(); break;
-                        case 10: chooseTvNotifications(); break;
-                        case 11: toggleSpokenAnnouncements(); break;
-                        case 12: chooseAnnouncementVolume(); break;
-                        case 13: testSpokenAnnouncements(); break;
-                        case 14: showTvAlertStatus(); break;
-                        case 15: chooseCameraMode(); break;
-                        case 16: chooseUpdates(); break;
-                        case 17: promptInstallUpdate(); break;
-                        case 18: showScreensaverSettings(); break;
-                        case 19: startActivity(new Intent(this, ScreensaverPreviewActivity.class)); break;
-                        case 20: confirmForget(); break;
+        if (activeSettingsSection == null) {
+            showSettingsDashboard();
+        } else {
+            showSettingsSection(activeSettingsSection);
+        }
+    }
+
+    private void showSettingsSection(SettingsSection section) {
+        OverlayPreferences prefs = new OverlayPreferences(this);
+        String[] entries;
+        switch (section) {
+            case HOME:
+                entries = new String[] {
+                        "Connect / reconnect Home Assistant",
+                        "Edit Home Assistant address & token",
+                        "Start new conversation",
+                        "Manage TV layout from Home Assistant: " + (prefs.haManage() ? "ON" : "OFF")
+                };
+                break;
+            case VOICE:
+                entries = new String[] {
+                        "Microphone sensitivity: " + OverlayPreferences.noiseLabel(prefs.noise()),
+                        "Follow-up listening: " + followUpLabel(),
+                        "Microphone input checks: " + (prefs.microphoneDisabled()
+                                ? "DISABLED" : prefs.allowUnverifiedMic() ? "Override ON" : "Safe"),
+                        "Test microphone hardware"
+                };
+                break;
+            case OVERLAY:
+                entries = new String[] {
+                        "Open floating voice overlay",
+                        "Appearance, position and controls"
+                };
+                break;
+            case ALERTS:
+                entries = new String[] {
+                        "TV notifications & camera popups: " + (prefs.tvEvents() ? "ON" : "OFF"),
+                        "Spoken announcements: " + (prefs.spokenAnnouncements() ? "ON" : "OFF"),
+                        "Announcement voice volume: " + prefs.spokenAnnouncementVolume() + "%",
+                        "Test a spoken announcement",
+                        "TV alert status & connection",
+                        "Live camera decoder: " + LiveCameraMode.label(prefs.cameraMode())
+                };
+                break;
+            case SCREEN:
+                entries = new String[] {
+                        "Frigate screensaver: " + (prefs.screensaverDashboard() ? "ON" : "OFF"),
+                        "Preview screensaver"
+                };
+                break;
+            case SYSTEM:
+                entries = new String[] {
+                        "Update channel: " + updateChannelLabel(),
+                        "Install downloaded update",
+                        "Forget saved Home Assistant connection"
+                };
+                break;
+            default:
+                return;
+        }
+        showCopperMenu("SETTINGS  /  " + section.title.toUpperCase(java.util.Locale.ROOT),
+                section.detail + ". Choose an option below. Back returns to all settings.",
+                entries, which -> {
+                    switch (section) {
+                        case HOME:
+                            switch (which) {
+                                case 0: connect(); break;
+                                case 1: configure(); break;
+                                case 2: newConversation(); break;
+                                case 3: chooseHaLayout(); break;
+                                default: break;
+                            }
+                            break;
+                        case VOICE:
+                            switch (which) {
+                                case 0: chooseMicSensitivity(); break;
+                                case 1: chooseFollowUp(); break;
+                                case 2: chooseMicrophoneDetection(); break;
+                                case 3: startActivity(new Intent(this, MainActivity.class)); break;
+                                default: break;
+                            }
+                            break;
+                        case OVERLAY:
+                            switch (which) {
+                                case 0: launchOverlay(); break;
+                                case 1: showOverlayPreferences(); break;
+                                default: break;
+                            }
+                            break;
+                        case ALERTS:
+                            switch (which) {
+                                case 0: chooseTvNotifications(); break;
+                                case 1: toggleSpokenAnnouncements(); break;
+                                case 2: chooseAnnouncementVolume(); break;
+                                case 3: testSpokenAnnouncements(); break;
+                                case 4: showTvAlertStatus(); break;
+                                case 5: chooseCameraMode(); break;
+                                default: break;
+                            }
+                            break;
+                        case SCREEN:
+                            switch (which) {
+                                case 0: showScreensaverSettings(); break;
+                                case 1: startActivity(new Intent(this, ScreensaverPreviewActivity.class)); break;
+                                default: break;
+                            }
+                            break;
+                        case SYSTEM:
+                            switch (which) {
+                                case 0: chooseUpdates(); break;
+                                case 1: promptInstallUpdate(); break;
+                                case 2: confirmForget(); break;
+                                default: break;
+                            }
+                            break;
                         default: break;
                     }
-                });
+                }, this::showSettingsDashboard);
     }
 
     private void chooseAnnouncementVolume() {
