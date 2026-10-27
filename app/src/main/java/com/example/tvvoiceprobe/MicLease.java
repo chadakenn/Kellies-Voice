@@ -25,6 +25,9 @@ public final class MicLease {
         // may have acquired WAKE and be about to create its AudioRecord.
         // It must explicitly release/hand off, even before startRecording().
         if (!WAKE.equals(owner) && (WAKE.equals(holder) || wakeRecorderOpen)) {
+            // One pending handoff at a time. Never silently overwrite TALK
+            // with a later diagnostics/overlay caller.
+            if (waiting != null && !waiting.equals(owner)) return false;
             waiting = owner;
             MicLease.class.notifyAll();
             return false;
@@ -36,10 +39,13 @@ public final class MicLease {
     }
 
     /** Wake calls this after AudioRecord.startRecording has succeeded. */
-    public static synchronized void wakeRecorderOpened() {
-        if (holder != null && !WAKE.equals(holder)) return;
-        holder = WAKE;
+    public static synchronized boolean wakeRecorderOpened() {
+        // Wake must have the lease BEFORE opening any AudioRecord.
+        // A competing owner may win during a cancellation: never claim
+        // the recorder is protected in that case.
+        if (!WAKE.equals(holder) || wakeRecorderOpen) return false;
         wakeRecorderOpen = true;
+        return true;
     }
 
     public static synchronized boolean wakeShouldStop() {
