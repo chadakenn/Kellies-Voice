@@ -177,7 +177,10 @@ public final class WakeWordService extends Service {
         } catch (RuntimeException rejected) {
             android.util.Log.w("KelliesWake", "Foreground microphone start rejected: "
                     + rejected.getClass().getSimpleName());
-            new OverlayPreferences(this).setWakeWord(false);
+            // Android may reject an automatic foreground resume. Keep the
+            // explicit saved ON preference so a visible launch can try again.
+            if (ACTION_START.equals(action)) new OverlayPreferences(this).setWakeWord(false);
+            else WakeWordStartup.showResumeReminder(this);
             running = false;
             WakeAssistConnection.stop();
             releaseRecorder();
@@ -192,6 +195,7 @@ public final class WakeWordService extends Service {
             worker = new Thread(this::listen, "kellie-wake-word");
             worker.start();
         }
+        WakeWordStartup.clearReminder(this);
         // This WebSocket is authenticated now, before the user says Okay Nabu.
         // No STT run or microphone is opened by the warm connection.
         WakeAssistConnection.preconnect(this);
