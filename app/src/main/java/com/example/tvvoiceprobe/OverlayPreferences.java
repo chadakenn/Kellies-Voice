@@ -257,7 +257,7 @@ public final class OverlayPreferences {
 
     public void setWakeWord(boolean enabled) {
         preferences.edit().putBoolean(KEY_WAKE, enabled)
-                .putBoolean(KEY_WAKE_RESTART, enabled).apply();
+                .putBoolean(KEY_WAKE_RESTART, enabled).commit();
     }
 
     /** Percent reduction to STREAM_MUSIC only after Okay Nabu. Off by default. */
