@@ -1,5 +1,16 @@
 # Kellie's Voice development and testing lane
 
+## v0.16.12-dev.11 / build 51: correct in-app development release selection
+
+**Development-channel bug verified against the live GitHub release listing:** GitHub lists `v0.16.12-dev.9` ahead of `v0.16.12-dev.10`, even though dev.10 is the newer build. Previous Android code picked the **first** valid development prerelease rather than comparing versions, so an opt-in tester could be offered an older APK.
+
+The TV updater now scans up to 20 public releases and selects the **highest numeric major.minor.patch-dev.N tag with valid trusted `app-release.apk` and `update.json` assets**. It rejects malformed, overflowed, draft, missing-asset or untrusted URL candidates, and continues to verify checksum/versionCode/package/signature before offering Android's user-approved installer. Stable still checks only `releases/latest` and remains the default; opt-in development checks remain manual. No authentication tokens, Home Assistant actions, camera streams or TV alert behavior changed.
+
+Android build 51 is higher than published stable v0.16.12 build 50 so testers can update in place from either stable or dev.10. HACS manifest is versioned dev.11 to match the signed prerelease, but its integration behavior is unchanged. Automated tests reproduce the live dev.9/dev.10 feed order and cover unsafe higher candidates.
+
+**Owner hardware gate:** With a signed dev.11 APK, use Settings → Check for app updates → Development (opt in) and manually check. Verify the highest published prerelease tag is selected; then switch to Stable and confirm the stable feed is still the default and does not offer a lower version. Neither a new beta nor a stable release should auto-install. Keep GitHub issue #92 open until TV QA.
+
+
 ## v0.16.12-dev.10 / build 49: TV remote Back and footer focus repair
 
 Development-only follow-up to owner field test of dev.9. **Doorbell full-screen with audible camera sound passed on an actual onn TV**, but the physical **Back** key did nothing while a footer button had focus. The onscreen "Back to cameras" button worked yet had no visible focus style, making it impossible to distinguish from Close.
