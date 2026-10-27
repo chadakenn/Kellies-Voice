@@ -283,7 +283,7 @@ public final class HaAssistClient {
         }
         if ("result".equals(type)) {
             int id = msg.optInt("id", -1);
-            if (id == pipelineListId) {
+            if (pipelineListId >= 0 && id == pipelineListId) {
                 pipelineListId = -1;
                 if (!msg.optBoolean("success", false)) {
                     events.pipelineListFailed();
