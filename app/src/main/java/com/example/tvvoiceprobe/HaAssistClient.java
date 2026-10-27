@@ -76,6 +76,9 @@ public final class HaAssistClient {
     private volatile String roomNoise = OverlayPreferences.NOISE_NORMAL;
     private final AtomicBoolean recording = new AtomicBoolean(false);
     private final AtomicBoolean ended = new AtomicBoolean(false);
+    // One explicit wake-triggered Assist run may claim the temporary post-wake
+    // PCM. Ordinary TALK, follow-up, and full-screen sessions never consume it.
+    private final AtomicBoolean wakeLeadForNextRun = new AtomicBoolean(false);
     private volatile String conversationId;
     private volatile long conversationTouchedMs;
     private volatile boolean discardConversationUpdate;
@@ -466,6 +469,11 @@ public final class HaAssistClient {
                 ? mode : OverlayPreferences.NOISE_NORMAL;
     }
 
+    /** One-shot opt-in: only a wake-detection overlay may consume the short wake PCM. */
+    public void setWakeLeadForNextRun(boolean fromWake) {
+        wakeLeadForNextRun.set(fromWake);
+    }
+
     public synchronized boolean pipelineIdle() {
         return currentRunId < 0;
     }
@@ -632,7 +640,8 @@ public final class HaAssistClient {
                 }
                 // Audio after Okay Nabu, recorded by the wake listener and
                 // released before this recorder opens. Empty for a normal TALK.
-                byte[] wakeLead = WakeWordService.claimCommandLead(1500L);
+                byte[] wakeLead = wakeLeadForNextRun.getAndSet(false)
+                        ? WakeWordService.claimCommandLead(1500L) : new byte[0];
                 // claimOpen blocks. The run gate stays free so STOP can cancel.
                 OpenCapture open = handoff == null ? null : handoff.claimOpen();
                 if (!runs.arm(runId, handlerAtStart, () -> recording.set(true))) {
