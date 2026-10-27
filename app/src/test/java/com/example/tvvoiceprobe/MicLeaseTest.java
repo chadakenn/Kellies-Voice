@@ -52,6 +52,23 @@ public class MicLeaseTest {
         assertFalse(MicLease.acquire(MicLease.WAKE));
     }
 
+    @Test public void secondWaiterCannotReplaceFirstRequestedCapture() {
+        assertTrue(MicLease.acquire(MicLease.WAKE));
+        assertTrue(MicLease.wakeRecorderOpened());
+        assertFalse(MicLease.acquire(MicLease.TALK));
+        assertTrue(MicLease.isWaiting(MicLease.TALK));
+        assertFalse(MicLease.acquire(MicLease.DIAGNOSTICS));
+        assertFalse(MicLease.isWaiting(MicLease.DIAGNOSTICS));
+        MicLease.wakeRecorderReleased();
+        assertEquals(MicLease.TALK, MicLease.holder());
+    }
+
+    @Test public void wakeMustOwnLeaseBeforePublishingRecorderOpen() {
+        assertTrue(MicLease.acquire(MicLease.TALK));
+        assertFalse(MicLease.wakeRecorderOpened());
+        assertEquals(MicLease.TALK, MicLease.holder());
+    }
+
     @Test public void ownersDoNotStealFromEachOther() {
         assertTrue(MicLease.acquire(MicLease.OVERLAY));
         assertFalse(MicLease.acquire(MicLease.TALK));
@@ -64,7 +81,8 @@ public class MicLeaseTest {
     }
 
     @Test public void releaseWithoutAnOpenRecorderDoesNotClearAnotherOwner() {
-        MicLease.wakeRecorderOpened();
+        assertTrue(MicLease.acquire(MicLease.WAKE));
+        assertTrue(MicLease.wakeRecorderOpened());
         assertFalse(MicLease.acquire(MicLease.OVERLAY));
         MicLease.wakeRecorderReleased();
         assertEquals(MicLease.OVERLAY, MicLease.holder());
