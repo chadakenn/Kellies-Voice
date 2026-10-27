@@ -67,16 +67,29 @@ public final class WakeWordService extends Service {
             running = false;
             releaseRecorder();
             MicLease.release(MicLease.WAKE);
-            stopSelf();
+            // Timely stop of a rejected explicit start. Promoting a microphone
+            // FGS without RECORD_AUDIO is forbidden on modern Android.
+            stopSelfResult(startId);
+            return START_NOT_STICKY;
+        }
+        Notification notice = buildNotice();
+        try {
+            if (Build.VERSION.SDK_INT >= 29) {
+                startForeground(NOTICE_ID, notice, ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE);
+            } else {
+                startForeground(NOTICE_ID, notice);
+            }
+        } catch (RuntimeException rejected) {
+            android.util.Log.w("KelliesWake", "Foreground microphone start rejected: "
+                    + rejected.getClass().getSimpleName());
+            new OverlayPreferences(this).setWakeWord(false);
+            running = false;
+            releaseRecorder();
+            MicLease.release(MicLease.WAKE);
+            stopSelfResult(startId);
             return START_NOT_STICKY;
         }
         current = this;
-        Notification notice = buildNotice();
-        if (Build.VERSION.SDK_INT >= 29) {
-            startForeground(NOTICE_ID, notice, ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE);
-        } else {
-            startForeground(NOTICE_ID, notice);
-        }
         if (worker == null || !worker.isAlive()) {
             running = true;
             worker = new Thread(this::listen, "kellie-wake-word");
@@ -95,7 +108,8 @@ public final class WakeWordService extends Service {
         // Do not allow a wake listener without an HA login. The token remains
         // inside CredentialStore; no plaintext credentials enter wake logging.
         try {
-            return new CredentialStore(this).load() != null;
+            return new CredentialStore(this).load() != null
+                    && MicrophoneRouting.preflight(this, prefs.allowUnverifiedMic()) == null;
         } catch (Exception ignored) {
             return false;
         }
@@ -228,9 +242,16 @@ public final class WakeWordService extends Service {
             int minimum = AudioRecord.getMinBufferSize(SAMPLE_RATE,
                     AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);
             if (minimum <= 0) return false;
-            AudioRecord created = new AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION,
-                    SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT,
-                    Math.max(minimum, CHUNK * 4));
+            AudioRecord created;
+            try {
+                // getMinBufferSize reports BYTES. Keep about 500ms of PCM16 mono
+                // available while CPU inference runs (16k samples/s * 2 bytes / 2).
+                created = new AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION,
+                        SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT,
+                        Math.max(minimum, SAMPLE_RATE));
+            } catch (RuntimeException unsupported) {
+                return false;
+            }
             if (created.getState() != AudioRecord.STATE_INITIALIZED) {
                 created.release();
                 return false;
@@ -242,6 +263,12 @@ public final class WakeWordService extends Service {
                 return false;
             }
             if (!running || created.getRecordingState() != AudioRecord.RECORDSTATE_RECORDING) {
+                created.release();
+                return false;
+            }
+            if (MicrophoneRouting.unusableActualRoute(created,
+                    new OverlayPreferences(this).allowUnverifiedMic())) {
+                created.stop();
                 created.release();
                 return false;
             }
