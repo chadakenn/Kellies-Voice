@@ -20,6 +20,11 @@ jobs:
   signed-dev:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+      artifact-metadata: write
     steps:
       - name: Check out dev source
         uses: actions/checkout@v4
@@ -77,6 +82,11 @@ jobs:
         run: |
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose app/build/outputs/apk/release/app-release.apk
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging app/build/outputs/apk/release/app-release.apk | head -n 4
+      - name: Attest signed APK build provenance
+        uses: actions/attest@v4
+        with:
+          subject-path: app/build/outputs/apk/release/app-release.apk
+
       - name: Upload dev APK, not a public release
         uses: actions/upload-artifact@v4
         with:
