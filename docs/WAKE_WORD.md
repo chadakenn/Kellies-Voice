@@ -24,7 +24,8 @@ The switch is **off** by default.
 
 - Settings → **Wake word** → **Turn wake word ON** starts it.
 - The same menu turns it off and releases the microphone.
-- A reboot, an app update, or the TV-alert receiver does **not** start it.
+- The **ON preference is saved** through reboots and app updates after an explicit enable in this updated build. Android 14+ **does not allow the boot receiver to start a microphone foreground service**; instead, boot/update posts a *tap-to-open* reminder where TV notifications permit. When Kellie's Voice becomes visible, it automatically resumes the opted-in listener without making you toggle it ON again. This is not guaranteed zero-touch listening immediately at the Android TV home screen.
+- If an earlier development build had wake ON under the old no-restart promise, turn it ON or Resume once in this new build to explicitly approve the new restart behavior; pre-existing ON preferences are not silently upgraded. The new consent is cleared by Turn OFF, manual microphone disable, forgetting the Home Assistant login, or failure disarming wake.
 - Android's microphone privacy indicator stays on the whole time the listener is armed.
 - The listener lets go of the microphone before the voice overlay records.
 - A recognized **Okay Nabu** is itself an explicit request to begin listening once. The normal voice overlay starts Assist capture **even when the separate Auto-listen setting is OFF**, and stops on detected speech silence. It does **not** toggle Auto-listen persistently.
@@ -49,7 +50,7 @@ The capture rate is 16 kHz. If this TV cannot open a 16 kHz microphone, the list
 - **Disable microphone capture**, forgetting the Home Assistant login, or losing microphone or overlay permission turns the listener off.
 - Full-screen TALK and diagnostics ask for the microphone without freezing the screen. They do not open a recorder until the wake recorder has been released. Closing the screen cancels a handoff that has not started. The overlay drops its lease after Assist shutdown.
 - Hey Google is a separate listener. This app cannot turn it off. Both can contend for the microphone. The remote microphone button still belongs to Google Assistant unless you change the default assistant yourself.
-- The listener is `START_NOT_STICKY`. Settings shows **OFF**, **LISTENING**, or **STOPPED**. STOPPED means the switch was on but Android ended the service. **Resume wake word listener** starts it again. A reboot does not.
+- The listener is `START_NOT_STICKY`. Settings shows **OFF**, **LISTENING**, or **STOPPED**. STOPPED means the saved choice is ON but Android is not currently recording. Reopening the app tries to resume after reboot, using a visible Activity (per Android 14+ microphone policy). A reboot **does not start background recording by itself**. The notification is a reminder, not proof the listener is running. Explicit Turn OFF is always respected.
 - Starting the overlay still uses `startForegroundService` from the wake service. The phone video shows that call succeeding once, over the apps screen. That does not prove every Android 12 or 14 build will allow it.
 - The native library is linked for 16 KB memory pages. That alignment has not been checked on an Android 15 device.
 
@@ -63,7 +64,8 @@ Install the GitHub Actions **debug** APK from this pull request. Its package is 
 4. Say the question immediately after the wake phrase. The owner reported a successful no-pause office-lights command on the onn 4K Pro using the October 27 build, but repeatability still needs checking.
    With TV audio playing, test the same command with wake audio ducking **OFF**, then **50%**, and verify audible reduction after detection and reliable restoration when the overlay closes.
 5. Press TALK while it is LISTENING, then run one microphone diagnostic. Only one capture should be live, and the listener should return to LISTENING afterward.
-6. Force-stop the debug app. The row should say **STOPPED**. Resume it from the menu. Reboot the TV and confirm it stays off.
+6. Turn the wake word OFF; reboot; confirm it remains OFF and says nothing when you say the phrase. Then explicitly turn it ON and confirm **LISTENING**. Reboot while ON; confirm the saved ON choice persists and the boot reminder (if notifications are available) opens Kellie's Voice; the listener should automatically resume **after that foreground launch**. Verify the phrase now opens the overlay. Do not expect microphone recording to start directly from BOOT_COMPLETED on Android 14+.
+8. With the wake word ON, force-stop the debug app. It is not running while force-stopped; open the app again and check whether Android allows foreground restart.
 7. Turn **Disable microphone capture** on and confirm the listener stops. Turn the wake word off when you are done.
 
 A successful wake is a nonempty transcript of the question plus a spoken answer. An overlay with an empty transcript, or a transcript of silence, is a failed capture. Do not treat a green unit test as that result.
