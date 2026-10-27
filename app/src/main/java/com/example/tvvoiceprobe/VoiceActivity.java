@@ -1391,6 +1391,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         if (player != null) { player.release(); player = null; }
         if (speechFocus != null) speechFocus.release();
         if (assist != null) assist.shutdown();
+        if (updater != null) updater.close();
         super.onDestroy();
     }
 
