@@ -1072,6 +1072,9 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
         MicLease.release(MicLease.OVERLAY);
         if (player != null) { player.release(); player = null; }
         if (speechFocus != null) speechFocus.release();
+        // Restore the previous TV media level after this wake-triggered turn.
+        // No change is made if the user adjusted volume while Kellie spoke.
+        WakeAudioDucking.end(this);
         if (windowManager != null && panel != null) {
             try { windowManager.removeViewImmediate(panel); }
             catch (Exception ignored) { }
