@@ -28,9 +28,6 @@ Do **not** hand out `app-debug.apk` files from temporary GitHub runners. The ori
 | --- | --- |
 | `app/src/main/java/com/example/tvvoiceprobe/VoiceActivity.java` | Main TV D-pad TALK/STOP/SETTINGS screen, HA config, transcript, answer and Android TTS playback |
 | `app/src/main/java/com/example/tvvoiceprobe/HaAssistClient.java` | HA WebSocket authentication, `assist_pipeline/run` event handling, binary PCM framing, conversation state |
-| `app/src/main/java/com/example/tvvoiceprobe/EnergyVad.java` | Auto-stop energy detector. Assist `stt-vad-end` remains a separate server signal |
-
-`HaAssistClient`, `VoiceActivity` and `TvEventsService` are still large. They share the socket, the Assist run and the on-screen views, so moving those methods into new files in one pass would be a behavior change even where the text looks the same. Split one of those seams per pull request, and run `./gradlew :app:testDebugUnitTest` on that move. Release shrinking (`minifyEnabled`) stays off until a shrunk signed APK is installed on the onn. Dependabot opens the dependency updates; do not take a `targetSdk` bump without that same TV pass.
 | `app/src/main/java/com/example/tvvoiceprobe/CredentialStore.java` | Device-local encrypted HA credentials via Android Keystore |
 | `app/src/main/java/com/example/tvvoiceprobe/MainActivity.java` | Legacy mic/button and Android input diagnostics, opened from settings |
 | `app/src/main/java/com/example/tvvoiceprobe/VoiceOverlayService.java` | Explicit opt-in floating panel over other TV apps, microphone-typed foreground service, D-pad TALK / STOP / CLOSE, HA TTS playback |
