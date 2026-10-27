@@ -1,6 +1,6 @@
 # Developer guide and release checklist
 
-This is an experimental **native Android TV** project targeting the **onn 4K Pro**. Code is Java, app module `app/`; the repository does not currently include a Gradle wrapper, so GitHub Actions supplies Gradle 8.9.
+This is an experimental **native Android TV** project targeting the **onn 4K Pro**. Code is Java, app module `app/`. Local builds use the committed Gradle 8.9 wrapper (`./gradlew`), which is the same Gradle GitHub Actions uses.
 
 ## Development branch and test builds
 
@@ -15,7 +15,7 @@ Do not push untested code to `main`.
 
 - JDK 17
 - Android SDK platform 35 + build tools 35.0.0
-- Gradle 8.9, Android Gradle Plugin 8.7.3
+- Gradle 8.9 via `./gradlew` (Android Gradle Plugin 8.7.3)
 - Working dependency downloads for `com.squareup.okhttp3:okhttp:4.12.0`
 
 Use GitHub Actions **Build Kellie's Voice Signed APK** for APKs to install on a TV. The workflow is triggered by changes to app/build config files or manually via workflow_dispatch; **README and docs-only changes do not launch an Android build**.

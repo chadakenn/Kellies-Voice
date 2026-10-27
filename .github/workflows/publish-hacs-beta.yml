@@ -67,14 +67,12 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.9'
 
       - name: Run Android and Home Assistant tests
         shell: bash
         run: |
           set -euo pipefail
-          gradle --no-daemon :app:assembleDebug :app:testDebugUnitTest
+          ./gradlew --no-daemon :app:assembleDebug :app:testDebugUnitTest
           python3 -m compileall -q custom_components/kellies_voice
           python3 -m unittest discover -s tests -p 'test_*.py' -v
 
@@ -97,7 +95,7 @@ jobs:
       - name: Build signed prerelease APK
         env:
           TV_SIGNING_PASSWORD: ${{ secrets.TV_SIGNING_PASSWORD }}
-        run: gradle --no-daemon :app:assembleRelease
+        run: ./gradlew --no-daemon :app:assembleRelease
 
       - name: Verify APK signature
         run: |

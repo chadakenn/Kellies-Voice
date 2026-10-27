@@ -10,6 +10,8 @@ on:
       - 'build.gradle'
       - 'gradle.properties'
       - 'settings.gradle'
+      - 'gradlew'
+      - 'gradle/wrapper/**'
       - '.github/workflows/dev-apk.yml'
   workflow_dispatch:
 
@@ -47,11 +49,9 @@ jobs:
         run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.9'
       - name: Run Android and HA tests
         run: |
-          gradle --no-daemon :app:assembleDebug :app:testDebugUnitTest
+          ./gradlew --no-daemon :app:assembleDebug :app:testDebugUnitTest
           python3 -m compileall -q custom_components/kellies_voice
           python3 -m unittest discover -s tests -p 'test_*.py' -v
       - name: Restore the existing private signing key
@@ -71,7 +71,7 @@ jobs:
       - name: Build development APK with production signing identity
         env:
           TV_SIGNING_PASSWORD: ${{ secrets.TV_SIGNING_PASSWORD }}
-        run: gradle --no-daemon :app:assembleRelease
+        run: ./gradlew --no-daemon :app:assembleRelease
       - name: Verify APK signature and version
         shell: bash
         run: |

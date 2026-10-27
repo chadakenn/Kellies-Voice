@@ -15,6 +15,8 @@ on:
       - 'build.gradle'
       - 'gradle.properties'
       - 'settings.gradle'
+      - 'gradlew'
+      - 'gradle/wrapper/**'
       - '.github/workflows/build-apk.yml'
 
 permissions:
@@ -40,8 +42,6 @@ jobs:
         run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.9'
 
       # Android updates MUST use the exact same keystore on every build.
       # Do not publish a new disposable debug APK to users.
@@ -63,14 +63,14 @@ jobs:
       - name: Test Android and Home Assistant before public release
         if: (github.event_name == 'workflow_dispatch' && inputs.publish_release == true) || (github.event_name == 'push' && contains(github.event.head_commit.message, '[publish-release]'))
         run: |
-          gradle --no-daemon :app:assembleDebug :app:testDebugUnitTest
+          ./gradlew --no-daemon :app:assembleDebug :app:testDebugUnitTest
           python3 -m compileall -q custom_components/kellies_voice
           python3 -m unittest discover -s tests -p 'test_*.py' -v
 
       - name: Build signed release APK
         env:
           TV_SIGNING_PASSWORD: ${{ secrets.TV_SIGNING_PASSWORD }}
-        run: gradle --no-daemon :app:assembleRelease
+        run: ./gradlew --no-daemon :app:assembleRelease
 
       - name: Verify APK signature
         run: |
