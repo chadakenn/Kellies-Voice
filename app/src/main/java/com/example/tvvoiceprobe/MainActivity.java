@@ -41,6 +41,7 @@ public class MainActivity extends Activity {
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
+        WakeWordService.yieldMicrophone(120_000L);
         palette = AppPalette.forSkin(new OverlayPreferences(this).skin());
         LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);

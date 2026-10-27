@@ -37,6 +37,7 @@ EXPECTED = [
     ("Install downloaded update", "promptInstallUpdate"),
     ("Frigate screensaver:", "showScreensaverSettings"),
     ("Preview Frigate dashboard", "startActivity"),
+    ("Wake word:", "chooseWakeWord"),
     ("Forget saved connection", "confirmForget"),
 ]
 

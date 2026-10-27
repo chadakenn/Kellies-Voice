@@ -561,10 +561,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                         case 0: configure(); break;
                         case 1: connect(); break;
                         case 2: newConversation(); break;
-                        case 3:
-                            WakeWordService.yieldMicrophone(120_000L);
-                            startActivity(new Intent(this, MainActivity.class));
-                            break;
+                        case 3: startActivity(new Intent(this, MainActivity.class)); break;
                         case 4: chooseMicSensitivity(); break;
                         case 5: chooseFollowUp(); break;
                         case 6: chooseMicrophoneDetection(); break;
