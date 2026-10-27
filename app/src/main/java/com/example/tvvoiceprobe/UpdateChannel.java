@@ -161,6 +161,7 @@ public final class UpdateChannel {
                 if (flag(release, "draft") || !flag(release, "prerelease")) continue;
                 String tag = text(release, "tag_name");
                 if (!devTag(tag)) continue;
+                compareDevTags(tag, tag); // Reject unparseable numeric components even if first.
                 if (newest == null || compareDevTags(tag, newest.tag) > 0) {
                     // Validate exact trusted URLs, size and both required assets
                     // BEFORE this candidate can replace the previous valid one.
