@@ -47,6 +47,8 @@ public final class WakeWordService extends Service {
     @Override public int onStartCommand(Intent intent, int flags, int startId) {
         String action = intent == null ? null : intent.getAction();
         if (ACTION_STOP.equals(action) || !allowed(action)) {
+            // Don't leave Settings claiming ON after a denied explicit start.
+            if (ACTION_START.equals(action)) new OverlayPreferences(this).setWakeWord(false);
             running = false;
             releaseRecorder();
             stopSelf();
