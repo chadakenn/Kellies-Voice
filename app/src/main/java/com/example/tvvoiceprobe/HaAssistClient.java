@@ -14,7 +14,9 @@ import android.os.Looper;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -40,6 +42,9 @@ public final class HaAssistClient {
         // Optional typed lifecycle callbacks; existing full-screen client
         // continues to work without implementing these methods.
         default void ready() { }
+        /** Result of a user-initiated, read-only HA pipeline listing. */
+        default void pipelines(List<AssistPipelineChoice.Option> available) { }
+        default void pipelineListFailed() { }
         default void listening() { }
         default void processing() { }
         default void haLayout(String setting) { }
@@ -81,6 +86,7 @@ public final class HaAssistClient {
     private volatile boolean layoutSync;
     private volatile boolean layoutSubscribed;
     private volatile int layoutStatesId = -1;
+    private volatile int pipelineListId = -1;
     private final Map<String, String> layoutEntities = new HashMap<>();
     private volatile boolean disposed = true;
 
@@ -217,6 +223,7 @@ public final class HaAssistClient {
             connecting = false;
             layoutSubscribed = false;
             layoutStatesId = -1;
+            pipelineListId = -1;
             layoutEntities.clear();
             stopForRunEnd();
             if (reconnectEnabled) scheduleReconnect();
@@ -276,6 +283,31 @@ public final class HaAssistClient {
         }
         if ("result".equals(type)) {
             int id = msg.optInt("id", -1);
+            if (id == pipelineListId) {
+                pipelineListId = -1;
+                if (!msg.optBoolean("success", false)) {
+                    events.pipelineListFailed();
+                } else {
+                    JSONObject result = msg.optJSONObject("result");
+                    JSONArray entries = result == null ? msg.optJSONArray("result")
+                            : result.optJSONArray("pipelines");
+                    List<AssistPipelineChoice.Option> choices = new ArrayList<>();
+                    if (entries != null) {
+                        for (int i = 0; i < entries.length() && i < 100; i++) {
+                            JSONObject item = entries.optJSONObject(i);
+                            if (item == null) continue;
+                            String pipelineId = item.optString("id", "");
+                            if (!pipelineId.equals(AssistPipelineChoice.normalize(pipelineId))
+                                    || pipelineId.isEmpty()) continue;
+                            choices.add(new AssistPipelineChoice.Option(pipelineId,
+                                    item.optString("name", "")));
+                        }
+                    }
+                    if (entries == null) events.pipelineListFailed();
+                    else events.pipelines(choices);
+                }
+                return;
+            }
             if (id == layoutStatesId) {
                 layoutStatesId = -1;
                 if (msg.optBoolean("success", false)) {
@@ -428,6 +460,26 @@ public final class HaAssistClient {
         return currentRunId;
     }
 
+    /** Query the authenticated HA server; never alter HA's preferred pipeline. */
+    public synchronized boolean requestPipelines() {
+        if (!authenticated || socket == null || disposed) return false;
+        if (pipelineListId >= 0) return true;
+        try {
+            int id = commandId++;
+            JSONObject command = new JSONObject().put("id", id)
+                    .put("type", "assist_pipeline/pipeline/list");
+            pipelineListId = id;
+            if (!socket.send(command.toString())) {
+                pipelineListId = -1;
+                return false;
+            }
+            return true;
+        } catch (Exception ignored) {
+            pipelineListId = -1;
+            return false;
+        }
+    }
+
     public synchronized boolean talk() {
         return talk(false);
     }
@@ -477,6 +529,9 @@ public final class HaAssistClient {
             request.put("type", "assist_pipeline/run");
             request.put("start_stage", "stt");
             request.put("end_stage", "tts");
+            // Empty choice leaves HA's preferred Assist pipeline untouched.
+            String selectedPipeline = new OverlayPreferences(context).assistPipelineId();
+            if (!selectedPipeline.isEmpty()) request.put("pipeline", selectedPipeline);
             JSONObject input = new JSONObject();
             input.put("sample_rate", 16000);
             request.put("input", input);
@@ -931,6 +986,7 @@ public final class HaAssistClient {
         conversationId = null;
         layoutSubscribed = false;
         layoutStatesId = -1;
+        pipelineListId = -1;
         layoutEntities.clear();
         stopForRunEnd();
         WebSocket ws = socket;
