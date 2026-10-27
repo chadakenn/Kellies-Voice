@@ -145,6 +145,20 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         }
     }
 
+    @Override protected void onResume() {
+        super.onResume();
+        // Android 14+ permits foreground mic-service creation from a visible
+        // Activity, but not from BOOT_COMPLETED. Restore a prior user opt-in
+        // automatically when the app becomes visible after a reboot/update.
+        if (!transparentShortcut) {
+            mainHandler.post(() -> {
+                if (!isFinishing() && !isDestroyed()) {
+                    WakeWordStartup.resumeFromVisible(this);
+                }
+            });
+        }
+    }
+
     @Override public void onCreate(Bundle state) {
         // The onn ⭐ picker starts the package's main Activity. When its
         // explicit overlay fallback is enabled, draw no full-screen UI at all.
@@ -1050,6 +1064,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                         prefs.setMicrophoneDisabled(nowDisabled);
                         if (nowDisabled) {
                             prefs.setWakeWord(false);
+                            WakeWordStartup.clearReminder(this);
                             stopService(new Intent(this, WakeWordService.class));
                         }
                         status(disabled
@@ -1562,7 +1577,8 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         boolean active = WakeWordService.isListening();
         showCopperMenu("SETTINGS  ✦  WAKE WORD",
                 "Listens on this TV for Okay Nabu, then opens the voice overlay. "
-                        + "Off until you turn it on. A reboot or app update does not start it. "
+                        + "Off by default. Your ON choice is saved across reboots and updates. "
+                        + "Android TV may require you to open the app once after reboot to resume. "
                         + "While it is LISTENING, the microphone stays in use and Android's privacy indicator stays on. "
                         + "Hey Google is separate and can still take the microphone. "
                         + "Nothing is sent until the phrase is recognized. The recorder then keeps that question until Assist takes it, for at most eight seconds. "
@@ -1579,6 +1595,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                     if (which == 0) {
                         if (enabled && active) {
                             prefs.setWakeWord(false);
+                            WakeWordStartup.clearReminder(this);
                             stopService(new Intent(this, WakeWordService.class));
                             status("Wake word off. The microphone is not listening.");
                         } else {
@@ -1643,7 +1660,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         try {
             startForegroundService(new Intent(this, WakeWordService.class)
                     .setAction(WakeWordService.ACTION_START));
-            status("Wake word on. Say Okay Nabu. Turn it off in Settings to release the microphone.");
+            status("Wake word ON and saved. It resumes when this app opens after reboot.");
         } catch (RuntimeException ignored) {
             prefs.setWakeWord(false);
             status("Android couldn't start the wake word listener.");
@@ -1662,6 +1679,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                     OverlayPreferences prefs = new OverlayPreferences(this);
                     // Forget must immediately disarm the always-listening mic.
                     prefs.setWakeWord(false);
+                    WakeWordStartup.clearReminder(this);
                     stopService(new Intent(this, WakeWordService.class));
                     prefs.setTvEvents(false);
                     stopService(new Intent(this, TvEventsService.class));
