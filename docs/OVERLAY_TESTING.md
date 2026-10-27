@@ -67,3 +67,17 @@ Sources for native ⭐ behavior: [onn 4K Pro review and star button long press](
 If nothing appears, return to the main app and check **Settings → Display over other apps** permission, and whether an onn/Google TV permission screen is supported. If the TV returns home rather than the prior app, test launching the **Julia Voice Overlay** shortcut from another app. If voice transcription fails, verify whether the original full-screen TALK / STOP continues to work.
 
 For bug reports provide firmware/OS version, whether overlay permission existed, whether the panel appeared over a **normal non-DRM app**, D-pad behavior, and any status error **without posting HA tokens or signing secrets**.
+
+
+## Optional spoken announcements with audio ducking (onn 4K Pro checklist)
+
+1. Enable Settings → Spoken announcements.
+2. Play YouTube or a streaming app with volume up.
+3. Trigger a Home Assistant announce with `speak: "The washer is finished."`
+4. Confirm popup appears, speech is heard, YouTube audio ducks (or lowers), then restores after speech ends.
+5. Dismiss the popup mid-speech: audio restores immediately.
+6. Fire two announcements quickly: only the latest speaks; focus is not left ducked.
+7. Turn off Wi-Fi during speech, reconnect: audio should not stay ducked.
+8. Confirm normal voice responses, timers, and camera popups still work and do not leave audio ducked.
+9. Disable Spoken announcements: text popups continue, no speech.
+10. Confirm no permanent system volume change after any of the above.

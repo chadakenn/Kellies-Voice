@@ -1,0 +1,35 @@
+name: Check wiki documentation links
+
+on:
+  pull_request:
+    paths:
+      - 'docs/wiki/**'
+      - 'scripts/check_wiki_docs.py'
+      - '.github/workflows/check-wiki.yml'
+  push:
+    branches: [dev, main]
+    paths:
+      - 'docs/wiki/**'
+      - 'scripts/check_wiki_docs.py'
+      - '.github/workflows/check-wiki.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  wiki-links:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check all wiki page links and anchors
+        run: python3 scripts/check_wiki_docs.py
+      - name: Confirm wiki publish transform
+        run: |
+          python3 scripts/check_wiki_docs.py --render-wiki "$RUNNER_TEMP/rendered-wiki"
+          test -s "$RUNNER_TEMP/rendered-wiki/Home.md"
+          test -s "$RUNNER_TEMP/rendered-wiki/_Sidebar.md"
+          if grep -ERn '\]\((Getting-Started|YAML-Cookbook|Troubleshooting)\.md' "$RUNNER_TEMP/rendered-wiki"; then
+            echo "::error::Repository .md links were not converted for GitHub Wiki."
+            exit 1
+          fi

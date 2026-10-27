@@ -4,13 +4,13 @@ on:
   pull_request:
     paths:
       - 'custom_components/kellies_voice/**'
-      - 'tests/test_kellies_voice_events.py'
+      - 'tests/**'
       - '.github/workflows/ha-events-tests.yml'
   push:
     branches: [main]
     paths:
       - 'custom_components/kellies_voice/**'
-      - 'tests/test_kellies_voice_events.py'
+      - 'tests/**'
       - '.github/workflows/ha-events-tests.yml'
 
 jobs:
@@ -25,4 +25,4 @@ jobs:
       - name: Check integration syntax
         run: python -m compileall -q custom_components/kellies_voice
       - name: Test event contracts
-        run: python -m unittest discover -s tests -p 'test_kellies_voice_events.py' -v
+        run: python -m unittest discover -s tests -p 'test_*.py' -v

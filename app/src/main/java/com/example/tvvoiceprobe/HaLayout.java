@@ -14,9 +14,17 @@ public final class HaLayout {
     public static final String ALERT_POSITION = "alert_position";
     public static final String ALERT_SIZE = "alert_size";
     public static final String NOISE = "noise";
+    public static final String FOLLOW_TIMEOUT = "follow_up_timeout";
     public static final String WEATHER_POSITION = "weather_position";
     public static final String WEATHER_SIZE = "weather_size";
     public static final String WEATHER_DURATION = "weather_duration";
+    public static final String SCREENSAVER_ENABLED = "screensaver_enabled";
+    public static final String SCREENSAVER_SIZE = "screensaver_size";
+    public static final String SCREENSAVER_PAGE_LAYOUT = "screensaver_page_layout";
+    public static final String SCREENSAVER_FIT = "screensaver_fit";
+    public static final String SCREENSAVER_URL = "screensaver_url";
+    public static final String SCREENSAVER_CAMERAS = "screensaver_cameras";
+    public static final String SCREENSAVER_LIVE = "screensaver_live_mode";
 
     private HaLayout() {}
 
@@ -24,9 +32,16 @@ public final class HaLayout {
         return POSITION.equals(setting) || SIZE.equals(setting) || STYLE.equals(setting)
                 || AUTO_HIDE.equals(setting) || AUTO_LISTEN.equals(setting)
                 || ALERT_POSITION.equals(setting) || ALERT_SIZE.equals(setting)
-                || NOISE.equals(setting)
+                || NOISE.equals(setting) || FOLLOW_TIMEOUT.equals(setting)
                 || WEATHER_POSITION.equals(setting) || WEATHER_SIZE.equals(setting)
-                || WEATHER_DURATION.equals(setting);
+                || WEATHER_DURATION.equals(setting) || isScreensaver(setting);
+    }
+
+    public static boolean isScreensaver(String setting) {
+        return SCREENSAVER_ENABLED.equals(setting) || SCREENSAVER_SIZE.equals(setting)
+                || SCREENSAVER_PAGE_LAYOUT.equals(setting) || SCREENSAVER_FIT.equals(setting)
+                || SCREENSAVER_URL.equals(setting) || SCREENSAVER_CAMERAS.equals(setting)
+                || SCREENSAVER_LIVE.equals(setting);
     }
 
     public static boolean changesPanel(String setting) {
@@ -54,12 +69,28 @@ public final class HaLayout {
                 return TvAlertLayout.sizeLabel(prefs.alertSize());
             case NOISE:
                 return MicSensitivity.label(prefs.noise());
+            case FOLLOW_TIMEOUT:
+                return FollowUpSession.label(prefs.followUpSeconds());
             case WEATHER_POSITION:
                 return WeatherLayout.positionLabel(prefs.weatherPosition());
             case WEATHER_SIZE:
                 return TvAlertLayout.sizeLabel(prefs.weatherSize());
             case WEATHER_DURATION:
                 return WeatherLayout.durationLabel(prefs.weatherSeconds());
+            case SCREENSAVER_ENABLED:
+                return prefs.screensaverDashboard() ? "on" : "off";
+            case SCREENSAVER_SIZE:
+                return ScreensaverDashboard.sizeLabel(prefs.screensaverSize());
+            case SCREENSAVER_PAGE_LAYOUT:
+                return prefs.screensaverDesktopPage() ? "Desktop TV" : "Automatic";
+            case SCREENSAVER_FIT:
+                return prefs.screensaverFit();
+            case SCREENSAVER_URL:
+                return prefs.screensaverUrl();
+            case SCREENSAVER_CAMERAS:
+                return prefs.screensaverCameras();
+            case SCREENSAVER_LIVE:
+                return prefs.screensaverLiveMode();
             default:
                 return null;
         }
@@ -113,6 +144,12 @@ public final class HaLayout {
                 if (noise == null || noise.equals(prefs.noise())) return false;
                 prefs.setNoise(noise);
                 return true;
+            case FOLLOW_TIMEOUT:
+                if (!FollowUpSession.remoteTimeoutAllowed(prefs.followUp())) return false;
+                int followSeconds = FollowUpSession.seconds(value);
+                if (followSeconds < 0 || followSeconds == prefs.followUpSeconds()) return false;
+                prefs.setFollowUpSeconds(followSeconds);
+                return true;
             case WEATHER_POSITION:
                 String weatherPosition = WeatherLayout.positionOrNull(value);
                 if (weatherPosition == null || weatherPosition.equals(prefs.weatherPosition())) return false;
@@ -127,6 +164,48 @@ public final class HaLayout {
                 int weatherSeconds = WeatherLayout.durationSeconds(value);
                 if (weatherSeconds < 0 || weatherSeconds == prefs.weatherSeconds()) return false;
                 prefs.setWeatherSeconds(weatherSeconds);
+                return true;
+            case SCREENSAVER_ENABLED:
+                if (!"on".equals(value) && !"off".equals(value)) return false;
+                boolean show = "on".equals(value);
+                if (show == prefs.screensaverDashboard()) return false;
+                prefs.setScreensaverDashboard(show);
+                return true;
+            case SCREENSAVER_SIZE:
+                String dashboardSize = ScreensaverDashboard.sizeKey(value);
+                if (dashboardSize.isEmpty() || dashboardSize.equals(prefs.screensaverSize())) return false;
+                prefs.setScreensaverSize(dashboardSize);
+                return true;
+            case SCREENSAVER_PAGE_LAYOUT:
+                if (!"Desktop TV".equals(value) && !"Automatic".equals(value)) return false;
+                boolean desktop = "Desktop TV".equals(value);
+                if (desktop == prefs.screensaverDesktopPage()) return false;
+                prefs.setScreensaverDesktopPage(desktop);
+                return true;
+            case SCREENSAVER_FIT:
+                if (!"Fit more cameras".equals(value) && !"Balanced".equals(value)
+                        && !"Larger text".equals(value)) return false;
+                if (value.equals(prefs.screensaverFit())) return false;
+                prefs.setScreensaverFit(value);
+                return true;
+            case SCREENSAVER_URL:
+                if (!value.isEmpty() && ScreensaverDashboard.dashboardUrl(value).isEmpty()) return false;
+                if (value.equals(prefs.screensaverUrl())) return false;
+                prefs.setScreensaverUrl(value);
+                return true;
+            case SCREENSAVER_LIVE:
+                if (!ScreensaverLiveMode.SNAPSHOTS.equals(value)
+                        && !ScreensaverLiveMode.ONE.equals(value)
+                        && !ScreensaverLiveMode.TWO.equals(value)
+                        && !ScreensaverLiveMode.FOUR.equals(value)) return false;
+                if (value.equals(prefs.screensaverLiveMode())) return false;
+                prefs.setScreensaverLiveMode(value);
+                return true;
+            case SCREENSAVER_CAMERAS:
+                String filtered = ScreensaverDashboard.cameras(value);
+                if (!value.isEmpty() && (filtered.isEmpty() || filtered.split(",").length > 4)) return false;
+                if (filtered.equals(prefs.screensaverCameras())) return false;
+                prefs.setScreensaverCameras(filtered);
                 return true;
             default:
                 return false;

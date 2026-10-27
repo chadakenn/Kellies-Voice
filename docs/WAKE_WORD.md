@@ -1,6 +1,6 @@
 # On-device wake word
 
-**Draft, unreleased feature (#59).** Public stable is v0.16.12. The PR branch is old and conflicts with newer microphone, settings, and diagnostic code. Do not install a branch APK as a normal update or merge into main until the branch is rebased, security checks are complete, and real-device QA has passed.
+**Draft, unreleased feature (#59).** Public stable is v0.16.12. This branch now includes current `dev`, including the microphone-off switch, reconnect work, and the current settings menu. Do not install a branch APK as a normal update or merge into `main`. It stays a draft until a real television records a full command after Okay Nabu.
 
 ## What it does
 
@@ -29,11 +29,11 @@ The capture rate is 16 kHz. If this TV cannot open a 16 kHz microphone, the list
 ## Privacy and outstanding blockers
 
 - **The wake listener is always recording locally while it is enabled.** The wake model runs on-device, but once the wake phrase triggers, the normal HA Assist pipeline may send following command audio to **cloud STT** if that is the pipeline you configured. A false positive can therefore transmit unexpected room audio. Check **Settings → Voice assistants** in HA and choose local STT if privacy is important.
-- As of this draft, **full-screen TALK, microphone diagnostics, and the newer TV microphone-disable switch are not coordinated with the wake listener**. Do not enable wake word on a TV in routine use until those paths share one microphone ownership policy.
-- The handoff currently opens a microphone foreground service from the background, which Android 12/14+ may block or leave with silent capture. Test the actual post-wake transcript, not merely whether an overlay appeared.
-- Releasing the wake recorder and reconnecting HA may lose the first words of the command. A short audio pre-roll, warm HA connection, and ready chime are future requirements before claiming hands-free reliability.
-- This branch is **START_NOT_STICKY**. After a reboot or service kill, the setting may still say ON even when Android is not listening; it never silently restarts from boot. A true status indicator and explicit resume action remain to be implemented.
-- Wake disable, lost permission, missing microphone and forgetting the HA login must stop the listener. Invalid negative recorder reads must not busy-loop. The current branch adds initial stop/failure guards, but still needs verified shared microphone-disable behavior after rebasing.
+- The wake listener checks **Mic input detection → Disable microphone capture**. Turning that on, forgetting the Home Assistant login, or losing microphone or overlay permission turns the listener off.
+- Full-screen TALK, the voice overlay, and microphone diagnostics ask the listener to release the microphone for two minutes. That is not a single shared recorder. Two `AudioRecord` owners can still overlap if that pause is missed. Do not treat this as finished microphone ownership.
+- The handoff still starts the overlay with `startForegroundService` from the wake service. Android 12 and 14 may block that or open the overlay without audio. A signed dev APK still has to show a nonempty transcript after Okay Nabu.
+- The wake recorder stops before the overlay opens, then the overlay connects to Home Assistant and opens its own recorder. The first words of the command can be lost. A short pre-roll, a warm connection, and a ready chime are still required before calling this hands-free.
+- This service is `START_NOT_STICKY`. After a reboot or a kill, Settings can still say ON while nothing is listening. It does not start from boot. A live status and an explicit resume action are still missing.
 - An ordinary debug TV APK must not depend on the HWASan runtime. HWASan is disabled for the draft branch's sideloadable Debug configuration.
 
 ### Hardware acceptance before promotion

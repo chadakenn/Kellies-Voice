@@ -13,9 +13,6 @@ import android.provider.Settings;
 
 import androidx.core.content.FileProvider;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
-
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -36,9 +33,6 @@ import java.util.concurrent.Executors;
  * enforce the same package signature at install time.
  */
 public final class UpdateManager {
-    // GitHub returns this exact capitalization in browser_download_url.
-    private static final String LATEST =
-            "https://api.github.com/repos/chadakenn/Kellies-Voice/releases/latest";
     private static final long MAX_APK_BYTES = 150L * 1024L * 1024L;
     private final Activity activity;
     private final Listener listener;
@@ -46,6 +40,8 @@ public final class UpdateManager {
     private final ExecutorService background = Executors.newSingleThreadExecutor();
     private volatile Release available;
     private volatile boolean busy;
+    /** Bumped when Stable/Development changes so an older check cannot publish. */
+    private volatile int offerEpoch;
 
     public interface Listener {
         void onUpToDate(String message);
@@ -62,13 +58,16 @@ public final class UpdateManager {
         final String sha256;
         final String apkUrl;
         final long size;
-        Release(int code, String name, String notes, String sha256, String apkUrl, long size) {
+        final String channel;
+        Release(int code, String name, String notes, String sha256, String apkUrl, long size,
+                String channel) {
             this.code = code;
             this.name = name;
             this.notes = notes;
             this.sha256 = sha256;
             this.apkUrl = apkUrl;
             this.size = size;
+            this.channel = channel;
         }
     }
 
@@ -82,73 +81,79 @@ public final class UpdateManager {
     public void check() {
         if (busy) return;
         busy = true;
+        final int epoch = offerEpoch;
         background.execute(() -> {
+            String channel = UpdateChannel.STABLE;
             try {
-                JSONObject release = new JSONObject(readText(LATEST, 750000));
-                if (release.optBoolean("draft") || release.optBoolean("prerelease")) {
-                    throw new IllegalStateException("No stable release is available.");
-                }
-                String tag = release.getString("tag_name");
-                if (!ReleaseAssets.stableTag(tag)) {
-                    throw new IllegalStateException("Unexpected release tag.");
-                }
-                JSONArray assets = release.getJSONArray("assets");
-                String apk = null, metadata = null;
-                long size = -1;
-                for (int index = 0; index < assets.length(); index++) {
-                    JSONObject item = assets.getJSONObject(index);
-                    String filename = item.optString("name");
-                    if ("app-release.apk".equals(filename)) {
-                        apk = item.optString("browser_download_url");
-                        size = item.optLong("size", -1);
-                    } else if ("update.json".equals(filename)) {
-                        metadata = item.optString("browser_download_url");
-                    }
-                }
-                if (apk == null || metadata == null) {
-                    throw new IllegalStateException("Release needs app-release.apk and update.json.");
-                }
-                validateAssetUrl(apk, tag, "app-release.apk");
-                validateAssetUrl(metadata, tag, "update.json");
-                if (size < 4096 || size > MAX_APK_BYTES) {
-                    throw new IllegalStateException("Invalid APK file size in release.");
-                }
-                JSONObject info = new JSONObject(readText(metadata, 16384));
-                int code = info.getInt("versionCode");
-                String name = info.getString("versionName");
-                String hash = info.getString("sha256").toLowerCase(Locale.US);
-                if (!hash.matches("[a-f0-9]{64}") || !tag.equals(info.optString("tag"))) {
-                    throw new IllegalStateException("Invalid release integrity metadata.");
-                }
-                int installed = installedVersionCode();
-                if (code <= installed) {
-                    available = null;
-                    post(() -> listener.onUpToDate("You're up to date (v" +
-                            activityVersion() + ")."));
+                channel = UpdateChannel.normalize(new OverlayPreferences(activity).updateChannel());
+                UpdateChannel.Selected selected = UpdateChannel.select(
+                        channel, readText(UpdateChannel.feedUrl(channel), 750000));
+                UpdateChannel.Meta meta = UpdateChannel.requireMetadata(
+                        channel, selected.tag, readText(selected.metadataUrl, 16384));
+                int code = meta.versionCode;
+                String name = meta.versionName;
+                String hash = meta.sha256;
+                String decision = UpdateChannel.verdict(
+                        channel, code, installedVersionCode(), activityVersion());
+                if (epoch != offerEpoch) return;
+                if (!UpdateChannel.OFFER.equals(decision)) {
+                    String message = UpdateChannel.ROLLBACK_BLOCKED.equals(decision)
+                            ? "Android cannot replace this development build with the current stable release. "
+                            + "The next stable version number has to be higher. This TV stays on the installed build."
+                            : "You're up to date (v" + activityVersion() + ").";
+                    post(() -> {
+                        if (epoch != offerEpoch) return;
+                        available = null;
+                        listener.onUpToDate(message);
+                    });
                     return;
                 }
-                available = new Release(code, name,
-                        release.optString("body", ""), hash, apk, size);
-                post(() -> listener.onAvailable(name,
-                        available == null ? "" : available.notes));
+                Release offer = new Release(code, name, selected.notes, hash, selected.apkUrl,
+                        selected.size, channel);
+                post(() -> {
+                    if (epoch != offerEpoch) return;
+                    String now = UpdateChannel.normalize(
+                            new OverlayPreferences(activity).updateChannel());
+                    if (!now.equals(offer.channel)) return;
+                    available = offer;
+                    listener.onAvailable(offer.name, offer.notes == null ? "" : offer.notes);
+                });
             } catch (Exception error) {
+                if (epoch != offerEpoch) return;
                 String message = error.getMessage();
                 if (message != null && message.contains("404")) {
-                    message = "No public GitHub Release has been published yet.";
-                } else if (message == null) {
+                    message = UpdateChannel.DEVELOPMENT.equals(channel)
+                            ? "No development release is published. Install the signed Actions artifact instead."
+                            : "No public GitHub Release has been published yet.";
+                } else if (message == null || message.toLowerCase(Locale.US).contains("http")) {
                     message = "Update check failed. Try again later.";
                 }
                 final String finalMessage = message;
-                post(() -> listener.onError(finalMessage));
+                post(() -> {
+                    if (epoch != offerEpoch) return;
+                    listener.onError(finalMessage);
+                });
             } finally {
                 busy = false;
             }
         });
     }
 
+    /** Drop a downloaded offer when the owner changes Stable or Development. */
+    public void clearOffer() {
+        offerEpoch++;
+        available = null;
+        File apk = downloadedApk();
+        if (apk.exists()) apk.delete();
+        File partial = new File(updateFolder(), "update.partial");
+        if (partial.exists()) partial.delete();
+    }
+
     public void download() {
-        Release release = available;
-        if (release == null || busy) {
+        final Release release = available;
+        final int epoch = offerEpoch;
+        String channel = UpdateChannel.normalize(new OverlayPreferences(activity).updateChannel());
+        if (release == null || busy || !channel.equals(release.channel)) {
             post(() -> listener.onError("Check for updates first."));
             return;
         }
@@ -157,6 +162,9 @@ public final class UpdateManager {
             File temp = new File(updateFolder(), "update.partial");
             File apk = downloadedApk();
             try {
+                if (epoch != offerEpoch) {
+                    throw new IllegalStateException("Check for updates first.");
+                }
                 if (!updateFolder().exists() && !updateFolder().mkdirs()) {
                     throw new IllegalStateException("Cannot create APK cache directory.");
                 }
@@ -207,14 +215,34 @@ public final class UpdateManager {
                     throw new IllegalStateException("Downloaded APK failed SHA-256 verification.");
                 }
                 verifyInstalledIdentity(temp);
+                if (epoch != offerEpoch || !release.channel.equals(UpdateChannel.normalize(
+                        new OverlayPreferences(activity).updateChannel()))) {
+                    temp.delete();
+                    if (apk.exists()) apk.delete();
+                    throw new IllegalStateException("Check for updates first.");
+                }
                 if (!temp.renameTo(apk)) {
                     throw new IllegalStateException("Could not save the verified APK.");
                 }
-                post(listener::onDownloaded);
+                post(() -> {
+                    if (epoch != offerEpoch) {
+                        if (apk.exists()) apk.delete();
+                        return;
+                    }
+                    listener.onDownloaded();
+                });
             } catch (Exception error) {
                 temp.delete();
+                if (epoch != offerEpoch) {
+                    if (apk.exists()) apk.delete();
+                    return;
+                }
                 String message = error.getMessage() == null ? "Download failed" : error.getMessage();
-                post(() -> listener.onError(message));
+                if (message.toLowerCase(Locale.US).contains("http") && !message.contains("HTTP ")) {
+                    message = "Download failed. Try again later.";
+                }
+                final String finalMessage = message;
+                post(() -> listener.onError(finalMessage));
             } finally {
                 busy = false;
             }
@@ -305,10 +333,6 @@ public final class UpdateManager {
     private File updateFolder() { return new File(activity.getCacheDir(), "updates"); }
     private File downloadedApk() { return new File(updateFolder(), "app-release.apk"); }
     private void post(Runnable runnable) { ui.post(runnable); }
-
-    private void validateAssetUrl(String url, String tag, String filename) {
-        ReleaseAssets.validateAssetUrl(url, tag, filename);
-    }
 
     private String readText(String url, int maxBytes) throws Exception {
         HttpURLConnection conn = openHttps(url);

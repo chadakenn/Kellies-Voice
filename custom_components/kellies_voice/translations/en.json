@@ -8,11 +8,15 @@
       },
       "user": {
         "title": "Pair your Kellie's Voice TV",
-        "description": "Automatic discovery not working? On your TV open Kellie's Voice → Settings → Home Assistant layout → Show TV pairing ID. Type the ID shown on your TV. Make sure Home Assistant layout is ON; no network discovery is needed.",
+        "description": "On your TV, open Kellie's Voice → Settings → Home Assistant layout → Show this TV's pairing ID. Enter that TV PAIRING ID, not the separate Home Assistant device-registry ID. Manual pairing validates the ID's format but cannot contact or verify the TV. After upgrading both components, check the new 'TV alert receiver connected' diagnostic. It remains OFF and shows 'never' until that TV establishes a scoped alert connection. Turn on Home Assistant layout and TV notifications on the TV.",
         "data": {
           "device_id": "TV pairing ID",
           "name": "TV name"
         }
+      },
+      "manual_confirm": {
+        "title": "Verify the TV pairing ID",
+        "description": "Manual pairing cannot verify that this TV is online. Compare this ID with the one shown on the TV under Kellie's Voice → Settings → Home Assistant layout → Show this TV's pairing ID: {pairing_id}. TV: {name}. If one character is wrong, actions may not reach the TV. Submit again only when the IDs match; otherwise go Back and correct the ID."
       }
     },
     "abort": {
@@ -43,8 +47,8 @@
           "description": "How long the message stays up, from 4 to 45 seconds."
         },
         "device_id": {
-          "name": "TV device id",
-          "description": "One configured TV. Leave empty to send to every configured Kellie's Voice TV."
+          "name": "TV pairing ID",
+          "description": "The pairing ID shown inside Kellie's Voice TV Settings (not HA's device registry ID). An accepted action means HA published the event, not proof that TV displayed it. Leave blank to send to every configured TV."
         }
       }
     },
@@ -58,15 +62,27 @@
         },
         "title": {
           "name": "Title",
-          "description": "Short heading, 65 characters at most."
+          "description": "Optional snapshot heading. Set 'Show header' false to hide the title and caption."
         },
         "duration_seconds": {
           "name": "Duration (seconds)",
           "description": "How long the popup stays up, from 4 to 45 seconds."
         },
         "device_id": {
-          "name": "TV device id",
-          "description": "One configured TV. Leave empty to send to every configured Kellie's Voice TV."
+          "name": "TV pairing ID",
+          "description": "The pairing ID shown inside Kellie's Voice TV Settings (not HA's device registry ID). An accepted action means HA published the event, not proof that TV displayed it. Leave blank to send to every configured TV."
+        },
+        "show_header": {
+          "name": "Show header",
+          "description": "Default true. Set false for a headerless camera snapshot, including removal of the fixed caption."
+        },
+        "image_fit": {
+          "name": "Image fit",
+          "description": "Crop fills the image area; Fit displays the entire frame with letterboxing."
+        },
+        "refresh_seconds": {
+          "name": "Refresh (seconds)",
+          "description": "0 disables automatic refresh (default). Use 2 to 30 seconds for in-place snapshots without popup flicker."
         }
       }
     },
@@ -84,11 +100,23 @@
         },
         "duration_seconds": {
           "name": "Duration (seconds)",
-          "description": "Temporary live stream for 15 to 180 seconds, default 90."
+          "description": "Muted live stream popup for 4 to 180 seconds, default 90. A short popup may close before HLS video starts; try HA's Preload camera stream option to improve startup."
         },
         "device_id": {
-          "name": "TV device id",
-          "description": "Optional specific TV; blank sends to all configured Kellie's Voice TVs."
+          "name": "TV pairing ID",
+          "description": "The pairing ID shown inside Kellie's Voice TV Settings (not HA's device registry ID). An accepted action means HA published the event, not proof that TV displayed it. Leave blank to send to every configured TV."
+        },
+        "show_header": {
+          "name": "Show header",
+          "description": "Hide both the title and muted-live status line when false. Default shows them."
+        },
+        "image_fit": {
+          "name": "Image fit",
+          "description": "Fit shows the complete stream/placeholder frame with letterboxing. Crop fills the image area (default)."
+        },
+        "refresh_seconds": {
+          "name": "Preview refresh (seconds)",
+          "description": "0 disables preview updates (default); 2–30 refreshes the still image until the first real video frame appears or the popup closes."
         }
       }
     },
@@ -97,8 +125,8 @@
       "description": "Dismiss a currently visible Kellie's Voice camera snapshot or live stream on the selected TV. Does not dismiss announcements or start the microphone.",
       "fields": {
         "device_id": {
-          "name": "TV device id",
-          "description": "Specific paired TV. Leave blank to close camera popups on all paired Kellie's Voice TVs."
+          "name": "TV pairing ID",
+          "description": "The pairing ID shown inside Kellie's Voice TV Settings (not HA's device registry ID). An accepted action means HA published the event, not proof that TV displayed it. Leave blank to send to every configured TV."
         }
       }
     },
@@ -115,8 +143,19 @@
           "description": "How long the card stays up, from 8 to 45 seconds. The usual value is 20."
         },
         "device_id": {
-          "name": "TV device id",
-          "description": "One configured TV. Leave empty to send to every configured Kellie's Voice TV."
+          "name": "TV pairing ID",
+          "description": "The pairing ID shown inside Kellie's Voice TV Settings (not HA's device registry ID). An accepted action means HA published the event, not proof that TV displayed it. Leave blank to send to every configured TV."
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Experimental native Assist timers",
+        "description": "OFF by default. Enable only for this paired TV when its Home Assistant Assist pipeline supplies the TV's HA registry device ID and routes phrases to native intents. TV countdowns and Home Assistant keep separate clocks; verify on hardware before relying on timers. Existing manual timer actions remain available. This does not enable the microphone.",
+        "data": {
+          "native_timer_intents": "Enable experimental native timers for this TV"
         }
       }
     }

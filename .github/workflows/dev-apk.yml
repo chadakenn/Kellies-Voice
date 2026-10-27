@@ -1,0 +1,89 @@
+name: Build Kellie's Voice Dev APK
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - 'app/**'
+      - 'custom_components/kellies_voice/**'
+      - 'tests/**'
+      - 'build.gradle'
+      - 'gradle.properties'
+      - 'settings.gradle'
+      - 'gradlew'
+      - 'gradle/wrapper/**'
+      - '.github/workflows/dev-apk.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  signed-dev:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out dev source
+        uses: actions/checkout@v4
+      - name: Verify development branch
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" != "refs/heads/dev" ]]; then
+            echo "::error::Only the dev branch may produce dev APKs."
+            exit 1
+          fi
+          if ! grep -Eq "versionName '[^']+-dev[.0-9-]*'" app/build.gradle; then
+            echo "::error::Set a clearly marked -dev versionName in app/build.gradle."
+            exit 1
+          fi
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+      - name: Install Android SDK 35
+        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.2.12479018' 'cmake;3.22.1'
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Run Android and HA tests
+        run: |
+          ./gradlew --no-daemon -PskipWakeNative=true :app:assembleDebug :app:testDebugUnitTest
+          python3 -m compileall -q custom_components/kellies_voice
+          python3 -m unittest discover -s tests -p 'test_*.py' -v
+      - name: Restore the existing private signing key
+        env:
+          TV_KEY_B64: ${{ secrets.TV_SIGNING_KEYSTORE_B64 }}
+          TV_SIGNING_PASSWORD: ${{ secrets.TV_SIGNING_PASSWORD }}
+        shell: bash
+        run: |
+          if [[ -z "$TV_KEY_B64" || -z "$TV_SIGNING_PASSWORD" ]]; then
+            echo "::error::Development APK requires the same repository signing secrets as stable."
+            exit 1
+          fi
+          printf '%s' "$TV_KEY_B64" | base64 --decode > "$RUNNER_TEMP/kellies-voice-signing.p12"
+          chmod 600 "$RUNNER_TEMP/kellies-voice-signing.p12"
+          keytool -list -storetype PKCS12 -keystore "$RUNNER_TEMP/kellies-voice-signing.p12" -storepass "$TV_SIGNING_PASSWORD" -alias tvvoice > /dev/null
+          echo "TV_SIGNING_KEYSTORE_PATH=$RUNNER_TEMP/kellies-voice-signing.p12" >> "$GITHUB_ENV"
+      - name: Build development APK with production signing identity
+        env:
+          TV_SIGNING_PASSWORD: ${{ secrets.TV_SIGNING_PASSWORD }}
+        run: ./gradlew --no-daemon :app:assembleRelease
+      - name: Verify APK signature and version
+        shell: bash
+        run: |
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose app/build/outputs/apk/release/app-release.apk
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging app/build/outputs/apk/release/app-release.apk | head -n 4
+      - name: Upload dev APK, not a public release
+        uses: actions/upload-artifact@v4
+        with:
+          name: kellies-voice-dev-signed
+          path: app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+          retention-days: 14
+
+# Intentionally no release/publish job or write token.
+# Stable in-app updates continue using only stable GitHub Releases from main.

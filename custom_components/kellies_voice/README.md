@@ -1,13 +1,15 @@
+![Kellie's Voice approved logo and branding banner](https://raw.githubusercontent.com/chadakenn/Kellies-Voice/main/docs/branding/kellies-voice-approved-banner.webp)
+
 # Kellie's Voice for Home Assistant
 
 **Give your TV a voice, useful popups, and quick access to security-camera views without replacing your TV launcher.** Kellie's Voice consists of a native Android TV/Google TV app and this Home Assistant integration. The TV handles speech and on-screen overlays; the integration lets HA automations and controls talk to it.
 
-**Why it matters:** ask your Assist agent about the house while a show plays, get a text alert when the washing machine finishes, or see a Frigate driveway/doorbell snapshot when a person approaches. On-demand live video is available as an **experimental** option; moving driveway **and doorbell** video is now confirmed on the onn 4K Pro with Android v0.16.1, though other cameras/devices need verification.
+**Why it matters:** ask your Assist agent about the house while a show plays, get an on-screen alert when the washing machine finishes (optionally spoken using the TV's local text-to-speech), or see a Frigate driveway/doorbell snapshot when a person approaches. On-demand live video is available as an **experimental** option; moving driveway **and doorbell** video is now confirmed on the onn 4K Pro with Android v0.16.1, though other cameras/devices need verification.
 
 | User-facing feature | Home Assistant feature |
 | --- | --- |
 | Move the floating voice overlay | Per-TV position, size, style, auto-hide and auto-listen entities |
-| Show a quiet on-TV notification | `kellies_voice.announce` |
+| Show a silent or opt-in spoken TV notification | `kellies_voice.announce` with optional `speak:` |
 | See a Frigate camera still when someone appears | `kellies_voice.show_camera`, plus included person-detection blueprint |
 | Request a temporary live camera feed | `kellies_voice.show_live_camera` (experimental HLS, muted) |
 
@@ -17,9 +19,19 @@
 
 This integration changes overlay layout and can send announcement and camera events to configured TVs. It does not start the microphone, replace the TV login, or install an APK.
 
+**Pairing diagnostic (included in current stable):** The Home Assistant TV device will expose a **TV alert receiver connected** diagnostic when its matching Android app opens the newer read-scoped notification channel. An ID that was manually mistyped will remain OFF/"never", rather than appearing verified. This is a socket-presence indicator, not a guarantee that a specific popup appeared. Older APKs on the legacy event subscription cannot report this new diagnostic. Requires compatible current HACS and Android builds. Community hardware QA is in progress.
+
 Home Assistant never connects directly to the TV for layout changes. The TV can advertise through mDNS or you can enter its stable pairing ID manually. Either way, the TV reads those controls using its existing Home Assistant login.
 
 Announcement and camera actions stay inside Home Assistant too. They fire events. They do not open a port on the TV, and they do not put tokens or stream passwords in the event.
+
+## What is “Julia”?
+
+In the maintainer's demonstrations, **Julia** is simply the name they gave their own **Home Assistant voice assistant**. **Kellie's Voice** is the TV app and HACS integration, not the assistant's name. You **do not** need to create, download, or rename an assistant “Julia.” Use your own Home Assistant Assist pipeline and conversation agent; the built-in agent or an Ollama/LLM agent may be used according to your setup.
+
+**No name or wake word is required for normal voice commands.** Activate the TV's listening overlay, then ask a question or give a command naturally. A wake word is an optional, separately configured feature, not synonymous with “Julia.” References to Julia in older developer test instructions are **examples only**. See the [main README explanation](../../README.md#kellies-voice-vs-julia-whats-the-difference).
+
+For **first-time testers**, start with the [full installation, setup and tester checklist](../../docs/INSTALL.md). This HACS page covers the Home Assistant half; the Android TV APK must be installed separately.
 
 ## Install with HACS (recommended)
 
@@ -27,7 +39,7 @@ Announcement and camera actions stay inside Home Assistant too. They fire events
 
 1. Make sure HACS is installed in your Home Assistant instance.
 2. **First-time only:** in **HACS → ⋮ → Custom repositories**, add `https://github.com/chadakenn/Kellies-Voice` with category **Integration**. The shortcut badge does not register an unknown repository automatically.
-3. Click **[Open in HACS](https://my.home-assistant.io/redirect/hacs_repository/?owner=chadakenn&repository=Kellies-Voice&category=integration)**. Download **v0.16.0** (or a newer release), not the older `v0.6`.
+3. Click **[Open in HACS](https://my.home-assistant.io/redirect/hacs_repository/?owner=chadakenn&repository=Kellies-Voice&category=integration)**. Download the **stable v0.16.12** Home Assistant integration to match the [signed v0.16.12 Android app](https://github.com/chadakenn/Kellies-Voice/releases/tag/v0.16.12). Development prereleases are separate opt-in versions.
 4. Restart Home Assistant, then turn **Home Assistant layout ON** inside the Kellie's Voice TV app. Either add the TV under **Settings → Devices & services → Discovered** or use **Add Integration → Kellie's Voice** for manual pairing with its device ID (shown on the TV under Settings → Home Assistant layout → Show this TV's pairing ID). This works if mDNS is blocked across VLANs.
 5. Optionally turn on **TV announcements & cameras** on the TV to receive HA announcements and Frigate camera snapshots.
 
@@ -78,19 +90,23 @@ action: kellies_voice.announce
 data:
   title: Washer
   text: The washer is done.
+  speak: The washer is finished.
   duration_seconds: 10
 ```
 
-The event data is exactly:
+Example event data (includes optional spoken sentence):
 
 ```json
 {
   "title": "Washer",
   "text": "The washer is done.",
+  "speak": "The washer is finished.",
   "duration_seconds": 10,
   "device_id": "the-configured-tv-id"
 }
 ```
+
+**Spoken announcements are OFF by default.** Turn on **TV announcements & cameras** and **Spoken announcements** on the TV to hear `speak:`. The text popup works without spoken TTS, and `speak:` is not a microphone or Home Assistant-wide broadcast. If omitted, the announcement remains silent.
 
 ### Show a camera
 
@@ -129,7 +145,7 @@ The event data is exactly:
 6. Run them again with a **TV device id** and confirm only that TV is in the event.
 7. Try a duration of `120`, an empty title, or `entity_id: light.kitchen`. Home Assistant should reject the call and fire no event.
 
-The TV displays the message or snapshot when its **TV announcements & cameras** receiver is enabled. The `show_camera` action displays a **still-image snapshot**, not a live stream. The separate experimental `show_live_camera` action requests HLS video on demand. Neither action starts Kellie's microphone or speaks the notification.
+The TV displays the message or snapshot when its **TV announcements & cameras** receiver is enabled. The `show_camera` action displays a **still-image snapshot**, not a live stream. The separate `show_live_camera` action requests HLS video on demand. Neither starts Kellie's microphone. Both can optionally speak a short `speak:` sentence if **Spoken announcements** is enabled on the TV; otherwise they remain silent.
 
 ### Frigate person detection
 
@@ -162,6 +178,8 @@ Replace both entity ids with yours. Add `device_id` only when you want one TV.
 
 ## On-demand live camera viewing (experimental)
 
+The `kellies_voice.show_live_camera` action also supports `show_header: false`, `image_fit: fit`, and `refresh_seconds: 2..30` to update the still preview until moving video starts. These are optional and default to the previous behavior.
+
 The `kellies_voice.show_live_camera` action requests a **live HLS stream** from Home Assistant and displays a **muted, non-focusable overlay** on the TV. It does not cast away your movie or steal focus from YouTube. Default viewing time is 90 seconds (maximum 180). Person-detection alerts continue to use snapshots.
 
 ```yaml
@@ -172,7 +190,7 @@ data:
   duration_seconds: 90
 ```
 
-For voice, expose an appropriately named script to your Assist/Ollama agent that calls the service with a fixed camera entity. Adding a new HA action alone does not guarantee your custom Julia agent recognizes "show driveway camera". A sentence-triggered HA automation may be used as a fallback.
+For voice, expose an appropriately named script to your Assist/Ollama agent that calls the service with a fixed camera entity. Adding a new HA action alone does not guarantee your selected Assist conversation agent recognizes "show driveway camera". A sentence-triggered HA automation may be used as a fallback.
 
 The TV receiver requests a temporary HLS URL through Home Assistant's authenticated WebSocket `camera/stream` command. Events never carry stream URLs, tokens, or RTSP credentials. Playback is muted and released on timeout, a new popup, or receiver shutdown. HLS has more delay than WebRTC. Both the v0.16.0 or newer HACS integration and the matching signed Android APK with Media3 HLS support are needed. Moving live video has been confirmed on the onn 4K Pro with `camera.driveway` and `camera.doorbell` using Android v0.16.1. Other TV models and cameras have not been field-tested.
 
@@ -186,7 +204,7 @@ data:
   device_id: "your-kellies-voice-tv-id"
 ```
 
-For Julia/Ollama, expose a Home Assistant script called **Close camera on TV** that calls the action. For “show doorbell for 30 seconds” either expose a parameterized camera script whose `duration_seconds` field is 30 or a specifically named 30-second script. The `kellies_voice.show_live_camera` action already supports integer durations between 15 and 180 seconds; voice model recognition of script arguments is not guaranteed until tested.
+For your Assist conversation agent (Ollama is optional), expose a Home Assistant script called **Close camera on TV** that calls the action. For “show doorbell for 30 seconds” either expose a parameterized camera script whose `duration_seconds` field is 30 or a specifically named 30-second script. The `kellies_voice.show_live_camera` action already supports integer durations between 4 and 180 seconds; voice model recognition of script arguments is not guaranteed until tested.
 
 **Update both components to v0.16.2** and restart Home Assistant for the new action. The TV tries to resume an already enabled alert receiver after the APK update or a reboot. If the popups do not return, open Kellie's Voice once. No extra Home Assistant script is required for that resume.
 

@@ -6,23 +6,85 @@ Live Home Assistant events require HA configuration in a later step.
 
 ## TV configuration
 
-1. Install the signed v0.16.0 or newer APK over the existing app (keep your saved login).
+**If TV alerts/timers stopped after a TV wake, HA restart or update:** On the
+Kellie's Voice **main screen**, select **SETTINGS → TV alert status → Resume
+TV alerts**. Scroll down to **TV alert status** within the main SETTINGS
+menu. **Resume TV alerts** is the button in the status dialog; it is *not*
+inside **TV announcements & cameras**. If missing, enable the latter first,
+configure Home Assistant, and allow Android's **Display over other apps**
+permission. The TV alert receiver is separate from Assist's Connect /
+reconnect button. Check the HA **TV alert receiver connected** diagnostic
+and then send a new test event. See
+[troubleshooting](TROUBLESHOOTING.md#tv-camera-or-announcement-popups-missing-find-resume-tv-alerts).
+
+
+1. Install the current signed Android APK (v0.16.9 at this documentation update) over the existing app (keep saved settings). Install the matching HACS Kellie's Voice integration and restart Home Assistant.
 2. In Kellie's Voice, open **Settings → TV announcements & cameras**.
 3. Turn it on. Android may require **Display over other apps** permission.
-4. Choose **Preview announcement** for a local Night Signal popup. The box does
-   **not** enable the microphone, pause/mute YouTube, or steal DPAD focus.
+4. Choose **Preview announcement** for a local test popup. It does
+   **not** enable the microphone, pause/mute YouTube, or steal D-pad focus.
 5. To disable, turn the same switch off or use **Disable alerts** from the
    persistent notification.
 
-The opt-in switch defaults to **OFF**. When enabled, the service connects
-to the same Home Assistant WebSocket URL and encrypted access token already
-configured for Assist, subscribes to **three** HA event types (announcement, snapshot, experimental on-demand live camera), and
-reconnects after an interruption. It can be stopped by Android TV and is **not**
-a guaranteed 24/7 listener; it does not auto-start on boot.
+The opt-in switch defaults to **OFF**. When enabled, the alert receiver uses
+its own authenticated Home Assistant WebSocket connection and, with matching
+v0.16.5+ Android/HACS, a **TV-scoped alert subscription** for announcements,
+camera snapshots/live/hide, forecasts, and timers. This connection is separate
+from voice/Assist. The app attempts to recover it after normal network losses,
+updates, and restarts. Starting with v0.16.9, fix #86 distinguishes
+Home Assistant's TV controls still loading from actual access denial and
+retries the first condition using bounded backoff; genuine read denials still
+block event delivery. Android TV may block background starts, so it is **not**
+a guaranteed 24/7 listener. Open the app or use **TV alert status → Resume TV
+alerts** if it remains disconnected. Events missed during outages are not
+replayed.
 
-The Home Assistant token needs enough permissions to subscribe to custom
-events (usually an administrator token). Never expose the token in
-GitHub files, screenshots, automation YAML, or logs.
+**Public v0.16.4:** the receiver uses HA custom-event subscriptions. Home
+Assistant restricts these to administrators. If using v0.16.4, the safe
+workaround is to use other notification methods or restrict its TV token
+carefully; do not deploy a full HA administrator token on an untrusted TV
+simply to work around missing permissions.
+
+**Released and field-verified in v0.16.5 (#68):** with matching Android APK **and** HACS integration,
+the TV requests the new `kellies_voice/subscribe_alerts` command on its existing
+authenticated WebSocket. The HACS integration checks that the requesting account
+can read the **paired TV's "TV alert position" select entity**; a valid pairing ID
+alone is insufficient. It sends sanitized, per-device notifications only, and
+re-checks authorization before every event. No event payload is stored as a
+Home Assistant sensor state/history. A rejected request appears as a permissions
+error in TV alert status, not an endless "Connecting" message. Existing event
+bus automations and the administrator-only legacy subscription remain supported
+for older combinations of app and HACS. Always use the least-privileged token
+that works, keep it private and never upload it to GitHub.
+
+The Philips 65PUS8507/12 community tester verified non-admin alert delivery
+and targeted-TV isolation on HA 2026.10.2 with v0.16.5. Issue #68 is closed.
+Fine-grained permission-revocation behavior was covered by automated tests
+but **not** demonstrated on a live non-admin HA account; please report any
+security or revocation issue separately.
+
+## Did Home Assistant actually reach the TV? (issue #69)
+
+The current HACS integration exposes a diagnostic binary sensor **TV alert
+receiver connected** under each paired TV. It only turns ON when the
+authenticated, read-authorized TV alert WebSocket subscription is active.
+`last_seen_since_ha_start` shows the latest successful connection during this
+Home Assistant run; `never` indicates that HA has not seen one since startup.
+This is *not* a popup-delivery acknowledgment, and it is not a status for the
+voice/Assist WebSocket. Older Android releases using the legacy event channel
+will correctly show OFF or `never`.
+
+An incorrect but valid-format pairing ID is accepted in manual setup to allow
+offline/VLAN-separated pairing; the new sensor exposes that it has never
+connected. Home Assistant's 'Action ran OK' means the event was **published**,
+not that a TV displayed it. We do not promise delivery while an alert receiver
+is disconnected or replay missed events. Avoid rejecting all offline TVs: this
+would break intentional offline automations and legacy recipients.
+
+This diagnostic is available in v0.16.5+ with matching Android and HACS
+versions. A manually entered TV pairing ID is **not** the HA device-registry ID.
+A connected receiver confirms a subscription, not that a particular popup was
+rendered; issue #69 remains open for wrong-ID scenario testing.
 
 ## Event contract
 
@@ -30,7 +92,11 @@ The companion Home Assistant integration can implement the
 `kellies_voice.announce` and `kellies_voice.show_camera` services. A seven-day forecast is a separate on-demand action, documented in [WEATHER_FORECAST.md](WEATHER_FORECAST.md). The
 Android side listens for the following raw **Home Assistant event bus** events:
 
-### Visual announcement (text only in phase 1)
+### Visual announcement
+
+
+**Optional spoken announcements** (v0.16.11+ draft): add a `speak` field to the announcement event. Enable in TV Settings → Spoken announcements. Audio is ducked transiently via AudioFocus and always restored. See YAML examples in the wiki.
+
 
 - Event type: `kellies_voice_announcement`
 - Data:

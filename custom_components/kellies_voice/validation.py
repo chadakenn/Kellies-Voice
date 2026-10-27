@@ -72,6 +72,19 @@ def clean_duration(value, default: int) -> int:
     return seconds
 
 
+def clean_snapshot_refresh(value) -> int:
+    """Off or a bounded update rate: no HA/Frigate request flooding."""
+    if type(value) is bool:
+        raise ValueError("Snapshot refresh must be off (0) or 2 to 30 seconds.")
+    try:
+        seconds = int(value)
+    except (TypeError, ValueError, OverflowError):
+        raise ValueError("Snapshot refresh must be off (0) or 2 to 30 seconds.") from None
+    if seconds != 0 and not 2 <= seconds <= 30:
+        raise ValueError("Snapshot refresh must be off (0) or 2 to 30 seconds.")
+    return seconds
+
+
 def clean_camera_entity(value) -> str:
     """Accept only a Home Assistant camera entity id. Never a URL or token."""
     if value is None:
@@ -103,6 +116,27 @@ def target_device_ids(requested, configured) -> list:
     if chosen not in seen:
         raise ValueError("That TV is not a configured Kellie's Voice device.")
     return [chosen]
+
+
+def targets_with_receiver_feedback(requested, configured, active, observed) -> list:
+    """Reject a selected TV known to be offline, without breaking legacy-only setups.
+
+    Explicit services normally report that an event was fired even if the TV
+    never received it. If this HA session has seen a modern scoped receiver,
+    a selected, disconnected pairing ID should not silently succeed.
+
+    Legacy-only installations have no scoped receiver telemetry, so keep
+    their existing delivery semantics. Broadcast remains best-effort.
+    """
+    targets = target_device_ids(requested, configured)
+    explicitly_targeted = isinstance(requested, str) and bool(requested.strip())
+    if explicitly_targeted and observed and targets[0] not in active:
+        raise ValueError(
+            "The selected TV alert receiver is not connected. Check the TV "
+            "pairing ID in Kellie's Voice settings, then check its 'TV alert "
+            "receiver connected' sensor in Home Assistant. No event was sent."
+        )
+    return targets
 
 
 _WEATHER_ENTITY = re.compile(r"^weather\.[a-z0-9_]+$")
@@ -276,3 +310,43 @@ def _clean_line(value) -> str:
     if value is None:
         return ""
     return " ".join(str(value).split())
+
+def clean_speak(value) -> str:
+    """Return a short spoken sentence, or empty string if invalid/silent."""
+    if value is None or not isinstance(value, str):
+        return ""
+    text = " ".join(value.strip().split())
+    if not text or len(text) > 180:
+        return ""
+    lower = text.lower()
+    if "://" in lower or lower.startswith("http") or "www." in lower:
+        return ""
+    return text
+
+_ACTION_ID = re.compile(r"^[a-z][a-z0-9_]{0,31}$")
+
+
+def clean_actions(value) -> list:
+    """Accept up to three short, unique, inert button identifiers and labels."""
+    if value is None:
+        return []
+    if not isinstance(value, list) or len(value) > 3:
+        raise ValueError("Use at most three action buttons.")
+    safe, seen = [], set()
+    for item in value:
+        if not isinstance(item, dict) or set(item) != {"id", "label"}:
+            raise ValueError("Each button must contain only id and label.")
+        ident, label = item["id"], item["label"]
+        if not isinstance(ident, str) or not _ACTION_ID.fullmatch(ident):
+            raise ValueError("Button ID must be a lowercase word up to 32 characters.")
+        if not isinstance(label, str):
+            raise ValueError("Button label must be text.")
+        label = " ".join(label.strip().split())
+        lower = label.lower()
+        if not label or len(label) > 24 or "://" in lower or "www." in lower or lower.startswith("http"):
+            raise ValueError("Button label must be short and contain no URL.")
+        if ident in seen:
+            raise ValueError("Button IDs must be unique.")
+        safe.append({"id": ident, "label": label})
+        seen.add(ident)
+    return safe

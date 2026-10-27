@@ -20,10 +20,24 @@ public final class TvEventsRecovery {
     public static final String STOPPED = "stopped";
     public static final String REJECTED = "rejected";
     public static final String CHECK = "check";
+    public static final String DENIED = "permission_denied";
+    public static final String UPDATE_HACS = "update_hacs";
 
     public static final int RESUME_NOTIFICATION_ID = 2243;
 
     private static volatile String runtime = "";
+    // Only fixed, non-sensitive labels are written by the TV receiver.
+    // Never record Home Assistant addresses, pairing IDs or access tokens.
+    private static volatile String diagnostic = "";
+
+    public static void diagnostic(String value) {
+        diagnostic = value == null ? "" : value;
+    }
+
+    public static String diagnostics() {
+        return diagnostic;
+    }
+
 
     private TvEventsRecovery() {}
 
@@ -68,6 +82,17 @@ public final class TvEventsRecovery {
         }
         if (RECONNECTING.equals(runtime)) {
             return "Reconnecting to Home Assistant. Alerts sent while it was disconnected are not replayed.";
+        }
+        if (DENIED.equals(runtime)) {
+            return "Home Assistant reported TV alert permission denied. "
+                    + "Kellie's Voice will automatically recheck periodically after startup, "
+                    + "but will not receive alerts until Home Assistant approves access. "
+                    + "If this persists, check read access to the TV's Kellie's Voice controls. "
+                    + "Resume TV alerts retries immediately; no administrator token is required.";
+        }
+        if (UPDATE_HACS.equals(runtime)) {
+            return "The Home Assistant integration does not support scoped TV alerts. "
+                    + "Update Kellie's Voice in HACS and restart Home Assistant.";
         }
         if (REJECTED.equals(runtime)) return "Home Assistant rejected the saved login.";
         if (CHECK.equals(runtime)) return "The saved Home Assistant address needs to be checked in Settings.";

@@ -42,6 +42,18 @@ public final class WakeWordService extends Service {
     private Thread worker;
     private AudioRecord recorder;
 
+    private static volatile long yieldUntilMs;
+
+    /** Full-screen TALK borrows the microphone. The listener resumes after this. */
+    public static void yieldMicrophone(long forMs) {
+        long until = android.os.SystemClock.elapsedRealtime() + Math.max(0L, forMs);
+        if (until > yieldUntilMs) yieldUntilMs = until;
+    }
+
+    private static boolean yielding() {
+        return android.os.SystemClock.elapsedRealtime() < yieldUntilMs;
+    }
+
     @Override public IBinder onBind(Intent intent) { return null; }
 
     @Override public int onStartCommand(Intent intent, int flags, int startId) {
@@ -70,6 +82,7 @@ public final class WakeWordService extends Service {
 
     private boolean allowed(String action) {
         OverlayPreferences prefs = new OverlayPreferences(this);
+        if (prefs.microphoneDisabled()) return false;
         if (!WakeWordSession.mayStart(prefs.wakeWord(), action,
                 checkSelfPermission(Manifest.permission.RECORD_AUDIO)
                         == PackageManager.PERMISSION_GRANTED,
@@ -99,6 +112,11 @@ public final class WakeWordService extends Service {
                 // Check each ~1s (10ms audio chunks), not only at service startup.
                 if (++permissionCheck >= 100) {
                     permissionCheck = 0;
+                    if (prefs.microphoneDisabled()) {
+                        notifyFailure("Microphone capture is disabled on this TV. Wake word off.");
+                        prefs.setWakeWord(false);
+                        break;
+                    }
                     if (checkSelfPermission(Manifest.permission.RECORD_AUDIO)
                             != PackageManager.PERMISSION_GRANTED
                             || !android.provider.Settings.canDrawOverlays(this)) {
@@ -107,7 +125,7 @@ public final class WakeWordService extends Service {
                         break;
                     }
                 }
-                if (!WakeWordSession.shouldCapture(true, VoiceOverlayService.isOpen())) {
+                if (!WakeWordSession.shouldCapture(true, VoiceOverlayService.isOpen() || yielding())) {
                     releaseRecorder();
                     sleep(200);
                     continue;

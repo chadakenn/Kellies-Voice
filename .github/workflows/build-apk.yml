@@ -15,6 +15,8 @@ on:
       - 'build.gradle'
       - 'gradle.properties'
       - 'settings.gradle'
+      - 'gradlew'
+      - 'gradle/wrapper/**'
       - '.github/workflows/build-apk.yml'
 
 permissions:
@@ -40,8 +42,6 @@ jobs:
         run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.2.12479018' 'cmake;3.22.1'
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.9'
 
       # Android updates MUST use the exact same keystore on every build.
       # Do not publish a new disposable debug APK to users.
@@ -61,16 +61,16 @@ jobs:
           echo "TV_SIGNING_KEYSTORE_PATH=$RUNNER_TEMP/kellies-voice-signing.p12" >> "$GITHUB_ENV"
 
       - name: Test Android and Home Assistant before public release
-        if: (github.event_name == 'workflow_dispatch' && inputs.publish_release == true) || (github.event_name == 'push' && contains(github.event.head_commit.message, '[publish-v0.16.3]'))
+        if: (github.event_name == 'workflow_dispatch' && inputs.publish_release == true) || (github.event_name == 'push' && contains(github.event.head_commit.message, '[publish-release]'))
         run: |
-          gradle --no-daemon -PskipWakeNative=true :app:testDebugUnitTest
+          ./gradlew --no-daemon -PskipWakeNative=true :app:assembleDebug :app:testDebugUnitTest
           python3 -m compileall -q custom_components/kellies_voice
-          python3 -m unittest discover -s tests -p 'test_kellies_voice_events.py' -v
+          python3 -m unittest discover -s tests -p 'test_*.py' -v
 
       - name: Build signed release APK
         env:
           TV_SIGNING_PASSWORD: ${{ secrets.TV_SIGNING_PASSWORD }}
-        run: gradle --no-daemon :app:assembleRelease
+        run: ./gradlew --no-daemon :app:assembleRelease
 
       - name: Verify APK signature
         run: |
@@ -84,7 +84,7 @@ jobs:
           if-no-files-found: error
 
   publish-release:
-    if: (github.event_name == 'workflow_dispatch' && inputs.publish_release == true) || (github.event_name == 'push' && github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[publish-v0.16.3]'))
+    if: github.ref == 'refs/heads/main' && ((github.event_name == 'workflow_dispatch' && inputs.publish_release == true) || (github.event_name == 'push' && contains(github.event.head_commit.message, '[publish-release]')))
     needs: signed-release
     runs-on: ubuntu-latest
     permissions:

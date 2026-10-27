@@ -3,11 +3,14 @@
 import logging
 import time
 
+from .alert_actions import ledger
+
 import voluptuous as vol
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 
+from .alert_presence import tracker
 from .const import (
     DEFAULT_ANNOUNCE_SECONDS,
     DEFAULT_CAMERA_SECONDS,
@@ -30,8 +33,11 @@ from .const import (
 )
 from .validation import (
     clean_camera_entity,
+    clean_snapshot_refresh,
     clean_duration,
     clean_text,
+    clean_speak,
+    clean_actions,
     clean_title,
     clean_forecast_days,
     clean_forecast_duration,
@@ -40,6 +46,7 @@ from .validation import (
     clean_weather_entity,
     forecast_rows,
     target_device_ids,
+    targets_with_receiver_feedback,
     clean_timer_name,
     clean_timer_seconds,
     clean_timer_phrase,
@@ -56,6 +63,8 @@ ANNOUNCE_SCHEMA = vol.Schema(
             vol.Coerce(int),
             vol.Range(min=MIN_DURATION_SECONDS, max=MAX_DURATION_SECONDS),
         ),
+        vol.Optional("speak"): cv.string,
+        vol.Optional("actions"): list,
         vol.Optional("device_id"): cv.string,
     }
 )
@@ -63,11 +72,18 @@ ANNOUNCE_SCHEMA = vol.Schema(
 SHOW_CAMERA_SCHEMA = vol.Schema(
     {
         vol.Required("entity_id"): cv.string,
-        vol.Required("title"): cv.string,
+        vol.Optional("title", default="Camera alert"): cv.string,
+        vol.Optional("show_header", default=True): cv.boolean,
+        vol.Optional("image_fit", default="crop"): vol.In(("crop", "fit")),
+        vol.Optional("refresh_seconds", default=0): vol.All(
+            vol.Coerce(int), vol.Any(0, vol.Range(min=2, max=30))
+        ),
         vol.Optional("duration_seconds", default=DEFAULT_CAMERA_SECONDS): vol.All(
             vol.Coerce(int),
             vol.Range(min=MIN_DURATION_SECONDS, max=MAX_DURATION_SECONDS),
         ),
+        vol.Optional("speak"): cv.string,
+        vol.Optional("actions"): list,
         vol.Optional("device_id"): cv.string,
     }
 )
@@ -77,9 +93,16 @@ SHOW_LIVE_SCHEMA = vol.Schema(
     {
         vol.Required("entity_id"): cv.string,
         vol.Optional("title", default="Live camera"): cv.string,
+        vol.Optional("show_header", default=True): cv.boolean,
+        vol.Optional("image_fit", default="crop"): vol.In(("crop", "fit")),
+        vol.Optional("refresh_seconds", default=0): vol.All(
+            vol.Coerce(int), vol.Any(0, vol.Range(min=2, max=30))
+        ),
         vol.Optional("duration_seconds", default=DEFAULT_LIVE_SECONDS): vol.All(
             vol.Coerce(int), vol.Range(min=MIN_LIVE_SECONDS, max=MAX_LIVE_SECONDS)
         ),
+        vol.Optional("speak"): cv.string,
+        vol.Optional("actions"): list,
         vol.Optional("device_id"): cv.string,
     }
 )
@@ -151,13 +174,33 @@ def configured_device_ids(hass: HomeAssistant) -> list:
     return found
 
 
+
+def _event_targets(call, requested):
+    """Check targeted delivery against known, live scoped TV subscriptions.
+
+    An online socket does not prove that Android displayed the event.
+    Legacy-only accounts keep their existing best-effort semantics.
+    """
+    present = tracker(call.hass)
+    active = [device_id for device_id in present.seen if present.online(device_id)]
+    targets = targets_with_receiver_feedback(
+        requested, configured_device_ids(call.hass), active, present.seen
+    )
+    if isinstance(requested, str) and requested.strip() and not present.seen:
+        _LOGGER.warning(
+            "TV event requested before any scoped receiver was observed; "
+            "legacy receiver status is unknown, delivery not confirmed"
+        )
+    return targets
+
+
 def _timer_target(call):
     # Timer commands address exactly one paired TV. Never silently broadcast.
     requested = call.data.get("device_id", "").strip()
     if not requested:
         raise ServiceValidationError("Choose one paired TV device id for timers.")
     try:
-        return target_device_ids(requested, configured_device_ids(call.hass))[0]
+        return _event_targets(call, requested)[0]
     except ValueError as error:
         raise ServiceValidationError(str(error)) from None
 
@@ -202,43 +245,62 @@ async def _async_announce(call: ServiceCall) -> None:
             call.data.get("duration_seconds", DEFAULT_ANNOUNCE_SECONDS),
             DEFAULT_ANNOUNCE_SECONDS,
         )
-        targets = target_device_ids(call.data.get("device_id"), configured_device_ids(call.hass))
+        speak = clean_speak(call.data.get("speak"))
+        actions = clean_actions(call.data.get("actions"))
+        targets = _event_targets(call, call.data.get("device_id"))
     except ValueError as err:
         raise ServiceValidationError(str(err)) from None
     for device_id in targets:
-        call.hass.bus.async_fire(
-            EVENT_ANNOUNCEMENT,
-            {
-                "title": title,
-                "text": text,
-                "duration_seconds": duration,
-                "device_id": device_id,
-            },
-        )
+        issued = ledger(call.hass).issue(device_id, actions, duration)
+        data = {
+            "title": title,
+            "text": text,
+            "duration_seconds": duration,
+            "device_id": device_id,
+        }
+        if speak:
+            data["speak"] = speak
+        if issued:
+            data.update(actions=actions, announcement_id=issued)
+        call.hass.bus.async_fire(EVENT_ANNOUNCEMENT, data)
     _LOGGER.debug("Fired %s for %s configured TV(s)", EVENT_ANNOUNCEMENT, len(targets))
 
 
 async def _async_show_camera(call: ServiceCall) -> None:
     try:
         entity_id = clean_camera_entity(call.data.get("entity_id"))
-        title = clean_title(call.data.get("title"))
+        show_header = call.data.get("show_header", True)
+        title = (clean_title(call.data.get("title", "Camera alert"))
+                 if show_header else "")
+        fit = call.data.get("image_fit", "crop")
+        if fit not in ("fit", "crop"):
+            raise ValueError("Choose image_fit 'fit' or 'crop'.")
+        refresh = clean_snapshot_refresh(call.data.get("refresh_seconds", 0))
         duration = clean_duration(
             call.data.get("duration_seconds", DEFAULT_CAMERA_SECONDS),
             DEFAULT_CAMERA_SECONDS,
         )
-        targets = target_device_ids(call.data.get("device_id"), configured_device_ids(call.hass))
+        speak = clean_speak(call.data.get("speak"))
+        actions = clean_actions(call.data.get("actions"))
+        targets = _event_targets(call, call.data.get("device_id"))
     except ValueError as err:
         raise ServiceValidationError(str(err)) from None
     if call.hass.states.get(entity_id) is None:
         raise ServiceValidationError("That camera is not in Home Assistant.")
     for device_id in targets:
+        issued = ledger(call.hass).issue(device_id, actions, duration)
         call.hass.bus.async_fire(
             EVENT_CAMERA_POPUP,
             {
                 "entity_id": entity_id,
                 "title": title,
+                "show_header": show_header,
+                "image_fit": fit,
+                "refresh_seconds": refresh,
                 "duration_seconds": duration,
                 "device_id": device_id,
+                **({"speak": speak} if speak else {}),
+                **({"actions": actions, "announcement_id": issued} if issued else {}),
             },
         )
     _LOGGER.debug("Fired %s for %s configured TV(s)", EVENT_CAMERA_POPUP, len(targets))
@@ -249,11 +311,19 @@ async def _async_show_live_camera(call: ServiceCall) -> None:
     """Request a live HLS session on a configured TV without sharing stream URLs."""
     try:
         entity_id = clean_camera_entity(call.data.get("entity_id"))
-        title = clean_title(call.data.get("title", "Live camera"))
+        show_header = call.data.get("show_header", True)
+        title = (clean_title(call.data.get("title", "Live camera"))
+                 if show_header else "")
+        fit = call.data.get("image_fit", "crop")
+        if fit not in ("crop", "fit"):
+            raise ValueError("Choose image_fit 'crop' or 'fit'.")
+        refresh = clean_snapshot_refresh(call.data.get("refresh_seconds", 0))
         duration = int(call.data.get("duration_seconds", DEFAULT_LIVE_SECONDS))
         if not MIN_LIVE_SECONDS <= duration <= MAX_LIVE_SECONDS:
-            raise ValueError("Live duration must be from 15 to 180 seconds.")
-        targets = target_device_ids(call.data.get("device_id"), configured_device_ids(call.hass))
+            raise ValueError("Live duration must be from 4 to 180 seconds.")
+        speak = clean_speak(call.data.get("speak"))
+        actions = clean_actions(call.data.get("actions"))
+        targets = _event_targets(call, call.data.get("device_id"))
     except (ValueError, TypeError) as err:
         raise ServiceValidationError(str(err)) from None
     camera = call.hass.states.get(entity_id)
@@ -263,13 +333,19 @@ async def _async_show_live_camera(call: ServiceCall) -> None:
     if not int(camera.attributes.get("supported_features", 0)) & 2:
         raise ServiceValidationError("This camera does not support live streams in Home Assistant.")
     for device_id in targets:
+        issued = ledger(call.hass).issue(device_id, actions, duration)
         call.hass.bus.async_fire(
             EVENT_LIVE_CAMERA,
             {
                 "entity_id": entity_id,
                 "title": title,
+                "show_header": show_header,
+                "image_fit": fit,
+                "refresh_seconds": refresh,
                 "duration_seconds": duration,
                 "device_id": device_id,
+                **({"speak": speak} if speak else {}),
+                **({"actions": actions, "announcement_id": issued} if issued else {}),
             },
         )
     _LOGGER.debug("Fired %s for %s configured TV(s)", EVENT_LIVE_CAMERA, len(targets))
@@ -282,12 +358,11 @@ async def _async_hide_camera(call: ServiceCall) -> None:
     Announcements and the separate voice overlay are unaffected.
     """
     try:
-        targets = target_device_ids(
-            call.data.get("device_id"), configured_device_ids(call.hass)
-        )
+        targets = _event_targets(call, call.data.get("device_id"))
     except ValueError as err:
         raise ServiceValidationError(str(err)) from None
     for device_id in targets:
+        ledger(call.hass).clear(device_id)
         call.hass.bus.async_fire(EVENT_HIDE_CAMERA, {"device_id": device_id})
     _LOGGER.debug("Fired %s for %s configured TV(s)", EVENT_HIDE_CAMERA, len(targets))
 
@@ -313,7 +388,7 @@ async def _async_show_forecast(call: ServiceCall) -> None:
     try:
         requested = call.data.get("entity_id")
         device_filter = call.data.get("device_id")
-        targets = target_device_ids(device_filter, configured_device_ids(call.hass))
+        targets = _event_targets(call, device_filter)
         if not requested:
             requested = _saved_weather_entity(
                 call.hass, targets[0] if len(targets) == 1 else ""

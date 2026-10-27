@@ -1,10 +1,12 @@
-# Voice timers (development draft)
+# Voice timers in public v0.16.7 (plus optional voice setup)
+
+**Name clarification:** Julia is the maintainer's nickname for their Home Assistant conversation assistant, **not** an included assistant or wake word. Other users can use any Assist conversation agent and do **not** need to say "Julia" to start timers once the voice input is active. Timer scripts and sentence routing must be configured for your own Home Assistant pipeline; see the [naming explanation](../README.md#kellies-voice-vs-julia-whats-the-difference).
 
 Named TV timers show small countdown pills over the current app. At completion: one chime, a 180 ms gap, a second chime, the optional configured phrase, then a 500 ms pause before the next pair. **Alerts repeat until dismissed, with no automatic cutoff.** Multiple completed timers share one audio sequence; dismiss the current timer to hear the next. Back dismisses every ringing timer, leaving running timers alone. The completion window has D-pad buttons; countdowns do not take remote focus.
 
-The bundled chime plays locally. Optional speech uses the TV's Android text-to-speech engine, not the microphone or HA voice agent; it may sound different from Julia. If speech is unavailable, chimes continue. A stalled utterance is stopped after 15 seconds so the pair sequence can resume. The phrase is configured per timer and limited to 140 characters.
+The bundled chime plays locally. Optional speech uses the TV's Android text-to-speech engine, not the microphone or HA voice agent; it may sound different from your Home Assistant voice assistant. If speech is unavailable, chimes continue. A stalled utterance is stopped after 15 seconds so the pair sequence can resume. The phrase is configured per timer and limited to 140 characters.
 
-This branch is based on Aurora Glass and the weather fixes. It does not include PR #46 microphone changes. No release, version change, deployment or installation has been performed.
+**Shipped:** signed Android v0.16.7 and matching HACS integration v0.16.7 support TV countdowns, completion chimes and the Home Assistant timer actions below. The maintainer previously confirmed countdown, recurring chimes and **Back** dismissal on the onn 4K Pro. The previous **remote OK on Dismiss** failure is addressed in [merged PR #55](https://github.com/chadakenn/Kellies-Voice/pull/55), but still needs real-device verification before closing [#54](https://github.com/chadakenn/Kellies-Voice/issues/54). Optional hands-free follow-up listening (#46) and a wake word (#59) are **not shipped**. [New tester installation guide](INSTALL.md).
 
 ## Requirements and behavior
 
@@ -47,7 +49,7 @@ data:
 
 ## Voice setup
 
-Use Home Assistant's documented [custom sentence files](https://www.home-assistant.io/voice_control/custom_sentences_yaml/) and [intent scripts](https://www.home-assistant.io/integrations/intent_script/). This setup is a draft and has not been exercised on the owner's live Assist pipeline. An LLM agent may need local command handling enabled; verify exact matching before relying on it. The “Kellie” variants avoid ambiguity with native satellite timers.
+Use Home Assistant's documented [custom sentence files](https://www.home-assistant.io/voice_control/custom_sentences_yaml/) and [intent scripts](https://www.home-assistant.io/integrations/intent_script/). The particular custom-sentence and intent-script YAML below is an **unverified alternative**. The maintainer has verified voice timer start and stop through a separate set of Home Assistant conversation-trigger automations, not via this exact configuration. An LLM agent may need local command handling enabled; verify exact matching before relying on it. Unprefixed commands are preferable when listening has already been manually activated, but can conflict with Home Assistant's native timer intents or other Assist satellites. Scope them carefully before enabling in a multi-device home.
 
 Save this as `/config/custom_sentences/en/kellie_timers.yaml`:
 
@@ -57,17 +59,17 @@ intents:
   KellieStartTimer:
     data:
       - sentences:
-          - "[Kellie ]set [a] {timer_duration} {timer_unit} timer [called {timer_name}]"
-          - "[Kellie ]set [a] {timer_name} timer for {timer_duration} {timer_unit}"
+          - "set [a] {timer_duration} {timer_unit} timer [called {timer_name}]"
+          - "set [a] {timer_name} timer for {timer_duration} {timer_unit}"
   KellieCancelTimer:
     data:
       - sentences:
-          - "[Kellie ](cancel|stop|dismiss) [the] {timer_name} timer"
-          - "[Kellie ]cancel [the] timer"
+          - "(cancel|stop|dismiss) [the] {timer_name} timer"
+          - "cancel [the] timer"
   KellieDismissTimers:
     data:
       - sentences:
-          - "[Kellie ]dismiss [the] timer alerts"
+          - "dismiss [the] timer alerts"
 lists:
   timer_duration:
     range:
@@ -118,14 +120,22 @@ intent_script:
       text: "Sent the dismiss command for ringing timers."
 ```
 
-Examples: “Set a 5 minute timer”, “Set a pizza timer for 5 minutes”, “Cancel the pizza timer”, “Dismiss timer alerts”. If native HA satellite handling takes the generic timer phrase, use “Kellie set a 5 minute timer”. No app-side parsing of arbitrary assistant answers is used.
+Examples: “Set a 5 minute timer”, “Set a pizza timer for 5 minutes”, “Cancel the pizza timer”, “Dismiss timer alerts”. If native HA satellite handling intercepts the generic phrase, verify the Assist pipeline and use a **TV-specific exposed script** or carefully scoped sentence trigger. The app does not require saying “Julia” or “Kellie” as an assistant-name prefix. For a more flexible home-specific setup, see the [draft no-wake-word timer automation guide](https://github.com/chadakenn/Kellies-Voice/blob/docs/voice-timers-llm-scripts-v0164/docs/VOICE_TIMERS_PLAIN_SPEECH.md). No app-side parsing of arbitrary assistant answers is used.
 
-## Required onn QA
+## What is tested, and what still needs testing
+
+- [x] On the maintainer's onn 4K Pro: visible timer countdown, repeating chimes and **Back** to dismiss the completed alert.
+- [x] Voice start and stop on that TV after configuring custom Home Assistant timer automations.
+- [ ] v0.16.7 **OK/Dismiss** fix: press OK without first moving the D-pad, then test multi-timer selection while a video plays. Record results in #54.
+- [ ] New tester devices, other Assist pipelines, simultaneous timers, network drops and extended sleep behavior.
+
+## Further onn QA
 
 Alerts stay silent unless overlay permission is granted and the attached completion window is visible with Dismiss controls. Losing permission or the window stops chimes and speech; an undismissed alert can resume when controls return. Temporary audio-focus loss pauses playback while retaining the request for focus gain. Permanent loss or denial retries after two seconds, so later timers are not left muted. These recovery paths have host regression tests; actual Android window/audio behavior still requires the checks below.
 
 - [ ] Start two named timers over YouTube and verify countdowns without remote-focus theft.
 - [ ] At expiry, verify exactly two chimes, optional complete phrase, short pause, repeat indefinitely until dismissed.
+- [ ] **Fix validation from PR #55 (not yet in public v0.16.6):** When a 10-second timer finishes, press OK immediately **without moving the D-pad**. The Dismiss button should already have visible focus. With multiple completed timers, use Down/OK to dismiss the selected one while keeping the others available; Back must still dismiss all ringing alerts. While the countdown is running, the overlay must never steal TV remote focus.
 - [ ] Test D-pad Dismiss, Back, named voice cancellation, replacement while ringing, and multiple expired timers.
 - [ ] Verify dismiss stops MediaPlayer/TTS callbacks, restores audio focus, and cannot restart a stale alert.
 - [ ] Interrupt a ringing alert with other audio, then verify recovery and a later timer. Revoke overlay permission or hide/remove the completion window during chimes and speech: audio must stop; restore controls and verify safe resumption and Dismiss.

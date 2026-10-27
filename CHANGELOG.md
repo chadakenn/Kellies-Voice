@@ -2,6 +2,16 @@
 
 This is an experimental Android TV / Google TV app. Each entry distinguishes **shipped code** from **tested on the onn 4K Pro**.
 
+## v0.16.9 (2026-10-24) — Room-aware Assist and HA restart recovery
+
+- **#50:** When Home Assistant layout sync is enabled, Kellie's Voice learns the matching Home Assistant device-registry ID from the paired TV's control entities and includes that ID in the next Assist pipeline request. This is distinct from the TV pairing ID. Assign an Area to the TV in Home Assistant for room-aware requests; room targeting depends on the conversation agent. The new code has **not yet been confirmed with a physical room-targeting request**.
+- **#78 / #86:** The HA integration distinguishes a paired TV whose control select has not loaded yet (`tv_not_ready`) from a genuinely unauthorized TV. Android retries only the temporary condition with 2–30 second capped backoff; missing pairing or read permissions remain denied. The owner reproduced the previous stuck rejection on an onn 4K Pro and confirmed manual recovery on v0.16.8; the new automatic fix is **awaiting physical HA restart regression testing**.
+- **#58:** HACS README banner now uses an absolute URL for the existing SVG image.
+- **#85:** Adds Wiki source pages and a Home Assistant YAML cookbook under `docs/wiki/`. Publishing to the separate GitHub Wiki remains a distinct step.
+- **Not included:** Wake-word support, follow-up listening, Frigate screensaver dashboard, actionable TV buttons. Philips microphone issue **#71 remains open**.
+- Signed APK `versionCode 26` / `versionName 0.16.9`; HACS integration manifest `0.16.9`. Install matching Android and HACS versions and restart Home Assistant.
+
+
 ## v0.14-reliability-hardening (2026-10-21) — Merge-tested stabilization
 
 - Merged and reconciled [#9](https://github.com/chadakenn/Kellies-Voice/pull/9): checks the downloaded APK's package name and signing certificate before starting Android's installer, and removes the obsolete Julia-Voice release fallback.

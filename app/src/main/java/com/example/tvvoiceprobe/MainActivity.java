@@ -30,6 +30,7 @@ import java.util.Locale;
 public class MainActivity extends Activity {
     private static final int REQUEST_AUDIO = 41;
     private TextView output;
+    private AppPalette palette;
     private ScrollView scroll;
     // Android TV requires explicit D-pad focus and a visibly selected action.
     private final List<Button> actions = new ArrayList<>();
@@ -40,18 +41,19 @@ public class MainActivity extends Activity {
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
+        palette = AppPalette.forSkin(new OverlayPreferences(this).skin());
         LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
         layout.setPadding(32, 24, 32, 24);
-        layout.setBackgroundColor(0xff201612);
+        layout.setBackgroundColor(palette.screen);
         TextView heading = new TextView(this);
         heading.setText("Kellie's Voice diagnostics  •  onn / Google TV");
         heading.setTextSize(23);
-        heading.setTextColor(0xffffffff);
+        heading.setTextColor(palette.text);
         layout.addView(heading);
         TextView help = new TextView(this);
         help.setText("Use remote UP / DOWN to choose a test, then press OK");
-        help.setTextColor(0xffDDA984);
+        help.setTextColor(palette.accent);
         help.setTextSize(17);
         layout.addView(help);
         addButton(layout, "List audio inputs", v -> listInputs());
@@ -61,7 +63,7 @@ public class MainActivity extends Activity {
         addButton(layout, "Clear log", v -> output.setText(""));
         scroll = new ScrollView(this);
         output = new TextView(this);
-        output.setTextColor(0xffF6E8DE);
+        output.setTextColor(palette.text);
         output.setTextSize(16);
         // A selectable text view can steal initial keyboard focus on TV.
         output.setTextIsSelectable(false);
@@ -89,13 +91,13 @@ public class MainActivity extends Activity {
         b.setAllCaps(false);
         b.setFocusable(true);
         b.setFocusableInTouchMode(true);
-        b.setTextColor(0xffffffff);
-        b.setBackgroundTintList(ColorStateList.valueOf(0xff62473E));
+        b.setTextColor(palette.text);
+        b.setBackgroundTintList(ColorStateList.valueOf(palette.button));
         b.setOnClickListener(click);
         b.setOnFocusChangeListener((view, focused) -> {
             if (focused) selectedAction = index;
             b.setBackgroundTintList(ColorStateList.valueOf(
-                    focused ? 0xffAD7057 : 0xff62473E));
+                    focused ? palette.focus : palette.button));
         });
         actions.add(b);
         parent.addView(b);

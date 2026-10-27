@@ -7,6 +7,18 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class TvEventsRecoveryTest {
+    @org.junit.Test public void deniedAlertsShowActionablePermissionsError() {
+        String text = TvEventsRecovery.describe(true, true, true, TvEventsRecovery.DENIED);
+        org.junit.Assert.assertTrue(text.contains("denied"));
+        org.junit.Assert.assertTrue(text.contains("read access"));
+        org.junit.Assert.assertFalse(text.contains("must be an administrator"));
+    }
+
+    @org.junit.Test public void missingScopedIntegrationShowsUpdateInstruction() {
+        String text = TvEventsRecovery.describe(true, true, true, TvEventsRecovery.UPDATE_HACS);
+        org.junit.Assert.assertTrue(text.contains("Update"));
+    }
+
     @Test public void onlyBootAndUpdateIntentsCanResumeAlerts() {
         assertTrue(TvEventsRecovery.accepts(TvEventsRecovery.BOOT));
         assertTrue(TvEventsRecovery.accepts(TvEventsRecovery.REPLACED));

@@ -1,7 +1,7 @@
 """Discovery flow. Home Assistant does not connect to the TV."""
 
 import voluptuous as vol
-from homeassistant.config_entries import ConfigFlow
+from homeassistant.config_entries import ConfigFlow, OptionsFlow
 from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 
 from .const import DOMAIN
@@ -17,12 +17,39 @@ def _text(properties: dict, key: str) -> str:
     return str(value).strip()
 
 
+class KellieVoiceOptionsFlow(OptionsFlow):
+    """Explicit per-TV opt-in; HA reloads the integration on change."""
+
+    async def async_step_init(self, user_input=None):
+        if user_input is not None:
+            return self.async_create_entry(
+                title="", data={"native_timer_intents": bool(
+                    user_input["native_timer_intents"]
+                )}
+            )
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema({
+                vol.Optional(
+                    "native_timer_intents",
+                    default=self.config_entry.options.get("native_timer_intents", False)
+                ): bool,
+            }),
+        )
+
+
 class KellieVoiceConfigFlow(ConfigFlow, domain=DOMAIN):
     """Add a TV that is already advertising from its Settings switch."""
+
+    @staticmethod
+    def async_get_options_flow(config_entry):
+        return KellieVoiceOptionsFlow()
 
     def __init__(self) -> None:
         self._device_id = ""
         self._name = "Kellie's Voice"
+        self._manual_device_id = ""
+        self._manual_name = ""
 
     async def async_step_user(self, user_input=None):
         """Manual fallback when the TV cannot advertise across mDNS/VLANs."""
@@ -37,12 +64,11 @@ class KellieVoiceConfigFlow(ConfigFlow, domain=DOMAIN):
                 if not name or len(name) > 64:
                     errors["name"] = "invalid_name"
                 else:
-                    await self.async_set_unique_id(device_id)
-                    self._abort_if_unique_id_configured()
-                    return self.async_create_entry(
-                        title=name,
-                        data={"device_id": device_id, "name": name},
-                    )
+                    # Manual pairing cannot verify that a TV exists.
+                    # Require an explicit second confirmation of its full ID.
+                    self._manual_device_id = device_id
+                    self._manual_name = name
+                    return await self.async_step_manual_confirm()
         return self.async_show_form(
             step_id="user",
             data_schema=vol.Schema(
@@ -52,6 +78,29 @@ class KellieVoiceConfigFlow(ConfigFlow, domain=DOMAIN):
                 }
             ),
             errors=errors,
+        )
+
+    async def async_step_manual_confirm(self, user_input=None):
+        """Warn when a typed pairing ID cannot be verified by discovery.
+
+        Offline/VLAN users may still confirm. A live socket cannot be required
+        because the TV might not be registered in Home Assistant yet.
+        """
+        if not self._manual_device_id:
+            return await self.async_step_user()
+        if user_input is not None:
+            await self.async_set_unique_id(self._manual_device_id)
+            self._abort_if_unique_id_configured()
+            return self.async_create_entry(
+                title=self._manual_name,
+                data={"device_id": self._manual_device_id, "name": self._manual_name},
+            )
+        return self.async_show_form(
+            step_id="manual_confirm",
+            description_placeholders={
+                "name": self._manual_name,
+                "pairing_id": self._manual_device_id,
+            },
         )
 
     async def async_step_zeroconf(self, discovery_info: ZeroconfServiceInfo):

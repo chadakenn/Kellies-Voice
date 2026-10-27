@@ -1,7 +1,7 @@
 """Option text shared with the Android TV app. Do not rename values."""
 
 DOMAIN = "kellies_voice"
-PLATFORMS = ["select", "switch"]
+PLATFORMS = ["select", "switch", "text", "binary_sensor", "sensor"]
 
 POSITIONS = [
     "Original location",
@@ -21,6 +21,13 @@ SELECTS = (
     ("size", "Overlay size", SIZES, "mdi:relative-scale"),
     ("style", "Overlay style", STYLES, "mdi:palette"),
     ("auto_hide", "Overlay auto-hide", HIDE_TIMES, "mdi:timer-outline"),
+)
+
+FRIGATE_SELECTS = (
+    ("screensaver_size", "Frigate dashboard size", SIZES, "mdi:resize", "Large"),
+    ("screensaver_page_layout", "Frigate page layout", ["Desktop TV", "Automatic"], "mdi:monitor", "Desktop TV"),
+    ("screensaver_fit", "Frigate page fit", ["Fit more cameras", "Balanced", "Larger text"], "mdi:fit-to-screen", "Fit more cameras"),
+    ("screensaver_live_mode", "HA camera grid playback", ["Snapshots (reliable)", "Live (one camera)", "Live (two cameras)", "Live (four cameras, advanced)"], "mdi:video-wireless", "Snapshots (reliable)"),
 )
 
 # Separate from the voice overlay. Top right and Medium match the TV's current popup.
@@ -43,6 +50,12 @@ NOISE_SELECTS = (
     ("noise", "Microphone sensitivity", NOISE_PRESETS, "mdi:microphone-settings", "Normal"),
 )
 
+# Follow-up silence selection only. Cannot turn the microphone on.
+FOLLOW_TIMEOUTS = ["5 seconds", "8 seconds", "10 seconds", "15 seconds"]
+FOLLOW_SELECTS = (
+    ("follow_up_timeout", "Follow-up silence", FOLLOW_TIMEOUTS, "mdi:timer-sand", "8 seconds"),
+)
+
 # Forecast card only. These do not move the voice overlay or camera popups.
 WEATHER_POSITIONS = [
     "Top left",
@@ -63,6 +76,7 @@ EVENT_ANNOUNCEMENT = "kellies_voice_announcement"
 EVENT_CAMERA_POPUP = "kellies_voice_camera_popup"
 EVENT_LIVE_CAMERA = "kellies_voice_live_camera"
 EVENT_HIDE_CAMERA = "kellies_voice_hide_camera"
+EVENT_ACTION_PRESSED = "kellies_voice_announcement_action"
 EVENT_FORECAST = "kellies_voice_forecast"
 SERVICE_ANNOUNCE = "announce"
 SERVICE_SHOW_CAMERA = "show_camera"
@@ -78,5 +92,5 @@ DEFAULT_ANNOUNCE_SECONDS = 10
 DEFAULT_CAMERA_SECONDS = 20
 
 DEFAULT_LIVE_SECONDS = 90
-MIN_LIVE_SECONDS = 15
+MIN_LIVE_SECONDS = 4
 MAX_LIVE_SECONDS = 180

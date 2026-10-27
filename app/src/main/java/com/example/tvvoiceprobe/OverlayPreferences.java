@@ -43,12 +43,28 @@ public final class OverlayPreferences {
     private static final String KEY_HIDE_SECONDS = "overlay_hide_seconds";
     private static final String KEY_NOISE = "room_noise";
     private static final String KEY_DEVICE = "ha_device_id";
+    private static final String KEY_REGISTRY_DEVICE = "ha_registry_device_id";
     private static final String KEY_HA_MANAGE = "ha_manage_layout";
     private static final String KEY_TV_EVENTS = "tv_events_enabled";
     private static final String KEY_WAKE = "wake_word";
+    private static final String KEY_SPOKEN_ANNOUNCEMENTS = "spoken_announcements";
+    private static final String KEY_ANNOUNCEMENT_VOLUME = "spoken_announcement_volume";
+    private static final String KEY_FOLLOW = "follow_up_enabled";
+    private static final String KEY_FOLLOW_SECONDS = "follow_up_seconds";
     private static final String KEY_WEATHER_POSITION = "weather_position";
     private static final String KEY_WEATHER_SIZE = "weather_size";
     private static final String KEY_WEATHER_SECONDS = "weather_seconds";
+    private static final String KEY_CAMERA_MODE = "live_camera_decoder_mode";
+    private static final String KEY_ALLOW_UNVERIFIED_MIC = "allow_unverified_mic";
+    private static final String KEY_DISABLE_MIC_ON_TV = "disable_microphone_on_this_tv";
+    private static final String KEY_UPDATE_CHANNEL = "update_channel";
+    private static final String KEY_SCREENSAVER = "screensaver_dashboard";
+    private static final String KEY_SCREENSAVER_URL = "screensaver_dashboard_url";
+    private static final String KEY_SCREENSAVER_CAMERAS = "screensaver_cameras";
+    private static final String KEY_SCREENSAVER_SIZE = "screensaver_size";
+    private static final String KEY_SCREENSAVER_DESKTOP = "screensaver_desktop_page";
+    private static final String KEY_SCREENSAVER_FIT = "screensaver_fit";
+    private static final String KEY_SCREENSAVER_LIVE = "screensaver_live_mode";
     private final SharedPreferences preferences;
 
     public OverlayPreferences(Context context) {
@@ -186,6 +202,36 @@ public final class OverlayPreferences {
         preferences.edit().putBoolean(KEY_HA_MANAGE, enabled).apply();
     }
 
+    /** Local per-TV setting: avoid consuming the HDMI hardware decoder by default. */
+    public String cameraMode() {
+        return LiveCameraMode.normalize(preferences.getString(KEY_CAMERA_MODE,
+                LiveCameraMode.SOFTWARE));
+    }
+
+    public void setCameraMode(String mode) {
+        preferences.edit().putString(KEY_CAMERA_MODE, LiveCameraMode.normalize(mode)).apply();
+    }
+
+    /** Local manual opt-out for Android TVs advertising phantom microphone routes.
+     *  This takes priority over compatibility overrides and never auto-enables.
+     */
+    public boolean microphoneDisabled() {
+        return preferences.getBoolean(KEY_DISABLE_MIC_ON_TV, false);
+    }
+
+    public void setMicrophoneDisabled(boolean disabled) {
+        preferences.edit().putBoolean(KEY_DISABLE_MIC_ON_TV, disabled).apply();
+    }
+
+    /** Explicit compatibility override for TVs with unreliable input reports. */
+    public boolean allowUnverifiedMic() {
+        return preferences.getBoolean(KEY_ALLOW_UNVERIFIED_MIC, false);
+    }
+
+    public void setAllowUnverifiedMic(boolean allowed) {
+        preferences.edit().putBoolean(KEY_ALLOW_UNVERIFIED_MIC, allowed).apply();
+    }
+
     public boolean tvEvents() {
         return preferences.getBoolean(KEY_TV_EVENTS, false);
     }
@@ -203,6 +249,26 @@ public final class OverlayPreferences {
         preferences.edit().putBoolean(KEY_WAKE, enabled).apply();
     }
 
+    public boolean spokenAnnouncements() {
+        return preferences.getBoolean(KEY_SPOKEN_ANNOUNCEMENTS, false);
+    }
+
+    public void setSpokenAnnouncements(boolean enabled) {
+        preferences.edit().putBoolean(KEY_SPOKEN_ANNOUNCEMENTS, enabled).apply();
+    }
+
+    /** Per-utterance spoken TV alert level, stored independently of media volume. */
+    public int spokenAnnouncementVolume() {
+        return SpeechVolume.normalizePercent(
+                preferences.getInt(KEY_ANNOUNCEMENT_VOLUME, SpeechVolume.DEFAULT_PERCENT));
+    }
+
+    public void setSpokenAnnouncementVolume(int percent) {
+        preferences.edit().putInt(KEY_ANNOUNCEMENT_VOLUME,
+                SpeechVolume.normalizePercent(percent)).apply();
+    }
+
+
     public String deviceId() {
         String id = preferences.getString(KEY_DEVICE, "");
         if (id == null || id.isEmpty()) {
@@ -210,6 +276,18 @@ public final class OverlayPreferences {
             preferences.edit().putString(KEY_DEVICE, id).apply();
         }
         return id;
+    }
+
+    /** Home Assistant device-registry id learned from layout sync. Not the pairing id. */
+    public String registryDeviceId() {
+        String id = preferences.getString(KEY_REGISTRY_DEVICE, "");
+        return RegistryDeviceId.accepted(id);
+    }
+
+    public void setRegistryDeviceId(String id) {
+        String clean = RegistryDeviceId.accepted(id);
+        if (clean.isEmpty()) return;
+        preferences.edit().putString(KEY_REGISTRY_DEVICE, clean).apply();
     }
 
     public static String noiseLabel(String value) {
@@ -226,6 +304,24 @@ public final class OverlayPreferences {
     public void setNoise(String value) {
         preferences.edit().putString(KEY_NOISE,
                 NOISE_QUIET.equals(value) || NOISE_TV.equals(value) ? value : NOISE_NORMAL).apply();
+    }
+
+    public boolean followUp() {
+        return preferences.getBoolean(KEY_FOLLOW, false);
+    }
+
+    public void setFollowUp(boolean enabled) {
+        preferences.edit().putBoolean(KEY_FOLLOW, enabled).apply();
+    }
+
+    public int followUpSeconds() {
+        int value = preferences.getInt(KEY_FOLLOW_SECONDS, FollowUpSession.DEFAULT_SECONDS);
+        return value == 5 || value == 10 || value == 15 ? value : FollowUpSession.DEFAULT_SECONDS;
+    }
+
+    public void setFollowUpSeconds(int value) {
+        preferences.edit().putInt(KEY_FOLLOW_SECONDS,
+                value == 5 || value == 10 || value == 15 ? value : FollowUpSession.DEFAULT_SECONDS).apply();
     }
 
     public boolean mainLauncherOpensOverlay() {
@@ -260,5 +356,81 @@ public final class OverlayPreferences {
     public void setWeatherSeconds(int value) {
         preferences.edit().putInt(KEY_WEATHER_SECONDS,
                 value == 8 || value == 30 || value == 45 ? value : 20).apply();
+    }
+
+    /** Stable unless the owner explicitly chooses development. */
+    public String updateChannel() {
+        return UpdateChannel.normalize(preferences.getString(KEY_UPDATE_CHANNEL, UpdateChannel.STABLE));
+    }
+
+    public void setUpdateChannel(String channel) {
+        preferences.edit().putString(KEY_UPDATE_CHANNEL, UpdateChannel.normalize(channel)).apply();
+    }
+
+    /** Off until the owner asks for a Frigate page while the screensaver is running. */
+    public boolean screensaverDashboard() {
+        return preferences.getBoolean(KEY_SCREENSAVER, false);
+    }
+
+    public void setScreensaverDashboard(boolean enabled) {
+        preferences.edit().putBoolean(KEY_SCREENSAVER, enabled).apply();
+    }
+
+    public String screensaverUrl() {
+        return ScreensaverDashboard.dashboardUrl(preferences.getString(KEY_SCREENSAVER_URL, ""));
+    }
+
+    public void setScreensaverUrl(String value) {
+        preferences.edit().putString(KEY_SCREENSAVER_URL, ScreensaverDashboard.dashboardUrl(value)).apply();
+    }
+
+    public String screensaverCameras() {
+        return ScreensaverDashboard.cameras(preferences.getString(KEY_SCREENSAVER_CAMERAS, ""));
+    }
+
+    public void setScreensaverCameras(String value) {
+        preferences.edit().putString(KEY_SCREENSAVER_CAMERAS, ScreensaverDashboard.cameras(value)).apply();
+    }
+
+    /** TV-first default. Switching off restores the original embedded mobile layout. */
+    public boolean screensaverDesktopPage() {
+        return preferences.getBoolean(KEY_SCREENSAVER_DESKTOP, true);
+    }
+
+    public void setScreensaverDesktopPage(boolean desktop) {
+        preferences.edit().putBoolean(KEY_SCREENSAVER_DESKTOP, desktop).apply();
+    }
+
+    public String screensaverFit() {
+        String value = preferences.getString(KEY_SCREENSAVER_FIT, "Fit more cameras");
+        return "Balanced".equals(value) || "Larger text".equals(value) ? value : "Fit more cameras";
+    }
+
+    public void setScreensaverFit(String value) {
+        if ("Fit more cameras".equals(value) || "Balanced".equals(value)
+                || "Larger text".equals(value)) {
+            preferences.edit().putString(KEY_SCREENSAVER_FIT, value).apply();
+        }
+    }
+
+    public String screensaverLiveMode() {
+        return ScreensaverLiveMode.normalize(preferences.getString(
+                KEY_SCREENSAVER_LIVE, ScreensaverLiveMode.SNAPSHOTS));
+    }
+
+    public void setScreensaverLiveMode(String value) {
+        preferences.edit().putString(KEY_SCREENSAVER_LIVE,
+                ScreensaverLiveMode.normalize(value)).apply();
+    }
+
+    /** Large matches the original full-screen dashboard. */
+    public String screensaverSize() {
+        String size = ScreensaverDashboard.sizeKey(preferences.getString(KEY_SCREENSAVER_SIZE, "Large"));
+        return size.isEmpty() ? "large" : size;
+    }
+
+    public void setScreensaverSize(String value) {
+        String size = ScreensaverDashboard.sizeKey(value);
+        preferences.edit().putString(KEY_SCREENSAVER_SIZE, size.isEmpty() ? "large" : size).apply();
     }
 }

@@ -3,10 +3,7 @@ name: Unit tests
 on:
   pull_request:
   push:
-    branches: [main]
-    paths:
-      - 'app/**'
-      - '.github/workflows/unit-tests.yml'
+    branches: [main, dev]
 
 jobs:
   unit-tests:
@@ -28,10 +25,8 @@ jobs:
         run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.2.12479018' 'cmake;3.22.1'
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.9'
       - name: Build debug APK and run host unit tests
-        run: gradle --no-daemon :app:assembleDebug :app:testDebugUnitTest
+        run: ./gradlew --no-daemon -PskipWakeNative=true :app:assembleDebug :app:testDebugUnitTest
       - name: Save test APK
         uses: actions/upload-artifact@v4
         with:
