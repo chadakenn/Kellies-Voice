@@ -27,7 +27,7 @@ public final class WakeWordStartup {
     /** Activity must be resumed/visible. This does not create a new opt-in. */
     public static void resumeFromVisible(Activity activity) {
         OverlayPreferences prefs = new OverlayPreferences(activity);
-        if (!prefs.wakeWord() || prefs.microphoneDisabled()) {
+        if (!prefs.wakeWord() || !prefs.wakeRestartConsent() || prefs.microphoneDisabled()) {
             clearReminder(activity);
             return;
         }
@@ -37,7 +37,7 @@ public final class WakeWordStartup {
         boolean routeReady = MicrophoneRouting.preflight(
                 activity, prefs.allowUnverifiedMic()) == null;
         if (!WakeWordSession.mayRestore(
-                prefs.wakeWord(), prefs.microphoneDisabled(),
+                prefs.wakeWord() && prefs.wakeRestartConsent(), prefs.microphoneDisabled(),
                 activity.checkSelfPermission(Manifest.permission.RECORD_AUDIO)
                         == PackageManager.PERMISSION_GRANTED,
                 Settings.canDrawOverlays(activity), signedIn,
@@ -59,7 +59,7 @@ public final class WakeWordStartup {
     /** Called from the already-registered BOOT_COMPLETED / update receiver. */
     public static void onDeviceRestart(Context context) {
         OverlayPreferences prefs = new OverlayPreferences(context);
-        if (prefs.wakeWord() && !prefs.microphoneDisabled()) {
+        if (prefs.wakeWord() && prefs.wakeRestartConsent() && !prefs.microphoneDisabled()) {
             showResumeReminder(context);
         } else {
             clearReminder(context);
@@ -68,7 +68,7 @@ public final class WakeWordStartup {
 
     static void showResumeReminder(Context context) {
         OverlayPreferences prefs = new OverlayPreferences(context);
-        if (!prefs.wakeWord() || prefs.microphoneDisabled()) return;
+        if (!prefs.wakeWord() || !prefs.wakeRestartConsent() || prefs.microphoneDisabled()) return;
         NotificationManager manager = context.getSystemService(NotificationManager.class);
         if (manager == null) return;
         try {
