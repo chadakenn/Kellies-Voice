@@ -149,6 +149,7 @@ public final class WakeWordService extends Service {
             // Don't leave Settings claiming ON after a denied explicit start.
             if (ACTION_START.equals(action)) new OverlayPreferences(this).setWakeWord(false);
             running = false;
+            WakeAssistConnection.stop();
             releaseRecorder();
             MicLease.release(MicLease.WAKE);
             // Timely stop of a rejected explicit start. Promoting a microphone
@@ -168,6 +169,7 @@ public final class WakeWordService extends Service {
                     + rejected.getClass().getSimpleName());
             new OverlayPreferences(this).setWakeWord(false);
             running = false;
+            WakeAssistConnection.stop();
             releaseRecorder();
             MicLease.release(MicLease.WAKE);
             stopSelfResult(startId);
@@ -179,6 +181,9 @@ public final class WakeWordService extends Service {
             worker = new Thread(this::listen, "kellie-wake-word");
             worker.start();
         }
+        // This WebSocket is authenticated now, before the user says Okay Nabu.
+        // No STT run or microphone is opened by the warm connection.
+        WakeAssistConnection.preconnect(this);
         return START_NOT_STICKY;
     }
 
@@ -297,6 +302,7 @@ public final class WakeWordService extends Service {
             releaseRecorder();
             MicLease.release(MicLease.WAKE);
             if (engine != null) engine.close();
+            WakeAssistConnection.stop();
             stopForeground(STOP_FOREGROUND_REMOVE);
             if (failureNotice != null) publishFailure(failureNotice);
             stopSelf();
@@ -506,6 +512,7 @@ public final class WakeWordService extends Service {
 
     @Override public void onDestroy() {
         running = false;
+        WakeAssistConnection.stop();
         if (current == this) current = null;
         releaseRecorder();
         MicLease.release(MicLease.WAKE);
