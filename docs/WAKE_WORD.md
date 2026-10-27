@@ -65,8 +65,8 @@ Install the GitHub Actions **debug** APK from this pull request. Its package is 
    With TV audio playing, test the same command with wake audio ducking **OFF**, then **50%**, and verify audible reduction after detection and reliable restoration when the overlay closes.
 5. Press TALK while it is LISTENING, then run one microphone diagnostic. Only one capture should be live, and the listener should return to LISTENING afterward.
 6. Turn the wake word OFF; reboot; confirm it remains OFF and says nothing when you say the phrase. Then explicitly turn it ON and confirm **LISTENING**. Reboot while ON; confirm the saved ON choice persists and the boot reminder (if notifications are available) opens Kellie's Voice; the listener should automatically resume **after that foreground launch**. Verify the phrase now opens the overlay. Do not expect microphone recording to start directly from BOOT_COMPLETED on Android 14+.
-8. With the wake word ON, force-stop the debug app. It is not running while force-stopped; open the app again and check whether Android allows foreground restart.
-7. Turn **Disable microphone capture** on and confirm the listener stops. Turn the wake word off when you are done.
+7. With the wake word ON, force-stop the debug app. It is not running while force-stopped; open the app again and check whether Android allows foreground restart.
+8. Turn **Disable microphone capture** on and confirm the listener stops. Turn the wake word off when you are done.
 
 A successful wake is a nonempty transcript of the question plus a spoken answer. An overlay with an empty transcript, or a transcript of silence, is a failed capture. Do not treat a green unit test as that result.
 
