@@ -72,6 +72,10 @@ jobs:
           TV_SIGNING_PASSWORD: ${{ secrets.TV_SIGNING_PASSWORD }}
         run: ./gradlew --no-daemon :app:assembleRelease
 
+      - name: Verify APK contains both wake-word JNI libraries and model
+        shell: bash
+        run: bash .github/scripts/verify-wake-apk.sh app/build/outputs/apk/release/app-release.apk
+
       - name: Verify APK signature
         run: |
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose app/build/outputs/apk/release/app-release.apk
