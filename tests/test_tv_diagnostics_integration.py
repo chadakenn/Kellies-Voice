@@ -35,8 +35,8 @@ class WiredTvDiagnosticTests(unittest.TestCase):
     def test_android_sends_version_after_subscription_and_acks_actual_popup(self):
         code = SOURCE.read_text()
         self.assertIn("alertsSubscribed = true;\n                        reportDiagnosticHello();", code)
-        self.assertIn('BuildConfig.VERSION_NAME', code)
-        self.assertIn('BuildConfig.VERSION_CODE', code)
+        self.assertIn('installed.versionName', code)
+        self.assertIn('installed.getLongVersionCode()', code)
         self.assertIn('diagnosticReceipt = data.optString("diagnostic_receipt", "")', code)
         self.assertIn('reportPopupReceipt("received", diagnosticReceipt)', code)
         self.assertIn('reportPopupReceipt("popup_created", diagnosticReceipt)', code)
