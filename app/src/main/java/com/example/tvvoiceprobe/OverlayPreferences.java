@@ -47,6 +47,7 @@ public final class OverlayPreferences {
     private static final String KEY_HA_MANAGE = "ha_manage_layout";
     private static final String KEY_TV_EVENTS = "tv_events_enabled";
     private static final String KEY_WAKE = "wake_word";
+    private static final String KEY_WAKE_RESTART = "wake_word_restart_consent";
     private static final String KEY_WAKE_DUCK = "wake_audio_ducking_percent";
     private static final String KEY_SPOKEN_ANNOUNCEMENTS = "spoken_announcements";
     private static final String KEY_ANNOUNCEMENT_VOLUME = "spoken_announcement_volume";
@@ -246,8 +247,17 @@ public final class OverlayPreferences {
         return preferences.getBoolean(KEY_WAKE, false);
     }
 
+    /** New consent is set only by a deliberate ON action in updated Settings.
+     *  Existing testers who enabled wake under the old "no reboot" promise
+     *  do not silently gain restart behavior on app update.
+     */
+    public boolean wakeRestartConsent() {
+        return preferences.getBoolean(KEY_WAKE_RESTART, false);
+    }
+
     public void setWakeWord(boolean enabled) {
-        preferences.edit().putBoolean(KEY_WAKE, enabled).apply();
+        preferences.edit().putBoolean(KEY_WAKE, enabled)
+                .putBoolean(KEY_WAKE_RESTART, enabled).apply();
     }
 
     /** Percent reduction to STREAM_MUSIC only after Okay Nabu. Off by default. */
