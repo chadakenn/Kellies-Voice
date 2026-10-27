@@ -8,6 +8,7 @@ Phone photos from an onn 4K Pro are now in this folder and in the main README. T
 | [onn-voice-doorbell.gif](onn-voice-doorbell.gif) | Voice overlay while Home Assistant answers "Show me the doorbell camera." |
 | [onn-snapshot-popup.jpg](onn-snapshot-popup.jpg) | Still snapshot popup, "Snapshot Test After Reopening App." Not live video. |
 | [onn-live-doorbell.jpg](onn-live-doorbell.jpg) | Live doorbell card starting, muted, with the voice card still visible. One photo, not a motion recording. |
+| [wake-okay-nabu-office-lights.mp4](wake-okay-nabu-office-lights.mp4) | Phone video, about 15 seconds. Hands-free Okay Nabu over the Google TV apps screen. The overlay connects, listens, shows "Turn on office lights.", and Home Assistant answers "Turned on the light." The set in the frame is a Philips. |
 
 Still wanted: the settings screen, a text-only announcement with no camera picture, and the Home Assistant device page.
 
