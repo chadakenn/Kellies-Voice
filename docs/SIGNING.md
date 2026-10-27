@@ -8,6 +8,37 @@ The original `app-debug.apk` from GitHub Actions was signed with a temporary And
 
 The original app uses `android:allowBackup="false"` and Android Keystore encrypted credentials. If you uninstall it, the saved Home Assistant URL and token are lost.
 
+
+## Signed build provenance (development candidate)
+
+The signed stable and development build workflows now request GitHub Actions
+attestation permissions and use `actions/attest@v4` after verifying the
+signed APK. This stores a signed SLSA provenance attestation keyed to the
+*exact APK digest*. The public repo can verify it with the GitHub CLI:
+
+```bash
+gh attestation verify app-release.apk --repo chadakenn/Kellies-Voice
+```
+
+Download the APK from its actual GitHub Release before verification. A
+successful provenance check confirms the artifact was attested by the stated
+GitHub repository/workflow; it **does not** substitute for Android's APK
+signature verification or imply every action/dependency in that workflow
+was trustworthy. The app's built-in updater does **not** check provenance
+attestations yet: it still validates the release checksum, installed app
+identity, signing certificates, and (in the dev candidate) the APK's
+versionCode/versionName against the signed release metadata.
+
+Future work to review separately: pin all third-party and first-party
+Actions to reviewed immutable commit SHAs, periodically review that list
+for security updates, and plan any signing key/passphrase rotation with an
+Android signing-lineage migration and real-device APK upgrade tests. Do
+**not** change the permanent signing alias/keystore or passwords casually:
+the existing `tvvoice` PKCS12 setup uses the same configured password
+for the store and private key, and changing it without migrating the
+actual keystore will break releases. These migration items are not
+implemented by this candidate.
+
 ## Permanent, private release signing
 
 The build workflow now signs `app-release.apk` with an **identical signing key on every future run**, read from GitHub Actions encrypted repository secrets.
