@@ -1,7 +1,7 @@
 """Option text shared with the Android TV app. Do not rename values."""
 
 DOMAIN = "kellies_voice"
-PLATFORMS = ["select", "switch", "text", "binary_sensor"]
+PLATFORMS = ["select", "switch", "text", "binary_sensor", "sensor"]
 
 POSITIONS = [
     "Original location",

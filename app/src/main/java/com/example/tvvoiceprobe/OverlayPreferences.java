@@ -46,6 +46,9 @@ public final class OverlayPreferences {
     private static final String KEY_REGISTRY_DEVICE = "ha_registry_device_id";
     private static final String KEY_HA_MANAGE = "ha_manage_layout";
     private static final String KEY_TV_EVENTS = "tv_events_enabled";
+    private static final String KEY_WAKE = "wake_word";
+    private static final String KEY_WAKE_RESTART = "wake_word_restart_consent";
+    private static final String KEY_WAKE_DUCK = "wake_audio_ducking_percent";
     private static final String KEY_SPOKEN_ANNOUNCEMENTS = "spoken_announcements";
     private static final String KEY_ANNOUNCEMENT_VOLUME = "spoken_announcement_volume";
     private static final String KEY_FOLLOW = "follow_up_enabled";
@@ -237,6 +240,33 @@ public final class OverlayPreferences {
 
     public void setTvEvents(boolean enabled) {
         preferences.edit().putBoolean(KEY_TV_EVENTS, enabled).apply();
+    }
+
+    /** On-device Okay Nabu listener. Off until the TV settings screen turns it on. */
+    public boolean wakeWord() {
+        return preferences.getBoolean(KEY_WAKE, false);
+    }
+
+    /** New consent is set only by a deliberate ON action in updated Settings.
+     *  Existing testers who enabled wake under the old "no reboot" promise
+     *  do not silently gain restart behavior on app update.
+     */
+    public boolean wakeRestartConsent() {
+        return preferences.getBoolean(KEY_WAKE_RESTART, false);
+    }
+
+    public void setWakeWord(boolean enabled) {
+        preferences.edit().putBoolean(KEY_WAKE, enabled)
+                .putBoolean(KEY_WAKE_RESTART, enabled).commit();
+    }
+
+    /** Percent reduction to STREAM_MUSIC only after Okay Nabu. Off by default. */
+    public int wakeDuckingPercent() {
+        return WakeDuckingLevels.normalize(preferences.getInt(KEY_WAKE_DUCK, 0));
+    }
+
+    public void setWakeDuckingPercent(int percent) {
+        preferences.edit().putInt(KEY_WAKE_DUCK, WakeDuckingLevels.normalize(percent)).apply();
     }
 
     public boolean spokenAnnouncements() {

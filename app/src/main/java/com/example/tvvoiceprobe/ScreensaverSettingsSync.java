@@ -27,14 +27,17 @@ final class ScreensaverSettingsSync {
     private boolean stopped = true;
     private int attempts;
     private final Runnable reconnect = this::connect;
+    private final HaNetworkWatch networks;
 
     ScreensaverSettingsSync(Context context) {
         this.context = context.getApplicationContext();
+        this.networks = new HaNetworkWatch(this.context, main, this::onNetworkReady);
     }
 
     void start() {
         if (!stopped) return;
         stopped = false;
+        networks.start();
         ScreensaverWatchStatus.settingsSync("Connecting to Home Assistant");
         connect();
     }
@@ -149,12 +152,25 @@ final class ScreensaverSettingsSync {
             socket = null;
             main.removeCallbacks(reconnect);
             int capped = Math.min(5, attempts++);
-            main.postDelayed(reconnect, Math.min(60000L, 2000L * (1L << capped)));
+            long delay = RetryTiming.withJitter(Math.min(60000L, 2000L * (1L << capped)),
+                    60000L, Math.random());
+            main.postDelayed(reconnect, delay);
         });
+    }
+
+    private void onNetworkReady() {
+        if (stopped) return;
+        WebSocket old = socket;
+        socket = null;
+        main.removeCallbacks(reconnect);
+        if (old != null) old.cancel();
+        ScreensaverWatchStatus.settingsSync("Network is back. Reconnecting");
+        connect();
     }
 
     void stop() {
         stopped = true;
+        networks.stop();
         ScreensaverWatchStatus.settingsSync("HA settings listener stopped");
         main.removeCallbacks(reconnect);
         if (socket != null) {

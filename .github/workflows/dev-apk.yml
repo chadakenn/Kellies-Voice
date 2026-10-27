@@ -10,6 +10,8 @@ on:
       - 'build.gradle'
       - 'gradle.properties'
       - 'settings.gradle'
+      - 'gradlew'
+      - 'gradle/wrapper/**'
       - '.github/workflows/dev-apk.yml'
   workflow_dispatch:
 
@@ -19,7 +21,7 @@ permissions:
 jobs:
   signed-dev:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - name: Check out dev source
         uses: actions/checkout@v4
@@ -44,14 +46,12 @@ jobs:
         with:
           packages: platform-tools
       - name: Install Android SDK 35
-        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.2.12479018' 'cmake;3.22.1'
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.9'
       - name: Run Android and HA tests
         run: |
-          gradle --no-daemon :app:assembleDebug :app:testDebugUnitTest
+          ./gradlew --no-daemon -PskipWakeNative=true :app:assembleDebug :app:testDebugUnitTest
           python3 -m compileall -q custom_components/kellies_voice
           python3 -m unittest discover -s tests -p 'test_*.py' -v
       - name: Restore the existing private signing key
@@ -71,7 +71,11 @@ jobs:
       - name: Build development APK with production signing identity
         env:
           TV_SIGNING_PASSWORD: ${{ secrets.TV_SIGNING_PASSWORD }}
-        run: gradle --no-daemon :app:assembleRelease
+        run: ./gradlew --no-daemon :app:assembleRelease
+
+      - name: Verify APK contains both wake-word JNI libraries and model
+        shell: bash
+        run: bash .github/scripts/verify-wake-apk.sh app/build/outputs/apk/release/app-release.apk
       - name: Verify APK signature and version
         shell: bash
         run: |

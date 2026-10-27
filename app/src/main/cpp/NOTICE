@@ -1,0 +1,10 @@
+The C++ and JNI files in this directory are taken from the Home Assistant
+Android companion app, module microwakeword:
+
+  https://github.com/home-assistant/android
+
+That project is licensed under the Apache License, Version 2.0.
+Kellie's Voice keeps those files so the JNI class name stays
+io.homeassistant.companion.android.microwakeword.MicroWakeWord.
+TensorFlow Lite Micro, KissFFT, flatbuffers, gemmlowp, and ruy are
+downloaded by CMake when an APK is built. They are not vendored here.

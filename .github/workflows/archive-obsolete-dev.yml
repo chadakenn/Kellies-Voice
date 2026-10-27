@@ -1,0 +1,89 @@
+name: Archive obsolete Kellie's Voice dev prereleases
+
+# ONE-TIME housekeeping. This executes only when the PR merging this file
+# uses the explicit marker in its squash commit. Later dev pushes do nothing.
+# Converts five old releases to private owner-visible drafts. Never deletes
+# tags, release assets, stable releases, or the current opt-in beta.
+on:
+  push:
+    branches: [dev]
+    paths:
+      - '.github/workflows/archive-obsolete-dev.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  archive-old-betas:
+    if: >-
+      github.repository == 'chadakenn/Kellies-Voice' &&
+      contains(github.event.head_commit.message, '[archive-obsolete-dev]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+    steps:
+      - name: Check stable and beta safety gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          latest="$(gh api "repos/$REPO/releases/latest" --jq '.tag_name')"
+          if [[ "$latest" != "v0.16.12" ]]; then
+            echo "::error::Unexpected Latest $latest. No releases modified."
+            exit 1
+          fi
+          for tag in v0.16.12-dev.10 v0.16.12-dev.11; do
+            check="$(gh api "repos/$REPO/releases/tags/$tag" --jq '[.tag_name,.prerelease,.draft] | @tsv')"
+            if [[ "$check" != "$tag"$'\t'"true"$'\t'"false" ]]; then
+              echo "::error::Expected published prerelease $tag not present. No releases modified."
+              exit 1
+            fi
+          done
+          echo "Stable v0.16.12 and preserved dev.10/dev.11 prereleases confirmed."
+      - name: Archive obsolete prereleases as reversible GitHub drafts
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p archived-release-report
+          printf 'tag,release_id,action\n' > archived-release-report/changes.csv
+          for tag in v0.16.12-dev.5 v0.16.12-dev.6 v0.16.12-dev.7 v0.16.12-dev.8 v0.16.12-dev.9; do
+            release="$(gh api "repos/$REPO/releases/tags/$tag")"
+            actual="$(jq -r '.tag_name' <<< "$release")"
+            draft="$(jq -r '.draft' <<< "$release")"
+            prerelease="$(jq -r '.prerelease' <<< "$release")"
+            release_id="$(jq -r '.id' <<< "$release")"
+            if [[ "$actual" != "$tag" || "$prerelease" != "true" ]]; then
+              echo "::error::Release mismatch for $tag. Aborting."
+              exit 1
+            fi
+            if [[ "$draft" == "true" ]]; then
+              printf '%s,%s,already_draft\n' "$tag" "$release_id" >> archived-release-report/changes.csv
+              continue
+            fi
+            # PATCH only the draft flag. Keep release, APK, update.json and git tag.
+            gh api -X PATCH "repos/$REPO/releases/$release_id" -F draft=true --silent
+            printf '%s,%s,archived_as_draft\n' "$tag" "$release_id" >> archived-release-report/changes.csv
+            echo "Archived $tag as a reversible draft (assets and tag preserved)."
+          done
+      - name: Verify stable and newest beta stayed published
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          latest="$(gh api "repos/$REPO/releases/latest" --jq '.tag_name')"
+          [[ "$latest" == "v0.16.12" ]] || exit 1
+          for tag in v0.16.12-dev.10 v0.16.12-dev.11; do
+            gh api "repos/$REPO/releases/tags/$tag" \
+              --jq 'select(.draft == false and .prerelease == true) | .tag_name'
+          done
+      - name: Retain archive report for maintainers
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: archived-old-dev-release-report
+          path: archived-release-report/
+          if-no-files-found: ignore
+          retention-days: 90
