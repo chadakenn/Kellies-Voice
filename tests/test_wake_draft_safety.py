@@ -33,6 +33,31 @@ class WakeDraftSafetyTests(unittest.TestCase):
         self.assertIn("manager.notify(FAILURE_NOTICE_ID,", service)
         self.assertIn("new CredentialStore(this).load() != null", service)
 
+    def test_wake_preconnect_has_no_audio_and_obeys_opt_in(self):
+        warm = (SRC / "WakeAssistConnection.java").read_text()
+        wake = (SRC / "WakeWordService.java").read_text()
+        overlay = (SRC / "VoiceOverlayService.java").read_text()
+        client = (SRC / "HaAssistClient.java").read_text()
+
+        # A warm socket authenticates only. It cannot open an Assist run or
+        # a microphone, and must not be established from an app boot handler.
+        self.assertIn("new HaAssistClient(context.getApplicationContext(), QUIET)", warm)
+        self.assertIn("if (!prefs.wakeWord() || prefs.microphoneDisabled()) return;", warm)
+        self.assertIn("!WakeWordService.isListening()", warm)
+        self.assertNotIn("AudioRecord(", warm)
+        self.assertNotIn(".talk(", warm)
+        self.assertIn("WakeAssistConnection.preconnect(this);", wake)
+        self.assertIn("WakeAssistConnection.stop();", wake)
+        self.assertIn("WakeAssistConnection.take(this)", overlay)
+        self.assertIn("fromWake ? WakeAssistConnection.take(this) : null", overlay)
+        self.assertIn("assist.isConnected()", overlay)
+        self.assertIn("private volatile Events events;", client)
+        self.assertIn("public void setEvents(Events receiver)", client)
+
+        # No audio session may be returned to background warm ownership.
+        self.assertLess(overlay.index("if (assist != null) { assist.shutdown(); assist = null; }"),
+                        overlay.rindex("WakeAssistConnection.preconnect(this);"))
+
     def test_sideloadable_debug_build_has_no_hwasan_runtime_requirement(self):
         cmake = CMAKE.read_text()
         self.assertNotIn("-fsanitize=hwaddress", cmake)
