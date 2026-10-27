@@ -43,6 +43,13 @@ public final class WakeWordService extends Service {
     private AudioRecord recorder;
     private static volatile WakeWordService current;
 
+    /** Settings must show actual listener state, not just the persisted opt-in. */
+    public static boolean isListening() {
+        WakeWordService service = current;
+        return service != null && service.running
+                && service.worker != null && service.worker.isAlive();
+    }
+
     /**
      * Take the microphone from the wake listener only after its AudioRecord
      * has been released. Returns false when another user owner already holds it.
