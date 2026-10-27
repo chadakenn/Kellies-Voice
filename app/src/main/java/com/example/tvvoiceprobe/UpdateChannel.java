@@ -148,20 +148,53 @@ public final class UpdateChannel {
         if (list == null) {
             throw new IllegalArgumentException("Development updates only accept the public release list.");
         }
+        // GitHub's release list is not guaranteed to be ordered by version.
+        // In the actual v0.16.12 feed dev.9 appears before dev.10. Compare
+        // numeric version components rather than treating the first item (or
+        // lexicographic "dev.9" > "dev.10") as the newest version.
         int limit = Math.min(list.size(), 20);
+        Selected newest = null;
         for (int index = 0; index < limit; index++) {
             Map<String, Object> release = asMap(list.get(index));
             if (release == null) continue;
             try {
                 if (flag(release, "draft") || !flag(release, "prerelease")) continue;
-                if (!devTag(text(release, "tag_name"))) continue;
-                return fromRelease(release, true);
+                String tag = text(release, "tag_name");
+                if (!devTag(tag)) continue;
+                compareDevTags(tag, tag); // Reject unparseable numeric components even if first.
+                if (newest == null || compareDevTags(tag, newest.tag) > 0) {
+                    // Validate exact trusted URLs, size and both required assets
+                    // BEFORE this candidate can replace the previous valid one.
+                    newest = fromRelease(release, true);
+                }
             } catch (IllegalArgumentException ignored) {
-                // A broken prerelease does not hide a later valid one.
+                // Skip a malformed or unsafe higher tag and keep a valid older release.
             }
         }
+        if (newest != null) return newest;
         throw new IllegalArgumentException(
                 "No development release is published. Install the signed Actions artifact instead.");
+    }
+
+    /** Numeric major.minor.patch-dev.build ordering; large/unparseable tags are rejected. */
+    static int compareDevTags(String left, String right) {
+        if (!devTag(left) || !devTag(right)) {
+            throw new IllegalArgumentException("Invalid development release tag.");
+        }
+        String[] a = left.substring(1).replace("-dev.", ".").split("\\.");
+        String[] b = right.substring(1).replace("-dev.", ".").split("\\.");
+        if (a.length != 4 || b.length != 4) {
+            throw new IllegalArgumentException("Invalid development release tag.");
+        }
+        try {
+            for (int i = 0; i < 4; i++) {
+                int order = Long.compare(Long.parseLong(a[i]), Long.parseLong(b[i]));
+                if (order != 0) return order;
+            }
+            return 0;
+        } catch (NumberFormatException ignored) {
+            throw new IllegalArgumentException("Invalid development release tag.");
+        }
     }
 
     private static Selected fromRelease(Map<String, Object> release, boolean development) {

@@ -11,8 +11,14 @@ android {
         minSdk 26
         targetSdk 35
         // Restart opted-in Frigate watcher on APK updates/reboot; ambient diagnostics.
-        versionCode 50
-        versionName '0.16.12'
+        versionCode 53
+        versionName '0.16.13-dev.1'
+        // Host unit tests pass -PskipWakeNative=true. An APK build compiles the engine.
+        if (findProperty('skipWakeNative') != 'true') {
+            ndk {
+                abiFilters 'armeabi-v7a', 'arm64-v8a'
+            }
+        }
     }
 
     // The keystore is private and supplied from GitHub Actions secrets.
@@ -38,6 +44,15 @@ android {
         release {
             minifyEnabled false
             signingConfig signingConfigs.release
+        }
+    }
+    if (findProperty('skipWakeNative') != 'true') {
+        ndkVersion '27.2.12479018'
+        externalNativeBuild {
+            cmake {
+                path 'src/main/cpp/CMakeLists.txt'
+                version '3.22.1'
+            }
         }
     }
 }

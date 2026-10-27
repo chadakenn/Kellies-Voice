@@ -207,6 +207,18 @@ public class MainActivity extends Activity {
         log("A Bluetooth remote may use vendor GATT instead of appearing in this list.");
     }
 
+    @Override protected void onStop() {
+        // A capture test may still be closing on its worker thread.
+        // Its finally block releases the lease AFTER AudioRecord.release().
+        probing = false;
+        super.onStop();
+    }
+
+    @Override public void onDestroy() {
+        probing = false;
+        super.onDestroy();
+    }
+
     private void requestAudio(int source) {
         if (probing) { log("Mic test already running"); return; }
         pendingAudioSource = source;
@@ -231,10 +243,19 @@ public class MainActivity extends Activity {
     }
 
     private void micTest(int source) {
+        if (probing) return;
         probing = true;
+        // Waiting for the wake recorder must never freeze the Android UI.
+        // Diagnostics owns the microphone only during an actual capture test.
         new Thread(() -> {
             AudioRecord rec = null;
+            boolean ownsLease = false;
             try {
+                ownsLease = WakeWordService.handoffTo(MicLease.DIAGNOSTICS);
+                if (!ownsLease || !probing) {
+                    log("Microphone is in use or the diagnostics test was closed.");
+                    return;
+                }
                 int rate = 16000;
                 int min = AudioRecord.getMinBufferSize(rate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);
                 if (min <= 0) {
@@ -257,7 +278,7 @@ public class MainActivity extends Activity {
                 short[] samples = new short[2048];
                 long until = SystemClock.elapsedRealtime() + 10000;
                 long lastLog = 0;
-                while (SystemClock.elapsedRealtime() < until) {
+                while (probing && SystemClock.elapsedRealtime() < until) {
                     int read = rec.read(samples, 0, samples.length);
                     if (read <= 0) { log("Capture read error: " + read); break; }
                     long squareSum = 0;
@@ -282,6 +303,7 @@ public class MainActivity extends Activity {
             } catch (Exception e) { log("Mic test failed: " + e); }
             finally {
                 if (rec != null) { try { rec.stop(); } catch (Exception ignored) {} rec.release(); }
+                if (ownsLease) MicLease.release(MicLease.DIAGNOSTICS);
                 probing = false;
                 log("Mic test ended. Audio was NOT stored or sent anywhere.");
             }

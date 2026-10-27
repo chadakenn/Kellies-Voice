@@ -34,6 +34,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import okhttp3.HttpUrl;
 
@@ -41,6 +42,7 @@ import okhttp3.HttpUrl;
  * v0.5 opt-in Home Assistant voice overlay. Starts from a visible activity;
  * no always-on microphone or wake word. Recording is explicitly tied to a
  * user-initiated overlay launch / TALK, with STOP and watchdog escape hatches.
+ * An optional Okay Nabu listener lives in WakeWordService and is off by default.
  */
 public final class VoiceOverlayService extends Service implements HaAssistClient.Events {
     public static final String ACTION_CLOSE = "com.example.tvvoiceprobe.CLOSE_OVERLAY";
@@ -48,6 +50,9 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
     public static final String ACTION_OVERLAY_FAILED = "com.example.tvvoiceprobe.OVERLAY_FAILED";
     private static final String CHANNEL_ID = "ha_tv_voice_overlay";
     private static final int NOTIFICATION_ID = 2217;
+    private static final AtomicInteger OPEN = new AtomicInteger();
+
+    public static boolean isOpen() { return OPEN.get() > 0; }
 
     private final Handler main = new Handler(Looper.getMainLooper());
     private final List<Button> actions = new ArrayList<>();
@@ -68,8 +73,13 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
     private boolean speaking = false;
     private boolean firstAutoListenPending = false;
     private boolean firstAutoListenStarted = false;
+    /** True only for a just-detected, opted-in wake phrase. Never persisted. */
+    private boolean pendingWakeCapture = false;
+    private boolean readyChime;
+    private WakeWordService.Cancellation micHandoff;
     private long autoListenDeadlineMs;
     private boolean closing = false;
+    private boolean countedOpen = false;
     private final FollowUpSession followUps = new FollowUpSession();
     private FollowUpEar followEar;
     private int followToken;
@@ -94,34 +104,44 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
             stopSelf();
             return START_NOT_STICKY;
         }
+        OverlayPreferences incoming = new OverlayPreferences(this);
+        final boolean wakeTriggered = WakeWordSession.isDetectionRequest(
+                incoming.wakeWord(), intent == null ? null : intent.getAction())
+                && !incoming.microphoneDisabled();
         if (panel != null) {
             main.removeCallbacks(dismissAfterReply);
             panel.post(() -> {
                 panel.requestFocus();
                 focus(0);
-                // Pressing the shortcut again may start the next question,
-                // but never restarts the mic while an utterance is underway.
+                if (wakeTriggered && !listening) {
+                    pendingWakeCapture = true;
+                    firstAutoListenPending = true;
+                    firstAutoListenStarted = false;
+                    autoListenDeadlineMs = SystemClock.elapsedRealtime() + 10_000L;
+                }
                 if (assist != null && !assist.isConnected()) {
-                    // Pressing ⭐ again while HA is restarting is another
-                    // explicit request. Reconnect and listen only briefly
-                    // after this request, never unexpectedly hours later.
-                    if (preferences != null && preferences.autoListen()) {
+                    if (preferences != null && (preferences.autoListen() || wakeTriggered)) {
                         firstAutoListenPending = true;
                         firstAutoListenStarted = false;
+                        pendingWakeCapture = wakeTriggered || pendingWakeCapture;
                         autoListenDeadlineMs = SystemClock.elapsedRealtime()
-                                + AssistReadinessPolicy.PENDING_USER_REQUEST_MS;
+                                + (wakeTriggered ? 10_000L
+                                : AssistReadinessPolicy.PENDING_USER_REQUEST_MS);
                     }
                     if (assist.canReconnect()) {
                         assist.ensureConnected();
-                        status(preferences != null && preferences.autoListen()
-                                ? "Connecting to Home Assistant... listening if ready within 30 seconds."
+                        status(wakeTriggered || (preferences != null && preferences.autoListen())
+                                ? "Connecting to Home Assistant... listening if ready soon."
                                 : AssistReadinessPolicy.waitingForConnection());
                     } else {
                         firstAutoListenPending = false;
+                        pendingWakeCapture = false;
                         status("Home Assistant login is unavailable. Open SETTINGS to reconnect.");
                     }
                 } else if (!listening && assist != null && assist.isConnected()
-                        && preferences != null && preferences.autoListen()) {
+                        && preferences != null
+                        && (preferences.autoListen() || wakeTriggered)) {
+                    if (wakeTriggered) pendingWakeCapture = true;
                     startListening();
                 }
             });
@@ -140,10 +160,11 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
         followToken = followUps.open();
         followWindow = false;
         followEar = new FollowUpEar(this);
-        firstAutoListenPending = preferences.autoListen();
+        pendingWakeCapture = wakeTriggered;
+        firstAutoListenPending = preferences.autoListen() || wakeTriggered;
         firstAutoListenStarted = false;
         autoListenDeadlineMs = SystemClock.elapsedRealtime()
-                                + AssistReadinessPolicy.PENDING_USER_REQUEST_MS;
+                + (wakeTriggered ? 10_000L : AssistReadinessPolicy.PENDING_USER_REQUEST_MS);
         try {
             createNotificationChannel();
             if (!publishMicState()) {
@@ -159,18 +180,70 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
                 return START_NOT_STICKY;
             }
             showPanel();
-            assist = new HaAssistClient(this, this);
-            assist.setLayoutSync(preferences.haManage());
-            HaDiscovery.setWanted(this, preferences.haManage());
-            HaDiscovery.acquire(this);
-            assist.connect(connection.url, connection.token);
-            notifyLauncher(ACTION_OVERLAY_READY);
+            markOpen();
+            if (wakeTriggered) {
+                // The wake listener is still recording the start of the question.
+                // Stopping it here would drop those words. Capture claims them later.
+                attachAssist(true);
+            } else {
+                status("Waiting for the microphone...");
+                micHandoff = WakeWordService.requestHandoff(MicLease.OVERLAY, new WakeWordService.Handoff() {
+                    @Override public void accepted(WakeWordService.Cancellation cancellation) {
+                        main.post(() -> {
+                            if (closing || cancellation.isCancelled()) {
+                                MicLease.release(MicLease.OVERLAY);
+                                if (!closing) stopSelf();
+                                return;
+                            }
+                            attachAssist(false);
+                        });
+                    }
+
+                    @Override public void denied() {
+                        main.post(() -> {
+                            status("The microphone is in use. Leave diagnostics or stop TALK first.");
+                            notifyLauncher(ACTION_OVERLAY_FAILED);
+                            stopSelf();
+                        });
+                    }
+                });
+            }
         } catch (Exception ignored) {
             // Do not print private tokens or HA URL into logs.
             notifyLauncher(ACTION_OVERLAY_FAILED);
             stopSelf();
         }
         return START_NOT_STICKY;
+    }
+
+    private void attachAssist(boolean fromWake) {
+        try {
+            // Only an explicit wake detection may claim this pre-authenticated
+            // socket. Ordinary TALK keeps its existing connection behavior.
+            WakeAssistConnection.Claimed warmed =
+                    fromWake ? WakeAssistConnection.take(this) : null;
+            assist = warmed == null ? new HaAssistClient(this, this) : warmed.client;
+            assist.setLayoutSync(preferences.haManage());
+            HaDiscovery.setWanted(this, preferences.haManage());
+            HaDiscovery.acquire(this);
+            if (warmed == null) {
+                assist.connect(connection.url, connection.token);
+            } else if (warmed.startNow) {
+                // Login finished while the idle listener owned the socket.
+                // Its ready callback was swallowed, so deliver it exactly once.
+                ready();
+            } else if (assist.isConnected() || assist.canReconnect()) {
+                // Still authenticating. auth_ok will call ready() on this overlay.
+                // A dead socket must not sit here pretending it will reconnect.
+                if (!assist.isConnected()) assist.ensureConnected();
+            } else {
+                assist.connect(connection.url, connection.token);
+            }
+            notifyLauncher(ACTION_OVERLAY_READY);
+        } catch (Exception ignored) {
+            notifyLauncher(ACTION_OVERLAY_FAILED);
+            stopSelf();
+        }
     }
 
     private void notifyLauncher(String action) {
@@ -472,6 +545,7 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
     }
 
     private void startListening(boolean followUpTurn) {
+        boolean fromWake = !followUpTurn && pendingWakeCapture;
         if (closing || assist == null) return;
         if (!followUpTurn && followEar != null) followEar.stop();
         if (listening) {
@@ -489,22 +563,36 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
             }
             if (!assist.canReconnect()) {
                 firstAutoListenPending = false;
+                pendingWakeCapture = false;
                 status("Home Assistant login is unavailable. Open SETTINGS to reconnect.");
                 return;
             }
             firstAutoListenPending = true;
             firstAutoListenStarted = false;
+            pendingWakeCapture = fromWake;
             autoListenDeadlineMs = SystemClock.elapsedRealtime()
-                    + AssistReadinessPolicy.PENDING_USER_REQUEST_MS;
+                    + (fromWake ? 10_000L : AssistReadinessPolicy.PENDING_USER_REQUEST_MS);
             assist.ensureConnected();
             status("Connecting to Home Assistant... I'll listen if ready within 30 seconds.");
             return;
         }
         followWindow = false;
+        if (fromWake && !MicLease.OVERLAY.equals(MicLease.holder())) {
+            boolean queued = MicLease.acquire(MicLease.OVERLAY)
+                    || MicLease.isWaiting(MicLease.OVERLAY);
+            if (!queued) {
+                pendingWakeCapture = false;
+                status("The microphone is in use. Leave diagnostics or stop TALK first.");
+                return;
+            }
+        }
+        readyChime = fromWake;
         if (followUpTurn) mics.beginHandoff();
         else mics.armAssist();
         if (!publishMicState()) {
             if (followEar != null) followEar.stop();
+            if (fromWake) MicLease.release(MicLease.OVERLAY);
+            readyChime = false;
             mics.captureNeverStarted();
             publishMicState();
             status("Android wouldn't allow the microphone. Capture stayed off.");
@@ -513,6 +601,7 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
         }
         FollowUpEar handoff = followUpTurn ? followEar : null;
         firstAutoListenPending = false;
+        pendingWakeCapture = false;
         main.removeCallbacks(dismissAfterReply);
         main.removeCallbacks(endListeningTimeout);
         if (player != null) {
@@ -527,9 +616,13 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
         if (wave != null) wave.setMode(VoiceWaveView.CONNECTING);
         status(followUpTurn ? "Listening for a follow-up" : "Checking microphone route...");
         assist.setRoomNoise(preferences.noise());
+        assist.setWakeLeadForNextRun(fromWake);
         if (!assist.pipelineIdle() ||
-                !assist.talk(followUpTurn || preferences.autoListen(), handoff)) {
+                !assist.talk(WakeWordSession.stopOnSilence(
+                        followUpTurn || preferences.autoListen(), fromWake), handoff)) {
+            assist.setWakeLeadForNextRun(false);
             if (handoff != null) handoff.stop();
+            if (fromWake) MicLease.release(MicLease.OVERLAY);
             listening = false;
             mics.captureNeverStarted();
             publishMicState();
@@ -560,6 +653,8 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
     }
 
     private void stopListening() {
+        pendingWakeCapture = false;
+        firstAutoListenPending = false;
         boolean pipeline = listening;
         endFollowUps();
         if (!pipeline || assist == null) {
@@ -678,6 +773,7 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
             // Preserve only a recent, explicitly requested auto-listen.
             if (SystemClock.elapsedRealtime() > autoListenDeadlineMs) {
                 firstAutoListenPending = false;
+                pendingWakeCapture = false;
             }
             if (!speaking && wave != null) wave.setMode(VoiceWaveView.CONNECTING);
         });
@@ -696,6 +792,7 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
                 startListening();
             } else {
                 firstAutoListenPending = false;
+                pendingWakeCapture = false;
                 status(expiredRequest ? AssistReadinessPolicy.expiredRequest()
                         : "Connected. Ready. Select TALK.");
             }
@@ -708,11 +805,26 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
             listening = true;
             mics.assistListening();
             publishMicState();
+            if (readyChime) {
+                readyChime = false;
+                playReadyChime();
+            }
             if (transcriptView != null) transcriptView.setText("Listening to your voice...");
             if (wave != null) wave.setMode(VoiceWaveView.LISTENING);
             main.removeCallbacks(endListeningTimeout);
             main.postDelayed(endListeningTimeout, 23000);
         });
+    }
+
+    private void playReadyChime() {
+        try {
+            android.media.ToneGenerator tone = new android.media.ToneGenerator(
+                    android.media.AudioManager.STREAM_MUSIC, 70);
+            tone.startTone(android.media.ToneGenerator.TONE_PROP_ACK, 140);
+            main.postDelayed(tone::release, 400);
+        } catch (RuntimeException ignored) {
+            // A missing tone stream must not stop the question.
+        }
     }
 
     @Override public void processing() {
@@ -947,15 +1059,22 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
     }
 
     @Override public void onDestroy() {
+        markClosed();
+        if (micHandoff != null) micHandoff.cancel();
         closing = true;
+        pendingWakeCapture = false;
         endFollowUps();
         mics.releaseAll();
         HaDiscovery.release(this);
         speaking = false;
         main.removeCallbacksAndMessages(null);
         if (assist != null) { assist.shutdown(); assist = null; }
+        MicLease.release(MicLease.OVERLAY);
         if (player != null) { player.release(); player = null; }
         if (speechFocus != null) speechFocus.release();
+        // Restore the previous TV media level after this wake-triggered turn.
+        // No change is made if the user adjusted volume while Kellie spoke.
+        WakeAudioDucking.end(this);
         if (windowManager != null && panel != null) {
             try { windowManager.removeViewImmediate(panel); }
             catch (Exception ignored) { }
@@ -969,6 +1088,24 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
         connection = null;
         actions.clear();
         stopForeground(STOP_FOREGROUND_REMOVE);
+        // Reconnect for the *next* wake only if the listener is still armed.
+        // The old overlay socket was shut down before this, avoiding a live
+        // STT run or microphone crossing back into the wake service.
+        WakeAssistConnection.preconnect(this);
         super.onDestroy();
+    }
+
+    private void markOpen() {
+        if (!countedOpen) {
+            countedOpen = true;
+            OPEN.incrementAndGet();
+        }
+    }
+
+    private void markClosed() {
+        if (countedOpen) {
+            countedOpen = false;
+            OPEN.decrementAndGet();
+        }
     }
 }

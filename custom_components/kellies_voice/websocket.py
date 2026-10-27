@@ -14,6 +14,7 @@ from homeassistant.core import HomeAssistant, callback
 from .alert_transport import EVENT_FIELDS, sanitize_event
 from .alert_presence import receiver_connected, receiver_disconnected
 from .alert_actions import ledger
+from .alert_diagnostics import diagnostics
 from .const import DOMAIN, EVENT_ACTION_PRESSED
 from .validation import clean_tv_device_id
 
@@ -28,6 +29,7 @@ def async_register_alert_subscription(hass: HomeAssistant) -> None:
         return
     websocket_api.async_register_command(hass, websocket_subscribe_alerts)
     websocket_api.async_register_command(hass, websocket_press_alert_action)
+    websocket_api.async_register_command(hass, websocket_tv_diagnostic)
     data[_REGISTERED] = True
 
 
@@ -102,6 +104,11 @@ def websocket_subscribe_alerts(hass: HomeAssistant,
         payload = sanitize_event(event.event_type, event.data, device_id)
         if payload is None:
             return
+        # Opaque nonce belongs only to this authenticated subscription and
+        # allows a future TV receipt. It carries no title/camera/token.
+        receipt = diagnostics(hass).issue(device_id, connection_key, event.event_type)
+        if receipt:
+            payload["diagnostic_receipt"] = receipt
         connection.send_message(websocket_api.event_message(msg["id"], {
             "event_type": event.event_type, "data": payload
         }))
@@ -113,12 +120,14 @@ def websocket_subscribe_alerts(hass: HomeAssistant,
     def unsubscribe() -> None:
         for remove in unsubscribers:
             remove()
+        diagnostics(hass).unsubscribe(device_id, connection_key)
         receiver_disconnected(hass, device_id, connection_key)
 
     connection.subscriptions[msg["id"]] = unsubscribe
     connection.send_result(msg["id"])
     # Only mark connected after successfully registering and acknowledging.
     receiver_connected(hass, device_id, connection_key)
+    diagnostics(hass).subscribe(device_id, connection_key, connection)
 
 @websocket_api.websocket_command({
     probatio.Required("type"): "kellies_voice/press_alert_action",
@@ -150,4 +159,47 @@ def websocket_press_alert_action(hass: HomeAssistant,
         "announcement_id": msg["announcement_id"],
         "action": msg["action"],
     })
+    connection.send_result(msg["id"])
+
+
+@websocket_api.websocket_command({
+    probatio.Required("type"): "kellies_voice/report_tv_diagnostic",
+    probatio.Required("device_id"): str,
+    probatio.Required("stage"): str,
+    probatio.Optional("receipt", default=""): str,
+    probatio.Optional("app_version", default=""): str,
+    probatio.Optional("app_code", default=0): int,
+})
+@callback
+def websocket_tv_diagnostic(hass: HomeAssistant,
+                            connection: websocket_api.ActiveConnection,
+                            msg: dict) -> None:
+    """Authenticated receipt from an ACTIVE, scoped TV subscription only.
+
+    No free-form error text, arbitrary timestamps, secrets, private sensor
+    names or 'delivery guaranteed' state is accepted from Android.
+    """
+    try:
+        device_id = clean_tv_device_id(msg["device_id"])
+    except ValueError:
+        connection.send_error(msg["id"], websocket_api.ERR_INVALID_FORMAT,
+                              "Invalid TV pairing ID")
+        return
+    if not _tv_can_read(hass, connection.user, device_id):
+        connection.send_error(msg["id"], websocket_api.ERR_UNAUTHORIZED,
+                              "No read permission for this paired TV")
+        return
+    accepted = diagnostics(hass).report(
+        device_id, connection, msg["stage"],
+        receipt=msg.get("receipt", ""), version=msg.get("app_version", ""),
+        code=msg.get("app_code", 0))
+    if not accepted:
+        connection.send_error(msg["id"], websocket_api.ERR_INVALID_FORMAT,
+                              "No matching active TV diagnostic receipt")
+        return
+    # Only the paired TV's HA entities refresh. Data is never broadcast to
+    # event listeners or published across other paired devices.
+    from homeassistant.helpers.dispatcher import async_dispatcher_send
+    from .alert_presence import signal
+    async_dispatcher_send(hass, signal(device_id))
     connection.send_result(msg["id"])

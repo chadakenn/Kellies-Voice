@@ -1,0 +1,5 @@
+okay_nabu.tflite and okay_nabu.json ship with the Home Assistant Android
+companion app (Apache-2.0) and were trained by Kevin Ahrendt for microWakeWord.
+The phrase is "Okay Nabu". Kellie's Voice does not include Hey Jarvis,
+Hey Mycroft, or a custom phrase in this change.
+https://github.com/home-assistant/android
