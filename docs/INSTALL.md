@@ -1,13 +1,13 @@
 # Install Kellie's Voice: start here (new testers)
 
-**Current public release: v0.16.9 (October 24, 2026)** · **Documentation checked: October 24, 2026**
+**Current public release: v0.16.11** · This development branch is **0.16.12-dev.10**. Ollama is not part of Kellie's Voice.
 
 Welcome! **Kellie's Voice** turns an Android TV / Google TV into a voice companion for **your own Home Assistant**. It has two separate parts:
 
 1. **Android TV app**: listens after you press TALK, speaks Home Assistant's answer through the TV, and displays floating voice, timer, weather, announcement, and camera windows.
 2. **Home Assistant custom integration (via HACS)**: registers the TV and exposes per-TV controls and actions such as `kellies_voice.announce`, `show_camera`, `show_forecast`, and `start_timer`.
 
-**Install both parts at v0.16.9** for the full supported feature set. Installing the APK does **not** install HACS, and HACS does **not** install the APK. No separate AI server is needed on your TV.
+**Install the public Android app and HACS integration at v0.16.11** for the supported feature set. The development versions on this branch are not the public release. Installing the APK does **not** install HACS, and HACS does **not** install the APK. No separate AI server, including Ollama, is installed by the TV app.
 
 **Quick recovery if announcements, timers, or camera popups stop:** Open the Kellie's Voice TV app (not Android's system Settings). Choose **SETTINGS → TV alert status → Resume TV alerts**. **TV alert status** is farther down the SETTINGS list; **Resume TV alerts** is a button at the bottom of its status pop-up, *not* an item in the TV announcements menu. If the button is missing, turn **SETTINGS → TV announcements & cameras** ON, configure Home Assistant, and allow Android **Display over other apps**. A working voice/TALK connection does not guarantee the separate alert receiver is connected. [Detailed recovery steps](TROUBLESHOOTING.md#tv-camera-or-announcement-popups-missing-find-resume-tv-alerts).
 
@@ -28,7 +28,7 @@ Welcome! **Kellie's Voice** turns an Android TV / Google TV into a voice compani
 
 ## Step 1: Install the signed Android TV APK
 
-1. Open the **[latest public Kellie's Voice release](https://github.com/chadakenn/Kellies-Voice/releases/latest)**. The current release is **v0.16.9** (community verification release).
+1. Open the **[latest public Kellie's Voice release](https://github.com/chadakenn/Kellies-Voice/releases/latest)**. The current public release is **v0.16.11**.
 2. Download the release asset **`app-release.apk`**. Do **not** download a PR's `app-debug.apk` or GitHub Actions test artifact for a first installation.
 3. Transfer it to the TV. Options include a USB stick, a TV-compatible file manager, **Send Files to TV** on your phone and TV, or ADB (`adb install -r app-release.apk`).
 4. On the TV, open the APK and grant **Install unknown apps** to the installer/file manager if Android asks. Complete the installer.

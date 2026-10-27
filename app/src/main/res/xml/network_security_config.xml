@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android applies this by hostname and cannot name a private IP range.
+     IP addresses use the base rule, so cleartext stays permitted here.
+     LanAddress refuses HTTP to a public host before a connection opens.
+     User certificates are trusted so a local Home Assistant CA installed
+     on the TV works. A one-time fingerprint prompt covers a self-signed
+     certificate that is not installed as a CA. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

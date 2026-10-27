@@ -56,7 +56,9 @@ public class ScreensaverDashboardTest {
         assertEquals("", ScreensaverDashboard.dashboardUrl(
                 "https://ha.local/lovelace/cameras#access_token=abc"));
         assertEquals("", ScreensaverDashboard.dashboardUrl("file:///sdcard/index.html"));
-        assertEquals("", ScreensaverDashboard.dashboardUrl(""));
+        assertEquals("", ScreensaverDashboard.dashboardUrl("http://example.com/frigate"));
+        assertEquals("https://example.com/frigate",
+                ScreensaverDashboard.dashboardUrl("https://example.com/frigate"));
     }
 
     @Test public void navigationStaysOnTheSameFrigateHost() {

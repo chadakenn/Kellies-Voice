@@ -21,7 +21,7 @@
         android:theme="@android:style/Theme.Material.NoActionBar"
         android:banner="@drawable/tv_banner"
         android:icon="@drawable/ic_kellie_voice"
-        android:usesCleartextTraffic="true"
+        android:networkSecurityConfig="@xml/network_security_config"
         android:allowBackup="false">
         <activity android:name=".VoiceActivity" android:exported="true"
             android:launchMode="singleTask"

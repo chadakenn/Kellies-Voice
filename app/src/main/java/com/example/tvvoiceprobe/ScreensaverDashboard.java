@@ -113,6 +113,7 @@ public final class ScreensaverDashboard {
         if (scheme == null) return "";
         scheme = scheme.toLowerCase(Locale.US);
         if (!"http".equals(scheme) && !"https".equals(scheme)) return "";
+        if ("http".equals(scheme) && !LanAddress.cleartextAllowed(uri.getHost())) return "";
         if (uri.getUserInfo() != null || uri.getHost() == null || uri.getHost().isEmpty()) return "";
         if (secretMaterial(uri.getRawQuery()) || secretMaterial(uri.getRawFragment())) return "";
         return value;

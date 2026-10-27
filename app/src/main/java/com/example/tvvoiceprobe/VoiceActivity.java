@@ -1214,6 +1214,10 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         if (parsed == null || (!"https".equals(parsed.scheme()) && !"http".equals(parsed.scheme()))) {
             status("Enter the full http:// or https:// Home Assistant address."); return;
         }
+        if ("http".equals(parsed.scheme()) && !LanAddress.cleartextAllowed(parsed.host())) {
+            status("HTTP is only allowed for a private network address. Use HTTPS for a public Home Assistant URL.");
+            return;
+        }
         final String acceptedToken = token;
         if ("http".equals(parsed.scheme())) {
             new AlertDialog.Builder(this)
@@ -1323,6 +1327,21 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         if (HaLayout.STYLE.equals(setting)) {
             runOnUiThread(this::applyMainPalette);
         }
+    }
+
+    @Override public void certificateUntrusted(String host, String sha256) {
+        if (host == null || host.isEmpty() || sha256 == null || sha256.length() < 16) return;
+        runOnUiThread(() -> new AlertDialog.Builder(this)
+                .setTitle("Trust this Home Assistant certificate?")
+                .setMessage("Android does not trust the certificate from " + host
+                        + ". Confirm the SHA-256 fingerprint, then connect again.\n\n"
+                        + sha256 + "\n\nThis does not accept every certificate, only this one for this address.")
+                .setNegativeButton("Don't trust", null)
+                .setPositiveButton("Trust this certificate", (dialog, which) -> {
+                    HaCertificatePin.acceptOffer();
+                    if (assist != null) assist.ensureConnected();
+                })
+                .show());
     }
 
     @Override public void status(String message) {

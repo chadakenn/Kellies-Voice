@@ -1,5 +1,7 @@
 # Kellie's Voice 🎙️📺
 
+The current public release is **v0.16.11**. This development branch is **0.16.12-dev.10**. Ollama is not included.
+
 **Make your Android TV part of your Home Assistant experience without replacing what you're watching.**
 
 Kellie's Voice pairs a **native Android TV / Google TV voice app** with this **HACS custom integration**. Ask Home Assistant questions through the TV, show useful answers in a floating overlay, and let automations display unobtrusive text announcements or Frigate camera snapshots.

@@ -463,7 +463,7 @@ final class ScreensaverBoard {
             showMessage("Sign in to Home Assistant to load these cameras.");
             return;
         }
-        http = new OkHttpClient();
+        http = HaHttp.client(context, 12);
         int current = generation;
         refresh(connection, cameras, photos, current);
         if (liveLimit > 0) {

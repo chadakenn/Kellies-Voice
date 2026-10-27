@@ -22,7 +22,9 @@ import okhttp3.WebSocketListener;
 final class ScreensaverSettingsSync {
     private final Context context;
     private final Handler main = new Handler(Looper.getMainLooper());
-    private final OkHttpClient client = new OkHttpClient();
+    private final OkHttpClient client;
+    private final KellieEntitySync.Cache layoutCache = new KellieEntitySync.Cache();
+    private boolean entitiesSubscribed;
     private WebSocket socket;
     private boolean stopped = true;
     private int attempts;
@@ -30,6 +32,7 @@ final class ScreensaverSettingsSync {
 
     ScreensaverSettingsSync(Context context) {
         this.context = context.getApplicationContext();
+        this.client = HaHttp.client(this.context, 12);
     }
 
     void start() {
@@ -78,7 +81,8 @@ final class ScreensaverSettingsSync {
                 if ("auth_ok".equals(type)) {
                     ScreensaverWatchStatus.settingsSync("Connected to Home Assistant, reading settings");
                     attempts = 0;
-                    ws.send("{\"id\":2,\"type\":\"subscribe_events\",\"event_type\":\"state_changed\"}");
+                    entitiesSubscribed = false;
+                    layoutCache.clear();
                     ws.send("{\"id\":3,\"type\":\"get_states\"}");
                     return;
                 }
@@ -87,13 +91,24 @@ final class ScreensaverSettingsSync {
                 }
                 if ("event".equals(type) && msg.optInt("id") == 2) {
                     JSONObject event = msg.optJSONObject("event");
-                    if (event == null || !"state_changed".equals(event.optString("event_type"))) return;
-                    JSONObject data = event.optJSONObject("data");
-                    if (data != null) ingest(data.optJSONObject("new_state"));
+                    if (event == null) return;
+                    for (JSONObject state : layoutCache.apply(event)) ingest(state);
                 } else if ("result".equals(type) && msg.optInt("id") == 3
                         && msg.optBoolean("success", false)) {
                     JSONArray result = msg.optJSONArray("result");
-                    if (result != null) for (int i = 0; i < result.length(); i++) ingest(result.optJSONObject(i));
+                    if (result == null) return;
+                    String mine = new OverlayPreferences(context).deviceId();
+                    JSONArray ids = KellieEntitySync.matchingIds(result, mine);
+                    for (int i = 0; i < result.length(); i++) {
+                        JSONObject state = result.optJSONObject(i);
+                        if (KellieEntitySync.marked(state)) ingest(state);
+                    }
+                    if (ids.length() > 0 && !entitiesSubscribed) {
+                        try {
+                            ws.send(KellieEntitySync.subscribe(2, ids).toString());
+                            entitiesSubscribed = true;
+                        } catch (Exception ignored) { }
+                    }
                 }
             }
 
@@ -112,7 +127,7 @@ final class ScreensaverSettingsSync {
     private void ingest(JSONObject state) {
         if (state == null || stopped) return;
         JSONObject attrs = state.optJSONObject("attributes");
-        if (attrs == null) return;
+        if (attrs == null || !attrs.has("kellie_device_id")) return;
         String setting = attrs.optString("kellie_setting", "");
         if (!HaLayout.isScreensaver(setting)) return;
         String pairing = new OverlayPreferences(context).deviceId();

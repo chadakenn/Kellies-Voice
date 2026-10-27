@@ -16,7 +16,6 @@ import org.json.JSONObject;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import okhttp3.OkHttpClient;
@@ -49,6 +48,8 @@ public final class HaAssistClient {
         default void connectionLost() { }
         /** The answer had no spoken audio, so a text-only reply is complete. */
         default void speechMissing() { }
+        /** Home Assistant presented a certificate Android does not trust. */
+        default void certificateUntrusted(String host, String sha256) { }
         /**
          * AudioRecord.release has returned for this Assist run, or the run
          * ended without ever opening a recorder. Must not call back into the client.
@@ -61,10 +62,7 @@ public final class HaAssistClient {
     private final SpeechFocus listeningFocus;
     private final RunGate runs = new RunGate();
     private volatile FollowUpEar pendingEar;
-    private final OkHttpClient http = new OkHttpClient.Builder()
-            .connectTimeout(15, TimeUnit.SECONDS)
-            .pingInterval(25, TimeUnit.SECONDS)
-            .build();
+    private final OkHttpClient http;
     private volatile WebSocket socket;
     private volatile boolean authenticated;
     private volatile int currentRunId = -1;
@@ -81,6 +79,8 @@ public final class HaAssistClient {
     private volatile boolean layoutSync;
     private volatile boolean layoutSubscribed;
     private volatile int layoutStatesId = -1;
+    private volatile int layoutEventId = -1;
+    private final KellieEntitySync.Cache layoutCache = new KellieEntitySync.Cache();
     private final Map<String, String> layoutEntities = new HashMap<>();
     private volatile boolean disposed = true;
 
@@ -107,6 +107,7 @@ public final class HaAssistClient {
         this.context = context.getApplicationContext();
         this.events = events;
         this.listeningFocus = new SpeechFocus(this.context);
+        this.http = HaHttp.client(this.context, 15);
     }
 
     public boolean isConnected() { return authenticated; }
@@ -128,6 +129,10 @@ public final class HaAssistClient {
             if (parsed == null ||
                     (!"https".equals(parsed.scheme()) && !"http".equals(parsed.scheme()))) {
                 throw new IllegalArgumentException("Use a full Home Assistant http:// or https:// address.");
+            }
+            if ("http".equals(parsed.scheme()) && !LanAddress.cleartextAllowed(parsed.host())) {
+                events.status("HTTP is only allowed for a private network address. Use HTTPS for a public Home Assistant URL.");
+                return;
             }
             // Reject a URL with credentials in it. Use only the saved HA access token.
             if (!parsed.username().isEmpty() || !parsed.password().isEmpty()) {
@@ -190,11 +195,11 @@ public final class HaAssistClient {
 
                 @Override public void onFailure(WebSocket ws, Throwable error,
                         Response response) {
-                    connectionLost(ws);
+                    connectionLost(ws, error);
                 }
 
                 @Override public void onClosed(WebSocket ws, int code, String reason) {
-                    connectionLost(ws);
+                    connectionLost(ws, null);
                 }
             });
         } catch (Exception error) {
@@ -207,7 +212,8 @@ public final class HaAssistClient {
         return !disposed && reconnectEnabled && ws == socket;
     }
 
-    private void connectionLost(WebSocket ws) {
+    private void connectionLost(WebSocket ws, Throwable error) {
+        boolean untrusted = HaHttp.untrusted(error);
         synchronized (this) {
             // The old socket can close AFTER a new one authenticated. Never
             // allow its callback to mark the replacement disconnected.
@@ -217,11 +223,17 @@ public final class HaAssistClient {
             connecting = false;
             layoutSubscribed = false;
             layoutStatesId = -1;
+            layoutEventId = -1;
+            layoutCache.clear();
             layoutEntities.clear();
             stopForRunEnd();
-            if (reconnectEnabled) scheduleReconnect();
+            if (reconnectEnabled && !untrusted) scheduleReconnect();
         }
         events.connectionLost();
+        if (untrusted && !HaCertificatePin.offeredHost().isEmpty()) {
+            events.status("Home Assistant's certificate is not trusted yet.");
+            events.certificateUntrusted(HaCertificatePin.offeredHost(), HaCertificatePin.offeredPin());
+        }
     }
 
     private synchronized void scheduleReconnect() {
@@ -297,12 +309,12 @@ public final class HaAssistClient {
             }
             return;
         }
-        if ("event".equals(type)) {
+        if ("event".equals(type) && msg.optInt("id", -1) == layoutEventId) {
             JSONObject event = msg.optJSONObject("event");
-            if (event != null && "state_changed".equals(event.optString("event_type"))) {
-                if (layoutSync) ingestState(event.optJSONObject("data"));
-                return;
+            if (event != null && layoutSync) {
+                for (JSONObject state : layoutCache.apply(event)) ingestOne(state);
             }
+            return;
         }
         if (!"event".equals(type) || msg.optInt("id", -1) != currentRunId) return;
         JSONObject event = msg.optJSONObject("event");
@@ -852,40 +864,32 @@ public final class HaAssistClient {
         if (!layoutSync || !authenticated || socket == null) return;
         try {
             if (!layoutSubscribed) {
-                JSONObject subscribe = new JSONObject();
-                subscribe.put("id", commandId++);
-                subscribe.put("type", "subscribe_events");
-                subscribe.put("event_type", "state_changed");
-                if (!socket.send(subscribe.toString())) return;
-                layoutSubscribed = true;
+                JSONObject states = new JSONObject();
+                layoutStatesId = commandId++;
+                states.put("id", layoutStatesId);
+                states.put("type", "get_states");
+                if (!socket.send(states.toString())) return;
             }
-            JSONObject states = new JSONObject();
-            layoutStatesId = commandId++;
-            states.put("id", layoutStatesId);
-            states.put("type", "get_states");
-            socket.send(states.toString());
         } catch (Exception ignored) { }
     }
 
     private void ingestStates(JSONArray states) {
+        String mine = new OverlayPreferences(context).deviceId();
+        JSONArray ids = KellieEntitySync.matchingIds(states, mine);
         for (int i = 0; i < states.length(); i++) {
             JSONObject state = states.optJSONObject(i);
-            if (state != null) ingestOne(state);
+            if (KellieEntitySync.marked(state)) ingestOne(state);
         }
-    }
-
-    private void ingestState(JSONObject data) {
-        if (data == null) return;
-        JSONObject state = data.optJSONObject("new_state");
-        if (state == null) return;
-        if (!state.has("entity_id")) {
+        if (ids.length() == 0) return;
+        synchronized (this) {
+            if (layoutSubscribed || socket == null) return;
             try {
-                state.put("entity_id", data.optString("entity_id"));
-            } catch (Exception ignored) {
-                return;
-            }
+                layoutEventId = commandId++;
+                if (socket.send(KellieEntitySync.subscribe(layoutEventId, ids).toString())) {
+                    layoutSubscribed = true;
+                }
+            } catch (Exception ignored) { }
         }
-        ingestOne(state);
     }
 
     private void ingestOne(JSONObject state) {
@@ -893,7 +897,7 @@ public final class HaAssistClient {
         synchronized (this) {
             if (!layoutSync) return;
             JSONObject attributes = state.optJSONObject("attributes");
-            if (attributes == null) return;
+            if (attributes == null || !attributes.has("kellie_device_id")) return;
             OverlayPreferences prefs = new OverlayPreferences(context);
             if (!prefs.deviceId().equals(attributes.optString("kellie_device_id"))) return;
             prefs.setRegistryDeviceId(attributes.optString("ha_registry_device_id", ""));
@@ -931,6 +935,8 @@ public final class HaAssistClient {
         conversationId = null;
         layoutSubscribed = false;
         layoutStatesId = -1;
+        layoutEventId = -1;
+        layoutCache.clear();
         layoutEntities.clear();
         stopForRunEnd();
         WebSocket ws = socket;

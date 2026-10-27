@@ -53,7 +53,7 @@ final class ScreensaverLiveGrid {
     private final ExoPlayer[] players;
     private final int limit;
     private final String decoderMode;
-    private final OkHttpClient http = new OkHttpClient();
+    private final OkHttpClient http;
     private WebSocket socket;
     private boolean stopped;
     private int fullscreenSlot = -1;
@@ -64,6 +64,7 @@ final class ScreensaverLiveGrid {
             TextureView[] surfaces, ImageView[] snapshots, TextView[] statuses,
             int limit, String decoderMode) {
         this.context = context.getApplicationContext();
+        this.http = HaHttp.client(this.context, 12);
         this.connection = connection;
         this.cameras = cameras;
         this.surfaces = surfaces;

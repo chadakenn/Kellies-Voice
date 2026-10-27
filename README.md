@@ -6,7 +6,7 @@
 
 Kellie's Voice is a native Android TV / Google TV app with a companion **Home Assistant custom integration**. Talk to your Home Assistant Assist agent, see useful answers in a floating overlay, receive quiet smart-home announcements (optional spoken with audio ducking), and pop up security-camera views **over what you're already watching** when Android allows it.
 
-No replacement launcher, always-open browser tab, or separate AI server on the TV. Your existing Home Assistant setup does the thinking; Kellie's Voice handles the microphone, on-screen experience, and TV audio.
+No replacement launcher, always-open browser tab, or separate AI server on the TV. Your existing Home Assistant setup does the thinking; Kellie's Voice handles the microphone, on-screen experience, and TV audio. Ollama is not part of this project.
 
 [**Get the Android TV app**](https://github.com/chadakenn/Kellies-Voice/releases/latest) · [**Install the HACS integration**](https://my.home-assistant.io/redirect/hacs_repository/?owner=chadakenn&repository=Kellies-Voice&category=integration) · [**Setup guide**](docs/INSTALL.md) · [**Report a problem**](https://github.com/chadakenn/Kellies-Voice/issues) · [**Documentation & guides**](docs/wiki/Home.md)
 
@@ -305,7 +305,9 @@ sequence:
 
 Substitute your own `camera.*` entity IDs. On Home Assistant's **Settings → Voice assistants → Expose** screen, expose these scripts to Assist. If multiple TVs are paired, add `device_id` inside each action's `data` to target just one. Both the TV app and HACS integration must be at **v0.16.2 or later**, followed by a Home Assistant restart and reopening the TV app so its receiver reconnects. Voice phrases depend on the selected Assist conversation agent.
 
-## v0.16.3: TV camera placement and alert recovery
+## Older notes: v0.16.3 TV camera placement and alert recovery
+
+These controls shipped in v0.16.3 and remain in the current public release, v0.16.11. This is not a separate current release.
 
 On your Kellie's Voice TV's **Home Assistant device** page, configure **TV alert position** (top left, top right, bottom left, bottom right or center) and **TV alert size** (small, medium or large). These are separate from the microphone/voice overlay placement. The defaults keep the existing top-right medium popup and changes apply to the *next* announcement, snapshot or live camera window.
 

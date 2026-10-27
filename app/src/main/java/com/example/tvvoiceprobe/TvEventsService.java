@@ -47,7 +47,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -90,10 +89,7 @@ public final class TvEventsService extends Service {
     private static final int MAX_SNAPSHOT_BYTES = 5 * 1024 * 1024;
 
     private final Handler main = new Handler(Looper.getMainLooper());
-    private final OkHttpClient http = new OkHttpClient.Builder()
-            .connectTimeout(12, TimeUnit.SECONDS)
-            .pingInterval(25, TimeUnit.SECONDS)
-            .build();
+    private OkHttpClient http;
     private final Runnable reconnect = this::connect;
     private final Runnable connectionWatchdog = this::checkConnectionHealth;
     private final Runnable recoveryMonitor = this::checkReceiverRecovery;
@@ -122,6 +118,8 @@ public final class TvEventsService extends Service {
     private int liveRequestId = -1;
     private int liveRequestGeneration = -1;
     private int layoutStatesId = -1;
+    private boolean layoutEntitiesSubscribed;
+    private final KellieEntitySync.Cache layoutCache = new KellieEntitySync.Cache();
     private WebSocket socket;
     private CredentialStore.Connection credentials;
     private boolean stopping;
@@ -276,6 +274,11 @@ public final class TvEventsService extends Service {
                 .build();
     }
 
+    private OkHttpClient client() {
+        if (http == null) http = HaHttp.client(this, 12);
+        return http;
+    }
+
     private void connectionNotice(String message) {
         NotificationManager manager = getSystemService(NotificationManager.class);
         if (manager != null && !stopping) manager.notify(NOTICE_ID, buildNotification(message));
@@ -287,6 +290,8 @@ public final class TvEventsService extends Service {
         heartbeatSentMs = -1L;
         connectionStartedMs = -1L;
         layoutStatesId = -1;
+        layoutEntitiesSubscribed = false;
+        layoutCache.clear();
         legacyMode = false;
         legacyPending = 0;
         legacyDenied = false;
@@ -408,7 +413,7 @@ public final class TvEventsService extends Service {
         clearConnectionTracking();
         connectionStartedMs = SystemClock.elapsedRealtime();
         TvEventsRecovery.note(TvEventsRecovery.RECONNECTING);
-        socket = http.newWebSocket(new Request.Builder().url(address).build(),
+        socket = client().newWebSocket(new Request.Builder().url(address).build(),
                 new WebSocketListener() {
                     @Override public void onMessage(WebSocket ws, String text) {
                         main.post(() -> handleMessage(ws, text));
@@ -468,9 +473,8 @@ public final class TvEventsService extends Service {
                         .put("device_id", new OverlayPreferences(this).deviceId()).toString());
                 if (new OverlayPreferences(this).haManage()) {
                     layoutStatesId = LAYOUT_STATES_ID;
-                    ws.send(new JSONObject().put("id", LAYOUT_EVENT_ID)
-                            .put("type", "subscribe_events")
-                            .put("event_type", "state_changed").toString());
+                    layoutEntitiesSubscribed = false;
+                    layoutCache.clear();
                     ws.send(new JSONObject().put("id", LAYOUT_STATES_ID)
                             .put("type", "get_states").toString());
                 }
@@ -586,8 +590,17 @@ public final class TvEventsService extends Service {
                     if (message.optBoolean("success", false)) {
                         JSONArray states = message.optJSONArray("result");
                         if (states != null) {
+                            String mine = new OverlayPreferences(this).deviceId();
+                            JSONArray ids = KellieEntitySync.matchingIds(states, mine);
                             for (int i = 0; i < states.length(); i++) {
-                                applyAlertState(states.optJSONObject(i));
+                                JSONObject state = states.optJSONObject(i);
+                                if (KellieEntitySync.marked(state)) applyAlertState(state);
+                            }
+                            if (ids.length() > 0 && !layoutEntitiesSubscribed) {
+                                try {
+                                    ws.send(KellieEntitySync.subscribe(LAYOUT_EVENT_ID, ids).toString());
+                                    layoutEntitiesSubscribed = true;
+                                } catch (Exception ignored) { }
                             }
                         }
                     }
@@ -616,9 +629,8 @@ public final class TvEventsService extends Service {
             JSONObject event = message.optJSONObject("event");
             if (event == null) return;
             String eventType = event.optString("event_type");
-            if (subscription == LAYOUT_EVENT_ID && "state_changed".equals(eventType)) {
-                JSONObject changed = event.optJSONObject("data");
-                if (changed != null) applyAlertState(changed.optJSONObject("new_state"));
+            if (subscription == LAYOUT_EVENT_ID) {
+                for (JSONObject state : layoutCache.apply(event)) applyAlertState(state);
                 return;
             }
             JSONObject data = event.optJSONObject("data");
@@ -1067,7 +1079,7 @@ public final class TvEventsService extends Service {
     private void applyAlertState(JSONObject state) {
         if (state == null || !new OverlayPreferences(this).haManage()) return;
         JSONObject attributes = state.optJSONObject("attributes");
-        if (attributes == null) return;
+        if (attributes == null || !attributes.has("kellie_device_id")) return;
         OverlayPreferences prefs = new OverlayPreferences(this);
         if (!prefs.deviceId().equals(attributes.optString("kellie_device_id"))) return;
         String setting = attributes.optString("kellie_setting");
@@ -1257,7 +1269,7 @@ public final class TvEventsService extends Service {
                 .header("Cache-Control", "no-cache").build();
         if (snapshotCall != null) snapshotCall.cancel();
         final int serial = ++snapshotSerial;
-        Call call = http.newCall(request);
+        Call call = client().newCall(request);
         snapshotCall = call;
         call.enqueue(new Callback() {
             @Override public void onFailure(Call failed, java.io.IOException e) {
@@ -1339,8 +1351,10 @@ public final class TvEventsService extends Service {
             socket.close(1000, "Receiver stopped");
             socket = null;
         }
-        http.dispatcher().executorService().shutdown();
-        http.connectionPool().evictAll();
+        if (http != null) {
+            http.dispatcher().executorService().shutdown();
+            http.connectionPool().evictAll();
+        }
         credentials = null;
         if (new OverlayPreferences(this).tvEvents()) {
             TvEventsRecovery.note(TvEventsRecovery.STOPPED);
