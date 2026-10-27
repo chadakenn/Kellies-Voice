@@ -68,10 +68,17 @@ public final class WakeWordService extends Service {
 
     private boolean allowed(String action) {
         OverlayPreferences prefs = new OverlayPreferences(this);
-        return WakeWordSession.mayStart(prefs.wakeWord(), action,
+        if (!WakeWordSession.mayStart(prefs.wakeWord(), action,
                 checkSelfPermission(Manifest.permission.RECORD_AUDIO)
                         == PackageManager.PERMISSION_GRANTED,
-                android.provider.Settings.canDrawOverlays(this));
+                android.provider.Settings.canDrawOverlays(this))) return false;
+        // Do not allow a wake listener without an HA login. The token remains
+        // inside CredentialStore; no plaintext credentials enter wake logging.
+        try {
+            return new CredentialStore(this).load() != null;
+        } catch (Exception ignored) {
+            return false;
+        }
     }
 
     private void listen() {
