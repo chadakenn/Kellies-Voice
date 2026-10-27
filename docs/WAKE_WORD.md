@@ -26,26 +26,32 @@ The switch is **off** by default.
 
 The capture rate is 16 kHz. If this TV cannot open a 16 kHz microphone, the listener turns itself back off and leaves a notification. It does not guess another sample rate.
 
-## Privacy and outstanding blockers
+## Privacy and what is sent
 
-- **The wake listener is always recording locally while it is enabled.** The wake model runs on-device, but once the wake phrase triggers, the normal HA Assist pipeline may send following command audio to **cloud STT** if that is the pipeline you configured. A false positive can therefore transmit unexpected room audio. Check **Settings → Voice assistants** in HA and choose local STT if privacy is important.
-- The wake listener checks **Mic input detection → Disable microphone capture**. Turning that on, forgetting the Home Assistant login, or losing microphone or overlay permission turns the listener off.
-- Full-screen TALK, the voice overlay, and microphone diagnostics do not take the microphone lease while the wake listener's `AudioRecord` is still open. The wake thread releases that recorder, then the waiting owner holds the lease. The overlay drops its lease only after it has asked Assist to shut down. This is still not one shared `AudioRecord` object. A television test still has to show that two captures do not overlap.
-- The handoff still starts the overlay with `startForegroundService` from the wake service. Android 12 and 14 may block that or open the overlay without audio. A signed dev APK still has to show a nonempty transcript after Okay Nabu.
-- The wake recorder stops before the overlay opens, then the overlay connects to Home Assistant and opens its own recorder. The first words of the command can be lost. A short pre-roll, a warm connection, and a ready chime are still required before calling this hands-free.
-- This service is `START_NOT_STICKY`. After a reboot or a kill, Settings can still say ON while nothing is listening. It does not start from boot. A live status and an explicit resume action are still missing.
-- An ordinary debug TV APK must not depend on the HWASan runtime. HWASan is disabled for the draft branch's sideloadable Debug configuration.
+- **The wake listener records locally while it is LISTENING.** That audio is scored on the TV. It is not uploaded.
+- After the local detector fires, the same recorder keeps at most **two seconds** of 16 kHz PCM. That clip can include the tail of "Nabu" and the start of the question. Assist sends that clip, then the rest of the question, to whatever speech-to-text your pipeline uses. Audio from before the detector fires is discarded. If the overlay never starts, the clip is discarded too.
+- A short beep plays when the overlay microphone is actually recording. The TV microphone can hear that beep.
+- Cloud speech-to-text, if that is your pipeline, receives the question audio. A false wake can therefore send room audio. Prefer a local speech-to-text engine if that matters.
+- **Disable microphone capture**, forgetting the Home Assistant login, or losing microphone or overlay permission turns the listener off.
+- Full-screen TALK and diagnostics ask for the microphone without freezing the screen. They do not open a recorder until the wake recorder has been released. Closing the screen cancels a handoff that has not started. The overlay drops its lease after Assist shutdown.
+- Hey Google is a separate listener. This app cannot turn it off. Both can contend for the microphone. The remote microphone button still belongs to Google Assistant unless you change the default assistant yourself.
+- The listener is `START_NOT_STICKY`. Settings shows **OFF**, **LISTENING**, or **STOPPED**. STOPPED means the switch was on but Android ended the service. **Resume wake word listener** starts it again. A reboot does not.
+- Starting the overlay still uses `startForegroundService` from the wake service. Android 12 and 14 may refuse that. That has not been proven on a television.
+- The native library is linked for 16 KB memory pages. That alignment has not been checked on an Android 15 device.
 
-### Hardware acceptance before promotion
+## First test on an onn 4K Pro
 
-1. Check detection and **nonempty full spoken command transcript** on Android 12 and Android 14+ (or the Android versions available for testing).
-2. Confirm full-screen TALK, overlay TALK and microphone diagnostics cannot run a second AudioRecord concurrently.
-3. Turn off the global TV microphone switch, forget the HA login, revoke RECORD_AUDIO / overlay permissions while active, and verify the wake listener exits and drops the mic indicator.
-4. Test failed/cancelled handoff, slow HA authentication, missing STT/TTS, bad token, empty transcript, and negative AudioRecord reads.
-5. With TV audio playing, record missed/false wake counts across extended use; never present a false activation as harmless if cloud STT is configured.
-6. Install the sideloaded debug build to verify JNI loads on the real TV and then test restart/kill/reboot behavior and visible failure notifications.
-7. Keep off by default, never enable remotely, and require explicit TV-side consent. Include an accessible disclosure and an easy OFF control.
+Install the GitHub Actions **debug** APK from this pull request. Its package is `com.example.tvvoiceprobe.debug`, so it sits beside the stable app and does not use the stable login. Grant microphone and display-over-other-apps. Sign in to Home Assistant inside the debug app.
 
+1. Confirm the settings row says **Wake word: OFF**. Say "Okay Nabu" and confirm nothing opens.
+2. Turn it on. The row should say **LISTENING**, and the microphone privacy indicator should stay on.
+3. Say "Okay Nabu", pause a beat, then "What time is it?" The overlay should open, a short beep should play, and the transcript should contain the question, not only the wake phrase.
+4. Say the question immediately after the wake phrase. Note whether the first words are missing.
+5. Press TALK while it is LISTENING, then run one microphone diagnostic. Only one capture should be live, and the listener should return to LISTENING afterward.
+6. Force-stop the debug app. The row should say **STOPPED**. Resume it from the menu. Reboot the TV and confirm it stays off.
+7. Turn **Disable microphone capture** on and confirm the listener stops. Turn the wake word off when you are done.
+
+A successful wake is a nonempty transcript of the question plus a spoken answer. An overlay with an empty transcript, or a transcript of silence, is a failed capture. Do not treat a green unit test as that result.
 
 ## Engine
 

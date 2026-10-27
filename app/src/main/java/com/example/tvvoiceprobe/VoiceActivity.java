@@ -59,6 +59,8 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
     private TextView connection;
     private CredentialStore store;
     private HaAssistClient assist;
+    private WakeWordService.Cancellation talkHandoff;
+    private int talkGeneration;
     private CredentialStore.Connection settings;
     private MediaPlayer player;
     private SpeechFocus speechFocus;
@@ -552,7 +554,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                 "Frigate screensaver: " + (new OverlayPreferences(this).screensaverDashboard() ? "ON" : "OFF"),
                 "Preview Frigate dashboard",
                 "Wake word: " + (!new OverlayPreferences(this).wakeWord() ? "OFF"
-                        : WakeWordService.isListening() ? "ON" : "STOPPED (resume)"),
+                        : WakeWordService.isListening() ? "LISTENING" : "STOPPED"),
                 "Forget saved connection"
         };
         showCopperMenu("KELLIE'S VOICE  ✦  SETTINGS",
@@ -1282,11 +1284,29 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
             if (player != null) { player.release(); player = null; }
             if (speechFocus != null) speechFocus.release();
             assist.setRoomNoise(new OverlayPreferences(this).noise());
-            if (!WakeWordService.handoffTo(MicLease.TALK)) {
-                status("The microphone is in use. Close the overlay or leave diagnostics first.");
-                return;
-            }
-            if (!assist.talk()) MicLease.release(MicLease.TALK);
+            final int generation = ++talkGeneration;
+            if (talkHandoff != null) talkHandoff.cancel();
+            status("Waiting for the microphone...");
+            talkHandoff = WakeWordService.requestHandoff(MicLease.TALK, new WakeWordService.Handoff() {
+                @Override public void accepted(WakeWordService.Cancellation cancellation) {
+                    runOnUiThread(() -> {
+                        if (generation != talkGeneration || isDestroyed()) {
+                            MicLease.release(MicLease.TALK);
+                            return;
+                        }
+                        cancellation.markStarted();
+                        if (!assist.talk()) MicLease.release(MicLease.TALK);
+                    });
+                }
+
+                @Override public void denied() {
+                    runOnUiThread(() -> {
+                        if (generation == talkGeneration) {
+                            status("The microphone is in use. Close the overlay or leave diagnostics first.");
+                        }
+                    });
+                }
+            });
         }
     }
 
@@ -1323,9 +1343,11 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         showCopperMenu("SETTINGS  ✦  WAKE WORD",
                 "Listens on this TV for Okay Nabu, then opens the voice overlay. "
                         + "Off until you turn it on. A reboot or app update does not start it. "
-                        + "While it is on, the microphone stays in use and Android's privacy indicator stays on. "
-                        + "Nothing is sent to Home Assistant until the overlay opens. "
-                        + "Not tested on this TV yet, and the TV speakers can confuse it.",
+                        + "While it is LISTENING, the microphone stays in use and Android's privacy indicator stays on. "
+                        + "Hey Google is separate and can still take the microphone. "
+                        + "Nothing is sent until the phrase is recognized. Then at most two seconds of the following audio, "
+                        + "plus the rest of the question, goes to your Assist pipeline. "
+                        + "A short beep means the microphone is ready. Not tested on this TV yet.",
                 new String[] {
                         enabled && active ? "Turn wake word OFF"
                                 : enabled ? "Resume wake word listener" : "Turn wake word ON",
@@ -1480,6 +1502,8 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
     }
 
     @Override protected void onDestroy() {
+        talkGeneration++;
+        if (talkHandoff != null) talkHandoff.cancel();
         stopListeningForOverlay();
         if (player != null) { player.release(); player = null; }
         if (speechFocus != null) speechFocus.release();

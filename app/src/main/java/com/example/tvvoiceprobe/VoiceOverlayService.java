@@ -75,6 +75,8 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
     private boolean firstAutoListenStarted = false;
     /** True only for a just-detected, opted-in wake phrase. Never persisted. */
     private boolean pendingWakeCapture = false;
+    private boolean readyChime;
+    private WakeWordService.Cancellation micHandoff;
     private long autoListenDeadlineMs;
     private boolean closing = false;
     private boolean countedOpen = false;
@@ -179,12 +181,43 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
             }
             showPanel();
             markOpen();
-            if (!WakeWordService.handoffTo(MicLease.OVERLAY)) {
-                status("The microphone is in use. Leave diagnostics or stop TALK first.");
-                notifyLauncher(ACTION_OVERLAY_FAILED);
-                stopSelf();
-                return START_NOT_STICKY;
+            if (wakeTriggered) {
+                // The wake listener is still recording the start of the question.
+                // Stopping it here would drop those words. Capture claims them later.
+                attachAssist();
+            } else {
+                status("Waiting for the microphone...");
+                micHandoff = WakeWordService.requestHandoff(MicLease.OVERLAY, new WakeWordService.Handoff() {
+                    @Override public void accepted(WakeWordService.Cancellation cancellation) {
+                        main.post(() -> {
+                            if (closing || cancellation.isCancelled()) {
+                                MicLease.release(MicLease.OVERLAY);
+                                if (!closing) stopSelf();
+                                return;
+                            }
+                            attachAssist();
+                        });
+                    }
+
+                    @Override public void denied() {
+                        main.post(() -> {
+                            status("The microphone is in use. Leave diagnostics or stop TALK first.");
+                            notifyLauncher(ACTION_OVERLAY_FAILED);
+                            stopSelf();
+                        });
+                    }
+                });
             }
+        } catch (Exception ignored) {
+            // Do not print private tokens or HA URL into logs.
+            notifyLauncher(ACTION_OVERLAY_FAILED);
+            stopSelf();
+        }
+        return START_NOT_STICKY;
+    }
+
+    private void attachAssist() {
+        try {
             assist = new HaAssistClient(this, this);
             assist.setLayoutSync(preferences.haManage());
             HaDiscovery.setWanted(this, preferences.haManage());
@@ -192,11 +225,9 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
             assist.connect(connection.url, connection.token);
             notifyLauncher(ACTION_OVERLAY_READY);
         } catch (Exception ignored) {
-            // Do not print private tokens or HA URL into logs.
             notifyLauncher(ACTION_OVERLAY_FAILED);
             stopSelf();
         }
-        return START_NOT_STICKY;
     }
 
     private void notifyLauncher(String action) {
@@ -530,10 +561,22 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
             return;
         }
         followWindow = false;
+        if (fromWake && !MicLease.OVERLAY.equals(MicLease.holder())) {
+            boolean queued = MicLease.acquire(MicLease.OVERLAY)
+                    || MicLease.isWaiting(MicLease.OVERLAY);
+            if (!queued) {
+                pendingWakeCapture = false;
+                status("The microphone is in use. Leave diagnostics or stop TALK first.");
+                return;
+            }
+        }
+        readyChime = fromWake;
         if (followUpTurn) mics.beginHandoff();
         else mics.armAssist();
         if (!publishMicState()) {
             if (followEar != null) followEar.stop();
+            if (fromWake) MicLease.release(MicLease.OVERLAY);
+            readyChime = false;
             mics.captureNeverStarted();
             publishMicState();
             status("Android wouldn't allow the microphone. Capture stayed off.");
@@ -561,6 +604,7 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
                 !assist.talk(WakeWordSession.stopOnSilence(
                         followUpTurn || preferences.autoListen(), fromWake), handoff)) {
             if (handoff != null) handoff.stop();
+            if (fromWake) MicLease.release(MicLease.OVERLAY);
             listening = false;
             mics.captureNeverStarted();
             publishMicState();
@@ -743,11 +787,26 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
             listening = true;
             mics.assistListening();
             publishMicState();
+            if (readyChime) {
+                readyChime = false;
+                playReadyChime();
+            }
             if (transcriptView != null) transcriptView.setText("Listening to your voice...");
             if (wave != null) wave.setMode(VoiceWaveView.LISTENING);
             main.removeCallbacks(endListeningTimeout);
             main.postDelayed(endListeningTimeout, 23000);
         });
+    }
+
+    private void playReadyChime() {
+        try {
+            android.media.ToneGenerator tone = new android.media.ToneGenerator(
+                    android.media.AudioManager.STREAM_MUSIC, 70);
+            tone.startTone(android.media.ToneGenerator.TONE_PROP_ACK, 140);
+            main.postDelayed(tone::release, 400);
+        } catch (RuntimeException ignored) {
+            // A missing tone stream must not stop the question.
+        }
     }
 
     @Override public void processing() {
@@ -983,6 +1042,7 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
 
     @Override public void onDestroy() {
         markClosed();
+        if (micHandoff != null) micHandoff.cancel();
         closing = true;
         pendingWakeCapture = false;
         endFollowUps();

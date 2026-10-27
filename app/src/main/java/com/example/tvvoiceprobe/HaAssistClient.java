@@ -630,6 +630,9 @@ public final class HaAssistClient {
                     if (handoff != null) handoff.stop();
                     return;
                 }
+                // Audio after Okay Nabu, recorded by the wake listener and
+                // released before this recorder opens. Empty for a normal TALK.
+                byte[] wakeLead = WakeWordService.claimCommandLead(1500L);
                 // claimOpen blocks. The run gate stays free so STOP can cancel.
                 OpenCapture open = handoff == null ? null : handoff.claimOpen();
                 if (!runs.arm(runId, handlerAtStart, () -> recording.set(true))) {
@@ -714,6 +717,14 @@ public final class HaAssistClient {
                 long quietMs = 0L;
                 boolean heardUtterance = false;
                 double backgroundRms = 0.002;
+                if (wakeLead.length > 0) {
+                    boolean sent = runs.send(runId, handlerAtStart,
+                            () -> writePcm(wakeLead, handlerAtStart, packet));
+                    if (sent) {
+                        heardUtterance = true;
+                        observedMs = Math.min(2000L, wakeLead.length / 32L);
+                    }
+                }
                 if (lead != null && SpeechBuffer.containsSpeech(lead, 16000)) {
                     boolean sent = runs.send(runId, handlerAtStart,
                             () -> writePcm(lead, handlerAtStart, packet));

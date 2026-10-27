@@ -280,6 +280,10 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
     log
 )
 
+# Android 15+ devices can use 16 KB memory pages. Align this library so the
+# debug APK is not rejected for an unaligned native load segment.
+target_link_options(${CMAKE_PROJECT_NAME} PRIVATE "-Wl,-z,max-page-size=16384")
+
 # HWASan intentionally omitted from sideloadable Debug builds.
 # Android HWASan requires a compatible device/runtime, often including wrap.sh.
 # A separate instrumented build can opt in after hardware verification.

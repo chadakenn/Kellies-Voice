@@ -52,7 +52,8 @@ public final class WakeWordService extends Service {
 
     /**
      * Take the microphone from the wake listener only after its AudioRecord
-     * has been released. Returns false when another user owner already holds it.
+     * has been released. Diagnostics calls this on a background thread.
+     * The activity and overlay must use {@link #requestHandoff} instead.
      */
     public static boolean handoffTo(String owner) {
         if (MicLease.acquire(owner)) return true;
@@ -62,6 +63,82 @@ public final class WakeWordService extends Service {
         boolean held = MicLease.awaitHeld(owner, 1500L);
         if (!held) MicLease.release(owner);
         return held;
+    }
+
+    public interface Handoff {
+        void accepted(Cancellation cancellation);
+        void denied();
+    }
+
+    /** Cancels a handoff that has not started capture. Does not block. */
+    public static final class Cancellation {
+        private final String owner;
+        private volatile boolean cancelled;
+        private volatile boolean started;
+
+        Cancellation(String owner) { this.owner = owner; }
+
+        public boolean isCancelled() { return cancelled; }
+
+        public void markStarted() { started = true; }
+
+        public void cancel() {
+            cancelled = true;
+            if (!started) MicLease.release(owner);
+        }
+    }
+
+    /**
+     * Ask for the microphone without blocking the caller. The callback runs
+     * on the caller thread when the lease is already free, otherwise on a
+     * short background thread after the wake recorder has been released.
+     */
+    public static Cancellation requestHandoff(String owner, Handoff callback) {
+        Cancellation cancellation = new Cancellation(owner);
+        if (callback == null) return cancellation;
+        if (MicLease.acquire(owner)) {
+            callback.accepted(cancellation);
+            return cancellation;
+        }
+        if (!MicLease.isWaiting(owner)) {
+            callback.denied();
+            return cancellation;
+        }
+        Thread waiter = new Thread(() -> {
+            if (cancellation.isCancelled()) {
+                MicLease.release(owner);
+                return;
+            }
+            WakeWordService service = current;
+            if (service != null) service.stopRecorder();
+            boolean held = MicLease.awaitHeld(owner, 1500L);
+            if (cancellation.isCancelled()) {
+                MicLease.release(owner);
+                return;
+            }
+            if (!held) {
+                MicLease.release(owner);
+                callback.denied();
+                return;
+            }
+            callback.accepted(cancellation);
+        }, "kellie-mic-handoff");
+        waiter.setDaemon(true);
+        waiter.start();
+        return cancellation;
+    }
+
+    /**
+     * Audio captured after Okay Nabu, at most two seconds, then the wake
+     * recorder is released. Empty when no wake command is in progress.
+     * Safe to call from the Assist capture thread. Do not call it from the UI.
+     */
+    public static byte[] claimCommandLead(long timeoutMs) {
+        if (!WakeCommandLead.isActive() && !WakeCommandLead.isReady()) return new byte[0];
+        WakeCommandLead.requestStop();
+        WakeWordService service = current;
+        if (service != null) service.stopRecorder();
+        return WakeCommandLead.await(timeoutMs);
     }
 
     @Override public IBinder onBind(Intent intent) { return null; }
@@ -198,9 +275,7 @@ public final class WakeWordService extends Service {
                 short[] samples = read == CHUNK ? chunk : java.util.Arrays.copyOf(chunk, read);
                 if (!session.onChunk(engine.processAudio(samples))) continue;
                 engine.reset();
-                releaseRecorder();
-                MicLease.release(MicLease.WAKE);
-                if (!openOverlay()) {
+                if (!bufferCommandUntilOverlayClaimsIt(chunk)) {
                     sleep(2000);
                     continue;
                 }
@@ -226,6 +301,41 @@ public final class WakeWordService extends Service {
             if (failureNotice != null) publishFailure(failureNotice);
             stopSelf();
         }
+    }
+
+    /**
+     * Keep the same recorder for at most 2.5 seconds after Okay Nabu so the
+     * start of the question is not dropped while the overlay connects.
+     * The recorder is released before this returns, so Assist can open its own.
+     */
+    private boolean bufferCommandUntilOverlayClaimsIt(short[] chunk) {
+        WakeCommandLead.begin();
+        boolean opened = openOverlay();
+        AudioRecord currentRecorder;
+        synchronized (micLock) {
+            currentRecorder = recorder;
+        }
+        long deadline = android.os.SystemClock.elapsedRealtime() + 2500L;
+        try {
+            while (running && opened && currentRecorder != null
+                    && !WakeCommandLead.stopRequested()
+                    && android.os.SystemClock.elapsedRealtime() < deadline) {
+                int read;
+                try {
+                    read = currentRecorder.read(chunk, 0, CHUNK);
+                } catch (RuntimeException stopped) {
+                    break;
+                }
+                if (read > 0) WakeCommandLead.append(chunk, read);
+                if (read < 0 || WakeCommandLead.stopRequested()) break;
+            }
+        } finally {
+            releaseRecorder();
+            MicLease.release(MicLease.WAKE);
+            if (opened) WakeCommandLead.finish();
+            else WakeCommandLead.discard();
+        }
+        return opened;
     }
 
     private boolean openOverlay() {
