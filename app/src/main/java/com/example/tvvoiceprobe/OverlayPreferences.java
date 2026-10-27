@@ -49,6 +49,7 @@ public final class OverlayPreferences {
     private static final String KEY_SPOKEN_ANNOUNCEMENTS = "spoken_announcements";
     private static final String KEY_ANNOUNCEMENT_VOLUME = "spoken_announcement_volume";
     private static final String KEY_FOLLOW = "follow_up_enabled";
+    private static final String KEY_TYPED_INPUT = "typed_assist_opt_in";
     private static final String KEY_FOLLOW_SECONDS = "follow_up_seconds";
     private static final String KEY_WEATHER_POSITION = "weather_position";
     private static final String KEY_WEATHER_SIZE = "weather_size";
@@ -294,6 +295,15 @@ public final class OverlayPreferences {
     public void setNoise(String value) {
         preferences.edit().putString(KEY_NOISE,
                 NOISE_QUIET.equals(value) || NOISE_TV.equals(value) ? value : NOISE_NORMAL).apply();
+    }
+
+    /** TV-local opt-in: disabled until the user enables the keyboard. */
+    public boolean typedAssistEnabled() {
+        return preferences.getBoolean(KEY_TYPED_INPUT, false);
+    }
+
+    public void setTypedAssistEnabled(boolean enabled) {
+        preferences.edit().putBoolean(KEY_TYPED_INPUT, enabled).apply();
     }
 
     public boolean followUp() {
