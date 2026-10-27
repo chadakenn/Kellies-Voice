@@ -57,6 +57,7 @@ public final class OverlayPreferences {
     private static final String KEY_ALLOW_UNVERIFIED_MIC = "allow_unverified_mic";
     private static final String KEY_DISABLE_MIC_ON_TV = "disable_microphone_on_this_tv";
     private static final String KEY_UPDATE_CHANNEL = "update_channel";
+    private static final String KEY_ASSIST_PIPELINE = "assist_pipeline_id";
     private static final String KEY_SCREENSAVER = "screensaver_dashboard";
     private static final String KEY_SCREENSAVER_URL = "screensaver_dashboard_url";
     private static final String KEY_SCREENSAVER_CAMERAS = "screensaver_cameras";
@@ -346,6 +347,15 @@ public final class OverlayPreferences {
     public void setWeatherSeconds(int value) {
         preferences.edit().putInt(KEY_WEATHER_SECONDS,
                 value == 8 || value == 30 || value == 45 ? value : 20).apply();
+    }
+
+    /** Empty means follow the preferred Assist pipeline configured in Home Assistant. */
+    public String assistPipelineId() {
+        return AssistPipelineChoice.normalize(preferences.getString(KEY_ASSIST_PIPELINE, ""));
+    }
+
+    public void setAssistPipelineId(String id) {
+        preferences.edit().putString(KEY_ASSIST_PIPELINE, AssistPipelineChoice.normalize(id)).apply();
     }
 
     /** Stable unless the owner explicitly chooses development. */
