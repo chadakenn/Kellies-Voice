@@ -21,7 +21,10 @@ public final class MicLease {
     public static synchronized boolean acquire(String owner) {
         if (owner == null || owner.isEmpty()) return false;
         if (holder != null && !holder.equals(owner) && !WAKE.equals(holder)) return false;
-        if (wakeRecorderOpen && !WAKE.equals(owner)) {
+        // Do not transfer an idle WAKE lease immediately: the wake thread
+        // may have acquired WAKE and be about to create its AudioRecord.
+        // It must explicitly release/hand off, even before startRecording().
+        if (!WAKE.equals(owner) && (WAKE.equals(holder) || wakeRecorderOpen)) {
             waiting = owner;
             MicLease.class.notifyAll();
             return false;
@@ -79,8 +82,11 @@ public final class MicLease {
     }
 
     public static synchronized void release(String owner) {
-        if (owner != null && owner.equals(holder) && !wakeRecorderOpen) holder = null;
         if (owner != null && owner.equals(waiting)) waiting = null;
+        if (owner != null && owner.equals(holder) && !wakeRecorderOpen) {
+            holder = WAKE.equals(owner) && waiting != null ? waiting : null;
+            if (WAKE.equals(owner)) waiting = null;
+        }
         MicLease.class.notifyAll();
     }
 
