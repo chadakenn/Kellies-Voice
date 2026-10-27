@@ -551,7 +551,8 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                 "Install downloaded update",
                 "Frigate screensaver: " + (new OverlayPreferences(this).screensaverDashboard() ? "ON" : "OFF"),
                 "Preview Frigate dashboard",
-                "Wake word: " + (new OverlayPreferences(this).wakeWord() ? "ON" : "OFF"),
+                "Wake word: " + (!new OverlayPreferences(this).wakeWord() ? "OFF"
+                        : WakeWordService.isListening() ? "ON" : "STOPPED (resume)"),
                 "Forget saved connection"
         };
         showCopperMenu("KELLIE'S VOICE  ✦  SETTINGS",
@@ -1318,6 +1319,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
     private void chooseWakeWord() {
         OverlayPreferences prefs = new OverlayPreferences(this);
         boolean enabled = prefs.wakeWord();
+        boolean active = WakeWordService.isListening();
         showCopperMenu("SETTINGS  ✦  WAKE WORD",
                 "Listens on this TV for Okay Nabu, then opens the voice overlay. "
                         + "Off until you turn it on. A reboot or app update does not start it. "
@@ -1325,11 +1327,12 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                         + "Nothing is sent to Home Assistant until the overlay opens. "
                         + "Not tested on this TV yet, and the TV speakers can confuse it.",
                 new String[] {
-                        enabled ? "Turn wake word OFF" : "Turn wake word ON",
+                        enabled && active ? "Turn wake word OFF"
+                                : enabled ? "Resume wake word listener" : "Turn wake word ON",
                         "Back to Settings"
                 }, which -> {
                     if (which == 0) {
-                        if (enabled) {
+                        if (enabled && active) {
                             prefs.setWakeWord(false);
                             stopService(new Intent(this, WakeWordService.class));
                             status("Wake word off. The microphone is not listening.");
