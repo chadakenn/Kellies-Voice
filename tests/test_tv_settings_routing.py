@@ -38,6 +38,7 @@ EXPECTED = [
     ("Frigate screensaver:", "showScreensaverSettings"),
     ("Preview Frigate dashboard", "startActivity"),
     ("Forget saved connection", "confirmForget"),
+    ("Type to Kellie:", "toggleTypedInput"),
 ]
 
 
