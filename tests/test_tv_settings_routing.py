@@ -46,7 +46,7 @@ class TvSettingsRoutingTest(unittest.TestCase):
         self.assertIn("setContentDescription(", ACTIVITY)
         enum = ACTIVITY.split("private enum SettingsSection {", 1)[1].split(
             "final String title;", 1)[0]
-        names = re.findall(r"^        ([A-Z]+)\\(", enum, re.MULTILINE)
+        names = re.findall(r"^        ([A-Z]+)[(]", enum, re.MULTILINE)
         self.assertEqual(list(EXPECTED_CATEGORIES), names)
         self.assertIn("addButton(toolbar, \"SETTINGS\", v -> showSettingsDashboard());", ACTIVITY)
 
@@ -57,7 +57,7 @@ class TvSettingsRoutingTest(unittest.TestCase):
         # Find dispatch (the second switch on section, after menu labels).
         dispatch = category.split("entries, which -> {", 1)[1]
         matches = re.findall(
-            r"^                        case ([A-Z]+):\\s*(.*?)"
+            r"^                        case ([A-Z]+):\s*(.*?)"
             r"(?=^                        case [A-Z]+:|^                        default:)",
             dispatch, re.MULTILINE | re.DOTALL
         )
