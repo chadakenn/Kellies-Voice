@@ -4,12 +4,12 @@
 
 **Give your TV a voice, useful popups, and quick access to security-camera views without replacing your TV launcher.** Kellie's Voice consists of a native Android TV/Google TV app and this Home Assistant integration. The TV handles speech and on-screen overlays; the integration lets HA automations and controls talk to it.
 
-**Why it matters:** ask your Assist agent about the house while a show plays, get a text alert when the washing machine finishes, or see a Frigate driveway/doorbell snapshot when a person approaches. On-demand live video is available as an **experimental** option; moving driveway **and doorbell** video is now confirmed on the onn 4K Pro with Android v0.16.1, though other cameras/devices need verification.
+**Why it matters:** ask your Assist agent about the house while a show plays, get an on-screen alert when the washing machine finishes (optionally spoken using the TV's local text-to-speech), or see a Frigate driveway/doorbell snapshot when a person approaches. On-demand live video is available as an **experimental** option; moving driveway **and doorbell** video is now confirmed on the onn 4K Pro with Android v0.16.1, though other cameras/devices need verification.
 
 | User-facing feature | Home Assistant feature |
 | --- | --- |
 | Move the floating voice overlay | Per-TV position, size, style, auto-hide and auto-listen entities |
-| Show a quiet on-TV notification | `kellies_voice.announce` |
+| Show a silent or opt-in spoken TV notification | `kellies_voice.announce` with optional `speak:` |
 | See a Frigate camera still when someone appears | `kellies_voice.show_camera`, plus included person-detection blueprint |
 | Request a temporary live camera feed | `kellies_voice.show_live_camera` (experimental HLS, muted) |
 
@@ -19,7 +19,7 @@
 
 This integration changes overlay layout and can send announcement and camera events to configured TVs. It does not start the microphone, replace the TV login, or install an APK.
 
-**Pairing diagnostic (v0.16.9):** The Home Assistant TV device will expose a **TV alert receiver connected** diagnostic when its matching Android app opens the newer read-scoped notification channel. An ID that was manually mistyped will remain OFF/"never", rather than appearing verified. This is a socket-presence indicator, not a guarantee that a specific popup appeared. Older APKs on the legacy event subscription cannot report this new diagnostic. Requires matching v0.16.9 HACS and Android builds. Community hardware QA is in progress.
+**Pairing diagnostic (included in current stable):** The Home Assistant TV device will expose a **TV alert receiver connected** diagnostic when its matching Android app opens the newer read-scoped notification channel. An ID that was manually mistyped will remain OFF/"never", rather than appearing verified. This is a socket-presence indicator, not a guarantee that a specific popup appeared. Older APKs on the legacy event subscription cannot report this new diagnostic. Requires compatible current HACS and Android builds. Community hardware QA is in progress.
 
 Home Assistant never connects directly to the TV for layout changes. The TV can advertise through mDNS or you can enter its stable pairing ID manually. Either way, the TV reads those controls using its existing Home Assistant login.
 
@@ -31,7 +31,7 @@ In the maintainer's demonstrations, **Julia** is simply the name they gave their
 
 **No name or wake word is required for normal voice commands.** Activate the TV's listening overlay, then ask a question or give a command naturally. A wake word is an optional, separately configured feature, not synonymous with “Julia.” References to Julia in older developer test instructions are **examples only**. See the [main README explanation](../../README.md#kellies-voice-vs-julia-whats-the-difference).
 
-For **first-time testers**, start with the [full v0.16.9 installation, setup and tester checklist](../../docs/INSTALL.md). This HACS page covers the Home Assistant half; the Android TV APK must be installed separately.
+For **first-time testers**, start with the [full installation, setup and tester checklist](../../docs/INSTALL.md). This HACS page covers the Home Assistant half; the Android TV APK must be installed separately.
 
 ## Install with HACS (recommended)
 
@@ -39,7 +39,7 @@ For **first-time testers**, start with the [full v0.16.9 installation, setup and
 
 1. Make sure HACS is installed in your Home Assistant instance.
 2. **First-time only:** in **HACS → ⋮ → Custom repositories**, add `https://github.com/chadakenn/Kellies-Voice` with category **Integration**. The shortcut badge does not register an unknown repository automatically.
-3. Click **[Open in HACS](https://my.home-assistant.io/redirect/hacs_repository/?owner=chadakenn&repository=Kellies-Voice&category=integration)**. Download the **public v0.16.9** Home Assistant integration to match the [v0.16.9 Android app](https://github.com/chadakenn/Kellies-Voice/releases/tag/v0.16.9), not old `v0.6` / `v0.16.0` builds.
+3. Click **[Open in HACS](https://my.home-assistant.io/redirect/hacs_repository/?owner=chadakenn&repository=Kellies-Voice&category=integration)**. Download the **stable v0.16.12** Home Assistant integration to match the [signed v0.16.12 Android app](https://github.com/chadakenn/Kellies-Voice/releases/tag/v0.16.12). Development prereleases are separate opt-in versions.
 4. Restart Home Assistant, then turn **Home Assistant layout ON** inside the Kellie's Voice TV app. Either add the TV under **Settings → Devices & services → Discovered** or use **Add Integration → Kellie's Voice** for manual pairing with its device ID (shown on the TV under Settings → Home Assistant layout → Show this TV's pairing ID). This works if mDNS is blocked across VLANs.
 5. Optionally turn on **TV announcements & cameras** on the TV to receive HA announcements and Frigate camera snapshots.
 
@@ -90,19 +90,23 @@ action: kellies_voice.announce
 data:
   title: Washer
   text: The washer is done.
+  speak: The washer is finished.
   duration_seconds: 10
 ```
 
-The event data is exactly:
+Example event data (includes optional spoken sentence):
 
 ```json
 {
   "title": "Washer",
   "text": "The washer is done.",
+  "speak": "The washer is finished.",
   "duration_seconds": 10,
   "device_id": "the-configured-tv-id"
 }
 ```
+
+**Spoken announcements are OFF by default.** Turn on **TV announcements & cameras** and **Spoken announcements** on the TV to hear `speak:`. The text popup works without spoken TTS, and `speak:` is not a microphone or Home Assistant-wide broadcast. If omitted, the announcement remains silent.
 
 ### Show a camera
 
@@ -141,7 +145,7 @@ The event data is exactly:
 6. Run them again with a **TV device id** and confirm only that TV is in the event.
 7. Try a duration of `120`, an empty title, or `entity_id: light.kitchen`. Home Assistant should reject the call and fire no event.
 
-The TV displays the message or snapshot when its **TV announcements & cameras** receiver is enabled. The `show_camera` action displays a **still-image snapshot**, not a live stream. The separate experimental `show_live_camera` action requests HLS video on demand. Neither action starts Kellie's microphone or speaks the notification.
+The TV displays the message or snapshot when its **TV announcements & cameras** receiver is enabled. The `show_camera` action displays a **still-image snapshot**, not a live stream. The separate `show_live_camera` action requests HLS video on demand. Neither starts Kellie's microphone. Both can optionally speak a short `speak:` sentence if **Spoken announcements** is enabled on the TV; otherwise they remain silent.
 
 ### Frigate person detection
 
