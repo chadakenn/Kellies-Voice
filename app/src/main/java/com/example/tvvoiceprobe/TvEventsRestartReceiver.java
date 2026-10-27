@@ -20,6 +20,10 @@ public final class TvEventsRestartReceiver extends BroadcastReceiver {
 
     @Override public void onReceive(Context context, Intent intent) {
         if (context == null || intent == null || !TvEventsRecovery.accepts(intent.getAction())) return;
+        // A remembered wake-word ON must survive a reboot, but Android 14+
+        // forbids launching a microphone foreground service from this receiver.
+        // Post a user-visible way back to the app; resume from a visible Activity.
+        WakeWordStartup.onDeviceRestart(context);
         // Independent of TV alerts. Restore the opted-in Frigate dream watcher
         // after app updates/reboot even when announcements are disabled.
         // Background start may still be denied by individual Android TV firmware.
