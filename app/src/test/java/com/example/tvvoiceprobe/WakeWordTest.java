@@ -51,6 +51,33 @@ public class WakeWordTest {
         assertTrue(WakeWordSession.mayStart(true, WakeWordSession.ACTION_START, true, true));
     }
 
+    @Test public void explicitlyRememberedOnCanResumeOnlyThroughAllowedForegroundAction() {
+        assertTrue(WakeWordSession.mayStart(
+                true, WakeWordSession.ACTION_RESTORE, true, true));
+        assertFalse(WakeWordSession.mayStart(
+                false, WakeWordSession.ACTION_RESTORE, true, true));
+        assertFalse(WakeWordSession.mayStart(
+                true, WakeWordSession.ACTION_RESTORE, false, true));
+        assertFalse(WakeWordSession.mayStart(
+                true, WakeWordSession.ACTION_RESTORE, true, false));
+        assertFalse(WakeWordSession.mayRestore(
+                false, false, true, true, true, true, false));
+        assertFalse(WakeWordSession.mayRestore(
+                true, true, true, true, true, true, false));
+        assertFalse(WakeWordSession.mayRestore(
+                true, false, false, true, true, true, false));
+        assertFalse(WakeWordSession.mayRestore(
+                true, false, true, false, true, true, false));
+        assertFalse(WakeWordSession.mayRestore(
+                true, false, true, true, false, true, false));
+        assertFalse(WakeWordSession.mayRestore(
+                true, false, true, true, true, false, false));
+        assertFalse(WakeWordSession.mayRestore(
+                true, false, true, true, true, true, true));
+        assertTrue(WakeWordSession.mayRestore(
+                true, false, true, true, true, true, false));
+    }
+
     @Test public void wakeTriggerRequiresOptInAndIsNotAStartOrBootEvent() {
         assertTrue(WakeWordSession.isDetectionRequest(
                 true, WakeWordSession.ACTION_DETECTED));
