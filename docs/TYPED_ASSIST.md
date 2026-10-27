@@ -11,6 +11,29 @@
 5. The transcript shows what was sent, HA sends the response, and Kellie's Voice plays TTS when the selected Assist pipeline returns audio. No microphone permission prompt or recording takes place during a typed request. Press **STOP** while the request is in progress to cancel the HA pipeline run.
 6. To remove the TYPE button, go to **Settings → Type to Kellie: ON**, then disable it. Turning the setting OFF prevents sending even if an input dialog was already open.
 
+## Can the Google TV remote microphone type commands?
+
+The TYPE dialog deliberately opens the **Android TV's currently installed keyboard**
+using a standard `EditText`. On an onn Google TV with Google/Gboard as the
+default IME, this normally opens that keyboard. **If** the keyboard displays
+a mic/dictation affordance **and** accepts the remote microphone, speaking
+into the Google keyboard should populate the text field; the user still must
+select **Send** before Kellie's Voice sends anything to HA.
+
+This is **not** direct microphone access for Kellie's Voice. Google's keyboard
+(or its chosen speech recognizer) does the speech-to-text processing, with
+that provider's privacy/network behavior. On some Google TV firmware, the
+remote's physical Assistant/mic button launches Google Assistant instead of
+dictating into a focused keyboard field. The app cannot guarantee this
+functionality or take over the remote's mic using EditText. No background
+dictation, no automatic Send and no bypass of the opt-in switch.
+
+**Hardware acceptance:** with TYPE enabled, open the keyboard and try the
+remote's microphone button while the text field is focused. Record whether
+(a) dictation fills the field, (b) Google Assistant takes over, or (c) nothing
+happens. Only label it supported after actual hardware testing. You can still
+type with the D-pad even when dictation is unavailable.
+
 ## Privacy and behavior
 
 - The typed feature starts OFF. Its enablement is stored in this Android TV's local SharedPreferences, **not** sent through HA layout controls or background services.
