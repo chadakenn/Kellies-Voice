@@ -1346,8 +1346,14 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
             status("Configure Home Assistant before enabling the wake word.");
             return;
         }
-        if (new OverlayPreferences(this).microphoneDisabled()) {
+        OverlayPreferences micPrefs = new OverlayPreferences(this);
+        if (micPrefs.microphoneDisabled()) {
             status(MicRoutePolicy.MANUALLY_DISABLED_MESSAGE);
+            return;
+        }
+        String routeIssue = MicrophoneRouting.preflight(this, micPrefs.allowUnverifiedMic());
+        if (routeIssue != null) {
+            status(routeIssue);
             return;
         }
         if (!Settings.canDrawOverlays(this)) {
@@ -1398,7 +1404,9 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
     }
 
     @Override public void runEnded() {
-        MicLease.release(MicLease.TALK);
+        // Home Assistant can emit run-end BEFORE the AudioRecord worker has
+        // finished release(). Keep TALK reserved until captureReleased().
+        // HaAssistClient emits captureReleased even if no recorder was started.
     }
 
     @Override public void haLayout(String setting) {
