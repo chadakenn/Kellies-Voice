@@ -460,6 +460,11 @@ public final class HaAssistClient {
         return currentRunId;
     }
 
+    /** Switching TV pipelines must not reuse an unrelated conversation context. */
+    public synchronized void clearConversationContext() {
+        if (currentRunId < 0) conversationId = null;
+    }
+
     /** Query the authenticated HA server; never alter HA's preferred pipeline. */
     public synchronized boolean requestPipelines() {
         if (!authenticated || socket == null || disposed) return false;
