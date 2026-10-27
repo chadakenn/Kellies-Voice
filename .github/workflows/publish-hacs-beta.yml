@@ -48,8 +48,8 @@ jobs:
           STABLE_TAG="$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name)"
           APP_NAME="$APP_NAME" STABLE_TAG="$STABLE_TAG" python3 - <<'PY'
           import os, re, sys
-          beta = re.fullmatch(r"(\\d+)\\.(\\d+)\\.(\\d+)-dev\\.(\\d+)", os.environ["APP_NAME"])
-          stable = re.fullmatch(r"v(\\d+)\\.(\\d+)\\.(\\d+)", os.environ["STABLE_TAG"])
+          beta = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)-dev\.(\d+)", os.environ["APP_NAME"])
+          stable = re.fullmatch(r"v(\d+)\.(\d+)\.(\d+)", os.environ["STABLE_TAG"])
           if beta is None or stable is None:
               sys.exit("Invalid beta/stable version; cannot publish.")
           base = tuple(map(int, beta.groups()[:3]))
