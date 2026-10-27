@@ -88,6 +88,9 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
 
     @Override protected void onStart() {
         super.onStart();
+        // Recover an interrupted duck from a killed debug process, but never
+        // override a user-changed volume while the app was away.
+        WakeAudioDucking.recover(this);
         // Apply saved preferences on returning from another app or system screen.
         applyMainPalette();
         HaDiscovery.setWanted(this, new OverlayPreferences(this).haManage());
@@ -1347,10 +1350,13 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                         + "Hey Google is separate and can still take the microphone. "
                         + "Nothing is sent until the phrase is recognized. The recorder then keeps that question until Assist takes it, for at most eight seconds. "
                         + "That clip, plus whatever is still being said, goes to your Assist pipeline. "
-                        + "A short beep means the microphone is ready. Not tested on this TV yet.",
+                        + "A short beep means the microphone is ready. "
+                        + "Audio ducking starts only AFTER Okay Nabu is detected, not before.",
                 new String[] {
                         enabled && active ? "Turn wake word OFF"
                                 : enabled ? "Resume wake word listener" : "Turn wake word ON",
+                        "Wake audio ducking: " + (prefs.wakeDuckingPercent() == 0
+                                ? "OFF" : prefs.wakeDuckingPercent() + "% quieter"),
                         "Back to Settings"
                 }, which -> {
                     if (which == 0) {
@@ -1361,8 +1367,33 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                         } else {
                             enableWakeWord();
                         }
+                    } else if (which == 1) {
+                        chooseWakeAudioDucking();
+                        return;
                     }
                     showSettingsMenu();
+                });
+    }
+
+    private void chooseWakeAudioDucking() {
+        OverlayPreferences prefs = new OverlayPreferences(this);
+        int[] levels = WakeDuckingLevels.levels();
+        String[] choices = new String[levels.length];
+        for (int i = 0; i < levels.length; i++) {
+            choices[i] = (prefs.wakeDuckingPercent() == levels[i] ? "✓  " : "     ")
+                    + (levels[i] == 0 ? "OFF" : levels[i] + "% quieter");
+        }
+        showCopperMenu("WAKE WORD  ✦  AUDIO DUCKING",
+                "After Okay Nabu, reduce the TV's local media volume while Kellie "
+                        + "listens and answers. Original volume is restored when the "
+                        + "overlay closes. This cannot improve hearing the wake phrase "
+                        + "itself. Some HDMI/CEC and fixed-volume TVs cannot be controlled.",
+                choices, which -> {
+                    if (which < 0 || which >= levels.length) return;
+                    prefs.setWakeDuckingPercent(levels[which]);
+                    status("Wake audio ducking: " + (levels[which] == 0
+                            ? "OFF" : levels[which] + "% quieter"));
+                    chooseWakeWord();
                 });
     }
 
