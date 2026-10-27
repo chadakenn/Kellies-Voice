@@ -11,13 +11,31 @@ import static org.junit.Assert.assertTrue;
 public class MicLeaseTest {
     @After public void clear() { MicLease.reset(); }
 
-    @Test public void idleWakeHandsOffImmediately() {
+    @Test public void idleWakeMustExplicitlyReleaseBeforeTalkCanStart() {
         assertTrue(MicLease.acquire(MicLease.WAKE));
-        assertTrue(MicLease.acquire(MicLease.TALK));
+        assertFalse(MicLease.acquire(MicLease.TALK));
+        assertEquals(MicLease.WAKE, MicLease.holder());
+        assertFalse(MicLease.awaitHeld(MicLease.TALK, 0));
+        MicLease.release(MicLease.WAKE);
         assertEquals(MicLease.TALK, MicLease.holder());
+        assertTrue(MicLease.awaitHeld(MicLease.TALK, 50));
         assertFalse(MicLease.acquire(MicLease.WAKE));
         MicLease.release(MicLease.TALK);
         assertTrue(MicLease.acquire(MicLease.WAKE));
+    }
+
+    @Test public void talkCannotStealWakeLeaseWhileRecorderIsStarting() {
+        // Race: wake acquires its lease but has not yet called AudioRecord.startRecording.
+        assertTrue(MicLease.acquire(MicLease.WAKE));
+        assertFalse(MicLease.acquire(MicLease.TALK));
+        assertEquals(MicLease.WAKE, MicLease.holder());
+        // This would have been overlapping capture with the old immediate takeover.
+        MicLease.wakeRecorderOpened();
+        assertEquals(MicLease.WAKE, MicLease.holder());
+        assertFalse(MicLease.awaitHeld(MicLease.TALK, 0));
+        MicLease.wakeRecorderReleased();
+        assertEquals(MicLease.TALK, MicLease.holder());
+        assertTrue(MicLease.awaitHeld(MicLease.TALK, 50));
     }
 
     @Test public void openWakeRecorderBlocksTakeoverUntilReleaseReturns() {
