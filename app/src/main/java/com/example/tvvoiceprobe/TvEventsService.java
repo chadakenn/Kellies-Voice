@@ -490,6 +490,7 @@ public final class TvEventsService extends Service {
                 if (resultId == SCOPED_ALERTS_ID) {
                     if (message.optBoolean("success", false)) {
                         alertsSubscribed = true;
+                        reportDiagnosticHello();
                         notReadyAttempts = 0;
                         deniedAttempts = 0;
                         missingScopedAttempts = 0;
@@ -625,6 +626,11 @@ public final class TvEventsService extends Service {
             if (data == null) return;
             if (!TvEventPayload.addressedTo(data.optString("device_id", ""),
                     new OverlayPreferences(this).deviceId())) return;
+            // Report receiver parsing separately from actual popup creation.
+            String diagnosticReceipt = data.optString("diagnostic_receipt", "");
+            if (subscription == SCOPED_ALERTS_ID && isDiagnosticPopup(eventType)) {
+                reportPopupReceipt("received", diagnosticReceipt);
+            }
             // A close command never starts a new overlay or microphone.
             // Ignore it when a text announcement (or nothing) is visible.
             if ((subscription == SCOPED_ALERTS_ID || subscription == HIDE_CAMERA_EVENT_ID)
@@ -648,7 +654,10 @@ public final class TvEventsService extends Service {
                     showCard(
                         TvEventPayload.cleanText(data.optString("title", "Kellie's Voice"), 65),
                         body, null, duration, false, true, false, 0, popupActions, popupId);
-                    if (card != null) maybeSpeak(spoken);
+                    if (card != null) {
+                        reportPopupReceipt("popup_created", diagnosticReceipt);
+                        maybeSpeak(spoken);
+                    }
                 }
             } else if ((subscription == SCOPED_ALERTS_ID || subscription == CAMERA_ID)
                     && TvEventPayload.CAMERA_POPUP.equals(eventType)) {
@@ -666,6 +675,7 @@ public final class TvEventsService extends Service {
                             && title.equals(snapshotTitle) && header == snapshotHeader
                             && fit == snapshotFit;
                     showSnapshotCard(title, entity, duration, header, fit, refresh, popupActions, popupId);
+                    if (card != null) reportPopupReceipt("popup_created", diagnosticReceipt);
                     if (!sameCard && card != null) {
                         maybeSpeak(TvEventPayload.speak(data.optString("speak", "")));
                     }
@@ -681,11 +691,17 @@ public final class TvEventsService extends Service {
                             "LIVE · Starting muted video…", entity,
                             TvEventPayload.liveDuration(data.optInt("duration_seconds", 90)),
                             true, header, fit, refresh, popupActions, popupId);
-                    if (card != null) maybeSpeak(TvEventPayload.speak(data.optString("speak", "")));
+                    if (card != null) {
+                        reportPopupReceipt("popup_created", diagnosticReceipt);
+                        maybeSpeak(TvEventPayload.speak(data.optString("speak", "")));
+                    }
                 }
             } else if ((subscription == SCOPED_ALERTS_ID || subscription == FORECAST_EVENT_ID)
                     && ForecastCard.EVENT.equals(eventType)) {
-                if (!cameraVisible) showForecast(data);
+                if (!cameraVisible) {
+                    showForecast(data);
+                    if (card != null) reportPopupReceipt("popup_created", diagnosticReceipt);
+                }
             }
         } catch (Exception ignored) {
             // Never print auth tokens, URLs, or untrusted event payloads.
@@ -1360,6 +1376,49 @@ public final class TvEventsService extends Service {
                     : TvEventPayload.action(item.optString("id"), item.optString("label"));
         }
         return TvEventPayload.takeActions(candidates);
+    }
+
+    private static boolean isDiagnosticPopup(String kind) {
+        return TvEventPayload.ANNOUNCEMENT.equals(kind)
+                || TvEventPayload.CAMERA_POPUP.equals(kind)
+                || TvEventPayload.LIVE_CAMERA.equals(kind)
+                || ForecastCard.EVENT.equals(kind);
+    }
+
+    private void reportDiagnosticHello() {
+        if (!alertsSubscribed || legacyMode || socket == null || stopping) return;
+        try {
+            // Use the installed package metadata. This project does not
+            // enable generated BuildConfig classes by default.
+            android.content.pm.PackageInfo installed =
+                    getPackageManager().getPackageInfo(getPackageName(), 0);
+            if (installed == null || installed.versionName == null) return;
+            long code = installed.getLongVersionCode();
+            if (code < 1 || code > 1000000000L) return;
+            socket.send(new JSONObject()
+                    .put("id", ++requestCounter)
+                    .put("type", "kellies_voice/report_tv_diagnostic")
+                    .put("device_id", new OverlayPreferences(this).deviceId())
+                    .put("stage", "hello")
+                    .put("app_version", installed.versionName)
+                    .put("app_code", code).toString());
+        } catch (Exception ignored) { }
+    }
+
+    private void reportPopupReceipt(String stage, String receipt) {
+        // Never report an HA event on the legacy/admin broadcast socket.
+        // A receipt is a single-use, short-lived nonce issued by the paired HA
+        // integration, and the server verifies this exact connection.
+        if (!alertsSubscribed || legacyMode || socket == null || stopping
+                || receipt == null || !receipt.matches("[0-9a-f]{24}")) return;
+        try {
+            socket.send(new JSONObject()
+                    .put("id", ++requestCounter)
+                    .put("type", "kellies_voice/report_tv_diagnostic")
+                    .put("device_id", new OverlayPreferences(this).deviceId())
+                    .put("stage", stage)
+                    .put("receipt", receipt).toString());
+        } catch (Exception ignored) { }
     }
 
     private void reportAction(String id, String action) {
