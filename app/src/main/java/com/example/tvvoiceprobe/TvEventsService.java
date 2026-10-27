@@ -1388,13 +1388,20 @@ public final class TvEventsService extends Service {
     private void reportDiagnosticHello() {
         if (!alertsSubscribed || legacyMode || socket == null || stopping) return;
         try {
+            // Use the installed package metadata. This project does not
+            // enable generated BuildConfig classes by default.
+            android.content.pm.PackageInfo installed =
+                    getPackageManager().getPackageInfo(getPackageName(), 0);
+            if (installed == null || installed.versionName == null) return;
+            long code = installed.getLongVersionCode();
+            if (code < 1 || code > 1000000000L) return;
             socket.send(new JSONObject()
                     .put("id", ++requestCounter)
                     .put("type", "kellies_voice/report_tv_diagnostic")
                     .put("device_id", new OverlayPreferences(this).deviceId())
                     .put("stage", "hello")
-                    .put("app_version", BuildConfig.VERSION_NAME)
-                    .put("app_code", BuildConfig.VERSION_CODE).toString());
+                    .put("app_version", installed.versionName)
+                    .put("app_code", code).toString());
         } catch (Exception ignored) { }
     }
 
