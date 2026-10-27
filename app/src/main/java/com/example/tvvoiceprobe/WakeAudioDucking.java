@@ -64,14 +64,23 @@ final class WakeAudioDucking {
                     .putBoolean(PENDING, true).commit()) return;
             try {
                 manager.setStreamVolume(AudioManager.STREAM_MUSIC, target, 0);
-                if (manager.getStreamVolume(AudioManager.STREAM_MUSIC) == target) {
-                    audio = manager;
-                    previous = original;
-                    applied = target;
-                    active = true;
-                } else {
+                int now = manager.getStreamVolume(AudioManager.STREAM_MUSIC);
+                if (now == original) {
+                    // The TV ignored the request. Do not pretend it is ducked.
                     saved.edit().clear().commit();
+                    return;
                 }
+                // A TV with coarse steps may land beside the requested level.
+                // Remember the level it actually applied, or a later wake
+                // ducks that already-lower volume again.
+                if (now != target) {
+                    saved.edit().putInt(OLD, original).putInt(DUCKED, now)
+                            .putBoolean(PENDING, true).commit();
+                }
+                audio = manager;
+                previous = original;
+                applied = now;
+                active = true;
             } catch (RuntimeException fail) {
                 saved.edit().clear().commit();
             }
@@ -85,21 +94,28 @@ final class WakeAudioDucking {
             recover(context);
             return;
         }
+        boolean forget = false;
         try {
             // If the user changed volume during the command, respect it.
             if (audio != null && !audio.isVolumeFixed()
                     && audio.getStreamVolume(AudioManager.STREAM_MUSIC) == applied) {
                 audio.setStreamVolume(AudioManager.STREAM_MUSIC, previous, 0);
+                forget = audio.getStreamVolume(AudioManager.STREAM_MUSIC) == previous;
+            } else {
+                forget = true;
             }
         } catch (RuntimeException ignored) {
             // Do not crash speech/overlay cleanup on an OEM audio error.
+            // Leave the recovery record so the next open can try again.
         } finally {
             active = false;
             audio = null;
             previous = -1;
             applied = -1;
-            context.getApplicationContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-                    .edit().clear().commit();
+            if (forget) {
+                context.getApplicationContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                        .edit().clear().commit();
+            }
         }
     }
 }
