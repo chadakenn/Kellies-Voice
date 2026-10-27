@@ -144,6 +144,14 @@ public final class WakeWordService extends Service {
                     sleep(200);
                     continue;
                 }
+                if (MicLease.wakeShouldStop()) {
+                    // The user pressed TALK while WAKE was about to open its
+                    // recorder. Transfer the idle lease without opening it.
+                    releaseRecorder();
+                    MicLease.release(MicLease.WAKE);
+                    sleep(20);
+                    continue;
+                }
                 AudioRecord currentRecorder;
                 synchronized (micLock) {
                     if (!ensureRecorder()) {
