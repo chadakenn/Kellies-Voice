@@ -1070,7 +1070,11 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                     assist.disconnect();
                     if (player != null) { player.release(); player = null; }
                     if (speechFocus != null) speechFocus.release();
-                    new OverlayPreferences(this).setTvEvents(false);
+                    OverlayPreferences prefs = new OverlayPreferences(this);
+                    // Forget must immediately disarm the always-listening mic.
+                    prefs.setWakeWord(false);
+                    stopService(new Intent(this, WakeWordService.class));
+                    prefs.setTvEvents(false);
                     stopService(new Intent(this, TvEventsService.class));
                     store.clear();
                     settings = null;
