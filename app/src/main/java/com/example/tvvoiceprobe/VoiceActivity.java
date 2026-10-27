@@ -550,7 +550,9 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                 "Install downloaded update",
                 "Frigate screensaver: " + (new OverlayPreferences(this).screensaverDashboard() ? "ON" : "OFF"),
                 "Preview Frigate dashboard",
-                "Forget saved connection"
+                "Forget saved connection",
+                "Assist pipeline: " + (new OverlayPreferences(this).assistPipelineId().isEmpty()
+                        ? "HA preferred" : "Custom selected")
         };
         showCopperMenu("KELLIE'S VOICE  ✦  SETTINGS",
                 "Warm, simple controls for your TV. Choose with the remote.", entries,
@@ -577,9 +579,72 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                         case 18: showScreensaverSettings(); break;
                         case 19: startActivity(new Intent(this, ScreensaverPreviewActivity.class)); break;
                         case 20: confirmForget(); break;
+                        case 21: chooseAssistPipeline(); break;
                         default: break;
                     }
                 });
+    }
+
+    /** Read available HA pipelines at selection time; never guess agent/engine IDs. */
+    private void chooseAssistPipeline() {
+        if (assist == null || !assist.isConnected()) {
+            status("Connect to Home Assistant before choosing a pipeline.");
+            return;
+        }
+        if (!assist.pipelineIdle()) {
+            status("Finish the current Assist answer before changing pipelines.");
+            return;
+        }
+        if (!assist.requestPipelines()) {
+            status("Couldn't request pipelines from Home Assistant.");
+        } else {
+            status("Loading available Assist pipelines from Home Assistant...");
+        }
+    }
+
+    @Override public void pipelines(List<AssistPipelineChoice.Option> available) {
+        runOnUiThread(() -> {
+            if (isFinishing() || isDestroyed() || assist == null) return;
+            if (!assist.pipelineIdle()) {
+                status("Finish the current Assist answer before changing pipelines.");
+                return;
+            }
+            OverlayPreferences prefs = new OverlayPreferences(this);
+            String selected = prefs.assistPipelineId();
+            String[] options = new String[available.size() + 1];
+            options[0] = (selected.isEmpty() ? "✓  " : "     ")
+                    + "Use Home Assistant preferred (default)";
+            for (int i = 0; i < available.size(); i++) {
+                AssistPipelineChoice.Option option = available.get(i);
+                options[i + 1] = (selected.equals(option.id) ? "✓  " : "     ") + option.label();
+            }
+            showCopperMenu("ASSIST  ✦  PIPELINE",
+                    "Choose the pipeline for this TV's voice requests. "
+                            + "Default uses Home Assistant's preferred pipeline. "
+                            + "This doesn't change other Home Assistant devices. "
+                            + "Changing pipelines starts a fresh conversation.",
+                    options, choice -> {
+                        if (assist == null || !assist.pipelineIdle()) {
+                            status("Finish the current Assist answer before changing pipelines.");
+                            return;
+                        }
+                        String id = choice == 0 ? AssistPipelineChoice.PREFERRED
+                                : available.get(choice - 1).id;
+                        prefs.setAssistPipelineId(id);
+                        assist.clearConversationContext();
+                        status(id.isEmpty() ? "Using Home Assistant's preferred pipeline."
+                                : "TV Assist pipeline selected.");
+                        showSettingsMenu();
+                    });
+        });
+    }
+
+    @Override public void pipelineListFailed() {
+        runOnUiThread(() -> {
+            if (!isFinishing() && !isDestroyed()) {
+                status("Home Assistant couldn't list pipelines. The saved choice was not changed.");
+            }
+        });
     }
 
     private void chooseAnnouncementVolume() {
