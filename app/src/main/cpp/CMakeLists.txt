@@ -280,10 +280,6 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
     log
 )
 
-# HWAddressSanitizer for debug builds on ARM64 only.
-# Requires c++_shared STL (NDK default since r25, c++_static is incompatible).
-# See https://developer.android.com/ndk/guides/hwasan
-if(CMAKE_BUILD_TYPE STREQUAL "Debug" AND CMAKE_ANDROID_ARCH_ABI STREQUAL "arm64-v8a")
-    target_compile_options(${CMAKE_PROJECT_NAME} PUBLIC -fsanitize=hwaddress -fno-omit-frame-pointer)
-    target_link_options(${CMAKE_PROJECT_NAME} PUBLIC -fsanitize=hwaddress)
-endif()
+# HWASan intentionally omitted from sideloadable Debug builds.
+# Android HWASan requires a compatible device/runtime, often including wrap.sh.
+# A separate instrumented build can opt in after hardware verification.
