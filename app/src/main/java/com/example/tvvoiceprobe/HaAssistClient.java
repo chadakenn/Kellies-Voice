@@ -77,6 +77,10 @@ public final class HaAssistClient {
     private final AtomicBoolean recording = new AtomicBoolean(false);
     private final AtomicBoolean ended = new AtomicBoolean(false);
     private volatile String conversationId;
+    private volatile long conversationTouchedMs;
+    private volatile boolean discardConversationUpdate;
+    private final Map<Integer, String> layoutWrites = new HashMap<>();
+    private final HaNetworkWatch networks;
     private volatile int commandId = 1;
     private volatile boolean layoutSync;
     private volatile boolean layoutSubscribed;
@@ -107,6 +111,7 @@ public final class HaAssistClient {
         this.context = context.getApplicationContext();
         this.events = events;
         this.listeningFocus = new SpeechFocus(this.context);
+        this.networks = new HaNetworkWatch(this.context, reconnectHandler, this::onNetworkReady);
     }
 
     public boolean isConnected() { return authenticated; }
@@ -138,6 +143,7 @@ public final class HaAssistClient {
             disposed = false;
             reconnectEnabled = true;
             failures = 0;
+            networks.start();
             openConnection();
         } catch (Exception error) {
             events.status("Invalid Home Assistant address. Check settings.");
@@ -218,10 +224,36 @@ public final class HaAssistClient {
             layoutSubscribed = false;
             layoutStatesId = -1;
             layoutEntities.clear();
+            layoutWrites.clear(); // Results from a lost socket can never arrive.
             stopForRunEnd();
             if (reconnectEnabled) scheduleReconnect();
         }
         events.connectionLost();
+    }
+
+    private synchronized void onNetworkReady() {
+        if (disposed || !reconnectEnabled || savedToken == null) return;
+        // onLost already happened. A socket that has not failed yet is still
+        // bound to the network that just went away.
+        WebSocket stale = socket;
+        boolean wasLive = stale != null || authenticated || connecting;
+        if (wasLive) {
+            socket = null;
+            authenticated = false;
+            connecting = false;
+            layoutSubscribed = false;
+            layoutStatesId = -1;
+            layoutEntities.clear();
+            layoutWrites.clear(); // Do not retain unacknowledged old-transport writes.
+            stopForRunEnd();
+            events.connectionLost(); // Release overlay mic/listening UI on Wi-Fi recovery.
+        }
+        if (reconnectScheduled) {
+            reconnectHandler.removeCallbacks(reconnectTask);
+            reconnectScheduled = false;
+        }
+        if (stale != null) stale.cancel();
+        openConnection();
     }
 
     private synchronized void scheduleReconnect() {
@@ -229,7 +261,8 @@ public final class HaAssistClient {
         // 2, 4, 8, 16, 30 seconds with a cap; prevents rapid connection loops
         // when HA restarts or the TV's Wi-Fi is down.
         int attempt = Math.min(failures++, 4);
-        long delay = Math.min(30000L, 2000L * (1L << attempt));
+        long delay = RetryTiming.withJitter(Math.min(30000L, 2000L * (1L << attempt)),
+                30000L, Math.random());
         reconnectScheduled = true;
         events.status("Home Assistant disconnected. Retrying automatically in "
                 + (delay / 1000L) + " seconds...");
@@ -281,6 +314,15 @@ public final class HaAssistClient {
                 if (msg.optBoolean("success", false)) {
                     JSONArray states = msg.optJSONArray("result");
                     if (states != null) ingestStates(states);
+                }
+                return;
+            }
+            String layoutSetting;
+            synchronized (this) { layoutSetting = layoutWrites.remove(id); }
+            if (layoutSetting != null) {
+                if (!msg.optBoolean("success", false)) {
+                    events.status("Home Assistant didn't accept the "
+                            + layoutSetting.replace('_', ' ') + " change.");
                 }
                 return;
             }
@@ -359,7 +401,10 @@ public final class HaAssistClient {
                 JSONObject out = data.optJSONObject("intent_output");
                 if (out != null) {
                     String nextConversationId = out.optString("conversation_id", "");
-                    if (!nextConversationId.isEmpty()) conversationId = nextConversationId;
+                    if (!discardConversationUpdate && !nextConversationId.isEmpty()) {
+                        conversationId = nextConversationId;
+                        conversationTouchedMs = android.os.SystemClock.elapsedRealtime();
+                    }
                     JSONObject response = out.optJSONObject("response");
                     if (response != null) {
                         JSONObject speech = response.optJSONObject("speech");
@@ -400,6 +445,7 @@ public final class HaAssistClient {
                 events.runEnded();
                 break;
             case "run-end":
+                discardConversationUpdate = false;
                 boolean routeMissing = microphoneMissing;
                 stopForRunEnd();
                 events.status(routeMissing
@@ -433,9 +479,9 @@ public final class HaAssistClient {
     }
 
     /**
-     * Auto mode begins listening on command and uses conservative local
-     * silence detection to finish after an utterance. Manual STOP remains
-     * available if TV playback sound confuses the detector.
+     * Auto mode keeps the microphone open until Home Assistant reports
+     * end of speech. The local detector is only a slower fallback when that
+     * event never arrives. Manual STOP remains available.
      */
     public synchronized boolean talk(boolean autoStopOnSilence) {
         return talk(autoStopOnSilence, null);
@@ -480,7 +526,15 @@ public final class HaAssistClient {
             JSONObject input = new JSONObject();
             input.put("sample_rate", 16000);
             request.put("input", input);
-            if (conversationId != null) request.put("conversation_id", conversationId);
+            if (conversationId != null && ConversationLifetime.expired(
+                    conversationTouchedMs, android.os.SystemClock.elapsedRealtime())) {
+                conversationId = null;
+                conversationTouchedMs = 0L;
+            }
+            if (conversationId != null) {
+                conversationTouchedMs = android.os.SystemClock.elapsedRealtime();
+                request.put("conversation_id", conversationId);
+            }
             // Keep the privacy/layout setting that controls HA registry identity.
             if (layoutSync) {
                 String registryDeviceId = new OverlayPreferences(context).registryDeviceId();
@@ -654,6 +708,7 @@ public final class HaAssistClient {
                 final String noiseMode = roomNoise;
                 byte[] devicePcm = new byte[capturedRate == 16000 ? 3200 : 9600];
                 byte[] pcm = new byte[devicePcm.length + 4];
+                byte[] packet = new byte[pcm.length + 1];
                 long observedMs = 0L;
                 long voiceMs = 0L;
                 long quietMs = 0L;
@@ -661,7 +716,7 @@ public final class HaAssistClient {
                 double backgroundRms = 0.002;
                 if (lead != null && SpeechBuffer.containsSpeech(lead, 16000)) {
                     boolean sent = runs.send(runId, handlerAtStart,
-                            () -> writePcm(lead, handlerAtStart));
+                            () -> writePcm(lead, handlerAtStart, packet));
                     if (sent) {
                         heardUtterance = true;
                         observedMs = 400L;
@@ -716,13 +771,12 @@ public final class HaAssistClient {
                         }
                     }
                     final int chunk = read;
-                    final byte[] audio = new byte[chunk + 1];
                     boolean sent = runs.send(runId, handlerAtStart, () -> {
                         WebSocket ws = socket;
                         if (ws == null) throw new IllegalStateException("Audio socket closed");
-                        audio[0] = (byte) handlerAtStart;
-                        System.arraycopy(pcm, 0, audio, 1, chunk);
-                        if (!ws.send(ByteString.of(audio))) {
+                        packet[0] = (byte) handlerAtStart;
+                        System.arraycopy(pcm, 0, packet, 1, chunk);
+                        if (!ws.send(ByteString.of(packet, 0, chunk + 1))) {
                             throw new IllegalStateException("Audio socket closed");
                         }
                     });
@@ -753,16 +807,16 @@ public final class HaAssistClient {
         }, "ha-assist-audio").start();
     }
 
-    private void writePcm(byte[] pcm, int handler) {
+    private void writePcm(byte[] pcm, int handler, byte[] packet) {
         WebSocket ws = socket;
-        if (ws == null || pcm == null || pcm.length == 0) return;
+        if (ws == null || pcm == null || pcm.length == 0 || packet == null) return;
         int offset = 0;
         while (offset < pcm.length) {
             int size = Math.min(3200, pcm.length - offset);
-            byte[] packet = new byte[size + 1];
+            if (packet.length < size + 1) return;
             packet[0] = (byte) handler;
             System.arraycopy(pcm, offset, packet, 1, size);
-            if (!ws.send(ByteString.of(packet))) return;
+            if (!ws.send(ByteString.of(packet, 0, size + 1))) return;
             offset += size;
         }
     }
@@ -814,6 +868,12 @@ public final class HaAssistClient {
         requestLayout();
     }
 
+    public synchronized void clearConversation() {
+        conversationId = null;
+        conversationTouchedMs = 0L;
+        discardConversationUpdate = currentRunId >= 0;
+    }
+
     /** Push one local preference into its Home Assistant control, if that control exists. */
     public void publishLayout(String setting) {
         if (!HaLayout.known(setting)) return;
@@ -828,9 +888,11 @@ public final class HaAssistClient {
             if (option == null) return;
             switchEntity = entity.startsWith("switch.");
             boolean textEntity = entity.startsWith("text.");
+            int callId = commandId++;
+            layoutWrites.put(callId, setting);
             try {
                 JSONObject call = new JSONObject();
-                call.put("id", commandId++);
+                call.put("id", callId);
                 call.put("type", "call_service");
                 call.put("domain", textEntity ? "text" : switchEntity ? "switch" : "select");
                 call.put("service", textEntity ? "set_value" : switchEntity
@@ -843,8 +905,14 @@ public final class HaAssistClient {
                 if (textEntity) data.put("value", option);
                 else if (!switchEntity) data.put("option", option);
                 call.put("service_data", data);
-                socket.send(call.toString());
-            } catch (Exception ignored) { }
+                if (!socket.send(call.toString())) {
+                    layoutWrites.remove(callId);
+                    events.status("Couldn't send the " + setting.replace('_', ' ') + " change.");
+                }
+            } catch (Exception ignored) {
+                layoutWrites.remove(callId);
+                events.status("Couldn't send the " + setting.replace('_', ' ') + " change.");
+            }
         }
     }
 
@@ -921,6 +989,7 @@ public final class HaAssistClient {
     public synchronized void disconnect() {
         disposed = true;
         reconnectEnabled = false;
+        networks.stop();
         reconnectHandler.removeCallbacks(reconnectTask);
         reconnectScheduled = false;
         connecting = false;
@@ -929,6 +998,9 @@ public final class HaAssistClient {
         savedToken = null;
         authenticated = false;
         conversationId = null;
+        conversationTouchedMs = 0L;
+        discardConversationUpdate = false;
+        layoutWrites.clear();
         layoutSubscribed = false;
         layoutStatesId = -1;
         layoutEntities.clear();
