@@ -19,7 +19,7 @@ No settings are renamed or deleted. All existing option screens are reused. Dang
 
 ## Branch integration plan
 
-The categorized TV Settings and **Okay Nabu** controls are merged into `main` via [PR #165](https://github.com/chadakenn/Kellies-Voice/pull/165), ahead of the planned v0.16.13 release. The **Wake word** and **Wake audio ducking** controls are under *Voice & microphone*. See [v0.16.13 release notes](releases/v0.16.13.md) and the [wake-word guide](WAKE_WORD.md).
+The categorized TV Settings and **Okay Nabu** controls are merged into `main` via [PR #165](https://github.com/chadakenn/Kellies-Voice/pull/165), for the v0.16.14 release. The **Wake word** and **Wake audio ducking** controls are under *Voice & microphone*. See [v0.16.14 release notes](releases/v0.16.14.md) and the [wake-word guide](WAKE_WORD.md).
 
 ## Manual TV QA
 
@@ -30,4 +30,4 @@ The categorized TV Settings and **Okay Nabu** controls are merged into `main` vi
 5. Open diagnostics, preview, and Android system dialogs to confirm Back does not trap the user.
 6. Ensure Home Assistant credentials, mic opt-out, updates and TV alert permissions remain intact. Test separately on the wake-word branch after integration.
 
-**Status:** Merged into `main`, with Android/HACS CI passed. The updated settings are not in the currently published stable v0.16.12 APK. The maintainer tested navigation on the onn 4K Pro; broader visual and hardware acceptance is ongoing.
+**Status:** Included in the v0.16.14 release source. The previous v0.16.12 stable APK has the old menu. The maintainer tested the redesigned menu on an onn 4K Pro; broader visual and hardware acceptance remains ongoing.
