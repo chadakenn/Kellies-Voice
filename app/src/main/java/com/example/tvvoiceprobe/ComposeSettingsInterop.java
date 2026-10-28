@@ -10,6 +10,20 @@ import java.util.LinkedHashSet;
 public final class ComposeSettingsInterop {
     private static final LinkedHashSet<String> PENDING_LAYOUT_UPDATES = new LinkedHashSet<>();
 
+    private static boolean updateChannelChanged;
+
+    /** Clear the owning Activity's stale updater offer after channel selection. */
+    public static synchronized void notifyUpdateChannelChanged() {
+        updateChannelChanged = true;
+    }
+
+    /** One-shot request; does not start an update check or installation. */
+    public static synchronized boolean takeUpdateChannelChanged() {
+        boolean pending = updateChannelChanged;
+        updateChannelChanged = false;
+        return pending;
+    }
+
     private ComposeSettingsInterop() { }
 
     /**
