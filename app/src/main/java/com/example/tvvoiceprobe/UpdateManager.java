@@ -40,6 +40,7 @@ public final class UpdateManager {
     private final ExecutorService background = Executors.newSingleThreadExecutor();
     private volatile Release available;
     private volatile boolean busy;
+    private volatile boolean closed;
     /** Bumped when Stable/Development changes so an older check cannot publish. */
     private volatile int offerEpoch;
 
@@ -78,8 +79,17 @@ public final class UpdateManager {
 
     public boolean isBusy() { return busy; }
 
+    /** Stop queued update work and prevent stale Activity callbacks. */
+    public void close() {
+        closed = true;
+        offerEpoch++;
+        available = null;
+        ui.removeCallbacksAndMessages(null);
+        background.shutdownNow();
+    }
+
     public void check() {
-        if (busy) return;
+        if (closed || busy) return;
         busy = true;
         final int epoch = offerEpoch;
         background.execute(() -> {
@@ -153,6 +163,7 @@ public final class UpdateManager {
         final Release release = available;
         final int epoch = offerEpoch;
         String channel = UpdateChannel.normalize(new OverlayPreferences(activity).updateChannel());
+        if (closed) return;
         if (release == null || busy || !channel.equals(release.channel)) {
             post(() -> listener.onError("Check for updates first."));
             return;
@@ -214,7 +225,7 @@ public final class UpdateManager {
                 if (!release.sha256.equals(digest.toString())) {
                     throw new IllegalStateException("Downloaded APK failed SHA-256 verification.");
                 }
-                verifyInstalledIdentity(temp);
+                verifyInstalledIdentity(temp, release);
                 if (epoch != offerEpoch || !release.channel.equals(UpdateChannel.normalize(
                         new OverlayPreferences(activity).updateChannel()))) {
                     temp.delete();
@@ -255,6 +266,7 @@ public final class UpdateManager {
     }
 
     public void install() {
+        if (closed) return;
         if (!downloadedExists()) {
             listener.onError("No downloaded APK found. Check and download again.");
             return;
@@ -279,7 +291,7 @@ public final class UpdateManager {
         }
     }
 
-    private void verifyInstalledIdentity(File apk) throws Exception {
+    private void verifyInstalledIdentity(File apk, Release expected) throws Exception {
         PackageManager packages = activity.getPackageManager();
         int flags = Build.VERSION.SDK_INT >= 28
                 ? PackageManager.GET_SIGNING_CERTIFICATES
@@ -292,6 +304,10 @@ public final class UpdateManager {
             throw new IllegalStateException("Update APK is a different app and was rejected.");
         }
         PackageInfo installed = packages.getPackageInfo(activity.getPackageName(), flags);
+        // The checksum is necessary but not sufficient. Check the actual
+        // APK manifest against the advertised authenticated release metadata.
+        UpdateVersionPolicy.requireExpected(versionCode(incoming), incoming.versionName,
+                expected.code, expected.name, versionCode(installed));
         if (!sameSigners(signaturesOf(installed), signaturesOf(incoming))) {
             throw new IllegalStateException("Update APK is not signed with the installed release key.");
         }
@@ -315,10 +331,14 @@ public final class UpdateManager {
         return expected.isEmpty();
     }
 
-    private int installedVersionCode() throws Exception {
+    private long installedVersionCode() throws Exception {
         PackageInfo info = activity.getPackageManager()
                 .getPackageInfo(activity.getPackageName(), 0);
-        return (int) info.getLongVersionCode();
+        return versionCode(info);
+    }
+
+    private static long versionCode(PackageInfo info) {
+        return Build.VERSION.SDK_INT >= 28 ? info.getLongVersionCode() : info.versionCode;
     }
 
     private String activityVersion() {
@@ -332,7 +352,11 @@ public final class UpdateManager {
 
     private File updateFolder() { return new File(activity.getCacheDir(), "updates"); }
     private File downloadedApk() { return new File(updateFolder(), "app-release.apk"); }
-    private void post(Runnable runnable) { ui.post(runnable); }
+    private void post(Runnable runnable) {
+        if (!closed) ui.post(() -> {
+            if (!closed) runnable.run();
+        });
+    }
 
     private String readText(String url, int maxBytes) throws Exception {
         HttpURLConnection conn = openHttps(url);
