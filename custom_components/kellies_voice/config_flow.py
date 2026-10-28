@@ -65,7 +65,8 @@ class KellieVoiceConfigFlow(ConfigFlow, domain=DOMAIN):
                     errors["name"] = "invalid_name"
                 else:
                     # Manual pairing cannot verify that a TV exists.
-                    # Require an explicit second confirmation of its full ID.
+                    # Display the full ID and verify a freshly typed TV suffix.
+                    # This is a typo guard, not authentication of the TV.
                     self._manual_device_id = device_id
                     self._manual_name = name
                     return await self.async_step_manual_confirm()
