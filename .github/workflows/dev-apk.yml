@@ -89,5 +89,41 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+      # Dedicated, permanent application ID. This is a non-debuggable
+      # release-style QA app, signed by the existing trusted dev-only
+      # workflow. Never use ephemeral pull-request debug signing for it.
+      - name: Build separately installable signed QA APK
+        env:
+          TV_SIGNING_PASSWORD: ${{ secrets.TV_SIGNING_PASSWORD }}
+        run: ./gradlew --no-daemon :app:assembleQa
+
+      - name: Verify QA package, signature, native libraries and non-debuggable flag
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk=app/build/outputs/apk/qa/app-qa.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$apk"
+          bash .github/scripts/verify-wake-apk.sh "$apk"
+          badging="$("$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$apk")"
+          printf '%s\\n' "$badging" | grep -F "package: name='com.example.tvvoiceprobe.qa'"
+          if printf '%s\\n' "$badging" | grep -q 'application-debuggable'; then
+            echo "::error::QA APK must not be debuggable with the permanent release key"
+            exit 1
+          fi
+          qa_cert="$("$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$apk" | grep 'Signer #1 certificate SHA-256 digest:')"
+          release_cert="$("$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs app/build/outputs/apk/release/app-release.apk | grep 'Signer #1 certificate SHA-256 digest:')"
+          if [[ "$qa_cert" != "$release_cert" ]]; then
+            echo "::error::QA signer changed unexpectedly"
+            exit 1
+          fi
+
+      - name: Upload stable-identity QA APK (separate from release and debug)
+        uses: actions/upload-artifact@v4
+        with:
+          name: kellies-voice-qa-signed
+          path: app/build/outputs/apk/qa/app-qa.apk
+          if-no-files-found: error
+          retention-days: 14
+
 # Intentionally no release/publish job or write token.
 # Stable in-app updates continue using only stable GitHub Releases from main.
