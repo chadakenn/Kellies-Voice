@@ -1,6 +1,6 @@
 # On-device wake word
 
-**Included in the v0.16.14 release source.** Earlier stable v0.16.12 did not contain Okay Nabu. Read the [v0.16.14 release notes](releases/v0.16.14.md) and install only an officially published signed APK, not a temporary Actions debug artifact. Reboot auto-resume and broader device coverage still need more on-device testing.
+**Released in the signed public v0.16.14 Android TV app. OFF by default.** Earlier stable v0.16.12 did not contain Okay Nabu. Read the [v0.16.14 release notes](releases/v0.16.14.md) and install only an officially published signed APK, not a temporary Actions debug artifact. Reboot auto-resume and broader device coverage still need more on-device testing.
 
 ## What it does
 
@@ -14,7 +14,7 @@ While the user explicitly arms the wake listener, the app also keeps a **pre-aut
 
 The onn 4K Pro owner's wake-word activation improved when the box was moved away from the TV speakers. Optional **Wake audio ducking** is a separate experiment to reduce competing TV playback **AFTER** Okay Nabu fires, helping Kellie capture the rest of a command. It **cannot help** the detector hear "Okay Nabu" beforehand.
 
-- Open **Settings → Wake word → Wake audio ducking**, then choose **OFF (default), 25%, 50%, or 75% quieter**. Percent is the reduction from the current local media volume, not the final output percentage.
+- Open **SETTINGS → Voice & microphone → Wake word → Wake audio ducking**, then choose **OFF (default), 25%, 50%, or 75% quieter**. Percent is the reduction from the current local media volume, not the final output percentage.
 - When an opted-in wake phrase is detected, the app attempts to lower Android's local `STREAM_MUSIC` volume. It stores the previous level and restores it when the overlay closes or a failed wake cleans up. If the TV lands on a nearby volume step, that actual level is what gets restored from. If the user changes the volume manually during the command, that new level takes precedence. A failed restore keeps the recovery record so the next open can try again, instead of ducking the already-lower volume a second time. A pending recovery record can also restore the previous level on the next app launch after a process kill, only when the volume still matches the applied ducked level.
 - **Not guaranteed on all TVs:** fixed-volume Android TV/HDMI devices and HDMI-CEC audio routing may not honor the volume change. This is *not* app-specific YouTube volume mixing, and different volume steps mean the audible reduction can be approximate. There is no claim of a guaranteed exact duck percent.
 - This option is only for a recognized wake phrase; it does not lower volume for ordinary TALK, background listening, other TV alerts, or TV audio before the wake. A force-stop can leave a previously reduced system volume until the app next opens, so test restoration carefully.
@@ -22,7 +22,7 @@ The onn 4K Pro owner's wake-word activation improved when the box was moved away
 
 The switch is **off** by default.
 
-- Settings → **Wake word** → **Turn wake word ON** starts it.
+- **SETTINGS → Voice & microphone → Wake word → Turn wake word ON** starts it.
 - The same menu turns it off and releases the microphone.
 - The **ON preference is saved** through reboots and app updates after an explicit enable in this updated build. Android 14+ **does not allow the boot receiver to start a microphone foreground service**; instead, boot/update posts a *tap-to-open* reminder where TV notifications permit. When Kellie's Voice becomes visible, it automatically resumes the opted-in listener without making you toggle it ON again. This is not guaranteed zero-touch listening immediately at the Android TV home screen.
 - If an earlier development build had wake ON under the old no-restart promise, turn it ON or Resume once in this new build to explicitly approve the new restart behavior; pre-existing ON preferences are not silently upgraded. The new consent is cleared by Turn OFF, manual microphone disable, forgetting the Home Assistant login, or failure disarming wake.
@@ -56,7 +56,7 @@ The capture rate is 16 kHz. If this TV cannot open a 16 kHz microphone, the list
 
 ## First test on an onn 4K Pro
 
-Install the GitHub Actions **debug** APK from this pull request. Its package is `com.example.tvvoiceprobe.debug`, so it sits beside the stable app and does not use the stable login. Grant microphone and display-over-other-apps. Sign in to Home Assistant inside the debug app.
+Install the [official signed v0.16.14 APK](https://github.com/chadakenn/Kellies-Voice/releases/tag/v0.16.14) and matching HACS integration, preserving your existing installation. Alternatively, for isolated development QA only, use an explicitly named debug APK (`com.example.tvvoiceprobe.debug`) that installs beside stable and requires its own login. Grant microphone and display-over-other-apps permissions as needed. Do not replace the public signed app with a temporary debug artifact.
 
 1. Confirm the settings row says **Wake word: OFF**. Say "Okay Nabu" and confirm nothing opens.
 2. Turn it on. The row should say **LISTENING**, and the microphone privacy indicator should stay on.
@@ -65,11 +65,11 @@ Install the GitHub Actions **debug** APK from this pull request. Its package is 
    With TV audio playing, test the same command with wake audio ducking **OFF**, then **50%**, and verify audible reduction after detection and reliable restoration when the overlay closes.
 5. Press TALK while it is LISTENING, then run one microphone diagnostic. Only one capture should be live, and the listener should return to LISTENING afterward.
 6. Turn the wake word OFF; reboot; confirm it remains OFF and says nothing when you say the phrase. Then explicitly turn it ON and confirm **LISTENING**. Reboot while ON; confirm the saved ON choice persists and the boot reminder (if notifications are available) opens Kellie's Voice; the listener should automatically resume **after that foreground launch**. Verify the phrase now opens the overlay. Do not expect microphone recording to start directly from BOOT_COMPLETED on Android 14+.
-7. With the wake word ON, force-stop the debug app. It is not running while force-stopped; open the app again and check whether Android allows foreground restart.
+7. With the wake word ON, force-stop the test app. It is not running while force-stopped; open the app again and check whether Android allows foreground restart.
 8. Turn **Disable microphone capture** on and confirm the listener stops. Turn the wake word off when you are done.
 
 A successful wake is a nonempty transcript of the question plus a spoken answer. An overlay with an empty transcript, or a transcript of silence, is a failed capture. Do not treat a green unit test as that result.
 
 ## Engine
 
-The native code under `app/src/main/cpp` is the Home Assistant companion `microwakeword` module (Apache-2.0). CMake downloads TensorFlow Lite Micro when an APK is built. The pull-request workflow compiles that engine into the debug APK. The signed release workflow compiles it into the release APK. Passing `-PskipWakeNative=true` skips the native compile for a host unit-test run.
+The native code under `app/src/main/cpp` is the Home Assistant companion `microwakeword` module (Apache-2.0). CMake downloads TensorFlow Lite Micro when an APK is built. The pull-request workflow compiles that engine into a separate debug APK. The signed release workflow compiles it into the release APK. Passing `-PskipWakeNative=true` skips the native compile for a host unit-test run.
