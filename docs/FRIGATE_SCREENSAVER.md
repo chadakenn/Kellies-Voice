@@ -1,15 +1,15 @@
 # Frigate / Home Assistant camera screensaver (opt-in, v0.16.12)
 
-**Status:** Included in **stable v0.16.12 (build 50)**, OFF by default. The maintainer verified four simultaneous live cameras, automatic TV screensaver launch, reboot recovery, full-screen Doorbell with audible audio, physical remote Back and gold focus on an onn Google TV. Other TV models, performance and individual camera audio tracks need community testing.
+**Status:** Included in the current signed **stable v0.16.14 (build 54)**, OFF by default; originally shipped in v0.16.12. The maintainer verified four simultaneous live cameras, automatic TV screensaver launch, reboot recovery, full-screen Doorbell with audible audio, physical remote Back and gold focus on an onn Google TV. Other TV models, performance and individual camera audio tracks need community testing.
 
 ## Quick setup for new users
 
-1. Install the matching signed Android **v0.16.12 APK** and **v0.16.12 Home Assistant HACS integration**, then restart Home Assistant.
-2. In the TV app, enable **Frigate screensaver** and **Home Assistant layout**. Grant Android **Display over other apps** permission. Keep your TV paired and authenticated to HA.
+1. Install the matching signed Android **v0.16.14 APK** and **v0.16.14 Home Assistant HACS integration**, then restart Home Assistant.
+2. In the TV app, enable **SETTINGS → Screensaver → Frigate screensaver** and **SETTINGS → Home Assistant → Manage TV layout from Home Assistant**. Grant Android **Display over other apps** permission. Keep your TV paired and authenticated to HA.
 3. In Home Assistant open the Kellie's Voice TV device controls. Select up to four available **camera entities**. Leave **Frigate web URL** empty to use the HA-selected grid; specifying a Frigate website URL takes priority.
 4. Set **HA camera grid playback** to **Live (one camera)** and test; increase to two or four advanced only if your TV decodes HLS streams reliably. The default **Snapshots (reliable)** uses refreshed still images. The grid is always muted.
 5. Let the TV screensaver start naturally. Use D-pad to highlight a camera, press **OK** to expand it with its audio *if that stream has an audio track*. Press physical **Back** to return to the silent 2×2 grid or select **Close** to exit. The focused on-screen Back/Close button has a gold border.
-6. If HA shows cameras but TV shows nothing, open TV **Settings → Frigate screensaver → Screensaver status & permissions**, confirm **Cameras saved on TV**, overlay permission and watcher status, and use **Resync HA cameras** once. Report repeated startup problems.
+6. If HA shows cameras but TV shows nothing, open TV **SETTINGS → Screensaver → Frigate screensaver → Screensaver status & permissions**, confirm **Cameras saved on TV**, overlay permission and watcher status, and use **Resync HA cameras** once. Report repeated startup problems.
 
 **Safety and limits:** The TV's microphone is not activated by video playback; no audio plays from unselected grid cameras. Streams are authenticated via your HA URL and validated HLS paths; unsupported video and no-first-frame cases fall back to snapshots. Four software HLS streams may overload weaker devices and audio cannot be invented when a camera has no sound track. Frigate website mode is a different, opt-in interface. Do not publicly share unblurred home camera images.
 
@@ -45,7 +45,7 @@ When the TV's live-camera decoder mode is **Snapshots only**, none of these HLS 
 
 **Owner report:** Home Assistant shows four selected camera entities with Frigate web URL cleared, yet no overlay appears when Google TV Ambient Mode starts. The previous code required a **TV-local** configured URL or camera list before opening the overlay, and the diagnostics did not say whether settings had reached the TV. This is a synchronization/configuration issue until on-device data proves otherwise, not proof cameras themselves are offline.
 
-With **Android v0.16.12-dev.7 / build 46**, check Kellie's Voice → **Settings → Frigate screensaver → Screensaver status & permissions**. It now shows:
+With **Android v0.16.12-dev.7 / build 46**, check Kellie's Voice → **SETTINGS → Screensaver → Frigate screensaver → Screensaver status & permissions**. It now shows:
 - **Home Assistant layout** ON/OFF. This must be ON to accept remotely selected cameras.
 - **Source on TV**, either Frigate web page, HA snapshot grid, or no source.
 - **Cameras saved on TV** (0–4, without disclosing names), **HA settings link** state, and **Last HA source** update.
