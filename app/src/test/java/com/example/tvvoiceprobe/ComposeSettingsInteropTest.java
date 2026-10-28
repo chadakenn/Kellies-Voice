@@ -16,6 +16,18 @@ public class ComposeSettingsInteropTest {
         assertEquals(0, ComposeSettingsInterop.takePendingLayoutUpdates().length);
     }
 
+    @Test public void updateChannelInvalidationIsOneShotAndDoesNotStartAnything() {
+        ComposeSettingsInterop.takeUpdateChannelChanged();
+        assertFalse(ComposeSettingsInterop.takeUpdateChannelChanged());
+        ComposeSettingsInterop.notifyUpdateChannelChanged();
+        ComposeSettingsInterop.notifyUpdateChannelChanged();
+        assertTrue(ComposeSettingsInterop.takeUpdateChannelChanged());
+        assertFalse(ComposeSettingsInterop.takeUpdateChannelChanged());
+        assertEquals(UpdateChannel.STABLE, UpdateChannel.normalize(null));
+        assertEquals(UpdateChannel.DEVELOPMENT, UpdateChannel.normalize(UpdateChannel.DEVELOPMENT));
+        assertFalse(UpdateChannel.allowsAutomaticCheck(UpdateChannel.DEVELOPMENT));
+    }
+
     @Test public void handlesNullAndUnrelatedSettingsWithoutSideEffects() {
         ComposeSettingsInterop.takePendingLayoutUpdates();
         ComposeSettingsInterop.queueLayoutUpdate(null);
