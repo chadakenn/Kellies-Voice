@@ -32,15 +32,15 @@ The older [onn-settings-menu.jpg](https://github.com/chadakenn/Kellies-Voice/blo
 
 The separate **COMPOSE** button in the **0.16.14-test debug app** opens a two-column development preview. It is **not the public SETTINGS hub** described above and is not presented here as a released replacement.
 
-![Compose preview on a real onn 4K Pro; private Home Assistant address and pairing ID masked](../screenshots/compose-home-preview.png)
+![Compose preview on a real onn 4K Pro; private Home Assistant address and pairing ID masked](https://raw.githubusercontent.com/chadakenn/Kellies-Voice/feature/compose-tv-settings/docs/screenshots/compose-home-preview.png)
 
 Home Assistant category on the owner's onn 4K Pro, captured directly through ADB on October 28, 2026. Solid masks cover the configured address and TV pairing identifier. The category list scrolls; not all six category labels fit in one frame.
 
-![Compose Voice and microphone preview showing the device's existing wake-listener state](../screenshots/compose-voice-preview.png)
+![Compose Voice and microphone preview showing the device's existing wake-listener state](https://raw.githubusercontent.com/chadakenn/Kellies-Voice/feature/compose-tv-settings/docs/screenshots/compose-voice-preview.png)
 
 The existing TV state showed **Wake word: LISTENING**. That is this owner's opted-in state, **not the default**; the capture session did not enable wake listening. Follow-up listening was off.
 
-![Compose Updates and account preview showing installed 0.16.14-test and the stable channel selected](../screenshots/compose-updates-preview.png)
+![Compose Updates and account preview showing installed 0.16.14-test and the stable channel selected](https://raw.githubusercontent.com/chadakenn/Kellies-Voice/feature/compose-tv-settings/docs/screenshots/compose-updates-preview.png)
 
 The installed debug APK version and update-channel selection; no download or installation was performed. [All captured categories and themes](https://github.com/chadakenn/Kellies-Voice/blob/feature/compose-tv-settings/docs/screenshots/PR-192-CAPTURES.md) are development-preview evidence only. This APK predates the latest PR #192 popup/theme fixes.
 
