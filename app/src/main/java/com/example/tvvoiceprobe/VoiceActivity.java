@@ -262,7 +262,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         toolbar.setOrientation(LinearLayout.HORIZONTAL);
         addButton(toolbar, "TALK", v -> startTalk());
         addButton(toolbar, "STOP", v -> assist.finishTalking());
-        addButton(toolbar, "SETTINGS", v -> showSettingsDashboard());
+        addButton(toolbar, "SETTINGS", v -> startActivity(new Intent(this, SettingsActivity.class)));
         root.addView(toolbar, new LinearLayout.LayoutParams(-1, -2));
 
         // A short, focus-safe welcome view on ordinary full-screen launches.
@@ -297,6 +297,10 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                     && now - checks.getLong("last_checked", 0) >= 24L * 60 * 60 * 1000) {
                 root.post(() -> updater.check());
             }
+        }
+        String settingsAction = getIntent().getStringExtra("com.example.tvvoiceprobe.SETTINGS_ACTION");
+        if (settingsAction != null) {
+            root.post(() -> handleSettingsAction(settingsAction));
         }
     }
 
@@ -362,6 +366,10 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
             }
         } else if (shouldLaunchOverlayFromLauncher(intent)) {
             getWindow().getDecorView().post(this::launchOverlay);
+        }
+        String settingsAction = intent.getStringExtra("com.example.tvvoiceprobe.SETTINGS_ACTION");
+        if (settingsAction != null) {
+            getWindow().getDecorView().post(() -> handleSettingsAction(settingsAction));
         }
     }
 
@@ -2058,4 +2066,51 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         ScreensaverSignals.settingsChanged();
         showScreensaverSettings();
     }
+
+    /** Entry point for the full-screen SettingsActivity. Preserves all existing action logic. */
+    public void handleSettingsAction(String action) {
+        if (action == null) return;
+        switch (action) {
+            case "connect":
+                if (settings != null) assist.connect(settings.url, settings.token);
+                else status("Configure Home Assistant first.");
+                break;
+            case "configure":
+                configure();
+                break;
+            case "newConversation":
+                if (assist != null) assist.newConversation();
+                break;
+            case "chooseHaLayout": chooseHaLayout(); break;
+            case "chooseMicSensitivity": chooseMicSensitivity(); break;
+            case "chooseFollowUp": chooseFollowUp(); break;
+            case "chooseMicrophoneDetection": chooseMicrophoneDetection(); break;
+            case "testMic":
+                startActivity(new Intent(this, MainActivity.class));
+                break;
+            case "chooseWakeWord": chooseWakeWord(); break;
+            case "launchOverlay": launchOverlay(); break;
+            case "showOverlayPreferences": showOverlayPreferences(); break;
+            case "chooseTvNotifications": chooseTvNotifications(); break;
+            case "toggleSpoken":
+                OverlayPreferences p = new OverlayPreferences(this);
+                p.setSpokenAnnouncements(!p.spokenAnnouncements());
+                status("Spoken announcements " + (p.spokenAnnouncements() ? "ON" : "OFF"));
+                break;
+            case "chooseAnnouncementVolume": chooseAnnouncementVolume(); break;
+            case "testSpoken": testSpokenAnnouncements(); break;
+            case "showTvAlertStatus": showTvAlertStatus(); break;
+            case "chooseCameraMode": chooseCameraMode(); break;
+            case "showScreensaverSettings": showScreensaverSettings(); break;
+            case "previewScreensaver":
+                startActivity(new Intent(this, ScreensaverPreviewActivity.class));
+                break;
+            case "chooseUpdates": chooseUpdates(); break;
+            case "promptInstallUpdate": promptInstallUpdate(); break;
+            case "confirmForget": confirmForget(); break;
+            default:
+                status("Unknown settings action.");
+        }
+    }
+
 }

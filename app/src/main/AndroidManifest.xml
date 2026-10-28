@@ -39,6 +39,9 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
+                <activity android:name=".SettingsActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Material.NoActionBar" />
         <activity android:name=".OverlayShortcutActivity"
             android:label="Kellie's Voice Overlay"
             android:exported="true"

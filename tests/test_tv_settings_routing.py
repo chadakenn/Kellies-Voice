@@ -48,7 +48,8 @@ class TvSettingsRoutingTest(unittest.TestCase):
             "final String title;", 1)[0]
         names = re.findall(r"^        ([A-Z]+)[(]", enum, re.MULTILINE)
         self.assertEqual(list(EXPECTED_CATEGORIES), names)
-        self.assertIn("addButton(toolbar, \"SETTINGS\", v -> showSettingsDashboard());", ACTIVITY)
+        self.assertIn("startActivity(new Intent(this, SettingsActivity.class))", ACTIVITY)
+        self.assertIn("SettingsActivity", ACTIVITY)
 
     def test_each_original_settings_action_has_a_destination(self):
         category = ACTIVITY.split("private void showSettingsSection(SettingsSection section) {", 1)[1].split(
@@ -130,6 +131,26 @@ class TvSettingsRoutingTest(unittest.TestCase):
         self.assertIn('prefs.setFollowUp(true)', ACTIVITY)
         self.assertIn('private void chooseFollowUp()', ACTIVITY)
         self.assertIn('private void chooseMicrophoneDetection()', ACTIVITY)
+
+
+if __name__ == "__main__":
+    unittest.main()
+    def test_premium_fullscreen_settings_activity_exists(self):
+        settings = (
+            Path(__file__).resolve().parents[1]
+            / "app/src/main/java/com/example/tvvoiceprobe/SettingsActivity.java"
+        ).read_text(encoding="utf-8")
+        self.assertIn("class SettingsActivity", settings)
+        self.assertIn("Connection", settings)
+        self.assertIn("Wake word", settings)
+        self.assertIn("TV alerts", settings)
+        self.assertIn("D-pad", settings)
+        self.assertIn("AppPalette", settings)
+        manifest = (
+            Path(__file__).resolve().parents[1]
+            / "app/src/main/AndroidManifest.xml"
+        ).read_text(encoding="utf-8")
+        self.assertIn("SettingsActivity", manifest)
 
 
 if __name__ == "__main__":

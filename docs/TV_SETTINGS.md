@@ -33,3 +33,19 @@ The categorized TV Settings and **Okay Nabu** controls are merged into `main` vi
 **Status:** Published in signed stable v0.16.14. The previous v0.16.12 APK has the old menu. The maintainer tested the redesigned menu on an onn 4K Pro; broader visual and hardware acceptance remains ongoing.
 
 **Media:** [Historical original Settings screenshot](screenshots/onn-settings-menu.jpg) is **not** representative of v0.16.14. New testers should capture a redacted photo of the six-category hub. [Real-device gallery and wake video](screenshots/README.md).
+
+## Premium full-screen Settings (issue #162)
+
+A dedicated full-screen `SettingsActivity` replaces the previous dialog-based hub for a more polished 10-foot UI.
+
+- Uses the same `AppPalette` / theme preferences (copper/charcoal by default).
+- Glanceable status chips for Connection, Wake word, and TV alerts at the top.
+- Two-column layout: category cards on the left, options on the right.
+- Strong focus indicators (thicker stroke + highlight color) for D-pad navigation.
+- All existing settings and preference logic are preserved; actions are dispatched back to `VoiceActivity`.
+- No new background services, no changes to voice handling or microphone recording paths.
+- Readable at 720p / 1080p / 4K with density-independent padding and text sizes.
+
+**Hardware note:** Physical onn 4K Pro testing is still required to confirm focus traversal, Back behavior, and readability under real TV conditions. Screenshots in the PR are mockups only; do not include private household information.
+
+**Draft PR:** This redesign is delivered as a draft pull request and must not be merged into `main` until owner review and on-device QA.
