@@ -72,6 +72,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
     private boolean initialConnectionRequested;
     /** Only the UI navigation state; no settings or HA data are changed by entering sections. */
     private SettingsSection activeSettingsSection;
+    private boolean returnToPremiumSettings;
 
     private enum SettingsSection {
         HOME("Home Assistant", "Connection, pairing and conversation", "01"),
@@ -154,8 +155,23 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
             mainHandler.post(() -> {
                 if (!isFinishing() && !isDestroyed()) {
                     WakeWordStartup.resumeFromVisible(this);
+                    consumeSettingsSignals();
                 }
             });
+        }
+    }
+
+    /** Honor one-shot requests from the persistent SettingsActivity without bringing this singleTask root forward. */
+    private void consumeSettingsSignals() {
+        android.content.SharedPreferences sig =
+                getSharedPreferences("tv_voice_settings_signals", MODE_PRIVATE);
+        if (sig.getBoolean("request_connect", false)) {
+            sig.edit().putBoolean("request_connect", false).apply();
+            if (settings != null && assist != null) assist.connect(settings.url, settings.token);
+        }
+        if (sig.getBoolean("request_new_conversation", false)) {
+            sig.edit().putBoolean("request_new_conversation", false).apply();
+            newConversation();
         }
     }
 
@@ -262,7 +278,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         toolbar.setOrientation(LinearLayout.HORIZONTAL);
         addButton(toolbar, "TALK", v -> startTalk());
         addButton(toolbar, "STOP", v -> assist.finishTalking());
-        addButton(toolbar, "SETTINGS", v -> showSettingsDashboard());
+        addButton(toolbar, "SETTINGS", v -> startActivity(new Intent(this, SettingsActivity.class)));
         root.addView(toolbar, new LinearLayout.LayoutParams(-1, -2));
 
         // A short, focus-safe welcome view on ordinary full-screen launches.
@@ -297,6 +313,10 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                     && now - checks.getLong("last_checked", 0) >= 24L * 60 * 60 * 1000) {
                 root.post(() -> updater.check());
             }
+        }
+        String settingsAction = getIntent().getStringExtra("com.example.tvvoiceprobe.SETTINGS_ACTION");
+        if (settingsAction != null) {
+            root.post(() -> handleSettingsAction(settingsAction));
         }
     }
 
@@ -362,6 +382,10 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
             }
         } else if (shouldLaunchOverlayFromLauncher(intent)) {
             getWindow().getDecorView().post(this::launchOverlay);
+        }
+        String settingsAction = intent.getStringExtra("com.example.tvvoiceprobe.SETTINGS_ACTION");
+        if (settingsAction != null) {
+            getWindow().getDecorView().post(() -> handleSettingsAction(settingsAction));
         }
     }
 
@@ -584,6 +608,10 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
 
     /** The settings landing screen: only six clear destinations, not 21 mixed actions. */
     private void showSettingsDashboard() {
+        if (returnToPremiumSettings) {
+            returnToPremiumSettingsIfNeeded();
+            return;
+        }
         activeSettingsSection = null;
         AppPalette colors = currentPalette();
         int pad = menuDp(18);
@@ -699,6 +727,10 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
 
     /** Called by existing option screens to return to the current section. */
     private void showSettingsMenu() {
+        if (returnToPremiumSettings) {
+            returnToPremiumSettingsIfNeeded();
+            return;
+        }
         if (activeSettingsSection == null) {
             showSettingsDashboard();
         } else {
@@ -2058,4 +2090,71 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         ScreensaverSignals.settingsChanged();
         showScreensaverSettings();
     }
+
+
+    /** After a premium Settings action, bring the full-screen Settings back. */
+    private void returnToPremiumSettingsIfNeeded() {
+        if (!returnToPremiumSettings) return;
+        returnToPremiumSettings = false;
+        startActivity(new Intent(this, SettingsActivity.class)
+                .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT));
+    }
+
+    /** Entry point for the full-screen SettingsActivity. Preserves all existing action logic. */
+    public void handleSettingsAction(String action) {
+        if (action == null) return;
+        returnToPremiumSettings = true;
+        switch (action) {
+            case "connect":
+                if (settings != null) assist.connect(settings.url, settings.token);
+                else status("Configure Home Assistant first.");
+                break;
+            case "configure":
+                configure();
+                break;
+            case "newConversation":
+                newConversation();
+                break;
+            case "chooseHaLayout": chooseHaLayout(); break;
+            case "chooseMicSensitivity": chooseMicSensitivity(); break;
+            case "chooseFollowUp": chooseFollowUp(); break;
+            case "chooseMicrophoneDetection": chooseMicrophoneDetection(); break;
+            case "testMic":
+                startActivity(new Intent(this, MainActivity.class));
+                break;
+            case "chooseWakeWord": chooseWakeWord(); break;
+            case "launchOverlay": launchOverlay(); break;
+            case "showOverlayPreferences": showOverlayPreferences(); break;
+            case "chooseTvNotifications": chooseTvNotifications(); break;
+            case "toggleSpoken":
+                OverlayPreferences p = new OverlayPreferences(this);
+                p.setSpokenAnnouncements(!p.spokenAnnouncements());
+                status("Spoken announcements " + (p.spokenAnnouncements() ? "ON" : "OFF"));
+                break;
+            case "chooseAnnouncementVolume": chooseAnnouncementVolume(); break;
+            case "testSpoken": testSpokenAnnouncements(); break;
+            case "showTvAlertStatus": showTvAlertStatus(); break;
+            case "chooseCameraMode": chooseCameraMode(); break;
+            case "showScreensaverSettings": showScreensaverSettings(); break;
+            case "previewScreensaver":
+                startActivity(new Intent(this, ScreensaverPreviewActivity.class));
+                break;
+            case "chooseUpdates": chooseUpdates(); break;
+            case "promptInstallUpdate": promptInstallUpdate(); break;
+            case "confirmForget": confirmForget(); break;
+            default:
+                status("Unknown settings action.");
+        }
+        // Dialog-based actions return via showSettingsMenu; others return here.
+        if (returnToPremiumSettings && !action.equals("chooseWakeWord")
+                && !action.equals("chooseHaLayout") && !action.equals("chooseMicSensitivity")
+                && !action.equals("chooseFollowUp") && !action.equals("chooseMicrophoneDetection")
+                && !action.equals("showOverlayPreferences") && !action.equals("chooseTvNotifications")
+                && !action.equals("chooseAnnouncementVolume") && !action.equals("showTvAlertStatus")
+                && !action.equals("chooseCameraMode") && !action.equals("showScreensaverSettings")
+                && !action.equals("chooseUpdates") && !action.equals("confirmForget")) {
+            returnToPremiumSettingsIfNeeded();
+        }
+    }
+
 }

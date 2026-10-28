@@ -33,3 +33,49 @@ The categorized TV Settings and **Okay Nabu** controls are merged into `main` vi
 **Status:** Published in signed stable v0.16.14. The previous v0.16.12 APK has the old menu. The maintainer tested the redesigned menu on an onn 4K Pro; broader visual and hardware acceptance remains ongoing.
 
 **Media:** [Historical original Settings screenshot](screenshots/onn-settings-menu.jpg) is **not** representative of v0.16.14. New testers should capture a redacted photo of the six-category hub. [Real-device gallery and wake video](screenshots/README.md).
+
+## Premium full-screen Settings (issue #162)
+
+A dedicated full-screen `SettingsActivity` replaces the previous dialog-based hub for a more polished 10-foot UI.
+
+- Uses the same `AppPalette` / theme preferences (copper/charcoal by default).
+- Glanceable status chips for Connection, Wake word, and TV alerts at the top.
+- Two-column layout: category cards on the left, options on the right.
+- Strong focus indicators (thicker stroke + highlight color) for D-pad navigation.
+- All existing settings and preference logic are preserved; actions are dispatched back to `VoiceActivity`.
+- No new background services, no changes to voice handling or microphone recording paths.
+- Readable at 720p / 1080p / 4K with density-independent padding and text sizes.
+
+**Hardware note:** Physical onn 4K Pro testing is still required to confirm focus traversal, Back behavior, and readability under real TV conditions. Screenshots in the PR are mockups only; do not include private household information.
+
+**Draft PR:** This redesign is delivered as a draft pull request and must not be merged into `main` until owner review and on-device QA.
+
+
+## Navigation and Back behavior (PR #191 fixes)
+
+VoiceActivity remains `singleTask` (required for remote shortcut / overlay). Selecting a setting from the full-screen SettingsActivity delivers an action to VoiceActivity. After the action or dialog is dismissed, VoiceActivity re-launches SettingsActivity (`FLAG_ACTIVITY_REORDER_TO_FRONT`) so the premium UI stays the host and the remote Back key returns to it.
+
+Status chips are accurate:
+- Credentials • Saved — credentials exist; does not claim a live WebSocket connection.
+- Wake word • Listening / Stopped / Off — reflects the actual service state.
+- TV alerts • Enabled / Off — reflects the preference; the scoped receiver connection is shown in the existing TV alert status dialog.
+
+All six categories and existing safety confirmations are preserved. The Android compile error (`assist.newConversation()`) is fixed by calling the existing `VoiceActivity.newConversation()`.
+
+**onn 4K Pro testing still required** for focus traversal, Back from nested dialogs, scroll on 720p, and readability on 1080p/4K.
+
+
+## Persistent host + mockup fidelity (October 28 follow-up)
+
+SettingsActivity is now a persistent host. Option selection never starts VoiceActivity, so the singleTask launch mode cannot destroy the Settings screen or reset focus. Preference changes, switches, and confirmation dialogs happen inside SettingsActivity. One-shot requests (reconnect, new conversation) are written to a private signal preference and consumed when the voice screen resumes.
+
+Visual treatment matches the two-column reference:
+- Copper/charcoal surfaces from AppPalette
+- Category cards with icons and persistent copper focus border
+- Right-hand panel with row dividers, icons, and real Switch controls (Wake word, follow-up, TV alerts, spoken announcements, HA layout, screensaver)
+- Status strip: Credentials • Saved, Wake word state, TV alerts • Enabled
+- Scrollable right column; category restored across configuration changes
+
+**Screenshots:** This environment cannot run an Android emulator (insufficient RAM). Actual on-device or emulator captures of the running APK are still required for final visual QA. Generated design references are not substitutes for APK screenshots.
+
+**onn 4K Pro QA still required:** D-pad focus, Back, scroll on 720p, readability on 1080p/4K, and confirmation that every setting preserves preferences.
