@@ -76,6 +76,12 @@ android {
         compose true
         buildConfig true
     }
+    lint {
+        // The Lifecycle lint detector crashes against this Kotlin/UAST toolchain
+        // with IncompatibleClassChangeError in ComposeSettingsActivity.kt.
+        // Disable only the broken detector; preserve all other release lint checks.
+        disable 'NullSafeMutableLiveData'
+    }
     if (findProperty('skipWakeNative') != 'true') {
         ndkVersion '27.2.12479018'
         externalNativeBuild {
