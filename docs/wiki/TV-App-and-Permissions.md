@@ -42,7 +42,7 @@ The existing TV state showed **Wake word: LISTENING**. That is this owner's opte
 
 ![Compose Updates and account preview showing installed 0.16.14-test and the stable channel selected](../screenshots/compose-updates-preview.png)
 
-The installed debug APK version and update-channel selection; no download or installation was performed. [All captured categories and themes](../screenshots/PR-192-CAPTURES.md) are development-preview evidence only. This APK predates the latest PR #192 popup/theme fixes.
+The installed debug APK version and update-channel selection; no download or installation was performed. [All captured categories and themes](https://github.com/chadakenn/Kellies-Voice/blob/feature/compose-tv-settings/docs/screenshots/PR-192-CAPTURES.md) are development-preview evidence only. This APK predates the latest PR #192 popup/theme fixes.
 
 ## Microphone routing and phantom inputs
 
