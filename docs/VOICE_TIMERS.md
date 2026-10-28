@@ -1,4 +1,4 @@
-# Voice timers in public v0.16.7 (plus optional voice setup)
+# Voice timers (introduced in v0.16.7; supported in current v0.16.14)
 
 **Name clarification:** Julia is the maintainer's nickname for their Home Assistant conversation assistant, **not** an included assistant or wake word. Other users can use any Assist conversation agent and do **not** need to say "Julia" to start timers once the voice input is active. Timer scripts and sentence routing must be configured for your own Home Assistant pipeline; see the [naming explanation](../README.md#kellies-voice-vs-julia-whats-the-difference).
 
@@ -6,7 +6,7 @@ Named TV timers show small countdown pills over the current app. At completion: 
 
 The bundled chime plays locally. Optional speech uses the TV's Android text-to-speech engine, not the microphone or HA voice agent; it may sound different from your Home Assistant voice assistant. If speech is unavailable, chimes continue. A stalled utterance is stopped after 15 seconds so the pair sequence can resume. The phrase is configured per timer and limited to 140 characters.
 
-**Shipped:** signed Android v0.16.7 and matching HACS integration v0.16.7 support TV countdowns, completion chimes and the Home Assistant timer actions below. The maintainer previously confirmed countdown, recurring chimes and **Back** dismissal on the onn 4K Pro. The previous **remote OK on Dismiss** failure is addressed in [merged PR #55](https://github.com/chadakenn/Kellies-Voice/pull/55), but still needs real-device verification before closing [#54](https://github.com/chadakenn/Kellies-Voice/issues/54). Optional hands-free follow-up listening (#46) and a wake word (#59) are **not shipped**. [New tester installation guide](INSTALL.md).
+**Shipped:** signed Android v0.16.7 and matching HACS integration v0.16.7 support TV countdowns, completion chimes and the Home Assistant timer actions below. The maintainer previously confirmed countdown, recurring chimes and **Back** dismissal on the onn 4K Pro. The previous **remote OK on Dismiss** failure is addressed in [merged PR #55](https://github.com/chadakenn/Kellies-Voice/pull/55), but still needs real-device verification before closing [#54](https://github.com/chadakenn/Kellies-Voice/issues/54). Optional follow-up listening and opt-in Okay Nabu wake word **are included in current v0.16.14**; neither automatically configures the Home Assistant native timer intent route. The wake listener is OFF by default. [New tester installation guide](INSTALL.md).
 
 ## Requirements and behavior
 
