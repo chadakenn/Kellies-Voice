@@ -119,10 +119,10 @@ jobs:
           # In a QA-only run no production APK is built. Instead compare the
           # APK certificate directly with the trusted, restored private keystore.
           qa_cert="$("$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$apk" \
-            | sed -nE 's/^Signer #1 certificate SHA-256 digest: ([[:xdigit:]]+).*/\\1/p' | head -n 1)"
+            | sed -nE 's/^Signer #1 certificate SHA-256 digest: ([[:xdigit:]]+).*/\1/p' | head -n 1)"
           key_cert="$(keytool -list -v -storetype PKCS12 \
             -keystore "$TV_SIGNING_KEYSTORE_PATH" -storepass "$TV_SIGNING_PASSWORD" \
-            -alias tvvoice | sed -nE 's/.*SHA256: ([[:xdigit:]:]+).*/\\1/p' \
+            -alias tvvoice | sed -nE 's/.*SHA256: ([[:xdigit:]:]+).*/\1/p' \
             | head -n 1 | tr -d ':' | tr '[:upper:]' '[:lower:]')"
           if [[ -z "$qa_cert" || -z "$key_cert" || "$qa_cert" != "$key_cert" ]]; then
             echo '::error::QA APK signing certificate does not match the trusted keystore'
