@@ -26,7 +26,7 @@ Screensaver settings on the existing **0.16.14-test debug app**, captured Octobe
 
 ![Actual screensaver preview with the full camera area masked and the Close control retained](../screenshots/frigate-overview-redacted.png)
 
-The screensaver preview opened from that development UI. All camera imagery, tile labels, timestamps, faces and scene details are covered by one opaque mask; only the genuine **Close** control remains visible. This deliberately does not show the camera layout, prove moving video, or establish decoder reliability. Preview was closed with Back. No camera mode was changed. [Capture details](../screenshots/PR-192-CAPTURES.md).
+The screensaver preview opened from that development UI. All camera imagery, tile labels, timestamps, faces and scene details are covered by one opaque mask; only the genuine **Close** control remains visible. This deliberately does not show the camera layout, prove moving video, or establish decoder reliability. Preview was closed with Back. No camera mode was changed. [Capture details](https://github.com/chadakenn/Kellies-Voice/blob/feature/compose-tv-settings/docs/screenshots/PR-192-CAPTURES.md).
 
 ## Live HA camera screensaver (opt-in; introduced in v0.16.12)
 
