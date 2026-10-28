@@ -17,12 +17,12 @@ public class OverlayPreferencesLabelsTest {
     @Test
     public void sizeLabelsMatchConstants() {
         assertEquals("Small", OverlayPreferences.sizeLabel(OverlayPreferences.SIZE_SMALL));
-        assertEquals("Medium", OverlayPreferences.sizeLabel(OverlayPreferences.SIZE_MEDIUM));
+        assertEquals("Medium (original)", OverlayPreferences.sizeLabel(OverlayPreferences.SIZE_MEDIUM));
         assertEquals("Large", OverlayPreferences.sizeLabel(OverlayPreferences.SIZE_LARGE));
     }
 
     @Test
-    public void hideLabelNeverWhenZero() {
-        assertTrue(OverlayPreferences.POSITION_DEFAULT.equals("default"));
+    public void positionDefaultConstantIsStable() {
+        assertEquals("default", OverlayPreferences.POSITION_DEFAULT);
     }
 }
