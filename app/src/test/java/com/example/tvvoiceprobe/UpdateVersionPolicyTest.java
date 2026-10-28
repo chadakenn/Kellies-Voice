@@ -7,8 +7,8 @@ import static org.junit.Assert.fail;
 
 public class UpdateVersionPolicyTest {
     @Test public void acceptsOnlyExactReleaseVersionAndNewerArchive() {
-        UpdateVersionPolicy.requireExpected(55L, "0.16.15", 52L,
-                "0.16.12-dev.12", 50L);
+        UpdateVersionPolicy.requireExpected(55L, "0.16.15", 55L,
+                "0.16.15", 54L);
     }
 
     @Test public void rejectsMismatchedManifestVersionNameAndCode() {
@@ -20,8 +20,8 @@ public class UpdateVersionPolicyTest {
     }
 
     @Test public void rejectsStaleOffersAndLongVersionOverflow() {
-        reject(55L, "0.16.15", 55L, "0.16.15", 52L);
-        reject(55L, "0.16.15", 55L, "0.16.15", 53L);
+        reject(55L, "0.16.15", 55L, "0.16.15", 55L);
+        reject(55L, "0.16.15", 55L, "0.16.15", 56L);
         // Android's versionCodeMajor allows versions above signed 32-bit range.
         reject(55L, "0.16.15", 55L, "0.16.15", 4294967348L);
         assertEquals(UpdateChannel.CURRENT, UpdateChannel.verdict(
