@@ -275,7 +275,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         addButton(toolbar, "TALK", v -> startTalk());
         addButton(toolbar, "STOP", v -> assist.finishTalking());
         addButton(toolbar, "SETTINGS", v -> showSettingsDashboard());
-        if (BuildConfig.DEBUG) {
+        if (BuildConfig.DEBUG || BuildConfig.IS_QA) {
             addButton(toolbar, "COMPOSE", v -> startActivity(new Intent(this, com.example.tvvoiceprobe.ui.settings.ComposeSettingsActivity.class)));
         }
         root.addView(toolbar, new LinearLayout.LayoutParams(-1, -2));
