@@ -5,6 +5,7 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.res.ColorStateList;
 import android.content.Intent;
 import android.content.pm.ServiceInfo;
 import android.graphics.Bitmap;
@@ -792,24 +793,25 @@ public final class TvEventsService extends Service {
         hideCard();
         int current = ++generation;
         OverlayPreferences placement = new OverlayPreferences(this);
-        boolean aurora = OverlayPreferences.SKIN_AURORA.equals(placement.skin());
+        TvPopupPalette colors = TvPopupPalette.forSkin(placement.skin());
         LinearLayout panel = new LinearLayout(this);
         panel.setOrientation(LinearLayout.VERTICAL);
         panel.setPadding(dp(16), dp(12), dp(16), dp(12));
         GradientDrawable background = new GradientDrawable(
                 GradientDrawable.Orientation.LEFT_RIGHT,
-                new int[] {0xf514100E, 0xf5241A14});
-        background.setCornerRadius(dp(14));
-        background.setStroke(dp(2), 0xffC4884A);
-        panel.setBackground(aurora ? new AuroraGlassDrawable(dp(14)) : background);
-        panel.addView(label(forecast.location, 18, aurora ? 0xffEDF3FF : 0xffEAC296));
-        panel.addView(label(forecast.heading(), 13, aurora ? 0xffA6BFEA : 0xffC4884A));
+                new int[] {colors.forecastStart, colors.forecastEnd});
+        background.setCornerRadius(dp(colors.forecastRadiusDp));
+        background.setStroke(dp(2), colors.forecastBorder);
+        panel.setBackground(colors.auroraGlass
+                ? new AuroraGlassDrawable(dp(colors.forecastRadiusDp)) : background);
+        panel.addView(label(forecast.location, 18, colors.forecastTitle));
+        panel.addView(label(forecast.heading(), 13, colors.forecastHeading));
         for (ForecastCard.Day day : forecast.days) {
-            TextView row = label(day.line(forecast.units), 15, aurora ? 0xffF2F5FF : 0xffFAE8D5);
+            TextView row = label(day.line(forecast.units), 15, colors.forecastText);
             row.setMaxLines(1);
             panel.addView(row);
         }
-        panel.addView(label("Back closes this forecast", 12, aurora ? 0xffA6BFEA : 0xffAD835D));
+        panel.addView(label("Back closes this forecast", 12, colors.forecastMuted));
         panel.setFocusable(true);
         panel.setOnKeyListener((view, key, event) -> {
             if (event.getAction() != android.view.KeyEvent.ACTION_DOWN) return false;
@@ -919,28 +921,30 @@ public final class TvEventsService extends Service {
         if (stopping || windowManager == null || !Settings.canDrawOverlays(this)) return;
         hideCard();
         int current = ++generation;
+        OverlayPreferences placement = new OverlayPreferences(this);
+        TvPopupPalette colors = TvPopupPalette.forSkin(placement.skin());
         LinearLayout panel = new LinearLayout(this);
         panel.setOrientation(LinearLayout.VERTICAL);
         panel.setPadding(dp(18), dp(13), dp(18), dp(14));
         GradientDrawable background = new GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
-                new int[] {0xf51B1512, 0xf52B1D17});
-        background.setCornerRadius(dp(12));
-        background.setStroke(dp(1), 0xffAD835D);
-        panel.setBackground(background);
+                new int[] {colors.backgroundStart, colors.backgroundEnd});
+        background.setCornerRadius(dp(colors.cornerRadiusDp));
+        background.setStroke(dp(1), colors.border);
+        panel.setBackground(colors.auroraGlass
+                ? new AuroraGlassDrawable(dp(colors.cornerRadiusDp)) : background);
         panel.setElevation(dp(12));
 
         TextView subtitle = null;
         if (entity == null || showHeader) {
             View goldRule = new View(this);
-            goldRule.setBackgroundColor(0xffE1B27B);
+            goldRule.setBackgroundColor(colors.rule);
             panel.addView(goldRule, new LinearLayout.LayoutParams(-1, dp(3)));
-            panel.addView(label(title.isEmpty() ? "Kellie's Voice" : title, 19, 0xffEAC296));
-            subtitle = label(text, 16, 0xffFAE8D5);
+            panel.addView(label(title.isEmpty() ? "Kellie's Voice" : title, 19, colors.title));
+            subtitle = label(text, 16, colors.body);
             panel.addView(subtitle);
         }
         photo = null;
-        OverlayPreferences placement = new OverlayPreferences(this);
         String alertSize = placement.alertSize();
         String cameraMode = placement.cameraMode();
         if (entity != null && live) {
@@ -949,11 +953,11 @@ public final class TvEventsService extends Service {
             // TextureView is composited with the rest of this popup window.
             // Keep a real camera still behind the player until the first video frame.
             FrameLayout preview = new FrameLayout(this);
-            preview.setBackgroundColor(0xff2D211C); // letterbox behind live video
+            preview.setBackgroundColor(colors.letterbox); // letterbox behind live video
             ImageView still = new ImageView(this);
             still.setScaleType(fitWhole ? ImageView.ScaleType.FIT_CENTER
                     : ImageView.ScaleType.CENTER_CROP);
-            still.setBackgroundColor(0xff2D211C);
+            still.setBackgroundColor(colors.letterbox);
             preview.addView(still, new FrameLayout.LayoutParams(-1, -1));
             photo = still;
             TextureView surface = new TextureView(this);
@@ -970,7 +974,7 @@ public final class TvEventsService extends Service {
             ImageView image = new ImageView(this);
             image.setScaleType(fitWhole ? ImageView.ScaleType.FIT_CENTER
                     : ImageView.ScaleType.CENTER_CROP);
-            image.setBackgroundColor(0xff2D211C);
+            image.setBackgroundColor(colors.letterbox);
             panel.addView(image, new LinearLayout.LayoutParams(-1,
                     dp(TvAlertLayout.mediaHeightDp(alertSize, false))));
             photo = image;
@@ -987,7 +991,11 @@ public final class TvEventsService extends Service {
                 Button button = new Button(this);
                 button.setText(action.label);
                 button.setAllCaps(false);
-                button.setTextColor(0xffFAE8D5);
+                button.setTextColor(colors.buttonText);
+                button.setBackgroundTintList(ColorStateList.valueOf(colors.buttonBackground));
+                button.setOnFocusChangeListener((v, focused) ->
+                        button.setBackgroundTintList(ColorStateList.valueOf(
+                                focused ? colors.buttonFocused : colors.buttonBackground)));
                 button.setFocusable(true);
                 button.setOnClickListener(view -> {
                     if (stopping || generation != current || card != panel
