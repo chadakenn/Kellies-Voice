@@ -33,5 +33,5 @@
 ## Limits and explicit sign-off
 
 - GitHub CI tests do not demonstrate that the actual Android package installer was reached or accepted an upgrade on the onn.
-- The original release updater stores `app-release.apk` in private cache. **Code review must check how a cached APK is revalidated when Install is chosen later**, especially after an Activity restart and a channel change.
+- **New in this draft:** a private `app-release.verified` receipt is written only after the APK passed hash, archive identity, version and signature checks. An Install click, including after Activity recreation, re-reads the receipt, hashes the whole APK again off the UI thread, verifies the currently selected channel, and checks package/signature/newer version before Android is asked to install. Changed/shortened APKs or absent receipts are rejected, with host regression tests. Physical Android installer acceptance is still pending.
 - Record exact observed TV results and candidate version in PR #184 before marking it ready. Keep update security work separate from the optional signed-APK provenance attestation issue #185.
