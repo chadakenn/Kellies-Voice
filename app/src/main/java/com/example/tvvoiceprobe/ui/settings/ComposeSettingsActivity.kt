@@ -718,6 +718,19 @@ fun CategoryContent(
                 var editingCameras by remember { mutableStateOf(false) }
                 var cameraDraft by remember { mutableStateOf(savedCameras) }
                 var cameraError by remember { mutableStateOf<String?>(null) }
+                // TV Back cancels any open editor and discards its unsaved draft.
+                // The parent BackHandler still exits Settings outside edit mode.
+                BackHandler(enabled = editingUrl || editingCameras) {
+                    if (editingCameras) {
+                        cameraDraft = savedCameras
+                        cameraError = null
+                        editingCameras = false
+                    } else {
+                        urlDraft = savedUrl
+                        urlError = null
+                        editingUrl = false
+                    }
+                }
                 Text("Home Assistant cameras", color = skin.colors.accent, fontSize = 18.sp, fontWeight = FontWeight.Medium)
                 if (!editingCameras) {
                     val count = ScreensaverDashboard.cameraList(savedCameras).size
