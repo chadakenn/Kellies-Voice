@@ -30,4 +30,6 @@ The categorized TV Settings and **Okay Nabu** controls are merged into `main` vi
 5. Open diagnostics, preview, and Android system dialogs to confirm Back does not trap the user.
 6. Ensure Home Assistant credentials, mic opt-out, updates and TV alert permissions remain intact. Test separately on the wake-word branch after integration.
 
-**Status:** Included in the v0.16.14 release source. The previous v0.16.12 stable APK has the old menu. The maintainer tested the redesigned menu on an onn 4K Pro; broader visual and hardware acceptance remains ongoing.
+**Status:** Published in signed stable v0.16.14. The previous v0.16.12 APK has the old menu. The maintainer tested the redesigned menu on an onn 4K Pro; broader visual and hardware acceptance remains ongoing.
+
+**Media:** [Historical original Settings screenshot](screenshots/onn-settings-menu.jpg) is **not** representative of v0.16.14. New testers should capture a redacted photo of the six-category hub. [Real-device gallery and wake video](screenshots/README.md).
