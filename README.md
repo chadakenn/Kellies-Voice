@@ -6,7 +6,7 @@
 
 Kellie's Voice is a native Android TV / Google TV app with a companion **Home Assistant custom integration**. Talk to your Home Assistant Assist agent, see useful answers in a floating overlay, receive quiet smart-home announcements (optional spoken with audio ducking), and pop up security-camera views **over what you're already watching** when Android allows it.
 
-**For everyday use, choose [stable v0.16.12](https://github.com/chadakenn/Kellies-Voice/releases/latest).** Testers may opt into beta updates **separately in HACS and on their TV**; both default to stable. Routine development builds stay as Actions artifacts, not public Releases. [Learn how beta testing works](docs/BETA_TESTING.md).
+**For everyday use, install the [latest signed stable release](https://github.com/chadakenn/Kellies-Voice/releases/latest).** Testers may opt into beta updates **separately in HACS and on their TV**; both default to stable. Routine development builds stay as Actions artifacts, not public Releases. [Learn how beta testing works](docs/BETA_TESTING.md).
 
 No replacement launcher, always-open browser tab, or separate AI server on the TV. Your existing Home Assistant setup does the thinking; Kellie's Voice handles the microphone, on-screen experience, and TV audio.
 
@@ -134,7 +134,7 @@ The Android app and the HACS integration are **two different downloads**. You ne
 [![Open Kellie's Voice in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=chadakenn&repository=Kellies-Voice&category=integration)
 
 1. If this is your first installation: **HACS → ⋮ → Custom repositories → Add**, paste `https://github.com/chadakenn/Kellies-Voice` and select **Integration**.
-2. Open Kellie's Voice in HACS and download the **matching stable v0.16.12 integration** for the [v0.16.12 signed TV APK](https://github.com/chadakenn/Kellies-Voice/releases/tag/v0.16.12). Restart Home Assistant. Beta/prerelease builds are opt-in and should match their TV app.
+2. Open Kellie's Voice in HACS and download the **matching stable integration version** for the [latest signed TV APK](https://github.com/chadakenn/Kellies-Voice/releases/latest). Restart Home Assistant. Beta/prerelease builds are opt-in and should match their TV app.
 3. Go to **Settings → Devices & services**, choose the discovered Kellie's Voice TV and add it. If mDNS discovery doesn't work, select **Add Integration → Kellie's Voice** and enter the ID shown under the TV app's **Settings → Home Assistant layout → Show this TV's pairing ID**.
 4. Open the registered TV device in Home Assistant. Configure voice-overlay position, size, style, auto-hide and auto-listen. You can now call the actions below.
 
@@ -237,13 +237,13 @@ On the device page, **Forecast source** is the weather entity used when a script
 | Tue 27 | ❄ | 42° / 31° | 40% |
 | Wed 28 | ☾ | 45° / 33° | — |
 
-## Okay Nabu wake word (merged into main; pending public release)
+## Okay Nabu wake word (v0.16.14)
 
 Kellie's Voice can listen on the TV for **Okay Nabu**, the same microWakeWord model the Home Assistant Android app uses. It is **off** until you turn it on at **Settings → Wake word**. The row then reads OFF, LISTENING, or STOPPED. A reboot cannot directly start microphone capture on newer Android versions; reopening Kellie's Voice can resume an explicitly remembered ON choice. While it is LISTENING, the microphone stays open and Android's privacy indicator stays on. Audio from before the phrase is not sent. After the phrase, the same recorder keeps the question until Assist takes it, at most eight seconds, and that audio is sent with the rest of the question. A short beep means the overlay microphone is recording. Hey Google is separate and can still take the microphone.
 
 Turn it off in that same menu. The **ON preference now survives a reboot/update** after you explicitly enable it in the revised wake settings; on Android 14+ the boot receiver cannot open the microphone, so Kellie's Voice posts a resume reminder where allowed and **automatically starts listening when you open the app**. An old ON choice from before this behavior change requires a one-time re-enable to approve persistent restart. Explicit OFF, Disable microphone capture, and Forget connection continue to disarm it. The listener needs a microphone that can record 16 kHz. **The owner successfully tested a one-breath "Okay Nabu, turn on office lights" command on the onn 4K Pro** in an isolated debug build; broader reliability/privacy testing is still pending. Recognition with TV audio improved after moving the onn box away from the television speakers.
 
-**New opt-in feature, planned for v0.16.13:** `Settings → Voice & microphone → Wake word → Wake audio ducking` chooses **Off (default), 25%, 50%, or 75% quieter** while a detected wake command is active. It reduces local media volume only *after* Okay Nabu is detected, then attempts to restore the previous level when the overlay closes. Fixed-volume and HDMI/CEC audio routes may ignore the setting. No need to turn TV audio down continuously; this does not improve hearing the wake phrase itself. There is no "Hey Kellie" model yet. Details are in [docs/WAKE_WORD.md](docs/WAKE_WORD.md) and the [planned v0.16.13 release notes](docs/releases/v0.16.13.md).
+**New in v0.16.14, opt-in and OFF by default:** `Settings → Voice & microphone → Wake word → Wake audio ducking` chooses **Off (default), 25%, 50%, or 75% quieter** while a detected wake command is active. It reduces local media volume only *after* Okay Nabu is detected, then attempts to restore the previous level when the overlay closes. Fixed-volume and HDMI/CEC audio routes may ignore the setting. No need to turn TV audio down continuously; this does not improve hearing the wake phrase itself. There is no "Hey Kellie" model yet. Details are in [docs/WAKE_WORD.md](docs/WAKE_WORD.md) and the [v0.16.14 release notes](docs/releases/v0.16.14.md).
 
 **Historical development test (#44):** The first voice query after a TV reboot can
 arrive before the Home Assistant voice WebSocket or Assist pipeline is ready.
@@ -253,7 +253,7 @@ of recording unexpectedly later. [QA checklist](docs/TESTING.md). This historica
 
 ## Project status and contributing
 
-### Current stable release: v0.16.12 (October 26, 2026)
+### Previous stable release: v0.16.12 (October 26, 2026)
 
 **Signed Android TV APK v0.16.12 (build 50) and matching HACS integration v0.16.12 are publicly available.** Highlights include the opt-in Frigate/HA screensaver, a four-camera grid with **Snapshots / Live 1 / Live 2 / Live 4** modes, selected full-screen camera audio when a stream provides an audio track, D-pad navigation, reboot recovery, and HA-controlled camera choices. These live/screen-saver features were tested on the maintainer's onn Google TV but are not guaranteed on all Android TV models. [Read the full v0.16.12 release notes](https://github.com/chadakenn/Kellies-Voice/releases/tag/v0.16.12). Existing features include voice Assist, named timers with the documented HA scripts, forecast popups, text and **opt-in spoken announcements**, and temporary live camera popups. A dedicated **TV alert receiver connected** HA diagnostic reports the authenticated receiver socket, **not** proof any particular popup appeared.
 
@@ -261,7 +261,7 @@ of recording unexpectedly later. [QA checklist](docs/TESTING.md). This historica
 
 **Optional follow-up listening:** Configure it on the TV under **Settings → Follow-up listening**. It is an explicit microphone-related opt-in, separate from popups and spoken announcements. Check the installed version and the [testing guide](docs/TESTING.md) for supported behavior and constraints.
 
-**Known limitations:** Microphone access is hardware-dependent (#71), Fire TV testing is incomplete (#41), wrong manual pairing IDs need better validation (#69), and native timer phrasing needs an HA routing rule (#57). Google remote microphone interception and an always-listening wake word are **not** included in stable v0.16.12. Optional Okay Nabu wake support is now in `main` for the upcoming v0.16.13 release, but has not been published as a new stable APK. Some optional modes, including multiple simultaneous software-decoded live cameras, can stress less powerful TVs. Test on your specific device.
+**Known limitations:** Microphone access is hardware-dependent (#71), Fire TV testing is incomplete (#41), wrong manual pairing IDs need better validation (#69), and native timer phrasing needs an HA routing rule (#57). The previous stable v0.16.12 does not include hands-free wake. **v0.16.14** introduces opt-in Okay Nabu and the categorized settings menu. Google remote microphone interception is not implemented. Some optional modes, including multiple simultaneous software-decoded live cameras, can stress less powerful TVs. Test on your specific device.
 
 For a complete **first-time installation and testing checklist**, start with **[Install Kellie's Voice: new testers](docs/INSTALL.md)**. Other Android/Google/Fire TV models, audio behavior, camera compatibility, and longer-running reliability especially need real tester reports. [Open a GitHub issue](https://github.com/chadakenn/Kellies-Voice/issues) with device model, app/HACS version, reproducible steps and redacted screenshots.
 
