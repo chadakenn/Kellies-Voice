@@ -30,7 +30,7 @@ jobs:
       cancel-in-progress: false
     steps:
       - name: Check out reviewed main
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Validate all links and render Wiki URLs
         run: python3 scripts/check_wiki_docs.py --render-wiki "$RUNNER_TEMP/wiki-rendered"
       - name: Synchronize Wiki pages
