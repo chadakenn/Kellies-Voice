@@ -1,16 +1,16 @@
 # On-device wake word
 
-**Draft, unreleased feature (#59).** Public stable is v0.16.12. This branch now includes current `dev`, including the microphone-off switch, reconnect work, and the current settings menu. Do not install a branch APK as a normal update or merge into `main`. One phone video shows a successful command. The rest of the checklist below is still open, so this stays a draft.
+**Merged into `main`, not yet published in a stable APK.** The current public stable release is v0.16.12 and does **not** contain Okay Nabu. The feature and revised TV Settings have been merged into the source for the planned v0.16.13 release; see [v0.16.13 release notes](releases/v0.16.13.md). Do not mistake a GitHub Actions debug APK for a signed stable update. Reboot auto-resume on the final build and broader device coverage still need real-device testing.
 
 ## What it does
 
 Kellie's Voice can listen on the TV for **Okay Nabu** using microWakeWord, the same small on-device model the Home Assistant Android app uses. The model runs on the TV. No audio is sent to Home Assistant until the phrase is recognized and the normal voice overlay opens. The overlay then uses the existing Assist connection.
 
-While the user explicitly arms the wake listener, the draft app now also keeps a **pre-authenticated Home Assistant WebSocket** open so the next wake does not have to establish a new connection after "Okay Nabu". This connection transmits authentication/pings, **not microphone audio**. The wake phrase still opens the usual Assist microphone after handoff. When the overlay closes, its WebSocket is shut down and a new idle connection is warmed for the next wake. When wake listening is stopped or the app is killed, the idle socket is closed.
+While the user explicitly arms the wake listener, the app also keeps a **pre-authenticated Home Assistant WebSocket** open so the next wake does not have to establish a new connection after "Okay Nabu". This connection transmits authentication/pings, **not microphone audio**. The wake phrase still opens the usual Assist microphone after handoff. When the overlay closes, its WebSocket is shut down and a new idle connection is warmed for the next wake. When wake listening is stopped or the app is killed, the idle socket is closed.
 
-**Hardware so far:** On the onn 4K Pro, "Okay Nabu, turn on office lights" in one breath worked after `9585f62`, with no wait for Connected. Moving the box away from the TV speakers made detection more reliable while the TV was playing. That is one setup, not a finished checklist. Wake OFF, Disable microphone, Forget, STOPPED, reboot, and Hey Google are still open.
+**Hardware so far:** On the onn 4K Pro, "Okay Nabu, turn on office lights" worked in one breath; YouTube volume ducked and restored after the answer; disabling microphone capture blocked wake; re-enabling microphone capture did not silently restart wake; turning wake on again restored commands. Moving the box away from the TV speakers improved detection while media was playing. These are on-device tests, not universal guarantees. Automatic visible-app wake resumption after reboot, Forget, force-stop, revoked permissions, false detections, and other TVs still need acceptance testing.
 
-## Experimental volume ducking (new draft-only option)
+## Experimental wake audio ducking (merged into main; pending stable release)
 
 The onn 4K Pro owner's wake-word activation improved when the box was moved away from the TV speakers. Optional **Wake audio ducking** is a separate experiment to reduce competing TV playback **AFTER** Okay Nabu fires, helping Kellie capture the rest of a command. It **cannot help** the detector hear "Okay Nabu" beforehand.
 
@@ -37,7 +37,7 @@ The switch is **off** by default.
 - It does not add "Hey Kellie", "Hey Jarvis", or "Hey Mycroft".
 - It does not change Home Assistant. There is no new service and no new entity.
 - It does not require saying the assistant's name in ordinary mic-button commands. The wake phrase is only needed when you **opt in to hands-free wake listening**.
-- It does not replace "Hey Google". One phone video, [wake-okay-nabu-office-lights.mp4](screenshots/wake-okay-nabu-office-lights.mp4), shows the overlay opening over the Google TV apps screen and Home Assistant turning on the office lights. The transcript was "Turn on office lights." The television set in that clip is a Philips. The Android version, a command spoken immediately after the wake phrase, TV-speaker audio, and reboot behavior are still unchecked.
+- It does not replace "Hey Google". A [development demonstration](screenshots/wake-okay-nabu-office-lights.mp4) shows the overlay opening and the office lights responding. The maintainer additionally confirmed a one-breath command on an onn 4K Pro. This does not prove compatibility with every television, remote microphone or system voice assistant.
 
 The capture rate is 16 kHz. If this TV cannot open a 16 kHz microphone, the listener turns itself back off and leaves a notification. It does not guess another sample rate.
 
