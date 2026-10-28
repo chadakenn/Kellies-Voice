@@ -22,8 +22,7 @@ on documentation PRs and dev/main pushes.
 
 ## Publish the actual Wiki tab (owner approval)
 
-**v0.16.11 owner approval:** The stable promotion merge may include both `[publish-release]` and `[publish-wiki]` in its commit message. The Wiki workflow listens only to main-branch pushes that change wiki docs/publisher files and only publishes with that explicit marker. Ordinary pushes, PRs, and dev changes still cannot publish Wiki pages. Manual Actions → Publish reviewed Kellie's Voice Wiki → PUBLISH remains supported. The Wiki must already have an initial Home page; otherwise the job fails safely and records the required one-time setup.
-
+**Current publication policy (v0.16.14):** Wiki publishing is **manual-only**. Main-branch pushes and commit messages do **not** trigger a Wiki update. The owner intentionally runs **Actions → Publish reviewed Kellie's Voice Wiki → Run workflow**, branch `main`, and enters **PUBLISH**. This safeguards public docs against accidental publication while PRs are reviewed. GitHub's Wiki tab is separate from repository `docs/wiki` files.
 
 1. Review the documentation PR in **dev** and merge the reviewed docs into
    **main** separately from experimental app code.
