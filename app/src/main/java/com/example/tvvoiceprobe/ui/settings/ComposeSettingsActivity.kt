@@ -8,6 +8,7 @@ import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -29,6 +30,7 @@ import androidx.compose.ui.unit.sp
 import com.example.tvvoiceprobe.CredentialStore
 import com.example.tvvoiceprobe.MicRoutePolicy
 import com.example.tvvoiceprobe.ComposeSettingsInterop
+import com.example.tvvoiceprobe.HaLayout
 import com.example.tvvoiceprobe.OverlayPreferences
 import com.example.tvvoiceprobe.ScreensaverWatchService
 import com.example.tvvoiceprobe.TvEventsService
@@ -53,6 +55,7 @@ class ComposeSettingsActivity : ComponentActivity() {
                     onSkinChange = { newSkin ->
                         SkinStore.setSelected(this, newSkin)
                         skin = newSkin
+                        ComposeSettingsInterop.queueLayoutUpdate(HaLayout.STYLE)
                     },
                     onBack = { finish() }
                 )
@@ -75,6 +78,7 @@ fun SettingsScreen(
 ) {
     val skin = LocalKellieSkin.current
     var selected by rememberSaveable { mutableStateOf("home") }
+    BackHandler(onBack = onBack)
 
     val categories = listOf(
         SettingsCategory("home", "Home Assistant", "Connection, pairing and conversation", "\uD83C\uDFE0"),
@@ -259,6 +263,7 @@ fun CategoryContent(
                     TextButton(onClick = {
                         prefs.setPosition(id)
                         currentPos = id
+                        ComposeSettingsInterop.queueLayoutUpdate(HaLayout.POSITION)
                         Toast.makeText(context, "Position saved: $label. Reopen overlay to apply.", Toast.LENGTH_SHORT).show()
                     }) {
                         Text(if (id == currentPos) "\u25cf $label" else label)
@@ -277,6 +282,7 @@ fun CategoryContent(
                     TextButton(onClick = {
                         prefs.setSize(id)
                         currentSize = id
+                        ComposeSettingsInterop.queueLayoutUpdate(HaLayout.SIZE)
                         Toast.makeText(context, "Size saved: $label. Reopen overlay to apply.", Toast.LENGTH_SHORT).show()
                     }) {
                         Text(if (id == currentSize) "\u25cf $label" else label)
@@ -292,6 +298,7 @@ fun CategoryContent(
                     TextButton(onClick = {
                         prefs.setHideSeconds(secs)
                         currentHide = secs
+                        ComposeSettingsInterop.queueLayoutUpdate(HaLayout.AUTO_HIDE)
                         Toast.makeText(context, "Auto-hide: ${prefs.hideLabel()}", Toast.LENGTH_SHORT).show()
                     }) {
                         Text(if (secs == currentHide || (secs == 0 && !prefs.autoHide())) "\u25cf $label" else label)
@@ -306,6 +313,7 @@ fun CategoryContent(
                     TextButton(onClick = {
                         prefs.setWeatherPosition(p)
                         weatherPos = p
+                        ComposeSettingsInterop.queueLayoutUpdate(HaLayout.WEATHER_POSITION)
                         Toast.makeText(context, "Weather position saved", Toast.LENGTH_SHORT).show()
                     }) { Text(com.example.tvvoiceprobe.WeatherLayout.positionLabel(p)) }
                 }
@@ -315,6 +323,7 @@ fun CategoryContent(
                     TextButton(onClick = {
                         prefs.setWeatherSize(sz)
                         weatherSize = sz
+                        ComposeSettingsInterop.queueLayoutUpdate(HaLayout.WEATHER_SIZE)
                         Toast.makeText(context, "Weather size saved", Toast.LENGTH_SHORT).show()
                     }) { Text(sz) }
                 }
@@ -324,10 +333,11 @@ fun CategoryContent(
                     TextButton(onClick = {
                         prefs.setWeatherSeconds(s)
                         weatherSecs = s
+                        ComposeSettingsInterop.queueLayoutUpdate(HaLayout.WEATHER_DURATION)
                         Toast.makeText(context, "Weather duration: ${s}s", Toast.LENGTH_SHORT).show()
                     }) { Text("${s}s") }
                 }
-                Text("Changes persist via OverlayPreferences. Full HA layout publish occurs from the main activity when HA manage is enabled. Reopen overlay to see visual changes.", color = skin.colors.textMuted, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
+                Text("Changes save locally. Returning to the voice screen attempts HA layout sync using the existing connection when HA-managed layout is enabled. Reopen the overlay to see visual changes.", color = skin.colors.textMuted, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
             }
             "voice" -> {
                 var wake by remember { mutableStateOf(prefs.wakeWord() && WakeWordService.isListening()) }
