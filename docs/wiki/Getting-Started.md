@@ -9,7 +9,7 @@ You need **both** parts of Kellie's Voice:
 1. The **signed Android TV / Google TV APK** (installed on the TV)
 2. The **matching Home Assistant custom integration** (installed via HACS)
 
-They are separate downloads. Installing one does not install the other. Always use matching versions (currently **v0.16.12**).
+They are separate downloads. Installing one does not install the other. Always use matching versions (currently **v0.16.14**).
 
 > **Julia is not required.** It is only the maintainer's personal assistant name. Use your own Home Assistant Assist pipeline.
 
@@ -31,7 +31,7 @@ They are separate downloads. Installing one does not install the other. Always u
 
 ## Step 2: Connect the TV to Home Assistant
 
-1. On the TV open **Kellie's Voice → SETTINGS → Home Assistant connection**.
+1. On the TV open **Kellie's Voice → SETTINGS → Home Assistant → Edit Home Assistant address & token**.
 2. Enter your Home Assistant base URL (e.g. `https://ha.example.net` or `http://homeassistant.local:8123`) and your long-lived access token.
 3. Choose **Save and connect**. You should see **Connected and authenticated**.
 4. Grant the microphone permission when prompted.
@@ -45,11 +45,11 @@ They are separate downloads. Installing one does not install the other. Always u
 
 See the dedicated page: [Home Assistant HACS Setup](Home-Assistant-HACS-Setup.md).
 
-After pairing, enable **Settings → Home Assistant layout** on the TV so Home Assistant can control overlay position, size, and style.
+After pairing, enable **Settings → Home Assistant → Manage TV layout from Home Assistant** on the TV so Home Assistant can control overlay position, size, and style.
 
 ## Step 4: Enable TV announcements & cameras (recommended)
 
-1. On the TV: **Settings → TV announcements & cameras → ON**.
+1. On the TV: **Settings → Alerts & cameras → TV notifications & camera popups → ON**.
 2. Grant **Display over other apps** permission when requested.
 3. Use the on-TV **Preview announcement** to test a floating popup.
 
@@ -66,3 +66,8 @@ This enables announcements, camera popups, timers, and the weather card. The ale
 ---
 
 [← All documentation](Home.md) · [Next: Home Assistant HACS Setup →](Home-Assistant-HACS-Setup.md)
+
+
+## Optional: Okay Nabu hands-free wake (v0.16.14)
+
+Open **SETTINGS → Voice & microphone → Wake word** and explicitly turn it ON. It is OFF by default. After seeing **LISTENING**, say **“Okay Nabu, turn on office lights”** or another command your Assist pipeline supports. The local TV microphone must be accessible at 16 kHz. Optional **Wake audio ducking** is available under the same menu (Off, 25%, 50%, 75%). The TV may require opening Kellie's Voice after a reboot before it resumes microphone listening. This does **not** take over Google's remote microphone button. [Wake-word guide and test video](https://github.com/chadakenn/Kellies-Voice/blob/main/docs/WAKE_WORD.md).
