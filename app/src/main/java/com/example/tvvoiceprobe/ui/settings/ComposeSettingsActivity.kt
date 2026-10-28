@@ -31,9 +31,11 @@ import com.example.tvvoiceprobe.MicRoutePolicy
 import com.example.tvvoiceprobe.ComposeSettingsInterop
 import com.example.tvvoiceprobe.HaLayout
 import com.example.tvvoiceprobe.LiveCameraMode
+import com.example.tvvoiceprobe.ScreensaverDashboard
+import com.example.tvvoiceprobe.ScreensaverLiveMode
+import com.example.tvvoiceprobe.ScreensaverPreviewActivity
 import com.example.tvvoiceprobe.TvAlertLayout
 import com.example.tvvoiceprobe.OverlayPreferences
-import com.example.tvvoiceprobe.ScreensaverWatchService
 import com.example.tvvoiceprobe.TvEventsService
 import com.example.tvvoiceprobe.WakeWordService
 import com.example.tvvoiceprobe.ui.theme.KellieSkins
@@ -578,21 +580,115 @@ fun CategoryContent(
                     onCheckedChange = { on ->
                         prefs.setScreensaverDashboard(on)
                         ss = on
-                        if (on) {
-                            ScreensaverWatchService.startIfEnabled(context)
-                        } else {
-                            try {
-                                context.startForegroundService(Intent(context, ScreensaverWatchService::class.java)
-                                    .setAction(ScreensaverWatchService.ACTION_STOP))
-                            } catch (e: Exception) { }
-                            ComposeSettingsInterop.screensaverSettingsChanged()
-                        }
+                        ComposeSettingsInterop.applyScreensaverSetting(context, HaLayout.SCREENSAVER_ENABLED)
                     }
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                Text("URL: ${prefs.screensaverUrl().ifEmpty { "(none)" }}", color = skin.colors.textMuted, fontSize = 13.sp)
-                Text("Live mode: ${prefs.screensaverLiveMode()}", color = skin.colors.textMuted, fontSize = 13.sp)
-                Text("Use legacy SETTINGS for URL, cameras, size, fit, and preview.", color = skin.colors.textMuted, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
+                Text("Frigate URL: ${if (prefs.screensaverUrl().isEmpty()) "(not configured)" else "(configured)"}",
+                    color = skin.colors.textMuted, fontSize = 13.sp)
+                Text("Camera entities: ${ScreensaverDashboard.cameraList(prefs.screensaverCameras()).size} selected",
+                    color = skin.colors.textMuted, fontSize = 13.sp)
+
+                Spacer(modifier = Modifier.height(12.dp))
+                Text("Dashboard size", color = skin.colors.accent, fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                var dashboardSize by remember { mutableStateOf(prefs.screensaverSize()) }
+                listOf("small", "medium", "large").forEach { value ->
+                    SettingsChoice(
+                        title = ScreensaverDashboard.sizeLabel(value),
+                        selected = dashboardSize == value,
+                        onSelect = {
+                            prefs.setScreensaverSize(value)
+                            dashboardSize = prefs.screensaverSize()
+                            ComposeSettingsInterop.applyScreensaverSetting(context, HaLayout.SCREENSAVER_SIZE)
+                        }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+                Text("Frigate page layout", color = skin.colors.accent, fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                var desktopPage by remember { mutableStateOf(prefs.screensaverDesktopPage()) }
+                SettingsChoice(
+                    title = "Desktop TV",
+                    selected = desktopPage,
+                    onSelect = {
+                        prefs.setScreensaverDesktopPage(true)
+                        desktopPage = true
+                        ComposeSettingsInterop.applyScreensaverSetting(context, HaLayout.SCREENSAVER_PAGE_LAYOUT)
+                    }
+                )
+                SettingsChoice(
+                    title = "Automatic (original mobile layout)",
+                    selected = !desktopPage,
+                    onSelect = {
+                        prefs.setScreensaverDesktopPage(false)
+                        desktopPage = false
+                        ComposeSettingsInterop.applyScreensaverSetting(context, HaLayout.SCREENSAVER_PAGE_LAYOUT)
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+                Text("Page fit", color = skin.colors.accent, fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                var dashboardFit by remember { mutableStateOf(prefs.screensaverFit()) }
+                listOf("Fit more cameras", "Balanced", "Larger text").forEach { value ->
+                    SettingsChoice(
+                        title = value,
+                        selected = dashboardFit == value,
+                        onSelect = {
+                            prefs.setScreensaverFit(value)
+                            dashboardFit = prefs.screensaverFit()
+                            ComposeSettingsInterop.applyScreensaverSetting(context, HaLayout.SCREENSAVER_FIT)
+                        }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+                Text("Camera grid", color = skin.colors.accent, fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                Text("Snapshots are most reliable. Multiple live streams can overload some TVs.",
+                    color = skin.colors.textMuted, fontSize = 12.sp)
+                var liveMode by remember { mutableStateOf(prefs.screensaverLiveMode()) }
+                listOf(
+                    ScreensaverLiveMode.SNAPSHOTS, ScreensaverLiveMode.ONE,
+                    ScreensaverLiveMode.TWO, ScreensaverLiveMode.FOUR
+                ).forEach { mode ->
+                    SettingsChoice(
+                        title = mode,
+                        selected = liveMode == mode,
+                        onSelect = {
+                            val applyMode = {
+                                prefs.setScreensaverLiveMode(mode)
+                                liveMode = prefs.screensaverLiveMode()
+                                ComposeSettingsInterop.applyScreensaverSetting(context, HaLayout.SCREENSAVER_LIVE)
+                            }
+                            if (mode == ScreensaverLiveMode.FOUR && liveMode != mode) {
+                                AlertDialog.Builder(context)
+                                    .setTitle("Use four simultaneous live streams?")
+                                    .setMessage("This mode is advanced and may overload a TV. " +
+                                        "Streams may fall back to snapshots when decoding fails.")
+                                    .setNegativeButton("Cancel", null)
+                                    .setPositiveButton("Enable four streams") { _, _ -> applyMode() }
+                                    .show()
+                            } else {
+                                applyMode()
+                            }
+                        }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+                SettingsChoice(
+                    title = "Preview screensaver",
+                    selected = false,
+                    onSelect = {
+                        try {
+                            context.startActivity(Intent(context, ScreensaverPreviewActivity::class.java))
+                        } catch (e: RuntimeException) {
+                            Toast.makeText(context, "Could not open screensaver preview", Toast.LENGTH_LONG).show()
+                        }
+                    }
+                )
+                Text("Configure the Frigate URL or camera entities in the original SETTINGS menu. " +
+                    "Layout changes refresh the active screensaver and attempt HA sync on return.",
+                    color = skin.colors.textMuted, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
             }
             "home" -> {
                 Text("HA layout management: ${if (prefs.haManage()) "ON" else "OFF"}", color = skin.colors.text)
