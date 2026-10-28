@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
@@ -45,12 +46,12 @@ class ComposeSettingsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            val skin = remember { SkinStore.getSelected(this) }
+            var skin by remember { mutableStateOf(SkinStore.getSelected(this)) }
             KellieTheme(skin = skin) {
                 SettingsScreen(
                     onSkinChange = { newSkin ->
                         SkinStore.setSelected(this, newSkin)
-                        recreate()
+                        skin = newSkin
                     },
                     onBack = { finish() }
                 )
@@ -72,7 +73,7 @@ fun SettingsScreen(
     onBack: () -> Unit
 ) {
     val skin = LocalKellieSkin.current
-    var selected by remember { mutableStateOf("home") }
+    var selected by rememberSaveable { mutableStateOf("home") }
 
     val categories = listOf(
         SettingsCategory("home", "Home Assistant", "Connection, pairing and conversation", "🏠"),
