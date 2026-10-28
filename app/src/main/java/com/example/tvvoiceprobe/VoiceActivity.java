@@ -151,6 +151,11 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         // Activity, but not from BOOT_COMPLETED. Restore a prior user opt-in
         // automatically when the app becomes visible after a reboot/update.
         if (!transparentShortcut) {
+            if (ComposeSettingsInterop.takeUpdateChannelChanged() && updater != null) {
+                // Channel changes must never leave a verified offer cached for
+                // a different release feed. Checking/installing remains explicit.
+                updater.clearOffer();
+            }
             // Compose never owns a Home Assistant connection. On return, reuse
             // this Activity's existing authenticated publisher, with the
             // original haManage() guard. No microphone or network is started.
