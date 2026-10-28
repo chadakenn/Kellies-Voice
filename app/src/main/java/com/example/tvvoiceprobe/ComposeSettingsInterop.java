@@ -37,4 +37,15 @@ public final class ComposeSettingsInterop {
     public static void screensaverSettingsChanged() {
         ScreensaverSignals.settingsChanged();
     }
+
+    /**
+     * Match existing HA-driven screensaver lifecycle behavior. This handles
+     * watcher start/stop and refresh without taking ownership of Assist/mic.
+     */
+    public static void applyScreensaverSetting(Context context, String setting) {
+        if (HaLayout.isScreensaver(setting)) {
+            ScreensaverSettingsEffects.apply(context, setting);
+            queueLayoutUpdate(setting);
+        }
+    }
 }
