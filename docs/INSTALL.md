@@ -1,19 +1,23 @@
 # Install Kellie's Voice: start here (new testers)
 
-**Current public release: v0.16.12 (October 26, 2026)** · **Documentation checked: October 26, 2026**
+**Release guide: v0.16.14 (October 28, 2026)** · Use only the [latest published signed release](https://github.com/chadakenn/Kellies-Voice/releases/latest), not an Actions debug artifact.
 
 Welcome! **Kellie's Voice** turns an Android TV / Google TV into a voice companion for **your own Home Assistant**. It has two separate parts:
 
 1. **Android TV app**: listens after you press TALK, speaks Home Assistant's answer through the TV, and displays floating voice, timer, weather, announcement, and camera windows.
 2. **Home Assistant custom integration (via HACS)**: registers the TV and exposes per-TV controls and actions such as `kellies_voice.announce`, `show_camera`, `show_forecast`, and `start_timer`.
 
-**Install both parts at v0.16.12** for the full supported feature set. Installing the APK does **not** install HACS, and HACS does **not** install the APK. No separate AI server is needed on your TV.
+**For v0.16.14, install both the signed Android TV APK and matching v0.16.14 HACS integration** once the public release is published. Installing the APK does **not** install HACS, and HACS does **not** install the APK. No separate AI server is needed on your TV.
 
-**Quick recovery if announcements, timers, or camera popups stop:** Open the Kellie's Voice TV app (not Android's system Settings). Choose **SETTINGS → TV alert status → Resume TV alerts**. **TV alert status** is farther down the SETTINGS list; **Resume TV alerts** is a button at the bottom of its status pop-up, *not* an item in the TV announcements menu. If the button is missing, turn **SETTINGS → TV announcements & cameras** ON, configure Home Assistant, and allow Android **Display over other apps**. A working voice/TALK connection does not guarantee the separate alert receiver is connected. [Detailed recovery steps](TROUBLESHOOTING.md#tv-camera-or-announcement-popups-missing-find-resume-tv-alerts).
+**Quick recovery if announcements, timers, or camera popups stop:** Open the Kellie's Voice TV app (not Android's system Settings). Choose **SETTINGS → Alerts & cameras → TV alert status → Resume TV alerts**. Resume is inside the status popup; if missing, first enable **TV announcements & cameras**, configure Home Assistant, and allow Android **Display over other apps**. A working voice/TALK connection does not guarantee the separate alert receiver is connected. [Detailed recovery steps](TROUBLESHOOTING.md#tv-camera-or-announcement-popups-missing-find-resume-tv-alerts).
 
 > **Julia/Julie is not required.** That is only the maintainer's chosen name for their own Home Assistant voice assistant, **not** a second app or the wake word. Use your existing Home Assistant Assist agent, with any name or no name. After activating TALK, just speak naturally. Ollama and wake-word listening are optional, not required.
 
-## What's new in v0.16.12
+## What's new in v0.16.14
+
+**Hands-free Okay Nabu** is now available under **SETTINGS → Voice & microphone → Wake word**. It is OFF by default. Speak a single-breath request such as "Okay Nabu, turn on office lights". Optional wake-only media ducking (Off/25%/50%/75%) lowers playback after the wake phrase, then restores it. The settings hub now groups Home Assistant, Voice & microphone, Overlay & appearance, Alerts & cameras, Screensaver, and Updates & account. This release also preserves explicit wake ON across TV reboots, but Android 14+ may require opening Kellie's Voice once before microphone listening resumes; it cannot automatically begin audio capture directly at boot. See [v0.16.14 notes](releases/v0.16.14.md) for hardware-test scope and privacy.
+
+## Previously introduced in v0.16.12
 
 **Signed Android build 50 and matching HACS 0.16.12:** The opt-in HA camera screensaver can show four muted live camera tiles. Set camera selectors through the TV's paired Home Assistant device page, leave **Frigate web URL blank** to use these HA cameras and enable **HA camera grid playback** for Live (1/2/4 cameras). The 2×2 grid starts with snapshots by default; live HLS and audio depend on compatible HA cameras and video decoders. Four live streams can tax smaller devices.
 
@@ -21,7 +25,7 @@ Welcome! **Kellie's Voice** turns an Android TV / Google TV into a voice compani
 
 ## Previous v0.16.11 improvements, still included
 
-**Important:** The Android APK and Home Assistant (HACS) integration must both be updated to **0.16.12**. Install the signed Android **versionCode 50** APK *over* the earlier stable, or dev.10 build (code 49), preserving saved logins. Updating HACS requires a Home Assistant restart to load the component.
+**Important for v0.16.14:** Update the Android signed **versionCode 54** APK and matching HACS **0.16.14** component. Install the APK over the previously signed release (v0.16.12 code 50 or experimental dev builds through code 53) without clearing saved logins. Updating HACS requires a Home Assistant restart to load the component.
 
 - **Follow-up listening:** On the TV, **Settings → Follow-up listening → On (8 seconds)**. This is OFF by default. A second question can be heard after Kellie's spoken answer without pressing TALK; an 8-second silence timeout and STOP both close the microphone. Tested on the maintainer's onn 4K Pro; other TVs and Back/Close/disconnect cases still need testing.
 - **Optional spoken alerts and speech gain:** Keep **Settings → TV announcements & cameras** on, and use **Settings → Announcement voice volume** for a separate 20–100% speech level (default 60%). An HA `kellies_voice.announce` with a short `speak` sentence reads it aloud; without `speak` the announcement stays silent. A real Home Assistant speech test at 40% was audibly quieter on onn 4K Pro.
@@ -45,7 +49,7 @@ See the [full release notes](releases/v0.16.12.md), [hardware checklist](TESTING
 
 ## Step 1: Install the signed Android TV APK
 
-1. Open the **[latest public Kellie's Voice release](https://github.com/chadakenn/Kellies-Voice/releases/latest)**. The current stable release is **v0.16.12**.
+1. Open the **[latest public Kellie's Voice release](https://github.com/chadakenn/Kellies-Voice/releases/latest)**. For the new wake/settings features choose **v0.16.14** once it is published; v0.16.12 is the preceding stable release.
 2. Download the release asset **`app-release.apk`**. Do **not** download a PR's `app-debug.apk` or GitHub Actions test artifact for a first installation.
 3. Transfer it to the TV. Options include a USB stick, a TV-compatible file manager, **Send Files to TV** on your phone and TV, or ADB (`adb install -r app-release.apk`).
 **Alternative: Downloader app.** On TVs where [Downloader](https://www.aftvnews.com/downloader/) is available, enter the official releases page URL `https://github.com/chadakenn/Kellies-Voice/releases/latest` in its browser, open the newest public release, and choose the asset named `app-release.apk`. GitHub redirects and TV browsers differ; if the APK does not download correctly, use **Send Files to TV**, USB, or the ADB option above. **There is no official Kellie's Voice Downloader short code** in this guide; do not rely on codes posted by unknown third parties.
@@ -61,14 +65,14 @@ See the [full release notes](releases/v0.16.12.md), [hardware checklist](TESTING
 
 ## Step 2: Connect Kellie's Voice to Home Assistant
 
-1. Open **Kellie's Voice → SETTINGS → Configure Home Assistant** on the TV.
+1. Open **Kellie's Voice → SETTINGS → Home Assistant → Configure Home Assistant** on the TV.
 2. Enter your Home Assistant base URL, including scheme and port if applicable (for example `https://ha.example.net` or `http://homeassistant.local:8123` if your TV can resolve it). Enter the **long-lived access token** you generated. Keep it private.
 3. Choose **Save and connect**. The TV should report **Connected and authenticated**.
 4. Grant the **microphone permission** when prompted, then select **TALK** using the TV remote's D-pad and OK.
 5. Wait for **LISTENING**, speak a simple question such as **“What time is it?”**, and select **STOP** if needed. Verify that your words appear on-screen, the Home Assistant answer appears, and audio plays through the TV speakers if TTS is configured.
 6. If connection or audio fails, open [Troubleshooting](TROUBLESHOOTING.md) and check the HA Assist pipeline, URL, TV sound, and on-screen error first.
 
-**Important:** The standard Google Assistant microphone button on the physical remote may still launch **Google**, not Kellie's Voice. On the tested onn 4K Pro, voice input uses the TV device's built-in microphone. A remote's Bluetooth mic is **not guaranteed accessible** to third-party apps. You do not need to say “Julia” to start a command, and a hands-free wake word is **not** part of v0.16.12.
+**Important:** The standard Google Assistant microphone button on the physical remote may still launch **Google**, not Kellie's Voice. On the tested onn 4K Pro, voice input uses the TV device's built-in microphone. A remote's Bluetooth mic is **not guaranteed accessible** to third-party apps. You do not need to say “Julia” to start a command. The optional **Okay Nabu** wake word starts hands-free listening in v0.16.14 once enabled; it does not take over Google Assistant's remote microphone button.
 
 **Tip:** The Google TV/Google Home phone remote can make URL and token entry easier; keyboard/clipboard behavior varies. There is no QR-code pairing flow yet.
 
@@ -78,9 +82,9 @@ See the [full release notes](releases/v0.16.12.md), [hardware checklist](TESTING
 2. In **Home Assistant → HACS → ⋮ → Custom repositories**, add:
    `https://github.com/chadakenn/Kellies-Voice`  
    Select category **Integration**. This is usually needed only once.
-3. Open [Kellie's Voice in HACS](https://my.home-assistant.io/redirect/hacs_repository/?owner=chadakenn&repository=Kellies-Voice&category=integration) and install/download the **v0.16.12** integration (not an older v0.6 or v0.16.0 copy).
+3. Open [Kellie's Voice in HACS](https://my.home-assistant.io/redirect/hacs_repository/?owner=chadakenn&repository=Kellies-Voice&category=integration) and install/download the **matching v0.16.14** integration once the corresponding stable release is published.
 4. **Restart Home Assistant** so the custom integration and services load.
-5. On your TV, enable **Kellie's Voice → Settings → Home Assistant layout**. Leave the TV online and connected while pairing.
+5. On your TV, enable **Kellie's Voice → Settings → Home Assistant → Home Assistant layout**. Leave the TV online and connected while pairing.
 6. In Home Assistant, open **Settings → Devices & services** and add the discovered **Kellie's Voice** device. If discovery doesn't find it (for example across VLANs), choose **Add integration → Kellie's Voice**, then enter the pairing ID from **TV → Settings → Home Assistant layout → Show this TV's pairing ID**.
 7. Open the newly added TV device in Home Assistant. Confirm its position, size, overlay theme/style, alert settings, and other controls appear. Changes can require the next TV connection or next popup to become visible.
 
