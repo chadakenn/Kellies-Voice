@@ -105,8 +105,8 @@ jobs:
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$apk"
           bash .github/scripts/verify-wake-apk.sh "$apk"
           badging="$("$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$apk")"
-          printf '%s\\n' "$badging" | grep -F "package: name='com.example.tvvoiceprobe.qa'"
-          if printf '%s\\n' "$badging" | grep -q 'application-debuggable'; then
+          printf '%s\n' "$badging" | grep -F "package: name='com.example.tvvoiceprobe.qa'"
+          if printf '%s\n' "$badging" | grep -q 'application-debuggable'; then
             echo "::error::QA APK must not be debuggable with the permanent release key"
             exit 1
           fi
