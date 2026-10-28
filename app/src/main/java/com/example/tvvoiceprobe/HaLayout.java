@@ -269,6 +269,9 @@ public final class HaLayout {
             case "Night Signal":
             case OverlayPreferences.SKIN_SIGNAL:
                 return OverlayPreferences.SKIN_SIGNAL;
+            case "Neon Obsidian":
+            case OverlayPreferences.SKIN_OBSIDIAN:
+                return OverlayPreferences.SKIN_OBSIDIAN;
             default:
                 return null;
         }
