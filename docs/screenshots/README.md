@@ -1,5 +1,7 @@
 # Real-device screenshot gallery 📸
 
+> **Updated October 28, 2026:** Public stable v0.16.14 has a **six-category Settings hub** and optional **Okay Nabu**. The older `onn-settings-menu.jpg` shows the previous long Settings list and is historical, **not** the new v0.16.14 UI. New unredacted captures must be reviewed for private details before embedding.
+
 Phone photos from an onn 4K Pro are in this folder; a small selection appears in the main README. The SVG previews and `night-signal.png` are still **design references**, not photos of the TV.
 
 | File | What it is |
@@ -9,23 +11,26 @@ Phone photos from an onn 4K Pro are in this folder; a small selection appears in
 | [onn-snapshot-popup.jpg](onn-snapshot-popup.jpg) | Still snapshot popup, "Snapshot Test After Reopening App." Not live video. |
 | [onn-live-doorbell.jpg](onn-live-doorbell.jpg) | Live doorbell card starting, muted, with the voice card still visible. One photo, not a motion recording. |
 | [onn-home-connected.jpg](onn-home-connected.jpg) | Main screen on the onn. Voice is connected and TV alerts show connected. The address is the normal `homeassistant.local` name, not a token. |
-| [onn-settings-menu.jpg](onn-settings-menu.jpg) | Settings list: connection, microphone, overlay, layout, TV alerts, and live-camera mode. |
+| [onn-settings-menu.jpg](onn-settings-menu.jpg) | **Historical screenshot:** old v0.16.12-or-earlier mixed Settings list, not the current six-category v0.16.14 hub. |
 | [onn-mic-routing.jpg](onn-mic-routing.jpg) | Microphone routing. Safe checks are on. This does not capture the Google remote microphone. |
 | [onn-tv-alert-status.jpg](onn-tv-alert-status.jpg) | TV alert status while Home Assistant is denying legacy event subscriptions. Resume TV alerts is the button inside this dialog. |
 | [onn-live-camera-grid.jpg](onn-live-camera-grid.jpg) | Owner-tested four muted live cameras (living room, doorbell, driveway, back) with Close; camera footage pixelated for privacy. Included in stable v0.16.12. |
 | [onn-frigate-dashboard.jpg](onn-frigate-dashboard.jpg) | The opt-in Frigate website over the TV, with Kellie's Voice Close button. Private camera footage and people in the event strip are obscured. |
 | [onn-frigate-screensaver-diagnostics.jpg](onn-frigate-screensaver-diagnostics.jpg) | Frigate screensaver diagnostics. In this photo the watcher is not running and no Android dream event has arrived. |
+| [wake-okay-nabu-office-lights.mp4](wake-okay-nabu-office-lights.mp4) | Real **development demo video** of Okay Nabu opening the overlay and an office-lights command. Not evidence of zero-touch reboot wake or universal TV compatibility; review video frames for private details before promoting it broadly. |
 
 ## Requested captures
 
 | Screenshot / photo | What it should show | Proposed file |
 | --- | --- | --- |
-| TV app home/settings | Real on-TV app showing name, connection status and settings, no secrets | Have [onn-home-connected.jpg](onn-home-connected.jpg) and [onn-settings-menu.jpg](onn-settings-menu.jpg) |
+| TV app home/settings | Real on-TV app showing name, connection status and settings, no secrets | Have [onn-home-connected.jpg](onn-home-connected.jpg); historical long-menu [onn-settings-menu.jpg](onn-settings-menu.jpg). **Current six-category Settings screenshot still wanted.** |
 | Voice overlay | Kellie's Voice overlay on Google TV with a harmless Assist request and reply | Have [onn-voice-time.jpg](onn-voice-time.jpg) and [onn-voice-doorbell.gif](onn-voice-doorbell.gif) |
 | Announcement popup | The opt-in on-screen text announcement above a TV app | Still wanted |
 | Frigate popup | A real camera **still snapshot** overlay | Have [onn-snapshot-popup.jpg](onn-snapshot-popup.jpg) |
 | HA device settings | HA device page with overlay position, size, style, auto-hide and auto-listen | `actual-ha-device-controls.png` |
 | Live camera | Live doorbell card on the onn. Moving playback was already verified; this file is one photo of the card opening | Have [onn-live-doorbell.jpg](onn-live-doorbell.jpg) |
+
+| Okay Nabu demo | Hands-free command after explicit wake opt-in, with no identifying home content | Have [wake-okay-nabu-office-lights.mp4](wake-okay-nabu-office-lights.mp4) (development capture); final signed-release/reboot demo still wanted |
 
 ## Easy way to capture and contribute
 
