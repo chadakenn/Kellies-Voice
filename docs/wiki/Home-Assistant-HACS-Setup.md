@@ -17,6 +17,8 @@ The Home Assistant side is a custom integration installed through HACS. It regis
 6. In Home Assistant go to **Settings → Devices & services**. Add the discovered Kellie's Voice device, **or** choose **Add Integration → Kellie's Voice** and enter the pairing ID shown on the TV under **Settings → Home Assistant layout → Show this TV's pairing ID**.
 
 **Important:** The pairing ID shown on the TV is what you use for targeting actions. It is **not** the Home Assistant device-registry ID.
+**Extra protection for manually entered IDs (next development version):** the confirmation page now asks you to enter the **last four characters from the pairing ID displayed on the TV**. A mismatched suffix cannot create the HA entry. This is a typo-check, not proof that Home Assistant is connected to the TV. The paired TV's receiver diagnostic must be checked separately after setup; old or disconnected TVs may remain offline.
+
 
 ## After pairing
 
