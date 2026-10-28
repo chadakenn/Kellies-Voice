@@ -549,8 +549,9 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
                                 : OverlayPreferences.SKIN_AURORA.equals(preferences.skin())
                                 ? (focused ? 0xff3D65B2 : 0xff172844)
                                 : (focused ? 0xffBB7958 : 0xff574039)));
-                button.setTextColor(obsidian && focused ? theme.screen
-                        : obsidian ? theme.text : 0xffffffff);
+                if (obsidian) {
+                    button.setTextColor(focused ? theme.screen : theme.text);
+                }
             }
         });
         if (signal) button.getOnFocusChangeListener().onFocusChange(button, false);
