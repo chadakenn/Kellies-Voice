@@ -6,9 +6,12 @@
 
 ## Voice conversation
 
+**New in v0.16.14:** The optional **Okay Nabu** local wake-word listener lives under **SETTINGS → Voice & microphone → Wake word** and is OFF by default. It can open the voice overlay without pressing TALK when Android exposes a suitable microphone. [See privacy behavior, reboot limitations and the owner-tested video](https://github.com/chadakenn/Kellies-Voice/blob/main/docs/WAKE_WORD.md).
+
+
 Activate **TALK** on the TV and speak a natural question. Kellie's Voice sends the audio to your configured Home Assistant Assist pipeline and displays (and optionally speaks) the answer in a floating overlay. You do **not** need to say "Julia".
 
-The Google Assistant button on the remote is not intercepted. The app checks for usable audio inputs, but microphone detection is still unreliable on some Philips TVs in v0.16.8 (see [issue #71](https://github.com/chadakenn/Kellies-Voice/issues/71)); they may incorrectly show Listening and then receive no recognized speech. A USB microphone may be required.
+The Google Assistant button on the remote is not intercepted. The app checks for usable audio inputs, but microphone detection is still unreliable on some Philips TVs (issue #71), including subsequent releases (see [issue #71](https://github.com/chadakenn/Kellies-Voice/issues/71)); they may incorrectly show Listening and then receive no recognized speech. A USB microphone may be required.
 
 ## Optional follow-up listening (v0.16.11)
 
