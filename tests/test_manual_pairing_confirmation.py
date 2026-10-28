@@ -100,6 +100,37 @@ class ManualConfirmationTests(unittest.IsolatedAsyncioTestCase):
         })
         self.assertEqual("create_entry", accepted["type"])
 
+    async def test_reported_valid_uuid_typo_is_blocked_by_actual_tv_suffix(self):
+        # Reporter #69 used a valid-looking UUID differing by one character
+        # near the end. Formats alone cannot distinguish two distinct TVs.
+        actual_on_tv = str(uuid.uuid4())
+        wrong_suffix = (
+            "0000" if actual_on_tv[-4:] != "0000" else "ffff"
+        )
+        mistyped = actual_on_tv[:-4] + wrong_suffix
+        self.assertEqual(4, uuid.UUID(mistyped).version)
+
+        flow = FakeFlow()
+        await flow.async_step_user({"device_id": mistyped, "name": "Second TV"})
+        rejected = await flow.async_step_manual_confirm({
+            "confirmation_suffix": actual_on_tv[-4:],
+        })
+        self.assertEqual("manual_confirm", rejected["step_id"])
+        self.assertEqual("pairing_suffix_mismatch",
+                         rejected["errors"]["confirmation_suffix"])
+        self.assertEqual([], flow.created)
+
+        # Returning to the first step allows the user to enter the real ID.
+        corrected = await flow.async_step_user({
+            "device_id": actual_on_tv, "name": "Second TV",
+        })
+        self.assertEqual("manual_confirm", corrected["step_id"])
+        accepted = await flow.async_step_manual_confirm({
+            "confirmation_suffix": actual_on_tv[-4:],
+        })
+        self.assertEqual("create_entry", accepted["type"])
+        self.assertEqual(actual_on_tv, accepted["data"]["device_id"])
+
     async def test_invalid_manual_id_does_not_advance(self):
         flow = FakeFlow()
         form = await flow.async_step_user({"device_id": "wrong-id", "name": "TV"})
