@@ -155,6 +155,10 @@ public final class UpdateManager {
         available = null;
         File apk = downloadedApk();
         if (apk.exists()) apk.delete();
+        File receipt = receiptFile();
+        if (receipt.exists()) receipt.delete();
+        File verificationPartial = new File(updateFolder(), "verified.partial");
+        if (verificationPartial.exists()) verificationPartial.delete();
         File partial = new File(updateFolder(), "update.partial");
         if (partial.exists()) partial.delete();
     }
@@ -181,6 +185,7 @@ public final class UpdateManager {
                 }
                 if (temp.exists()) temp.delete();
                 if (apk.exists()) apk.delete();
+                if (receiptFile().exists()) receiptFile().delete();
                 if (updateFolder().getUsableSpace() < release.size * 2) {
                     throw new IllegalStateException("Not enough free storage on Google TV.");
                 }
@@ -235,6 +240,15 @@ public final class UpdateManager {
                 if (!temp.renameTo(apk)) {
                     throw new IllegalStateException("Could not save the verified APK.");
                 }
+                // A later Install click, including after Activity recreation,
+                // must prove the cached bytes still match the checked release.
+                new VerifiedApkReceipt(release.code, release.name, release.sha256,
+                        release.size, release.channel).save(receiptFile());
+                if (epoch != offerEpoch || closed) {
+                    if (apk.exists()) apk.delete();
+                    if (receiptFile().exists()) receiptFile().delete();
+                    return;
+                }
                 post(() -> {
                     if (epoch != offerEpoch) {
                         if (apk.exists()) apk.delete();
@@ -244,6 +258,8 @@ public final class UpdateManager {
                 });
             } catch (Exception error) {
                 temp.delete();
+                if (apk.exists()) apk.delete();
+                if (receiptFile().exists()) receiptFile().delete();
                 if (epoch != offerEpoch) {
                     if (apk.exists()) apk.delete();
                     return;
@@ -262,19 +278,52 @@ public final class UpdateManager {
 
     public boolean downloadedExists() {
         File apk = downloadedApk();
-        return apk.isFile() && apk.length() > 4096L;
+        return apk.isFile() && apk.length() > 4096L && receiptFile().isFile();
     }
 
     public void install() {
-        if (closed) return;
+        if (closed || busy) return;
         if (!downloadedExists()) {
-            listener.onError("No downloaded APK found. Check and download again.");
+            listener.onError("No verified downloaded APK found. Check and download again.");
             return;
         }
+        busy = true;
+        final int epoch = offerEpoch;
+        // Rehash large APKs off the UI thread, then recheck package/signature
+        // and monotonic version immediately before asking Android to install.
+        background.execute(() -> {
+            File apk = downloadedApk();
+            try {
+                VerifiedApkReceipt receipt = VerifiedApkReceipt.read(receiptFile());
+                String channel = UpdateChannel.normalize(
+                        new OverlayPreferences(activity).updateChannel());
+                receipt.verifyFile(apk, channel);
+                verifyInstalledIdentity(apk, new Release(receipt.code, receipt.name, "",
+                        receipt.sha256, "", receipt.size, receipt.channel));
+                if (closed || epoch != offerEpoch) return;
+                post(() -> {
+                    if (epoch == offerEpoch) openVerifiedInstaller();
+                });
+            } catch (Exception error) {
+                // Fail closed: don't leave a stale or corrupted file behind.
+                if (apk.exists()) apk.delete();
+                if (receiptFile().exists()) receiptFile().delete();
+                if (closed || epoch != offerEpoch) return;
+                post(() -> listener.onError(
+                        "Cached update is no longer verified. Check and download again."));
+            } finally {
+                busy = false;
+            }
+        });
+    }
+
+    /** UI thread only, after private-cache receipt, SHA and APK revalidation. */
+    private void openVerifiedInstaller() {
+        if (closed) return;
         try {
             if (!activity.getPackageManager().canRequestPackageInstalls()) {
-                listener.onError("Allow Kellie's Voice to install unknown apps in Android settings, " +
-                        "then return and choose Install downloaded update again.");
+                listener.onError("Allow Kellie's Voice to install unknown apps in Android settings, "
+                        + "then return and choose Install downloaded update again.");
                 Intent settings = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
                         Uri.parse("package:" + activity.getPackageName()));
                 activity.startActivity(settings);
@@ -352,6 +401,7 @@ public final class UpdateManager {
 
     private File updateFolder() { return new File(activity.getCacheDir(), "updates"); }
     private File downloadedApk() { return new File(updateFolder(), "app-release.apk"); }
+    private File receiptFile() { return new File(updateFolder(), "app-release.verified"); }
     private void post(Runnable runnable) {
         if (!closed) ui.post(() -> {
             if (!closed) runnable.run();
