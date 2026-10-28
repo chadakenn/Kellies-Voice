@@ -921,15 +921,21 @@ fun CategoryContent(
                     color = skin.colors.textMuted, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
             }
             "home" -> {
-                val connection = remember {
-                    try { CredentialStore(context).load() } catch (e: Exception) { null }
+                // Remember only presentation-safe text, never decrypted
+                // CredentialStore.Connection (which also contains the HA token).
+                val loginLabel = remember {
+                    try {
+                        val saved = CredentialStore(context).load()
+                        val address = ComposeHomeStatus.addressSummary(saved?.url)
+                        ComposeHomeStatus.configuredLabel(saved != null) +
+                            if (address.isNotEmpty()) "  ·  $address" else ""
+                    } catch (e: Exception) {
+                        "Saved login unavailable; check original SETTINGS"
+                    }
                 }
-                val configured = connection != null
-                val address = ComposeHomeStatus.addressSummary(connection?.url)
                 Text("Home Assistant login", color = skin.colors.accent, fontSize = 18.sp, fontWeight = FontWeight.Medium)
                 Text(
-                    text = ComposeHomeStatus.configuredLabel(configured) +
-                        if (address.isNotEmpty()) "  ·  $address" else "",
+                    text = loginLabel,
                     color = skin.colors.text,
                     fontSize = 16.sp
                 )
