@@ -16,7 +16,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -260,14 +259,12 @@ fun CategoryContent(
                 )
                 var currentPos by remember { mutableStateOf(prefs.position()) }
                 positions.forEach { (id, label) ->
-                    TextButton(onClick = {
+                    SettingsChoice(title = label, selected = id == currentPos, onSelect = {
                         prefs.setPosition(id)
                         currentPos = id
                         ComposeSettingsInterop.queueLayoutUpdate(HaLayout.POSITION)
                         Toast.makeText(context, "Position saved: $label. Reopen overlay to apply.", Toast.LENGTH_SHORT).show()
-                    }) {
-                        Text(if (id == currentPos) "\u25cf $label" else label)
-                    }
+                    })
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -279,14 +276,12 @@ fun CategoryContent(
                 )
                 var currentSize by remember { mutableStateOf(prefs.size()) }
                 sizes.forEach { (id, label) ->
-                    TextButton(onClick = {
+                    SettingsChoice(title = label, selected = id == currentSize, onSelect = {
                         prefs.setSize(id)
                         currentSize = id
                         ComposeSettingsInterop.queueLayoutUpdate(HaLayout.SIZE)
                         Toast.makeText(context, "Size saved: $label. Reopen overlay to apply.", Toast.LENGTH_SHORT).show()
-                    }) {
-                        Text(if (id == currentSize) "\u25cf $label" else label)
-                    }
+                    })
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -295,14 +290,16 @@ fun CategoryContent(
                 var currentHide by remember { mutableStateOf(prefs.hideSeconds()) }
                 hideOptions.forEach { secs ->
                     val label = if (secs == 0) "Never (manual close)" else "$secs seconds${if (secs == 7) " (original)" else ""}"
-                    TextButton(onClick = {
-                        prefs.setHideSeconds(secs)
-                        currentHide = secs
-                        ComposeSettingsInterop.queueLayoutUpdate(HaLayout.AUTO_HIDE)
-                        Toast.makeText(context, "Auto-hide: ${prefs.hideLabel()}", Toast.LENGTH_SHORT).show()
-                    }) {
-                        Text(if (secs == currentHide || (secs == 0 && !prefs.autoHide())) "\u25cf $label" else label)
-                    }
+                    SettingsChoice(
+                        title = label,
+                        selected = secs == currentHide || (secs == 0 && !prefs.autoHide()),
+                        onSelect = {
+                            prefs.setHideSeconds(secs)
+                            currentHide = secs
+                            ComposeSettingsInterop.queueLayoutUpdate(HaLayout.AUTO_HIDE)
+                            Toast.makeText(context, "Auto-hide: ${prefs.hideLabel()}", Toast.LENGTH_SHORT).show()
+                        }
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -310,32 +307,36 @@ fun CategoryContent(
                 var weatherPos by remember { mutableStateOf(prefs.weatherPosition()) }
                 Text("Position: ${com.example.tvvoiceprobe.WeatherLayout.positionLabel(weatherPos)}", color = skin.colors.text, fontSize = 14.sp)
                 listOf("bottom_center", "top_left", "top_right", "bottom_left", "bottom_right").forEach { p ->
-                    TextButton(onClick = {
-                        prefs.setWeatherPosition(p)
-                        weatherPos = p
-                        ComposeSettingsInterop.queueLayoutUpdate(HaLayout.WEATHER_POSITION)
-                        Toast.makeText(context, "Weather position saved", Toast.LENGTH_SHORT).show()
-                    }) { Text(com.example.tvvoiceprobe.WeatherLayout.positionLabel(p)) }
+                    SettingsChoice(
+                        title = com.example.tvvoiceprobe.WeatherLayout.positionLabel(p),
+                        selected = p == weatherPos,
+                        onSelect = {
+                            prefs.setWeatherPosition(p)
+                            weatherPos = p
+                            ComposeSettingsInterop.queueLayoutUpdate(HaLayout.WEATHER_POSITION)
+                            Toast.makeText(context, "Weather position saved", Toast.LENGTH_SHORT).show()
+                        }
+                    )
                 }
                 var weatherSize by remember { mutableStateOf(prefs.weatherSize()) }
                 Text("Size: $weatherSize", color = skin.colors.text, fontSize = 14.sp)
                 listOf("small", "medium", "large").forEach { sz ->
-                    TextButton(onClick = {
+                    SettingsChoice(title = sz.replaceFirstChar { it.uppercase() }, selected = sz == weatherSize, onSelect = {
                         prefs.setWeatherSize(sz)
                         weatherSize = sz
                         ComposeSettingsInterop.queueLayoutUpdate(HaLayout.WEATHER_SIZE)
                         Toast.makeText(context, "Weather size saved", Toast.LENGTH_SHORT).show()
-                    }) { Text(sz) }
+                    })
                 }
                 var weatherSecs by remember { mutableStateOf(prefs.weatherSeconds()) }
                 Text("Duration: ${weatherSecs}s", color = skin.colors.text, fontSize = 14.sp)
                 listOf(8, 20, 30, 45).forEach { s ->
-                    TextButton(onClick = {
+                    SettingsChoice(title = "${s}s", selected = s == weatherSecs, onSelect = {
                         prefs.setWeatherSeconds(s)
                         weatherSecs = s
                         ComposeSettingsInterop.queueLayoutUpdate(HaLayout.WEATHER_DURATION)
                         Toast.makeText(context, "Weather duration: ${s}s", Toast.LENGTH_SHORT).show()
-                    }) { Text("${s}s") }
+                    })
                 }
                 Text("Changes save locally. Returning to the voice screen attempts HA layout sync using the existing connection when HA-managed layout is enabled. Reopen the overlay to see visual changes.", color = skin.colors.textMuted, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
             }
