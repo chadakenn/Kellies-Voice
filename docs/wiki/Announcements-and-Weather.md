@@ -10,7 +10,7 @@ Home Assistant can send quiet on-screen text popups with `kellies_voice.announce
 
 Example and placement notes are in the [YAML Cookbook](YAML-Cookbook.md#announcements).
 
-Enable **Settings → TV announcements & cameras** on the TV and ensure the alert receiver is connected.
+Enable **SETTINGS → Alerts & cameras → TV notifications & camera popups** on the TV and ensure the alert receiver is connected.
 
 ## Seven-day weather card
 
