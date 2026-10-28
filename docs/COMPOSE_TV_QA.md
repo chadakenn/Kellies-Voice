@@ -21,7 +21,8 @@
 - [ ] Verify a valid camera entity list can be edited and saved with TV keyboard, then survives a screen re-open. Invalid lists must reject, and Back/Cancel must not save. Do not change a production Frigate URL for validation.
 - [ ] Test TV announcement popup positioning/size, local preview and spoken announcement volume, if spoken alerts are intentionally enabled. Media/audio focus must remain unchanged.
 - [ ] Verify weather preview settings and forecast popup style in every supported skin.
-- [ ] Test HA layout sync: with the **matching HACS integration**, change a non-sensitive setting from Compose, return to the main screen, and observe the correct HA entity. Deferred best-effort writes may be dropped while offline.
+- [x] **Basic HA layout sync (physical onn 4K Pro):** Owner changed Compose **Overlay size Small → Medium** and returned to the app main screen. Read-only HA inspection immediately confirmed the paired debug TV's `select.kellie_s_voice_tv_new_overlay_size` = `Medium`, with generation **2 → 3**, while alert receiver stayed connected. This validates the authenticated deferred publish path for this single online setting, **not** offline retry or all controls.
+- [ ] Test matching HACS fifth theme option (Neon Obsidian), other layout controls, disconnect/offline behavior and retry guarantees; installed HACS still has only four style choices.
 - [ ] Confirm each settings category and Android TV remote Back/OK/focus works with both columns scrolled, especially text editors with on-screen keyboard.
 - [ ] Restart the debug app and TV; ensure skin, screensaver, HA login, receiver permissions and wake-word opt-in behavior persist, with no spontaneous mic activation.
 - [ ] Regression-test stable signed app independently. Never overwrite it with a debug APK.
