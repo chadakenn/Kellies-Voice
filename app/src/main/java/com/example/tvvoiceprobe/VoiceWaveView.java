@@ -23,6 +23,7 @@ public final class VoiceWaveView extends View {
     public static final int LOOK_COPPER = 0;
     public static final int LOOK_SIGNAL = 1;
     public static final int LOOK_AURORA = 2;
+    public static final int LOOK_OBSIDIAN = 3;
 
     private final Paint brush = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint baseline = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -57,8 +58,11 @@ public final class VoiceWaveView extends View {
     }
 
     public void setLook(int next) {
-        look = next == LOOK_SIGNAL || next == LOOK_AURORA ? next : LOOK_COPPER;
-        baseline.setColor(look == LOOK_AURORA ? 0x337DAAFF : look == LOOK_SIGNAL ? 0x227B5843 : 0x44DDA984);
+        look = next == LOOK_SIGNAL || next == LOOK_AURORA || next == LOOK_OBSIDIAN
+                ? next : LOOK_COPPER;
+        baseline.setColor(look == LOOK_OBSIDIAN ? 0x448B5CFF
+                : look == LOOK_AURORA ? 0x337DAAFF
+                : look == LOOK_SIGNAL ? 0x227B5843 : 0x44DDA984);
         invalidate();
     }
 
@@ -106,6 +110,8 @@ public final class VoiceWaveView extends View {
                 : mode == CONNECTING ? 0.30f : 0.21f;
         int[] colors = look == LOOK_AURORA
                 ? new int[] {0xffB9DFFF, 0xff6D9EFF, 0xffD4C3FF, 0xff9D73FF}
+                : look == LOOK_OBSIDIAN
+                ? new int[] {0xff00E5FF, 0xff8B5CFF, 0xff7FF6FF, 0xff4F37A8}
                 : new int[] {0xffffc39f, 0xffd28a64, 0xfff5d6b7, 0xff9d563e};
         for (int layer = 0; layer < colors.length; layer++) {
             Path path = new Path();
