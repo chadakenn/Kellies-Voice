@@ -20,7 +20,6 @@ public class SkinStoreTest {
         assertEquals(OverlayPreferences.SKIN_GLASS,
                 com.example.tvvoiceprobe.ui.theme.KellieSkins.INSTANCE.byId("unknown").getId());
     }
-}
 
     @Test
     public void skinIdsMatchValidatedConstants() {
@@ -30,3 +29,4 @@ public class SkinStoreTest {
         assertEquals("aurora", com.example.tvvoiceprobe.ui.theme.KellieSkins.INSTANCE.getAURORA().getId());
         assertEquals("signal", com.example.tvvoiceprobe.ui.theme.KellieSkins.INSTANCE.getNIGHT().getId());
     }
+}
