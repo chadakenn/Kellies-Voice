@@ -6,13 +6,13 @@
 
 Kellie's Voice is a native Android TV / Google TV app with a companion **Home Assistant custom integration**. Talk to your Home Assistant Assist agent, see useful answers in a floating overlay, receive quiet smart-home announcements (optional spoken with audio ducking), and pop up security-camera views **over what you're already watching** when Android allows it.
 
-**For everyday use, install the [latest signed stable release](https://github.com/chadakenn/Kellies-Voice/releases/latest).** Testers may opt into beta updates **separately in HACS and on their TV**; both default to stable. Routine development builds stay as Actions artifacts, not public Releases. [Learn how beta testing works](docs/BETA_TESTING.md).
+**Current public release: [v0.16.14](https://github.com/chadakenn/Kellies-Voice/releases/tag/v0.16.14)** (signed Android APK + matching HACS 0.16.14). For everyday use, install the [latest signed stable release](https://github.com/chadakenn/Kellies-Voice/releases/latest). Testers may opt into beta updates **separately in HACS and on their TV**; both default to stable. Routine development builds stay as Actions artifacts, not public Releases. [Learn how beta testing works](docs/BETA_TESTING.md).
 
 No replacement launcher, always-open browser tab, or separate AI server on the TV. Your existing Home Assistant setup does the thinking; Kellie's Voice handles the microphone, on-screen experience, and TV audio.
 
 [**Get the Android TV app**](https://github.com/chadakenn/Kellies-Voice/releases/latest) · [**Install the HACS integration**](https://my.home-assistant.io/redirect/hacs_repository/?owner=chadakenn&repository=Kellies-Voice&category=integration) · [**Stable vs. beta testing**](docs/BETA_TESTING.md) · [**Setup guide**](docs/INSTALL.md) · [**Report a problem**](https://github.com/chadakenn/Kellies-Voice/issues) · [**Documentation & guides**](docs/wiki/Home.md)
 
-> **Camera/announcement popups not arriving after standby or a Home Assistant restart?** On the TV, **open the Kellie's Voice app → SETTINGS → TV alert status → Resume TV alerts** (the *button inside the status pop-up*). You may need to scroll down in SETTINGS to find **TV alert status**. First enable **SETTINGS → TV announcements & cameras**; the Resume button appears only with that setting ON, a configured Home Assistant connection, and Android's **Display over other apps** permission. This restores the *alert receiver*, which is separate from **Connect / reconnect** for voice. See [TV-alert recovery troubleshooting](docs/TROUBLESHOOTING.md#tv-camera-or-announcement-popups-missing-find-resume-tv-alerts).
+> **Camera/announcement popups not arriving after standby or a Home Assistant restart?** On the TV, **open Kellie's Voice → SETTINGS → Alerts & cameras → TV alert status → Resume TV alerts** (the *button inside the status pop-up*). Select the **Alerts & cameras** category first. First enable **SETTINGS → Alerts & cameras → TV notifications & camera popups**; the Resume button appears only with that setting ON, a configured Home Assistant connection, and Android's **Display over other apps** permission. This restores the *alert receiver*, which is separate from **Connect / reconnect** for voice. See [TV-alert recovery troubleshooting](docs/TROUBLESHOOTING.md#tv-camera-or-announcement-popups-missing-find-resume-tv-alerts).
 
 **New to Kellie's Voice?** The [documentation home](docs/wiki/Home.md) has a guided first-install path, grouped feature guides, a [copy-and-paste YAML Cookbook](docs/wiki/YAML-Cookbook.md), and [step-by-step TV alert recovery](docs/wiki/Troubleshooting.md#resume-tv-alerts-exact-steps). These repository links work without a separately published GitHub Wiki. The [Wiki publishing guide](docs/WIKI_PUBLISHING.md) explains the owner-approved sync to the Wiki tab.
 
@@ -24,7 +24,7 @@ No replacement launcher, always-open browser tab, or separate AI server on the T
 
 **You do not need to say “Julia” to use Kellie's Voice.** Open the voice overlay and activate **TALK** or your configured shortcut, then speak naturally: “What's the weather this week?”, “Set a five-minute pizza timer,” or “Close the camera on the TV.” Specific actions still depend on your Home Assistant scripts, exposed entities, and voice pipeline configuration.
 
-A **wake word** is a separate, *optional* way to start listening hands-free. It isn't automatically set to “Julia,” and the installed app does not require one. Optional wake-word support is under development and must be enabled deliberately when available. In these guides, references to *Julia* describe the maintainer's own test setup, not a setup step for everyone.
+A **wake word** is a separate, *optional* way to start listening hands-free. It isn't automatically set to “Julia,” and the installed app does not require one. **v0.16.14 includes opt-in Okay Nabu** under **SETTINGS → Voice & microphone → Wake word**; it is OFF by default and has privacy/Android reboot restrictions. In these guides, references to *Julia* describe the maintainer's own test setup, not a setup step for everyone.
 
 ## Why would I use this?
 
@@ -43,7 +43,7 @@ Imagine you're watching YouTube and want to turn on the garage lights. Instead o
 
 ## See it in action 📸
 
-The banner at the top is promotional artwork, **not a screenshot**. These are phone photos of Kellie's Voice on a real onn 4K Pro running Google TV. They are not mockups. The camera views are this home's own doorbell and yard.
+The banner at the top is promotional artwork, **not a screenshot**. These are phone photos of Kellie's Voice on a real onn 4K Pro running Google TV. They are not mockups. Camera views are real footage from the maintainer's system; published examples should be privacy-redacted, and testers should never post unblurred private home footage.
 
 ### Voice overlay
 
@@ -66,6 +66,12 @@ An opt-in **still snapshot** popup, titled "Snapshot Test After Reopening App," 
 ![Live doorbell card starting over the voice overlay on Google TV](docs/screenshots/onn-live-doorbell.jpg)
 
 The muted live doorbell card opening on top of the voice overlay. The voice card still says the doorbell camera is live. This photo is one moment from that test, not a recording of the motion. Moving doorbell and driveway video was already checked on this TV with Android v0.16.1.
+
+### More real-device media
+
+[Privacy-redacted four-camera live screensaver](docs/screenshots/onn-live-camera-grid.jpg) · [Frigate dashboard overlay](docs/screenshots/onn-frigate-dashboard.jpg) · [Okay Nabu wake-command demonstration (MP4)](docs/screenshots/wake-okay-nabu-office-lights.mp4).
+
+**Media accuracy:** the old [onn-settings-menu.jpg](docs/screenshots/onn-settings-menu.jpg) is from the previous mixed Settings list, not the six-category v0.16.14 menu. The wake video demonstrates a development build, not zero-touch wake from reboot. Camera photos already published in the gallery are described as privacy-obscured; new footage needs a separate privacy review before publication.
 
 The older [illustrative concept previews](docs/screenshots/conversation-preview.svg) are still in the repo as design references only. See [docs/screenshots](docs/screenshots/README.md).
 
@@ -239,7 +245,7 @@ On the device page, **Forecast source** is the weather entity used when a script
 
 ## Okay Nabu wake word (v0.16.14)
 
-Kellie's Voice can listen on the TV for **Okay Nabu**, the same microWakeWord model the Home Assistant Android app uses. It is **off** until you turn it on at **Settings → Wake word**. The row then reads OFF, LISTENING, or STOPPED. A reboot cannot directly start microphone capture on newer Android versions; reopening Kellie's Voice can resume an explicitly remembered ON choice. While it is LISTENING, the microphone stays open and Android's privacy indicator stays on. Audio from before the phrase is not sent. After the phrase, the same recorder keeps the question until Assist takes it, at most eight seconds, and that audio is sent with the rest of the question. A short beep means the overlay microphone is recording. Hey Google is separate and can still take the microphone.
+Kellie's Voice can listen on the TV for **Okay Nabu**, the same microWakeWord model the Home Assistant Android app uses. It is **off** until you turn it on at **SETTINGS → Voice & microphone → Wake word**. The row then reads OFF, LISTENING, or STOPPED. A reboot cannot directly start microphone capture on newer Android versions; reopening Kellie's Voice can resume an explicitly remembered ON choice. While it is LISTENING, the microphone stays open and Android's privacy indicator stays on. Audio from before the phrase is not sent. After the phrase, the same recorder keeps the question until Assist takes it, at most eight seconds, and that audio is sent with the rest of the question. A short beep means the overlay microphone is recording. Hey Google is separate and can still take the microphone.
 
 Turn it off in that same menu. The **ON preference now survives a reboot/update** after you explicitly enable it in the revised wake settings; on Android 14+ the boot receiver cannot open the microphone, so Kellie's Voice posts a resume reminder where allowed and **automatically starts listening when you open the app**. An old ON choice from before this behavior change requires a one-time re-enable to approve persistent restart. Explicit OFF, Disable microphone capture, and Forget connection continue to disarm it. The listener needs a microphone that can record 16 kHz. **The owner successfully tested a one-breath "Okay Nabu, turn on office lights" command on the onn 4K Pro** in an isolated debug build; broader reliability/privacy testing is still pending. Recognition with TV audio improved after moving the onn box away from the television speakers.
 
@@ -253,13 +259,17 @@ of recording unexpectedly later. [QA checklist](docs/TESTING.md). This historica
 
 ## Project status and contributing
 
-### Previous stable release: v0.16.12 (October 26, 2026)
+### Current stable release: v0.16.14 (October 28, 2026)
+
+**Signed Android TV APK build 54 and matching HACS integration v0.16.14 are public.** The six-category Settings hub and opt-in Okay Nabu local wake-word listener are included. Optional wake audio ducking takes effect **after** the detector fires. Reboot auto-resume requires a foreground app launch on supported newer Android versions; it is not zero-touch from boot. [Read release notes](docs/releases/v0.16.14.md) and [installation instructions](docs/INSTALL.md).
+
+### Previously released: v0.16.12 (October 26, 2026)
 
 **Signed Android TV APK v0.16.12 (build 50) and matching HACS integration v0.16.12 are publicly available.** Highlights include the opt-in Frigate/HA screensaver, a four-camera grid with **Snapshots / Live 1 / Live 2 / Live 4** modes, selected full-screen camera audio when a stream provides an audio track, D-pad navigation, reboot recovery, and HA-controlled camera choices. These live/screen-saver features were tested on the maintainer's onn Google TV but are not guaranteed on all Android TV models. [Read the full v0.16.12 release notes](https://github.com/chadakenn/Kellies-Voice/releases/tag/v0.16.12). Existing features include voice Assist, named timers with the documented HA scripts, forecast popups, text and **opt-in spoken announcements**, and temporary live camera popups. A dedicated **TV alert receiver connected** HA diagnostic reports the authenticated receiver socket, **not** proof any particular popup appeared.
 
-**Experimental native TV timers (development only):** a separate, opt-in Home Assistant timer bridge is under review for the next batched test build. It remains OFF by default, cannot force Ollama or another LLM to choose Home Assistant's native timer intents, and still needs physical TV testing. See [Native Assist timer bridge](docs/TIMER_NATIVE_BRIDGE.md) or continue using the existing per-TV named timer script route in [Voice timers](docs/VOICE_TIMERS.md).
+**Optional native TV timers (released, not hardware-accepted):** an opt-in Home Assistant timer bridge is included in later stable versions. It remains OFF by default, cannot force Ollama or another LLM to choose Home Assistant's native timer intents, and still needs physical TV testing. See [Native Assist timer bridge](docs/TIMER_NATIVE_BRIDGE.md) or continue using the existing per-TV named timer script route in [Voice timers](docs/VOICE_TIMERS.md).
 
-**Optional follow-up listening:** Configure it on the TV under **Settings → Follow-up listening**. It is an explicit microphone-related opt-in, separate from popups and spoken announcements. Check the installed version and the [testing guide](docs/TESTING.md) for supported behavior and constraints.
+**Optional follow-up listening:** Configure it on the TV under **SETTINGS → Voice & microphone → Follow-up listening**. It is an explicit microphone-related opt-in, separate from popups and spoken announcements. Check the installed version and the [testing guide](docs/TESTING.md) for supported behavior and constraints.
 
 **Known limitations:** Microphone access is hardware-dependent (#71), Fire TV testing is incomplete (#41), wrong manual pairing IDs need better validation (#69), and native timer phrasing needs an HA routing rule (#57). The previous stable v0.16.12 does not include hands-free wake. **v0.16.14** introduces opt-in Okay Nabu and the categorized settings menu. Google remote microphone interception is not implemented. Some optional modes, including multiple simultaneous software-decoded live cameras, can stress less powerful TVs. Test on your specific device.
 
