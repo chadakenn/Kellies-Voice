@@ -1,8 +1,8 @@
 # Stable releases and opt-in beta testing
 
-**Public stable: [the latest signed release](https://github.com/chadakenn/Kellies-Voice/releases/latest).** v0.16.14 (Android build 54) is the next stable release with Okay Nabu and the categorized TV settings. v0.16.12 (build 50) was the preceding stable release. If you just want to use Kellie's Voice, stay on stable. You do **not** need to enable betas to get stable updates.
+**Public stable: [the latest signed release](https://github.com/chadakenn/Kellies-Voice/releases/latest).** v0.16.14 (Android build 54) is the current stable release with Okay Nabu and the categorized TV settings. v0.16.12 (build 50) was the preceding stable release. If you just want to use Kellie's Voice, stay on stable. You do **not** need to enable betas to get stable updates.
 
-**Previous beta:** v0.16.13-dev.1 (Android build 53) was an opt-in prerelease between stable v0.16.12 and the upcoming stable v0.16.14. Choose stable v0.16.14 when available. Historical v0.16.12-dev.N versions are for manual recovery/testing, not the newest beta channel.
+**Previous beta:** v0.16.13-dev.1 (Android build 53) was an opt-in prerelease between stable v0.16.12 and the now-published stable v0.16.14. Choose stable v0.16.14 when available. Historical v0.16.12-dev.N versions are for manual recovery/testing, not the newest beta channel.
 
 ## Join the beta (optional)
 
@@ -17,7 +17,7 @@ Only testers who explicitly choose a development release should receive one. Bet
 
 **TV app (separate download and preference):**
 
-1. Stable is the default app update channel. Open **Kellie's Voice → SETTINGS → Check for app updates** and stay on **Stable** for normal use.
+1. Stable is the default app update channel. Open **Kellie's Voice → SETTINGS → Updates & account → Update channel** and stay on **Stable** for normal use.
 2. Testers can explicitly select **Development (opt-in)** before **Check**. The TV requests a published, signed prerelease; it does **not** install one automatically. Android asks you to approve its package install.
 3. Install the **same-version signed APK** as the HACS integration wherever a feature requires matching Android and HA changes. HACS cannot install the TV APK, and the TV updater cannot install a HACS integration.
 4. Return the update channel to **Stable** when testing ends. **Warning:** Android does not install an APK with a *lower* versionCode over a higher build. Public v0.16.12 is code **50**, older dev.11 is **51**, v0.16.13-dev.1 is **53**, and v0.16.14 is **54**. Do **not** install an older lower-code APK over a newer one. v0.16.14 supports upgrading over build 53 without clearing app data.
