@@ -87,6 +87,45 @@ jobs:
           path: app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
 
+      # Manual, non-publishing builds also produce the persistent QA app.
+      # The workflow already restores the trusted signing keystore above.
+      # Never use a disposable PR debug certificate for tester updates.
+      - name: Build signed separately installable QA APK
+        if: github.event_name == 'workflow_dispatch' && inputs.publish_release != true
+        env:
+          TV_SIGNING_PASSWORD: ${{ secrets.TV_SIGNING_PASSWORD }}
+        run: ./gradlew --no-daemon :app:assembleQa
+
+      - name: Verify QA package, signature and native wake assets
+        if: github.event_name == 'workflow_dispatch' && inputs.publish_release != true
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk=app/build/outputs/apk/qa/app-qa.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$apk"
+          bash .github/scripts/verify-wake-apk.sh "$apk"
+          badging="$("$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$apk")"
+          grep -F "package: name='com.example.tvvoiceprobe.qa'" <<< "$badging"
+          if grep -q 'application-debuggable' <<< "$badging"; then
+            echo '::error::QA package must not be debuggable'
+            exit 1
+          fi
+          qa_cert="$("$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$apk" | grep 'Signer #1 certificate SHA-256 digest:')"
+          release_cert="$("$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs app/build/outputs/apk/release/app-release.apk | grep 'Signer #1 certificate SHA-256 digest:')"
+          if [[ "$qa_cert" != "$release_cert" ]]; then
+            echo '::error::QA must retain the expected permanent signing identity'
+            exit 1
+          fi
+
+      - name: Upload persistently signed QA APK
+        if: github.event_name == 'workflow_dispatch' && inputs.publish_release != true
+        uses: actions/upload-artifact@v4
+        with:
+          name: kellies-voice-qa-signed
+          path: app/build/outputs/apk/qa/app-qa.apk
+          if-no-files-found: error
+          retention-days: 14
+
   publish-release:
     # Publishing requires a deliberate manual workflow-dispatch approval.
     # Never infer authorization from a commit message on main.
