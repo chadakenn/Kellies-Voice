@@ -9,6 +9,7 @@
 
 **Features**
 - [🗣️ Voice & Timers](Voice-and-Timers.md)
+- [🎙️ Okay Nabu & Wake Privacy](https://github.com/chadakenn/Kellies-Voice/blob/main/docs/WAKE_WORD.md)
 - [📷 Cameras & Frigate](Cameras-and-Frigate.md)
 - [📣 Announcements & Weather](Announcements-and-Weather.md)
 - [🧩 YAML Cookbook](YAML-Cookbook.md)
@@ -25,4 +26,4 @@
 - [Signed APK / Releases](https://github.com/chadakenn/Kellies-Voice/releases/latest)
 - [Home Assistant HACS](https://my.home-assistant.io/redirect/hacs_repository/?owner=chadakenn&repository=Kellies-Voice&category=integration)
 
-<sub>Public guide: v0.16.11 · Experimental changes stay in dev.</sub>
+<sub>Public guide: v0.16.14 · Okay Nabu is opt-in and OFF by default.</sub>

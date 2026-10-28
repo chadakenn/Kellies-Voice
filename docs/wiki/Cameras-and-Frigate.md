@@ -8,17 +8,17 @@ Kellie's Voice can show camera snapshots, opt-in HLS camera overlays, and an opt
 
 ## What it looks like on the TV
 
-These photos are from the owner's onn 4K Pro in October 2026. The four-camera grid and the Frigate website are included in the **stable v0.16.12** release, opt-in and subject to camera/decoder compatibility. The home camera feeds and event strip are deliberately obscured for privacy.
+These photos are from the owner's onn 4K Pro in October 2026. The four-camera grid and the Frigate website are included in the **stable v0.16.14** release (introduced in v0.16.12), opt-in and subject to camera/decoder compatibility. The home camera feeds and event strip are deliberately obscured for privacy.
 
-![Four muted live cameras and a Close button](https://raw.githubusercontent.com/wiki/chadakenn/Kellies-Voice/onn-live-camera-grid.jpg)
+![Four muted live cameras and a Close button](https://raw.githubusercontent.com/chadakenn/Kellies-Voice/main/docs/screenshots/onn-live-camera-grid.jpg)
 
-![Frigate website with the Kellie's Voice Close button](https://raw.githubusercontent.com/wiki/chadakenn/Kellies-Voice/onn-frigate-dashboard.jpg)
+![Frigate website with the Kellie's Voice Close button](https://raw.githubusercontent.com/chadakenn/Kellies-Voice/main/docs/screenshots/onn-frigate-dashboard.jpg)
 
-![Frigate screensaver diagnostics. The watcher is not running in this photo](https://raw.githubusercontent.com/wiki/chadakenn/Kellies-Voice/onn-frigate-screensaver-diagnostics.jpg)
+![Frigate screensaver diagnostics. The watcher is not running in this photo](https://raw.githubusercontent.com/chadakenn/Kellies-Voice/main/docs/screenshots/onn-frigate-screensaver-diagnostics.jpg)
 
 The diagnostics photo is an example of the status screen, not a working screensaver. Here the watcher is stopped, Home Assistant layout sync has not started, and Android has not sent a dream event.
 
-## Live HA camera screensaver (opt-in, new in v0.16.12)
+## Live HA camera screensaver (opt-in; introduced in v0.16.12)
 
 Enable **Frigate screensaver** and **Home Assistant layout** in the TV's Kellie's Voice settings and grant **Display over other apps**. Select up to four Home Assistant camera entities for the paired TV in Home Assistant. Leave the **Frigate web URL blank** to use the HA-selected grid; a Frigate URL takes priority and shows the Frigate website instead.
 

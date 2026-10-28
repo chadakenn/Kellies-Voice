@@ -12,15 +12,14 @@ Camera, announcement, timer, and weather popups use a separate receiver from the
 
 1. Open **Kellie's Voice** on the TV (not Android/Google TV system Settings).
 2. On the main screen choose **SETTINGS** with the remote.
-3. **Scroll down** to **TV alert status** and press **OK**.  
-   (This is a separate SETTINGS item, below the **TV announcements & cameras** toggle.)
+3. Open **Alerts & cameras → TV alert status** and press **OK**.
 4. In the **TV alert status** dialog, select the **Resume TV alerts** button at the bottom and press **OK**.
 
 It is **not** the neighboring **TV announcements & cameras** toggle and **not** the main **Connect / reconnect** control.
 
 **If the Resume button is missing:**
 
-- Turn **Settings → TV announcements & cameras** ON.
+- Turn **Settings → Alerts & cameras → TV notifications & camera popups** ON.
 - Confirm a valid Home Assistant connection is configured.
 - Allow Android **Display over other apps** permission for Kellie's Voice.
 
@@ -34,8 +33,8 @@ A TV can show **Home Assistant voice: ✓ connected** and **TV alerts: ✓ conne
 
 1. Press **TALK**, say a short phrase, and check for a transcript under **YOU SAID**.
 2. Confirm Android has granted Kellie's Voice the **Microphone** permission.
-3. Open **SETTINGS → Hardware microphone diagnostics**. Check that an actual microphone is available, not only an echo-reference or audio playback input.
-4. Keep **Mic input detection: Safe checks ON** for normal use. **Try unverified microphone (compatibility override)** is for controlled tests of physically present, misclassified inputs; it cannot create a microphone when Android exposes none.
+3. Open **SETTINGS → Voice & microphone → Test microphone hardware**. Check that an actual microphone is available, not only an echo-reference or audio playback input.
+4. Keep **Microphone input checks: Safe** for normal use. **Try unverified microphone (compatibility override)** is for controlled tests of physically present, misclassified inputs; it cannot create a microphone when Android exposes none.
 5. If the device has no usable microphone, try a compatible USB mic. Google Assistant's remote microphone may be reserved for Google's own app.
 6. Report the *actual Android/Google TV device model*, Android version, APK/HACS versions and non-sensitive diagnostics in [issue #71](https://github.com/chadakenn/Kellies-Voice/issues/71).
 

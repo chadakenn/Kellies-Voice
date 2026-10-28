@@ -14,7 +14,7 @@ Kellie's Voice pairs a **native Android TV / Google TV voice app** with this **H
 
 ### Quick setup
 1. Add `https://github.com/chadakenn/Kellies-Voice` as an **Integration** in **HACS → Custom repositories** if HACS doesn't already know this repo.
-2. Download **v0.16.0 or newer** and restart Home Assistant.
+2. Download **v0.16.14** to match the [signed Android v0.16.14 APK](https://github.com/chadakenn/Kellies-Voice/releases/tag/v0.16.14), then restart Home Assistant.
 3. In **Settings → Devices & services**, add the discovered Kellie's Voice TV, or choose manual pairing with the stable ID shown in the TV app.
 4. Open the TV's HA device page to configure the overlay and use the actions above.
 
@@ -33,3 +33,12 @@ Use `kellies_voice.hide_camera` (optionally targeted to one TV) to dismiss a cam
 ### v0.16.3: alert layout and self-recovery
 
 New Home Assistant device controls independently choose **TV alert position** (five locations) and **TV alert size** (small, medium, large) for text announcements, camera stills, and live video. Android v0.16.3 also tries to resume previously enabled TV alerts after an app update or reboot, without starting the microphone. When Android blocks background startup, open **TV app → Settings → TV alert status** to diagnose and resume. Reconnect never replays missed events. Both Android and HACS must be v0.16.3 for layout controls. Read the [full v0.16.3 update guide](https://github.com/chadakenn/Kellies-Voice/blob/main/docs/UPDATES.md).
+
+### New in v0.16.14
+
+- Six-category TV settings hub with remote-friendly navigation.
+- **Okay Nabu** on-device wake word (OFF by default); Android may require reopening the app after reboot before listening resumes.
+- Optional 25%, 50%, or 75% TV media ducking **after** wake detection.
+- Existing cameras, four-feed Frigate screensaver, announcements and timers remain available, subject to platform and pipeline compatibility.
+
+[Real screenshots + wake demonstration video](https://github.com/chadakenn/Kellies-Voice/blob/main/docs/screenshots/README.md). Older Settings screenshots show the previous menu.
