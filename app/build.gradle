@@ -4,15 +4,9 @@ plugins {
     id 'org.jetbrains.kotlin.plugin.compose'
 }
 
-// Keep every test APK isolated. Hosted CI runners do not share debug signing
-// keys, so an ordinary .debug update would conflict with an existing install.
-// Use a unique, explicitly supplied package suffix for each workflow attempt.
-// This does not modify the stable release or the existing .debug package.
-def qaBuildId = providers.gradleProperty('qaBuildId').orElse('local').get()
-if (!(qaBuildId ==~ /[a-z][a-z0-9]{0,40}/)) {
-    throw new GradleException('qaBuildId must be 1-41 lowercase letters/digits, beginning with a letter')
-}
-
+// The dedicated QA app has one permanent package ID. Only trusted signed
+// development workflows build it using the existing private keystore.
+// Ephemeral PR debug signing keys must never be used to distribute QA updates.
 android {
     namespace 'com.example.tvvoiceprobe'
     compileSdk 35
@@ -23,6 +17,7 @@ android {
         targetSdk 35
         versionCode 54
         versionName '0.16.14'
+        buildConfigField 'boolean', 'IS_QA', 'false'
         manifestPlaceholders = [
             appDisplayName: "Kellie's Voice",
             overlayDisplayName: "Kellie's Voice Overlay",
@@ -53,20 +48,21 @@ android {
             applicationIdSuffix '.debug'
             versionNameSuffix '-test'
         }
-        qa {
-            initWith debug
-            // Distinct from BOTH release and .debug; each CI attempt is
-            // separately installable even with a new ephemeral signing key.
-            applicationIdSuffix ".qa${qaBuildId}"
-            versionNameSuffix "-qa-${qaBuildId}"
-            manifestPlaceholders['appDisplayName'] = "Kellie's Voice QA"
-            manifestPlaceholders['overlayDisplayName'] = "Kellie's Voice QA Overlay"
-            manifestPlaceholders['dreamDisplayName'] = "Kellie's Voice QA Frigate"
-            matchingFallbacks = ['debug']
-        }
         release {
             minifyEnabled false
             signingConfig signingConfigs.release
+        }
+        qa {
+            // Non-debuggable signed variant: don't distribute a debuggable app
+            // under the same key that signs production.
+            initWith release
+            applicationIdSuffix '.qa'
+            versionNameSuffix '-qa'
+            buildConfigField 'boolean', 'IS_QA', 'true'
+            manifestPlaceholders['appDisplayName'] = "Kellie's Voice QA"
+            manifestPlaceholders['overlayDisplayName'] = "Kellie's Voice QA Overlay"
+            manifestPlaceholders['dreamDisplayName'] = "Kellie's Voice QA Frigate"
+            matchingFallbacks = ['release']
         }
     }
     compileOptions {
