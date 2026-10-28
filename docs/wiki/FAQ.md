@@ -23,7 +23,7 @@ Since v0.16.14, SETTINGS opens six categories. Choose **Alerts & cameras** for T
 No. Direct `kellies_voice.start_timer` actions work from Home Assistant. Ordinary phrases like "set a five-minute timer" often hit Home Assistant's native timer intent, which replies that the device does not support timers. Optional custom sentences or automations are required for voice routing and must be configured carefully.
 
 **Why do camera or announcement popups stop after the TV goes to sleep?**  
-The alert receiver is separate from the main voice connection and Android may block background starts. Use the exact **SETTINGS → TV alert status → Resume TV alerts** path. See [Troubleshooting](Troubleshooting.md#resume-tv-alerts-exact-steps).
+The alert receiver is separate from the main voice connection and Android may block background starts. Use the exact **SETTINGS → Alerts & cameras → TV alert status → Resume TV alerts** path. See [Troubleshooting](Troubleshooting.md#resume-tv-alerts-exact-steps).
 
 **Is live camera video guaranteed on every TV?**  
 No. Moving video is verified on the onn 4K Pro with specific cameras. Other devices and cameras need testing. On some Philips TVs use the safe software decoder mode.
