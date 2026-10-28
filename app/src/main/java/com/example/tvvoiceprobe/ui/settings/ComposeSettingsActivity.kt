@@ -16,8 +16,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.text.KeyboardOptions
+import com.example.tvvoiceprobe.TvEventPayload
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -622,10 +626,183 @@ fun CategoryContent(
                     }
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                Text("Frigate URL: ${if (prefs.screensaverUrl().isEmpty()) "(not configured)" else "(configured)"}",
-                    color = skin.colors.textMuted, fontSize = 13.sp)
-                Text("Camera entities: ${ScreensaverDashboard.cameraList(prefs.screensaverCameras()).size} selected",
-                    color = skin.colors.textMuted, fontSize = 13.sp)
+                var savedUrl by remember { mutableStateOf(prefs.screensaverUrl()) }
+                var editingUrl by remember { mutableStateOf(false) }
+                var urlDraft by remember { mutableStateOf(savedUrl) }
+                var urlError by remember { mutableStateOf<String?>(null) }
+                Text("Frigate dashboard URL", color = skin.colors.accent, fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                if (!editingUrl) {
+                    Text(
+                        text = if (savedUrl.isEmpty()) "Not configured" else savedUrl,
+                        color = skin.colors.textMuted,
+                        fontSize = 13.sp
+                    )
+                    SettingsChoice(
+                        title = if (savedUrl.isEmpty()) "Enter Frigate URL" else "Edit Frigate URL",
+                        selected = false,
+                        onSelect = {
+                            urlDraft = savedUrl
+                            urlError = null
+                            editingUrl = true
+                        }
+                    )
+                    if (savedUrl.isNotEmpty()) {
+                        SettingsChoice(
+                            title = "Clear Frigate URL",
+                            selected = false,
+                            onSelect = {
+                                prefs.setScreensaverUrl("")
+                                savedUrl = ""
+                                ComposeSettingsInterop.applyScreensaverSetting(context, HaLayout.SCREENSAVER_URL)
+                                Toast.makeText(context, "Frigate URL cleared", Toast.LENGTH_SHORT).show()
+                            }
+                        )
+                    }
+                } else {
+                    OutlinedTextField(
+                        value = urlDraft,
+                        onValueChange = {
+                            urlDraft = it
+                            urlError = null
+                        },
+                        label = { Text("http://frigate.local:5000/") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+                        isError = urlError != null,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    urlError?.let {
+                        Text(it, color = skin.colors.warning, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
+                    }
+                    Text(
+                        "Full http:// or https:// address. No passwords or tokens. Leave empty to clear.",
+                        color = skin.colors.textMuted,
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                    SettingsChoice(
+                        title = "Save URL",
+                        selected = false,
+                        onSelect = {
+                            val typed = urlDraft.trim()
+                            val safe = ScreensaverDashboard.dashboardUrl(typed)
+                            if (typed.isNotEmpty() && safe.isEmpty()) {
+                                urlError = "Use a full http:// or https:// address without a password or token."
+                                return@SettingsChoice
+                            }
+                            prefs.setScreensaverUrl(safe)
+                            savedUrl = safe
+                            editingUrl = false
+                            urlError = null
+                            ComposeSettingsInterop.applyScreensaverSetting(context, HaLayout.SCREENSAVER_URL)
+                            Toast.makeText(
+                                context,
+                                if (safe.isEmpty()) "Frigate URL cleared" else "Frigate URL saved",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    )
+                    SettingsChoice(
+                        title = "Cancel",
+                        selected = false,
+                        onSelect = {
+                            urlDraft = savedUrl
+                            urlError = null
+                            editingUrl = false
+                        }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+                var savedCameras by remember { mutableStateOf(prefs.screensaverCameras()) }
+                var editingCameras by remember { mutableStateOf(false) }
+                var cameraDraft by remember { mutableStateOf(savedCameras) }
+                var cameraError by remember { mutableStateOf<String?>(null) }
+                Text("Home Assistant cameras", color = skin.colors.accent, fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                if (!editingCameras) {
+                    val count = ScreensaverDashboard.cameraList(savedCameras).size
+                    Text(
+                        text = if (count == 0) "None selected" else savedCameras,
+                        color = skin.colors.textMuted,
+                        fontSize = 13.sp
+                    )
+                    SettingsChoice(
+                        title = if (count == 0) "Enter camera entities" else "Edit camera entities",
+                        selected = false,
+                        onSelect = {
+                            cameraDraft = savedCameras
+                            cameraError = null
+                            editingCameras = true
+                        }
+                    )
+                    if (count > 0) {
+                        SettingsChoice(
+                            title = "Clear camera list",
+                            selected = false,
+                            onSelect = {
+                                prefs.setScreensaverCameras("")
+                                savedCameras = ""
+                                ComposeSettingsInterop.applyScreensaverSetting(context, HaLayout.SCREENSAVER_CAMERAS)
+                                Toast.makeText(context, "Camera list cleared", Toast.LENGTH_SHORT).show()
+                            }
+                        )
+                    }
+                } else {
+                    OutlinedTextField(
+                        value = cameraDraft,
+                        onValueChange = {
+                            cameraDraft = it
+                            cameraError = null
+                        },
+                        label = { Text("camera.driveway, camera.doorbell") },
+                        singleLine = true,
+                        isError = cameraError != null,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    cameraError?.let {
+                        Text(it, color = skin.colors.warning, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
+                    }
+                    Text(
+                        "Up to four camera.* entity IDs, comma-separated. Invalid IDs are rejected, not discarded.",
+                        color = skin.colors.textMuted,
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                    SettingsChoice(
+                        title = "Save cameras",
+                        selected = false,
+                        onSelect = {
+                            val typed = cameraDraft.trim()
+                            val ids = if (typed.isEmpty()) emptyList() else typed.split(Regex("[,\\s]+")).filter { it.isNotEmpty() }
+                            val invalid = ids.size > ScreensaverDashboard.MAX_CAMERAS ||
+                                ids.any { TvEventPayload.cameraEntity(it) == null }
+                            if (invalid) {
+                                cameraError = "Enter one to four valid camera.* entity IDs. Find them in Home Assistant → Developer Tools → States."
+                                return@SettingsChoice
+                            }
+                            val stored = ScreensaverDashboard.cameras(typed)
+                            prefs.setScreensaverCameras(stored)
+                            savedCameras = stored
+                            editingCameras = false
+                            cameraError = null
+                            ComposeSettingsInterop.applyScreensaverSetting(context, HaLayout.SCREENSAVER_CAMERAS)
+                            Toast.makeText(
+                                context,
+                                if (stored.isEmpty()) "Camera list cleared" else "Cameras saved",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    )
+                    SettingsChoice(
+                        title = "Cancel",
+                        selected = false,
+                        onSelect = {
+                            cameraDraft = savedCameras
+                            cameraError = null
+                            editingCameras = false
+                        }
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(12.dp))
                 Text("Dashboard size", color = skin.colors.accent, fontSize = 18.sp, fontWeight = FontWeight.Medium)
@@ -724,8 +901,8 @@ fun CategoryContent(
                         }
                     }
                 )
-                Text("Configure the Frigate URL or camera entities in the original SETTINGS menu. " +
-                    "Layout changes refresh the active screensaver and attempt HA sync on return.",
+                Text("URL and camera changes are validated, saved locally, and refresh the active screensaver. " +
+                    "Returning to the main screen attempts HA sync. No microphone is started.",
                     color = skin.colors.textMuted, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
             }
             "home" -> {
