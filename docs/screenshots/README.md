@@ -1,5 +1,9 @@
 # Real-device screenshot gallery 📸
 
+## Direct ADB captures for PR #192 — development preview
+
+[October 28 onn 4K Pro capture gallery](PR-192-CAPTURES.md): six Compose settings categories, all five local theme selections, a local announcement sample, a heavily redacted idle voice overlay and a fully camera-redacted screensaver preview. These were captured from the existing **0.16.14-test debug APK**. **Compose is development-only, not released Settings.** The installed APK predates the latest popup/theme fixes; the images do not verify those fixes. New captures use opaque privacy masks, not reconstructed UI or promotional artwork. See the gallery for each image's limits.
+
 > **Updated October 28, 2026:** Public stable v0.16.14 has a **six-category Settings hub** and optional **Okay Nabu**. The older `onn-settings-menu.jpg` shows the previous long Settings list and is historical, **not** the new v0.16.14 UI. New unredacted captures must be reviewed for private details before embedding.
 
 Phone photos from an onn 4K Pro are in this folder; a small selection appears in the main README. The SVG previews and `night-signal.png` are still **design references**, not photos of the TV.

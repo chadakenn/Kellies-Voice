@@ -18,6 +18,16 @@ These photos are from the owner's onn 4K Pro in October 2026. The four-camera gr
 
 The diagnostics photo is an example of the status screen, not a working screensaver. Here the watcher is stopped, Home Assistant layout sync has not started, and Android has not sent a dream event.
 
+## Additional direct ADB captures from PR #192 testing
+
+![Compose development preview for Frigate screensaver settings with camera entity names masked](../screenshots/compose-screensaver-preview.png)
+
+Screensaver settings on the existing **0.16.14-test debug app**, captured October 28, 2026 on an onn 4K Pro. **This Compose settings page is a development preview**, not the released settings interface. Camera entity names are masked; the Frigate web URL was unconfigured.
+
+![Actual screensaver preview with the full camera area masked and the Close control retained](../screenshots/frigate-overview-redacted.png)
+
+The screensaver preview opened from that development UI. All camera imagery, tile labels, timestamps, faces and scene details are covered by one opaque mask; only the genuine **Close** control remains visible. This deliberately does not show the camera layout, prove moving video, or establish decoder reliability. Preview was closed with Back. No camera mode was changed. [Capture details](../screenshots/PR-192-CAPTURES.md).
+
 ## Live HA camera screensaver (opt-in; introduced in v0.16.12)
 
 Enable **Frigate screensaver** and **Home Assistant layout** in the TV's Kellie's Voice settings and grant **Display over other apps**. Select up to four Home Assistant camera entities for the paired TV in Home Assistant. Leave the **Frigate web URL blank** to use the HA-selected grid; a Frigate URL takes priority and shows the Frigate website instead.

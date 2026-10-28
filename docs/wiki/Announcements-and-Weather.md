@@ -12,6 +12,12 @@ Example and placement notes are in the [YAML Cookbook](YAML-Cookbook.md#announce
 
 Enable **SETTINGS → Alerts & cameras → TV notifications & camera popups** on the TV and ensure the alert receiver is connected.
 
+## Actual on-TV local preview capture
+
+![Neutral sample announcement over the Compose development settings preview on onn 4K Pro](../screenshots/announcement-preview.png)
+
+Captured on an onn 4K Pro running the existing **0.16.14-test debug APK**, October 28, 2026, using **COMPOSE → Alerts & cameras → Preview announcement popup**. The underlying Compose page is a **development-only preview**, not released Settings. This is the built-in local visual sample, not a new HA-delivery or spoken-audio test. The APK predates the latest PR #192 popup-theme fixes, so the image does not verify their parity. [Capture gallery](../screenshots/PR-192-CAPTURES.md).
+
 ## Seven-day weather card
 
 `kellies_voice.show_forecast` displays a seven-day forecast card using a Home Assistant weather entity that supports daily forecasts. It is on-demand only (not automatic). The card does not start the microphone or change TV audio.
