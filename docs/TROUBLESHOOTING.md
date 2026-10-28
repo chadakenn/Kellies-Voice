@@ -1,4 +1,4 @@
-**v0.16.11 camera and local-LLM tip:** When Kellie says a camera is showing but nothing appears, inspect the separate Home Assistant TV alert receiver connectivity sensor and use TV **Settings → TV alert status → Resume TV alerts**. Exposed HA scripts should call `kellies_voice.hide_camera` for voice dismissal, not send only a legacy custom event. Invalid LLM tool JSON, HTTP 400 context overflows and oversized Assist prompts originate upstream of the TV camera player: check the selected conversation model, context window, exposed entity count and custom tool groups. Never post credentials or camera URLs containing secrets.
+**v0.16.11 camera and local-LLM tip:** When Kellie says a camera is showing but nothing appears, inspect the separate Home Assistant TV alert receiver connectivity sensor and use TV **SETTINGS → Alerts & cameras → TV alert status → Resume TV alerts**. Exposed HA scripts should call `kellies_voice.hide_camera` for voice dismissal, not send only a legacy custom event. Invalid LLM tool JSON, HTTP 400 context overflows and oversized Assist prompts originate upstream of the TV camera player: check the selected conversation model, context window, exposed entity count and custom tool groups. Never post credentials or camera URLs containing secrets.
 
 ## Philips TV line-in and echo-reference are not microphones (issue #71)
 
@@ -11,7 +11,7 @@ wired-headset and Bluetooth headset). Unsupported or unknown devices,
 including line-in and internal echo-reference, no longer count as voice mics.
 
 If a vendor firmware exposes a genuine microphone only through a nonstandard
-type, use **TV Settings → Mic input detection → Try unverified microphone**
+type, use **SETTINGS → Voice & microphone → Microphone input checks → Try unverified microphone**
 as a *temporary diagnostic override*, then verify spoken STT works.
 This cannot unlock a Google Assistant-only remote microphone and doesn't
 capture anything until you explicitly start listening. Quiet speech or
@@ -139,7 +139,7 @@ manual setting is off by default, reversible, and overrides the existing
 "Try unverified microphone" bypass. Re-enable when a known-good USB mic is
 connected. Other TVs should continue using automatic input checks.
 
-Public stable v0.16.10 does **not** include this new manual workaround.
+Historical context: v0.16.10 did **not** include this workaround; later stable versions do. Current v0.16.14 includes a manual microphone-disable setting, but the Philips phantom-input case (#71) remains under investigation.
 Issue #71 remains open for physical Philips and onn 4K Pro validation.
 
 ## TALK says no accessible microphone
@@ -185,7 +185,7 @@ Voice HA integration briefly made the diagnostic unavailable and then ON.
 A full HA restart instead left the receiver OFF / `never` for several
 minutes. The Android TV showed **Home Assistant denied TV alert permission**
 while the separate Assist connection remained healthy. Pressing
-**SETTINGS → TV alert status → Resume TV alerts** restored the receiver to
+**SETTINGS → Alerts & cameras → TV alert status → Resume TV alerts** restored the receiver to
 ON without changing roles or access tokens, and a new announcement reached
 the TV. This is a new physical reproduction of a **transient authorization
 denial that remains terminal in v0.16.9**, not proof that Home Assistant
