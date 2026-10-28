@@ -1,5 +1,6 @@
 """Guard opt-in beta update precedence and reversible release pruning."""
 
+import json
 import re
 import unittest
 from pathlib import Path
@@ -15,13 +16,23 @@ def core(version):
 
 
 class BetaReleasePolicyTests(unittest.TestCase):
-    def test_new_beta_version_is_newer_than_stable_and_matching(self):
+    def test_current_version_is_newer_than_previous_stable_and_matches_hacs(self):
         build = (ROOT / "app/build.gradle").read_text()
-        manifest = (ROOT / "custom_components/kellies_voice/manifest.json").read_text()
-        self.assertIn("versionName '0.16.13-dev.1'", build)
-        self.assertIn("versionCode 53", build)
-        self.assertIn('"version": "0.16.13-dev.1"', manifest)
-        self.assertGreater(core("0.16.13-dev.1"), core("v0.16.12"))
+        manifest = json.loads(
+            (ROOT / "custom_components/kellies_voice/manifest.json").read_text()
+        )
+        name = re.search(r"\bversionName\s+'([^']+)'", build)
+        code = re.search(r"\bversionCode\s+(\d+)", build)
+        self.assertIsNotNone(name)
+        self.assertIsNotNone(code)
+        version = name.group(1)
+        self.assertEqual(version, manifest["version"])
+        self.assertGreater(core(version), core("v0.16.12"))
+        self.assertGreater(int(code.group(1)), 50)
+        # Stable release notes must exist for the exact signed/HACS version.
+        # Opt-in development versions are tested separately by the beta workflow.
+        if "-dev." not in version:
+            self.assertTrue((ROOT / "docs/releases" / f"v{version}.md").exists())
         self.assertEqual(core("v0.16.12-dev.11"), core("v0.16.12"))
         self.assertLess((0, 16, 12, -11), (0, 16, 12, 0))
 

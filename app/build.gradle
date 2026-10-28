@@ -11,8 +11,8 @@ android {
         minSdk 26
         targetSdk 35
         // Restart opted-in Frigate watcher on APK updates/reboot; ambient diagnostics.
-        versionCode 53
-        versionName '0.16.13-dev.1'
+        versionCode 54
+        versionName '0.16.14'
         // Host unit tests pass -PskipWakeNative=true. An APK build compiles the engine.
         if (findProperty('skipWakeNative') != 'true') {
             ndk {

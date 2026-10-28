@@ -1,6 +1,6 @@
 # On-device wake word
 
-**Merged into `main`, not yet published in a stable APK.** The current public stable release is v0.16.12 and does **not** contain Okay Nabu. The feature and revised TV Settings have been merged into the source for the planned v0.16.13 release; see [v0.16.13 release notes](releases/v0.16.13.md). Do not mistake a GitHub Actions debug APK for a signed stable update. Reboot auto-resume on the final build and broader device coverage still need real-device testing.
+**Included in the v0.16.14 release source.** Earlier stable v0.16.12 did not contain Okay Nabu. Read the [v0.16.14 release notes](releases/v0.16.14.md) and install only an officially published signed APK, not a temporary Actions debug artifact. Reboot auto-resume and broader device coverage still need more on-device testing.
 
 ## What it does
 
@@ -10,7 +10,7 @@ While the user explicitly arms the wake listener, the app also keeps a **pre-aut
 
 **Hardware so far:** On the onn 4K Pro, "Okay Nabu, turn on office lights" worked in one breath; YouTube volume ducked and restored after the answer; disabling microphone capture blocked wake; re-enabling microphone capture did not silently restart wake; turning wake on again restored commands. Moving the box away from the TV speakers improved detection while media was playing. These are on-device tests, not universal guarantees. Automatic visible-app wake resumption after reboot, Forget, force-stop, revoked permissions, false detections, and other TVs still need acceptance testing.
 
-## Experimental wake audio ducking (merged into main; pending stable release)
+## Experimental wake audio ducking (opt-in in v0.16.14)
 
 The onn 4K Pro owner's wake-word activation improved when the box was moved away from the TV speakers. Optional **Wake audio ducking** is a separate experiment to reduce competing TV playback **AFTER** Okay Nabu fires, helping Kellie capture the rest of a command. It **cannot help** the detector hear "Okay Nabu" beforehand.
 
