@@ -352,16 +352,14 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
         panel.setFocusableInTouchMode(true);
         GradientDrawable background = new GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
-                signal ? new int[] {0xf21B1512, 0xf2261B15}
+                obsidian ? new int[] {0xf506070c, 0xf50e1018}
+                        : signal ? new int[] {0xf21B1512, 0xf2261B15}
                         : glass ? new int[] {0xe8201513, 0xf0291a17, 0xed150f0d}
                         : new int[] {0xf02A1A16, 0xf017100e});
         background.setCornerRadius(dp(obsidian ? 18 : signal ? 8 : glass ? 22 : 14));
         background.setStroke(dp(obsidian ? 2 : 1),
                 obsidian ? theme.accent : signal ? 0xff805F48
                         : glass ? 0x88E7A981 : 0xffD9946F);
-        if (obsidian) {
-            background.setColors(new int[] {0xf506070c, 0xf50e1018});
-        }
         panel.setBackground(aurora ? new AuroraGlassDrawable(dp(18)) : background);
         panel.setElevation(dp(signal ? 10 : 14));
 
