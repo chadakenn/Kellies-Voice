@@ -1,4 +1,4 @@
-# TV Settings: categorized navigation (draft)
+# TV Settings: categorized navigation
 
 The settings menu is a dedicated **remote-first hub** rather than the former 21-item mixed list. The appearance uses the same `AppPalette` as Kellie's Voice, so existing Copper, Night Signal, Compact Charcoal, and Aurora theme choices still apply. The hub itself does not enable background services, the microphone, or any Home Assistant features.
 
@@ -19,7 +19,7 @@ No settings are renamed or deleted. All existing option screens are reused. Dang
 
 ## Branch integration plan
 
-The standalone UI work lives in [draft PR #160](https://github.com/chadakenn/Kellies-Voice/pull/160), originally based on `dev`. This combined QA branch starts from the **current #59 wake draft** and adds a **Wake word** entry inside *Voice & microphone*, where the new audio-ducking percentage is available. It is an isolated test integration only, not a merge into `dev` or `main`.
+The categorized TV Settings and **Okay Nabu** controls are merged into `main` via [PR #165](https://github.com/chadakenn/Kellies-Voice/pull/165), ahead of the planned v0.16.13 release. The **Wake word** and **Wake audio ducking** controls are under *Voice & microphone*. See [v0.16.13 release notes](releases/v0.16.13.md) and the [wake-word guide](WAKE_WORD.md).
 
 ## Manual TV QA
 
@@ -30,4 +30,4 @@ The standalone UI work lives in [draft PR #160](https://github.com/chadakenn/Kel
 5. Open diagnostics, preview, and Android system dialogs to confirm Back does not trap the user.
 6. Ensure Home Assistant credentials, mic opt-out, updates and TV alert permissions remain intact. Test separately on the wake-word branch after integration.
 
-**Status:** Draft awaiting CI + physical TV checks. No changes to stable `main`, `dev`, or the running APK.
+**Status:** Merged into `main`, with Android/HACS CI passed. The updated settings are not in the currently published stable v0.16.12 APK. The maintainer tested navigation on the onn 4K Pro; broader visual and hardware acceptance is ongoing.
