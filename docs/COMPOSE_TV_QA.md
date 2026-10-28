@@ -13,6 +13,16 @@
 - [x] Deliver a targeted announcement to the debug TV; the TV renders it, and HA reports `Popup created on TV`.
 - [x] Reproduce previous bug: alert popup looks copper despite Compose selecting Neon Obsidian. **Code fix added afterward but not yet verified on TV**.
 
+## Automated ADB/MCP QA report (October 28, 2026)
+
+[Full privacy-safe report](qa/PR-192-onn-TV-ADB-2026-10-28.md) from the owner's connected real-TV testing agent. The test used the **existing** configured `0.16.14-test` debug app; the exact installed source SHA is unknown.
+
+- [x] D-pad toolbar/Back and normal category/pane navigation **after** focus recovers; theme appearance and supported Aurora/Night theme persistence; local announcement preview; safe URL-editor Back; alert-position round-trip through authenticated HA
+- [ ] **Initial-focus bug found:** immediately after entering Compose, Down sometimes did not navigate. ADB hierarchy initially focused the instructional footer. Source fix now explicitly focuses the Home Assistant category and removes footer click-focus; **must retest on updated APK**
+- [ ] **Stale HA style error found:** style rejection remained visible after later successful theme/position writes. Source fix now clears outdated feedback upon a later successful write and guards out-of-order acknowledgments; **must retest on updated APK**
+- [ ] **Neon/HACS compatibility:** selecting Neon was rejected by the *installed four-style* HACS integration. This is not proof of a broken fifth-style implementation; update the HA integration separately under controlled testing
+- [ ] **Camera playback safety:** automated agent observed Hardware (advanced) already selected. It did **not** enable/change that mode or launch camera playback. Owner approval is needed before hardware-decoder playback experiments
+
 ## Must still verify before release / merging behavior into production
 
 - [ ] Install build containing `TvPopupPalette`, including Neon Obsidian action/forecast/camera styles. Confirm cyan-on-dark appearance after **reopening** any popup; old windows retain the previous skin.
