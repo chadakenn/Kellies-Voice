@@ -7,13 +7,13 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import android.content.Context
-import android.content.SharedPreferences
+import com.example.tvvoiceprobe.OverlayPreferences
 
 /**
  * Skin definition that can change more than colors.
  * Designed so future downloadable skins can be loaded as data (not code).
+ * IDs map to existing OverlayPreferences skin keys so overlays and legacy UI stay in sync.
  */
 data class KellieSkin(
     val id: String,
@@ -43,20 +43,21 @@ data class KellieColors(
 )
 
 object KellieSkins {
+    // Maps to OverlayPreferences.SKIN_GLASS (default copper)
     val COPPER = KellieSkin(
-        id = "copper",
-        displayName = "Copper",
+        id = OverlayPreferences.SKIN_GLASS,
+        displayName = "Copper Glass",
         colors = KellieColors(
-            screen = Color(0xFF121212),
-            panel = Color(0xFF1E1E1E),
-            card = Color(0xFF252525),
-            cardFocused = Color(0xFF333333),
-            accent = Color(0xFFD4A574),
-            accentSecondary = Color(0xFFB8865A),
-            text = Color(0xFFF5F5F5),
-            textMuted = Color(0xFFAAAAAA),
-            stroke = Color(0xFF3A3A3A),
-            focus = Color(0xFFD4A574),
+            screen = Color(0xFF1B1412),
+            panel = Color(0xFF2B1B16),
+            card = Color(0xFF493128),
+            cardFocused = Color(0xFF62453B),
+            accent = Color(0xFFE9B390),
+            accentSecondary = Color(0xFFBA785B),
+            text = Color(0xFFF7E8DB),
+            textMuted = Color(0xFFC59A80),
+            stroke = Color(0xFFB98465),
+            focus = Color(0xFFE9B390),
             success = Color(0xFF4CAF50),
             warning = Color(0xFFFF9800)
         ),
@@ -68,20 +69,21 @@ object KellieSkins {
         animationScale = 1.0f
     )
 
+    // Maps to OverlayPreferences.SKIN_CLASSIC
     val MINIMAL = KellieSkin(
-        id = "minimal",
-        displayName = "Minimal",
+        id = OverlayPreferences.SKIN_CLASSIC,
+        displayName = "Compact Charcoal",
         colors = KellieColors(
-            screen = Color(0xFF0F0F0F),
-            panel = Color(0xFF181818),
-            card = Color(0xFF202020),
-            cardFocused = Color(0xFF282828),
-            accent = Color(0xFF9E9E9E),
-            accentSecondary = Color(0xFF757575),
-            text = Color(0xFFE0E0E0),
-            textMuted = Color(0xFF9E9E9E),
-            stroke = Color(0xFF2A2A2A),
-            focus = Color(0xFFBDBDBD),
+            screen = Color(0xFF181512),
+            panel = Color(0xFF261C17),
+            card = Color(0xFF49382F),
+            cardFocused = Color(0xFF5A4538),
+            accent = Color(0xFFE6AB82),
+            accentSecondary = Color(0xFFA66A4B),
+            text = Color(0xFFF1DDC9),
+            textMuted = Color(0xFFC89A7B),
+            stroke = Color(0xFFB88664),
+            focus = Color(0xFFE6AB82),
             success = Color(0xFF66BB6A),
             warning = Color(0xFFFFB74D)
         ),
@@ -93,20 +95,21 @@ object KellieSkins {
         animationScale = 0.8f
     )
 
+    // Maps to OverlayPreferences.SKIN_AURORA
     val AURORA = KellieSkin(
-        id = "aurora",
-        displayName = "Aurora",
+        id = OverlayPreferences.SKIN_AURORA,
+        displayName = "Aurora Glass",
         colors = KellieColors(
-            screen = Color(0xFF0D1117),
-            panel = Color(0xFF161B22),
-            card = Color(0xFF21262D),
-            cardFocused = Color(0xFF30363D),
-            accent = Color(0xFF58A6FF),
-            accentSecondary = Color(0xFF79C0FF),
-            text = Color(0xFFF0F6FC),
-            textMuted = Color(0xFF8B949E),
-            stroke = Color(0xFF30363D),
-            focus = Color(0xFF58A6FF),
+            screen = Color(0xFF0A1225),
+            panel = Color(0xFF162947),
+            card = Color(0xFF213758),
+            cardFocused = Color(0xFF365AA0),
+            accent = Color(0xFFBED6FF),
+            accentSecondary = Color(0xFF3F6BB6),
+            text = Color(0xFFE4ECFF),
+            textMuted = Color(0xFF9CB9E9),
+            stroke = Color(0xFF709FF8),
+            focus = Color(0xFFBED6FF),
             success = Color(0xFF3FB950),
             warning = Color(0xFFD29922)
         ),
@@ -118,20 +121,21 @@ object KellieSkins {
         animationScale = 1.2f
     )
 
+    // Maps to OverlayPreferences.SKIN_SIGNAL
     val NIGHT = KellieSkin(
-        id = "night",
+        id = OverlayPreferences.SKIN_SIGNAL,
         displayName = "Night Signal",
         colors = KellieColors(
-            screen = Color(0xFF000000),
-            panel = Color(0xFF111111),
-            card = Color(0xFF1A1A1A),
-            cardFocused = Color(0xFF222222),
-            accent = Color(0xFF00E5FF),
-            accentSecondary = Color(0xFF00B8D4),
-            text = Color(0xFFFFFFFF),
-            textMuted = Color(0xFF888888),
-            stroke = Color(0xFF333333),
-            focus = Color(0xFF00E5FF),
+            screen = Color(0xFF171411),
+            panel = Color(0xFF26201A),
+            card = Color(0xFF39302B),
+            cardFocused = Color(0xFF6D523E),
+            accent = Color(0xFFE7C39B),
+            accentSecondary = Color(0xFF865E41),
+            text = Color(0xFFF5E8D5),
+            textMuted = Color(0xFFAF9881),
+            stroke = Color(0xFFB38A58),
+            focus = Color(0xFFE7C39B),
             success = Color(0xFF00E676),
             warning = Color(0xFFFFAB00)
         ),
@@ -148,21 +152,18 @@ object KellieSkins {
     fun byId(id: String): KellieSkin = ALL.find { it.id == id } ?: COPPER
 }
 
+/**
+ * Single source of truth: OverlayPreferences.skin().
+ * No separate preference file. Existing user choices are preserved.
+ */
 object SkinStore {
-    private const val PREFS = "kellie_skin_prefs"
-    private const val KEY_SKIN = "selected_skin"
-
     fun getSelected(context: Context): KellieSkin {
-        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val id = prefs.getString(KEY_SKIN, KellieSkins.COPPER.id) ?: KellieSkins.COPPER.id
-        return KellieSkins.byId(id)
+        val prefs = OverlayPreferences(context)
+        return KellieSkins.byId(prefs.skin())
     }
 
     fun setSelected(context: Context, skin: KellieSkin) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit()
-            .putString(KEY_SKIN, skin.id)
-            .apply()
+        OverlayPreferences(context).setSkin(skin.id)
     }
 }
 

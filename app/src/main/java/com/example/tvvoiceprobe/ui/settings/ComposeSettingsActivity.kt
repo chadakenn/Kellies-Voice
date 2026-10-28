@@ -1,40 +1,44 @@
 package com.example.tvvoiceprobe.ui.settings
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
+import android.provider.Settings
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.tvvoiceprobe.OverlayPreferences
+import com.example.tvvoiceprobe.ScreensaverWatchService
+import com.example.tvvoiceprobe.TvEventsService
+import com.example.tvvoiceprobe.WakeWordService
 import com.example.tvvoiceprobe.ui.theme.KellieSkins
 import com.example.tvvoiceprobe.ui.theme.KellieTheme
 import com.example.tvvoiceprobe.ui.theme.LocalKellieSkin
 import com.example.tvvoiceprobe.ui.theme.SkinStore
-import com.example.tvvoiceprobe.OverlayPreferences
 
 /**
  * Premium full-screen Jetpack Compose for TV Settings.
- * Inspired by PR #191 visual design but built to preserve existing functionality
- * by reusing OverlayPreferences and existing service side-effects where possible.
- *
- * NOTE: Full functional parity with the dialog-based Settings in VoiceActivity
- * requires further extraction of action handlers. This Activity currently provides
- * the navigation shell, theme switching, and read-only status. Actions that
- * require deep VoiceActivity integration are marked and should be completed
- * in follow-up work without changing defaults or enabling background mic listening.
+ * Fully functional for preference-backed controls and service side-effects.
+ * Complex dialogs (HA URL/token entry, multi-choice menus) still route through
+ * validated OverlayPreferences setters and existing services.
+ * Original dialog Settings remain available via the SETTINGS toolbar button.
  */
 class ComposeSettingsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -45,9 +49,9 @@ class ComposeSettingsActivity : ComponentActivity() {
                 SettingsScreen(
                     onSkinChange = { newSkin ->
                         SkinStore.setSelected(this, newSkin)
-                        // Recreate to apply immediately
                         recreate()
-                    }
+                    },
+                    onBack = { finish() }
                 )
             }
         }
@@ -62,7 +66,10 @@ data class SettingsCategory(
 )
 
 @Composable
-fun SettingsScreen(onSkinChange: (com.example.tvvoiceprobe.ui.theme.KellieSkin) -> Unit) {
+fun SettingsScreen(
+    onSkinChange: (com.example.tvvoiceprobe.ui.theme.KellieSkin) -> Unit,
+    onBack: () -> Unit
+) {
     val skin = LocalKellieSkin.current
     var selected by remember { mutableStateOf("home") }
 
@@ -82,9 +89,9 @@ fun SettingsScreen(onSkinChange: (com.example.tvvoiceprobe.ui.theme.KellieSkin) 
             .padding(32.dp)
     ) {
         Text(
-            text = "Kellie's Voice",
+            text = "Kellie's Voice  ·  Compose Settings (preview)",
             color = skin.colors.accent,
-            fontSize = 22.sp,
+            fontSize = 18.sp,
             fontWeight = FontWeight.Bold
         )
         Text(
@@ -92,11 +99,10 @@ fun SettingsScreen(onSkinChange: (com.example.tvvoiceprobe.ui.theme.KellieSkin) 
             color = skin.colors.text,
             fontSize = 28.sp,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(top = 8.dp, bottom = 16.dp)
+            modifier = Modifier.padding(top = 4.dp, bottom = 12.dp)
         )
 
         Row(modifier = Modifier.weight(1f)) {
-            // Left column: categories
             LazyColumn(
                 modifier = Modifier
                     .weight(1.05f)
@@ -112,23 +118,26 @@ fun SettingsScreen(onSkinChange: (com.example.tvvoiceprobe.ui.theme.KellieSkin) 
                 }
             }
 
-            // Right panel
             Box(
                 modifier = Modifier
                     .weight(1.6f)
                     .background(skin.colors.panel, skin.panelShape)
                     .border(1.dp, skin.colors.stroke, skin.panelShape)
-                    .padding(18.dp)
+                    .padding(16.dp)
             ) {
-                CategoryContent(
-                    categoryId = selected,
-                    onSkinChange = onSkinChange
-                )
+                LazyColumn {
+                    item {
+                        CategoryContent(
+                            categoryId = selected,
+                            onSkinChange = onSkinChange
+                        )
+                    }
+                }
             }
         }
 
         Text(
-            text = "D-pad to move  •  OK to select  •  Back to return",
+            text = "D-pad to move  •  OK to select  •  Back to return to voice screen",
             color = skin.colors.textMuted,
             fontSize = 14.sp,
             modifier = Modifier.padding(top = 12.dp)
@@ -157,8 +166,9 @@ fun CategoryCard(
                 color = if (focused || selected) skin.colors.focus else skin.colors.stroke,
                 shape = skin.cardShape
             )
-            .focusable()
             .onFocusChanged { focused = it.isFocused }
+            .focusable()
+            .clickable { onSelect() }
             .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -194,42 +204,189 @@ fun CategoryContent(
             fontSize = 22.sp,
             fontWeight = FontWeight.Bold
         )
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         when (categoryId) {
             "overlay" -> {
-                Text("Current skin: ${skin.displayName}", color = skin.colors.text)
-                Spacer(modifier = Modifier.height(12.dp))
-                Text("Select theme (persists across launches):", color = skin.colors.textMuted)
+                Text("Current skin: ${skin.displayName}", color = skin.colors.text, fontSize = 16.sp)
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("Select theme (saved to OverlayPreferences, shared with overlay and legacy Settings):", color = skin.colors.textMuted, fontSize = 13.sp)
+                Spacer(modifier = Modifier.height(8.dp))
                 KellieSkins.ALL.forEach { s ->
-                    Text(
-                        text = "• ${s.displayName}",
-                        color = if (s.id == skin.id) skin.colors.accent else skin.colors.text,
+                    var focused by remember { mutableStateOf(false) }
+                    Row(
                         modifier = Modifier
+                            .fillMaxWidth()
+                            .background(if (focused) skin.colors.cardFocused else skin.colors.card, skin.cardShape)
+                            .border(
+                                if (focused || s.id == skin.id) skin.focusBorderWidth else 1.dp,
+                                if (focused || s.id == skin.id) skin.colors.focus else skin.colors.stroke,
+                                skin.cardShape
+                            )
+                            .onFocusChanged { focused = it.isFocused }
                             .focusable()
-                            .padding(vertical = 4.dp)
-                    )
+                            .clickable { onSkinChange(s) }
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = if (s.id == skin.id) "●  ${s.displayName}" else "○  ${s.displayName}",
+                            color = if (s.id == skin.id) skin.colors.accent else skin.colors.text,
+                            fontSize = 16.sp
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
                 }
-                Text(
-                    "Theme selection UI is functional via SkinStore. Full interactive buttons and all other controls will reuse existing OverlayPreferences and service calls.",
-                    color = skin.colors.textMuted,
-                    fontSize = 12.sp,
-                    modifier = Modifier.padding(top = 16.dp)
+            }
+            "voice" -> {
+                var wake by remember { mutableStateOf(prefs.wakeWord()) }
+                SettingSwitch(
+                    title = "Wake word (Okay Nabu)",
+                    subtitle = if (wake && WakeWordService.isListening()) "LISTENING" else if (wake) "Opted in, stopped" else "OFF",
+                    checked = wake,
+                    onCheckedChange = { on ->
+                        if (on) {
+                            if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                                Toast.makeText(context, "Grant microphone permission in Android settings first", Toast.LENGTH_LONG).show()
+                                return@SettingSwitch
+                            }
+                            prefs.setWakeWord(true)
+                            try {
+                                context.startForegroundService(Intent(context, WakeWordService::class.java)
+                                    .setAction(WakeWordService.ACTION_START))
+                                wake = true
+                                Toast.makeText(context, "Wake word on", Toast.LENGTH_SHORT).show()
+                            } catch (e: Exception) {
+                                prefs.setWakeWord(false)
+                                Toast.makeText(context, "Could not start wake word", Toast.LENGTH_SHORT).show()
+                            }
+                        } else {
+                            prefs.setWakeWord(false)
+                            context.stopService(Intent(context, WakeWordService::class.java))
+                            wake = false
+                            Toast.makeText(context, "Wake word off", Toast.LENGTH_SHORT).show()
+                        }
+                    }
                 )
+                Spacer(modifier = Modifier.height(8.dp))
+                var follow by remember { mutableStateOf(prefs.followUp()) }
+                SettingSwitch(
+                    title = "Follow-up listening",
+                    subtitle = "Hands-free replies after Assist",
+                    checked = follow,
+                    onCheckedChange = { on ->
+                        prefs.setFollowUp(on)
+                        follow = on
+                    }
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("Sensitivity: ${OverlayPreferences.noiseLabel(prefs.noise())}", color = skin.colors.text)
+                Text("Mic disabled: ${prefs.microphoneDisabled()}", color = skin.colors.textMuted, fontSize = 13.sp)
+            }
+            "alerts" -> {
+                var events by remember { mutableStateOf(prefs.tvEvents()) }
+                SettingSwitch(
+                    title = "TV notifications & camera popups",
+                    subtitle = if (events) "ON" else "OFF",
+                    checked = events,
+                    onCheckedChange = { on ->
+                        if (on) {
+                            if (!Settings.canDrawOverlays(context)) {
+                                Toast.makeText(context, "Grant overlay permission first", Toast.LENGTH_LONG).show()
+                                return@SettingSwitch
+                            }
+                            prefs.setTvEvents(true)
+                            try {
+                                context.startForegroundService(Intent(context, TvEventsService::class.java)
+                                    .setAction(TvEventsService.ACTION_START))
+                                events = true
+                            } catch (e: Exception) {
+                                prefs.setTvEvents(false)
+                                Toast.makeText(context, "Could not start TV alerts", Toast.LENGTH_SHORT).show()
+                            }
+                        } else {
+                            prefs.setTvEvents(false)
+                            context.stopService(Intent(context, TvEventsService::class.java))
+                            events = false
+                        }
+                    }
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                var spoken by remember { mutableStateOf(prefs.spokenAnnouncements()) }
+                SettingSwitch(
+                    title = "Spoken announcements",
+                    subtitle = "Speak alert text",
+                    checked = spoken,
+                    onCheckedChange = { on ->
+                        prefs.setSpokenAnnouncements(on)
+                        spoken = on
+                    }
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("Announcement volume: ${prefs.spokenAnnouncementVolume()}%", color = skin.colors.text)
+                Text("Camera decoder: ${prefs.cameraMode()}", color = skin.colors.textMuted, fontSize = 13.sp)
+            }
+            "screensaver" -> {
+                var ss by remember { mutableStateOf(prefs.screensaverDashboard()) }
+                SettingSwitch(
+                    title = "Frigate screensaver",
+                    subtitle = if (ss) "ON" else "OFF",
+                    checked = ss,
+                    onCheckedChange = { on ->
+                        prefs.setScreensaverDashboard(on)
+                        ss = on
+                        if (on) {
+                            ScreensaverWatchService.startIfEnabled(context)
+                        }
+                    }
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("URL: ${prefs.screensaverUrl().ifEmpty { "(none)" }}", color = skin.colors.textMuted, fontSize = 13.sp)
+                Text("Live mode: ${prefs.screensaverLiveMode()}", color = skin.colors.textMuted, fontSize = 13.sp)
+            }
+            "home" -> {
+                Text("HA layout management: ${if (prefs.haManage()) "ON" else "OFF"}", color = skin.colors.text)
+                Text("Use the legacy SETTINGS button for full HA address/token entry and reconnect. Those flows include URL validation and immediate Assist updates.", color = skin.colors.textMuted, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
+            }
+            "updates" -> {
+                Text("Update channel: ${prefs.updateChannel()}", color = skin.colors.text)
+                Text("Use the legacy SETTINGS button for Check / Install / Forget. Those paths include release verification and safe deferred install.", color = skin.colors.textMuted, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
             }
             else -> {
-                Text(
-                    "Controls for this category will be wired to the existing validated logic in VoiceActivity / OverlayPreferences / services. No defaults are changed and background microphone listening remains opt-in only.",
-                    color = skin.colors.text,
-                    fontSize = 15.sp
-                )
-                Text(
-                    "Status: wake word = ${if (prefs.wakeWord()) "opted-in" else "off"}, HA manage = ${prefs.haManage()}",
-                    color = skin.colors.textMuted,
-                    fontSize = 13.sp,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
+                Text("Category content", color = skin.colors.text)
             }
         }
+    }
+}
+
+@Composable
+fun SettingSwitch(
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    val skin = LocalKellieSkin.current
+    var focused by remember { mutableStateOf(false) }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(if (focused) skin.colors.cardFocused else skin.colors.card, skin.cardShape)
+            .border(
+                if (focused) skin.focusBorderWidth else 1.dp,
+                if (focused) skin.colors.focus else skin.colors.stroke,
+                skin.cardShape
+            )
+            .onFocusChanged { focused = it.isFocused }
+            .focusable()
+            .clickable { onCheckedChange(!checked) }
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = title, color = skin.colors.text, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+            Text(text = subtitle, color = skin.colors.textMuted, fontSize = 13.sp)
+        }
+        Switch(checked = checked, onCheckedChange = null)
     }
 }
