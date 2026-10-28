@@ -1,5 +1,7 @@
 # Kellie's Voice: signed APK updates
 
+**Current public stable: [v0.16.14](https://github.com/chadakenn/Kellies-Voice/releases/tag/v0.16.14)** (signed Android build 54 and matching HACS integration 0.16.14). Prefer the **latest GitHub Release** or the signed in-app updater for normal updates; keep the installed app and its saved data. The old version-by-version recovery guidance below is historical. Wiki and release publication use intentionally separate manual GitHub workflows.
+
 **Canonical GitHub repository:** [chadakenn/Kellies-Voice](https://github.com/chadakenn/Kellies-Voice), renamed on 2026-10-21. GitHub release asset URLs preserve that exact capitalization.
 
 The Android package ID remains `com.example.tvvoiceprobe`, and the original private release-signing key remains in use. **Never uninstall to rebrand.** Install a same-signed update over the existing app to preserve Home Assistant credentials, settings and the ⭐ shortcut.
