@@ -15,6 +15,7 @@ import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -76,12 +77,12 @@ fun SettingsScreen(
     var selected by rememberSaveable { mutableStateOf("home") }
 
     val categories = listOf(
-        SettingsCategory("home", "Home Assistant", "Connection, pairing and conversation", "🏠"),
-        SettingsCategory("voice", "Voice & microphone", "Wake word, sensitivity and input", "🎤"),
-        SettingsCategory("overlay", "Overlay & appearance", "Popup, size, position and theme", "🎨"),
-        SettingsCategory("alerts", "Alerts & cameras", "Notifications, speech and video", "🔔"),
-        SettingsCategory("screensaver", "Screensaver", "Frigate dashboard and cameras", "🖥️"),
-        SettingsCategory("updates", "Updates & account", "Versions and saved login", "👤")
+        SettingsCategory("home", "Home Assistant", "Connection, pairing and conversation", "\uD83C\uDFE0"),
+        SettingsCategory("voice", "Voice & microphone", "Wake word, sensitivity and input", "\uD83C\uDFA4"),
+        SettingsCategory("overlay", "Overlay & appearance", "Popup, size, position and theme", "\uD83C\uDFA8"),
+        SettingsCategory("alerts", "Alerts & cameras", "Notifications, speech and video", "\uD83D\uDD14"),
+        SettingsCategory("screensaver", "Screensaver", "Frigate dashboard and cameras", "\uD83D\uDDA5\uFE0F"),
+        SettingsCategory("updates", "Updates & account", "Versions and saved login", "\uD83D\uDC64")
     )
 
     Column(
@@ -91,7 +92,7 @@ fun SettingsScreen(
             .padding(32.dp)
     ) {
         Text(
-            text = "Kellie's Voice  ·  Compose Settings (preview)",
+            text = "Kellie's Voice  \u00b7  Compose Settings (preview)",
             color = skin.colors.accent,
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold
@@ -139,7 +140,7 @@ fun SettingsScreen(
         }
 
         Text(
-            text = "D-pad to move  •  OK to select  •  Back returns to voice screen",
+            text = "D-pad to move  \u2022  OK to select  \u2022  Back returns to voice screen",
             color = skin.colors.textMuted,
             fontSize = 14.sp,
             modifier = Modifier
@@ -234,13 +235,99 @@ fun CategoryContent(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = if (s.id == skin.id) "●  ${s.displayName}" else "○  ${s.displayName}",
+                            text = if (s.id == skin.id) "\u25cf  ${s.displayName}" else "\u25cb  ${s.displayName}",
                             color = if (s.id == skin.id) skin.colors.accent else skin.colors.text,
                             fontSize = 16.sp
                         )
                     }
                     Spacer(modifier = Modifier.height(6.dp))
                 }
+
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Popup position", color = skin.colors.accent, fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                val positions = listOf(
+                    OverlayPreferences.POSITION_DEFAULT to "Default",
+                    OverlayPreferences.POSITION_TOP_LEFT to "Top left",
+                    OverlayPreferences.POSITION_TOP_RIGHT to "Top right",
+                    OverlayPreferences.POSITION_BOTTOM_LEFT to "Bottom left",
+                    OverlayPreferences.POSITION_BOTTOM_RIGHT to "Bottom right",
+                    OverlayPreferences.POSITION_CENTER to "Center",
+                    OverlayPreferences.POSITION_BOTTOM_CENTER to "Bottom center"
+                )
+                var currentPos by remember { mutableStateOf(prefs.position()) }
+                positions.forEach { (id, label) ->
+                    TextButton(onClick = {
+                        prefs.setPosition(id)
+                        currentPos = id
+                        Toast.makeText(context, "Position saved: $label. Reopen overlay to apply.", Toast.LENGTH_SHORT).show()
+                    }) {
+                        Text(if (id == currentPos) "\u25cf $label" else label)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+                Text("Popup size", color = skin.colors.accent, fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                val sizes = listOf(
+                    OverlayPreferences.SIZE_SMALL to "Small",
+                    OverlayPreferences.SIZE_MEDIUM to "Medium",
+                    OverlayPreferences.SIZE_LARGE to "Large"
+                )
+                var currentSize by remember { mutableStateOf(prefs.size()) }
+                sizes.forEach { (id, label) ->
+                    TextButton(onClick = {
+                        prefs.setSize(id)
+                        currentSize = id
+                        Toast.makeText(context, "Size saved: $label. Reopen overlay to apply.", Toast.LENGTH_SHORT).show()
+                    }) {
+                        Text(if (id == currentSize) "\u25cf $label" else label)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+                Text("Auto-hide after answer", color = skin.colors.accent, fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                val hideOptions = listOf(5, 7, 10, 20, 0)
+                var currentHide by remember { mutableStateOf(prefs.hideSeconds()) }
+                hideOptions.forEach { secs ->
+                    val label = if (secs == 0) "Never (manual close)" else "$secs seconds${if (secs == 7) " (original)" else ""}"
+                    TextButton(onClick = {
+                        prefs.setHideSeconds(secs)
+                        currentHide = secs
+                        Toast.makeText(context, "Auto-hide: ${prefs.hideLabel()}", Toast.LENGTH_SHORT).show()
+                    }) {
+                        Text(if (secs == currentHide || (secs == 0 && !prefs.autoHide())) "\u25cf $label" else label)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Weather popup", color = skin.colors.accent, fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                var weatherPos by remember { mutableStateOf(prefs.weatherPosition()) }
+                Text("Position: ${com.example.tvvoiceprobe.WeatherLayout.positionLabel(weatherPos)}", color = skin.colors.text, fontSize = 14.sp)
+                listOf("bottom_center", "top_left", "top_right", "bottom_left", "bottom_right").forEach { p ->
+                    TextButton(onClick = {
+                        prefs.setWeatherPosition(p)
+                        weatherPos = p
+                        Toast.makeText(context, "Weather position saved", Toast.LENGTH_SHORT).show()
+                    }) { Text(com.example.tvvoiceprobe.WeatherLayout.positionLabel(p)) }
+                }
+                var weatherSize by remember { mutableStateOf(prefs.weatherSize()) }
+                Text("Size: $weatherSize", color = skin.colors.text, fontSize = 14.sp)
+                listOf("small", "medium", "large").forEach { sz ->
+                    TextButton(onClick = {
+                        prefs.setWeatherSize(sz)
+                        weatherSize = sz
+                        Toast.makeText(context, "Weather size saved", Toast.LENGTH_SHORT).show()
+                    }) { Text(sz) }
+                }
+                var weatherSecs by remember { mutableStateOf(prefs.weatherSeconds()) }
+                Text("Duration: ${weatherSecs}s", color = skin.colors.text, fontSize = 14.sp)
+                listOf(8, 20, 30, 45).forEach { s ->
+                    TextButton(onClick = {
+                        prefs.setWeatherSeconds(s)
+                        weatherSecs = s
+                        Toast.makeText(context, "Weather duration: ${s}s", Toast.LENGTH_SHORT).show()
+                    }) { Text("${s}s") }
+                }
+                Text("Changes persist via OverlayPreferences. Full HA layout publish occurs from the main activity when HA manage is enabled. Reopen overlay to see visual changes.", color = skin.colors.textMuted, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
             }
             "voice" -> {
                 var wake by remember { mutableStateOf(prefs.wakeWord() && WakeWordService.isListening()) }
@@ -250,7 +337,6 @@ fun CategoryContent(
                     checked = wake,
                     onCheckedChange = { on ->
                         if (on) {
-                            // Match VoiceActivity.enableWakeWord() preflight
                             val creds = try { CredentialStore(context).load() } catch (e: Exception) { null }
                             if (creds == null) {
                                 Toast.makeText(context, "Configure Home Assistant before enabling the wake word", Toast.LENGTH_LONG).show()
