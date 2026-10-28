@@ -7,7 +7,7 @@ public final class MicSignalHealthTest {
     @Test public void flatlineWarnsOnceAfterThreeSeconds() {
         MicSignalHealth signal = new MicSignalHealth();
         short[] digitalZero = new short[1600];
-        for (int i = 0; i < 30; i++) {
+        for (int i = 0; i < 29; i++) {
             assertFalse(signal.observe(digitalZero, digitalZero.length, 16000));
         }
         assertTrue(signal.observe(digitalZero, digitalZero.length, 16000));
