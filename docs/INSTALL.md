@@ -7,7 +7,7 @@ Welcome! **Kellie's Voice** turns an Android TV / Google TV into a voice compani
 1. **Android TV app**: listens after you press TALK, speaks Home Assistant's answer through the TV, and displays floating voice, timer, weather, announcement, and camera windows.
 2. **Home Assistant custom integration (via HACS)**: registers the TV and exposes per-TV controls and actions such as `kellies_voice.announce`, `show_camera`, `show_forecast`, and `start_timer`.
 
-**For v0.16.14, install both the signed Android TV APK and matching v0.16.14 HACS integration** once the public release is published. Installing the APK does **not** install HACS, and HACS does **not** install the APK. No separate AI server is needed on your TV.
+**For v0.16.14, install both the signed Android TV APK and matching v0.16.14 HACS integration** now that v0.16.14 is publicly available. Installing the APK does **not** install HACS, and HACS does **not** install the APK. No separate AI server is needed on your TV.
 
 **Quick recovery if announcements, timers, or camera popups stop:** Open the Kellie's Voice TV app (not Android's system Settings). Choose **SETTINGS → Alerts & cameras → TV alert status → Resume TV alerts**. Resume is inside the status popup; if missing, first enable **TV announcements & cameras**, configure Home Assistant, and allow Android **Display over other apps**. A working voice/TALK connection does not guarantee the separate alert receiver is connected. [Detailed recovery steps](TROUBLESHOOTING.md#tv-camera-or-announcement-popups-missing-find-resume-tv-alerts).
 
@@ -32,7 +32,7 @@ Welcome! **Kellie's Voice** turns an Android TV / Google TV into a voice compani
 - **Camera voice commands:** Home Assistant must have the matching camera scripts exposed to Assist. If the AI says the camera is showing but no popup appears, check the **TV alert receiver connected** sensor and choose **Settings → TV alert status → Resume TV alerts**. For voice dismissal, a script must call `kellies_voice.hide_camera`, not merely fire an old custom event. Local conversation agents that send oversized prompts or bad tool JSON may need tuning (#39).
 - **Timers, pairing, microphones:** The native Assist TV timer bridge is OFF by default and remains unverified on owner hardware (#57); existing TV timer scripts remain supported. Manual pairing confirmation (#69) and 48 kHz microphone fallback (#71/#112) still need testing on affected hardware. Remote Google's Assistant mic button is not intercepted, and Fire TV is unverified (#41).
 
-See the [full release notes](releases/v0.16.12.md), [hardware checklist](TESTING.md), and [troubleshooting](TROUBLESHOOTING.md).
+See the [current release notes](releases/v0.16.14.md), [hardware checklist](TESTING.md), and [troubleshooting](TROUBLESHOOTING.md).
 
 ## What you need
 
@@ -49,7 +49,7 @@ See the [full release notes](releases/v0.16.12.md), [hardware checklist](TESTING
 
 ## Step 1: Install the signed Android TV APK
 
-1. Open the **[latest public Kellie's Voice release](https://github.com/chadakenn/Kellies-Voice/releases/latest)**. For the new wake/settings features choose **v0.16.14** once it is published; v0.16.12 is the preceding stable release.
+1. Open the **[latest public Kellie's Voice release](https://github.com/chadakenn/Kellies-Voice/releases/latest)**. For the new wake/settings features choose **v0.16.14** from the published Releases list; v0.16.12 is the preceding stable release.
 2. Download the release asset **`app-release.apk`**. Do **not** download a PR's `app-debug.apk` or GitHub Actions test artifact for a first installation.
 3. Transfer it to the TV. Options include a USB stick, a TV-compatible file manager, **Send Files to TV** on your phone and TV, or ADB (`adb install -r app-release.apk`).
 **Alternative: Downloader app.** On TVs where [Downloader](https://www.aftvnews.com/downloader/) is available, enter the official releases page URL `https://github.com/chadakenn/Kellies-Voice/releases/latest` in its browser, open the newest public release, and choose the asset named `app-release.apk`. GitHub redirects and TV browsers differ; if the APK does not download correctly, use **Send Files to TV**, USB, or the ADB option above. **There is no official Kellie's Voice Downloader short code** in this guide; do not rely on codes posted by unknown third parties.
@@ -82,7 +82,7 @@ See the [full release notes](releases/v0.16.12.md), [hardware checklist](TESTING
 2. In **Home Assistant → HACS → ⋮ → Custom repositories**, add:
    `https://github.com/chadakenn/Kellies-Voice`  
    Select category **Integration**. This is usually needed only once.
-3. Open [Kellie's Voice in HACS](https://my.home-assistant.io/redirect/hacs_repository/?owner=chadakenn&repository=Kellies-Voice&category=integration) and install/download the **matching v0.16.14** integration once the corresponding stable release is published.
+3. Open [Kellie's Voice in HACS](https://my.home-assistant.io/redirect/hacs_repository/?owner=chadakenn&repository=Kellies-Voice&category=integration) and install/download the **matching v0.16.14** integration from the HACS Releases selector.
 4. **Restart Home Assistant** so the custom integration and services load.
 5. On your TV, enable **Kellie's Voice → Settings → Home Assistant → Home Assistant layout**. Leave the TV online and connected while pairing.
 6. In Home Assistant, open **Settings → Devices & services** and add the discovered **Kellie's Voice** device. If discovery doesn't find it (for example across VLANs), choose **Add integration → Kellie's Voice**, then enter the pairing ID from **TV → Settings → Home Assistant layout → Show this TV's pairing ID**.
@@ -162,23 +162,23 @@ The maintainer has also confirmed **starting and stopping named timers through t
 
 For weather, the recommended initial test is **Developer tools → Actions**, not a spoken request. Once direct actions work, [create and expose the forecast script](WEATHER_FORECAST.md) to your chosen Assist conversation agent. You do **not** need to name that agent Julia.
 
-## Where development stands (October 24, 2026)
+## Current release status (October 28, 2026)
 
 | Status | Features |
 | --- | --- |
-| **Publicly downloadable: v0.16.9** | Authenticated HA voice/TTS, remote-driven overlay, per-TV layout controls, on-screen text announcements, camera snapshots, experimental on-demand live HLS, Aurora overlay styling, seven-day forecast popup, named TV countdowns |
-| **Confirmed on maintainer's onn 4K Pro** | Basic conversation/TTS, driveway and doorbell moving live popups, weather forecast card, TV countdown/chimes with **Back** dismissal, and named timer voice start/stop after custom HA setup |
-| **Known public-release issues** | Philips microphone route detection still fails on some Philips TVs (#71); v0.16.9 alert retry needs real HA restart/TV validation (#78); native Assist may intercept generic timer speech |
-| **Code/CI in review; NOT shipped in v0.16.9** | Opt-in follow-up listening/microphone privacy [#62](https://github.com/chadakenn/Kellies-Voice/pull/62) / [#63](https://github.com/chadakenn/Kellies-Voice/pull/63); optional “Okay Nabu” wake word [#59](https://github.com/chadakenn/Kellies-Voice/pull/59); spoken/actionable TV buttons [#51](https://github.com/chadakenn/Kellies-Voice/pull/51) / [#61](https://github.com/chadakenn/Kellies-Voice/pull/61) |
+| **Publicly downloadable: v0.16.14** | Signed Android build 54 and matching HACS 0.16.14, six-category TV Settings hub, opt-in Okay Nabu and post-wake ducking, existing Assist, screensaver, alerts, timers and cameras |
+| **Verified on the owner's onn 4K Pro** | Basic talk/TTS, moving doorbell/driveway video, four-camera screensaver with sound on selected full-screen camera, forecast, custom-script timer start/stop, early Okay Nabu one-breath command and volume duck/restore on a development build |
+| **Still requiring device acceptance** | Stable wake reactivation after reboot and permission loss; Philips phantom microphone inputs (#71), TV pairing typo/delivery (#69), native timer phrase routing (#57), other device compatibility (#41) |
+| **Development only, not yet released** | Draft voice silence fallback #183 and APK version-security checks #184, and future custom wake/TV-off modes. CI green is not hardware approval. |
 
-**Do not mistake a passing PR build, a debug APK, or a draft integration branch for a public release.** PR #64's old v0.16.4 preview was closed. Install the latest signed public **v0.16.12 GitHub Release** unless you're explicitly testing a newer development branch.
+**Install only a published signed [v0.16.14 APK](https://github.com/chadakenn/Kellies-Voice/releases/tag/v0.16.14) and matching HACS integration** for normal use. Do not mistake GitHub Actions debug APKs, drafts, or PR branches for stable releases.
 
 ## New tester checklist
 
 Please start with these quick, low-risk checks before experimenting with locks, doors, or complex automations:
 
 - [ ] Record **TV brand/model**, Android/Google/Fire TV OS version, **Kellie's Voice APK version**, **HACS integration version**, and Home Assistant version.
-- [ ] Confirm the signed v0.16.9 APK installs, Home Assistant authenticates, and **TALK → answer → TV speech** works twice in a row.
+- [ ] Confirm the signed v0.16.14 APK installs, Home Assistant authenticates, and **TALK → answer → TV speech** works twice in a row.
 - [ ] Check **overlay appearance**, D-pad focus, and whether the normal TV audio resumes after an answer.
 - [ ] Enable **TV announcements & cameras** and verify a local preview, HA text popup and, if available, one valid camera snapshot.
 - [ ] Test an on-demand **live** camera only if your HA camera supports streaming; confirm actual moving frames, not merely a snapshot fallback.
@@ -187,11 +187,11 @@ Please start with these quick, low-risk checks before experimenting with locks, 
 - [ ] Reboot, resume from standby, interrupt Wi-Fi briefly, and check whether the app/event receiver reconnects without unnecessary mic activation.
 - [ ] Check whether your device's built-in or remote microphone is accessible. **Do not assume the physical remote's Google Assistant button will launch this app.**
 
-**Report results (include version v0.16.9):** open a [GitHub issue](https://github.com/chadakenn/Kellies-Voice/issues), with a short title, device/OS version, app/HACS versions, exact steps, exact non-sensitive on-screen error or transcript, expected versus actual behavior, and optionally **redacted** photos/video. Mark whether the test was with the **public v0.16.9 release** or an explicitly labeled preview. Report partial successes too: e.g. “snapshot loads but live frames don't move,” or “Back dismisses timer but OK doesn't.”
+**Report results (include the actual installed version, ideally v0.16.14):** open a [GitHub issue](https://github.com/chadakenn/Kellies-Voice/issues), with a short title, device/OS version, app/HACS versions, exact steps, exact non-sensitive on-screen error or transcript, expected versus actual behavior, and optionally **redacted** photos/video. Mark whether the test was with the **public v0.16.14 release** or an explicitly labeled preview. Report partial successes too: e.g. “snapshot loads but live frames don't move,” or “Back dismisses timer but OK doesn't.”
 
 Further information: [Troubleshooting](TROUBLESHOOTING.md) · [Camera scripts](VOICE_CAMERA_SCRIPTS.md) · [Weather setup](WEATHER_FORECAST.md) · [Timer setup](VOICE_TIMERS.md) · [Signed app updates](UPDATES.md) · [Testing history](TESTING.md) · [Security](../SECURITY.md).
 
 **Testers are welcome; installing Kellie's Voice does not install or enable door unlocking, always-on microphones, or other consequential Home Assistant automations.**
 
 
-**Optional spoken announcements:** After installing, open the TV app → SETTINGS → Spoken announcements → ON. Then Home Assistant `kellies_voice.announce` can include a `speak` sentence. Other audio is ducked temporarily and restored. Default remains silent.
+**Optional spoken announcements:** After installing, open the TV app → SETTINGS → Alerts & cameras → Spoken announcements → ON. Then Home Assistant `kellies_voice.announce` can include a `speak` sentence. Other audio is ducked temporarily and restored. Default remains silent.
