@@ -15,7 +15,7 @@ The Google Assistant button on the remote is not intercepted. The app checks for
 
 ## Idle overlay documentation capture
 
-![Heavily privacy-redacted actual idle Kellie's Voice overlay with Ready for your question and TALK STOP CLOSE SETTINGS controls](../screenshots/voice-overlay-idle-redacted.png)
+![Heavily privacy-redacted actual idle Kellie's Voice overlay with Ready for your question and TALK STOP CLOSE SETTINGS controls](https://raw.githubusercontent.com/chadakenn/Kellies-Voice/feature/compose-tv-settings/docs/screenshots/voice-overlay-idle-redacted.png)
 
 Direct ADB capture from the existing **0.16.14-test debug APK** on an onn 4K Pro, October 28, 2026. The overlay was idle; TALK was not pressed and no new Assist conversation was recorded. With owner permission, auto-listen was temporarily disabled for the capture and then restored to its original ON value. The separate existing wake-word setting was left unchanged.
 
