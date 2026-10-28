@@ -1,6 +1,7 @@
 package com.example.tvvoiceprobe.ui.settings
 
 import android.Manifest
+import android.app.AlertDialog
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
@@ -30,6 +31,8 @@ import com.example.tvvoiceprobe.CredentialStore
 import com.example.tvvoiceprobe.MicRoutePolicy
 import com.example.tvvoiceprobe.ComposeSettingsInterop
 import com.example.tvvoiceprobe.HaLayout
+import com.example.tvvoiceprobe.LiveCameraMode
+import com.example.tvvoiceprobe.TvAlertLayout
 import com.example.tvvoiceprobe.OverlayPreferences
 import com.example.tvvoiceprobe.ScreensaverWatchService
 import com.example.tvvoiceprobe.TvEventsService
@@ -449,9 +452,121 @@ fun CategoryContent(
                     }
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                Text("Announcement volume: ${prefs.spokenAnnouncementVolume()}%", color = skin.colors.text)
-                Text("Camera decoder: ${prefs.cameraMode()}", color = skin.colors.textMuted, fontSize = 13.sp)
-                Text("Use legacy SETTINGS for volume, camera mode, and alert status.", color = skin.colors.textMuted, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
+                Text("TV alert popup position", color = skin.colors.accent, fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                var alertPos by remember { mutableStateOf(prefs.alertPosition()) }
+                val alertPositions = listOf(
+                    TvAlertLayout.TOP_LEFT, TvAlertLayout.TOP_RIGHT,
+                    TvAlertLayout.BOTTOM_LEFT, TvAlertLayout.BOTTOM_RIGHT, TvAlertLayout.CENTER
+                )
+                alertPositions.forEach { id ->
+                    SettingsChoice(
+                        title = TvAlertLayout.positionLabel(id),
+                        selected = alertPos == id,
+                        onSelect = {
+                            prefs.setAlertPosition(id)
+                            alertPos = prefs.alertPosition()
+                            ComposeSettingsInterop.queueLayoutUpdate(HaLayout.ALERT_POSITION)
+                        }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+                Text("TV alert popup size", color = skin.colors.accent, fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                var alertSize by remember { mutableStateOf(prefs.alertSize()) }
+                listOf(TvAlertLayout.SMALL, TvAlertLayout.MEDIUM, TvAlertLayout.LARGE).forEach { id ->
+                    SettingsChoice(
+                        title = TvAlertLayout.sizeLabel(id),
+                        selected = alertSize == id,
+                        onSelect = {
+                            prefs.setAlertSize(id)
+                            alertSize = prefs.alertSize()
+                            ComposeSettingsInterop.queueLayoutUpdate(HaLayout.ALERT_SIZE)
+                        }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+                Text("Spoken announcement volume", color = skin.colors.accent, fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                Text("Only changes alert speech, not media, timers or assistant replies.",
+                    color = skin.colors.textMuted, fontSize = 12.sp)
+                var announcementVolume by remember { mutableIntStateOf(prefs.spokenAnnouncementVolume()) }
+                listOf(20, 40, 60, 80, 100).forEach { percent ->
+                    SettingsChoice(
+                        title = "$percent%",
+                        selected = announcementVolume == percent,
+                        onSelect = {
+                            prefs.setSpokenAnnouncementVolume(percent)
+                            announcementVolume = prefs.spokenAnnouncementVolume()
+                        }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+                Text("Live camera decoder", color = skin.colors.accent, fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                Text("Safe software is recommended. Hardware decoding may interrupt TV or HDMI video.",
+                    color = skin.colors.textMuted, fontSize = 12.sp)
+                var cameraMode by remember { mutableStateOf(prefs.cameraMode()) }
+                listOf(LiveCameraMode.SOFTWARE, LiveCameraMode.SNAPSHOT, LiveCameraMode.HARDWARE).forEach { mode ->
+                    SettingsChoice(
+                        title = LiveCameraMode.label(mode),
+                        selected = cameraMode == mode,
+                        onSelect = {
+                            if (mode == LiveCameraMode.HARDWARE && cameraMode != mode) {
+                                AlertDialog.Builder(context)
+                                    .setTitle("Enable hardware camera decoder?")
+                                    .setMessage("Only enable this on a TV box you have tested. " +
+                                        "Hardware decoding may blank HDMI or interrupt video playback.")
+                                    .setNegativeButton("Cancel", null)
+                                    .setPositiveButton("Enable hardware") { _, _ ->
+                                        prefs.setCameraMode(mode)
+                                        cameraMode = prefs.cameraMode()
+                                    }
+                                    .show()
+                            } else {
+                                prefs.setCameraMode(mode)
+                                cameraMode = prefs.cameraMode()
+                            }
+                        }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+                SettingsChoice(
+                    title = "Preview announcement popup",
+                    selected = false,
+                    onSelect = {
+                        if (!prefs.tvEvents() || !Settings.canDrawOverlays(context)) {
+                            Toast.makeText(context, "Enable TV alerts and overlay permission first", Toast.LENGTH_LONG).show()
+                        } else {
+                            try {
+                                context.startForegroundService(Intent(context, TvEventsService::class.java)
+                                    .setAction(TvEventsService.ACTION_PREVIEW))
+                            } catch (e: RuntimeException) {
+                                Toast.makeText(context, "Android blocked the alert preview", Toast.LENGTH_LONG).show()
+                            }
+                        }
+                    }
+                )
+                SettingsChoice(
+                    title = "Test spoken announcement",
+                    selected = false,
+                    onSelect = {
+                        if (!prefs.tvEvents() || !prefs.spokenAnnouncements()) {
+                            Toast.makeText(context, "Enable TV alerts and spoken announcements first", Toast.LENGTH_LONG).show()
+                        } else {
+                            try {
+                                context.startForegroundService(Intent(context, TvEventsService::class.java)
+                                    .setAction(TvEventsService.ACTION_TEST_SPOKEN))
+                            } catch (e: RuntimeException) {
+                                Toast.makeText(context, "Android blocked the announcement test", Toast.LENGTH_LONG).show()
+                            }
+                        }
+                    }
+                )
+                Text("Changes to popup position and size are saved locally. " +
+                    "If HA layout management is enabled, returning to the main screen attempts to sync them. " +
+                    "Use legacy SETTINGS for recovery diagnostics and any missing service options.",
+                    color = skin.colors.textMuted, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
             }
             "screensaver" -> {
                 var ss by remember { mutableStateOf(prefs.screensaverDashboard()) }
@@ -521,5 +636,36 @@ fun SettingSwitch(
             Text(text = subtitle, color = skin.colors.textMuted, fontSize = 13.sp)
         }
         Switch(checked = checked, onCheckedChange = null)
+    }
+}
+
+/**
+ * A single focus target for TV remote OK and touch. A focus border and
+ * separate selected marker make it clear what is highlighted versus stored.
+ */
+@Composable
+private fun SettingsChoice(title: String, selected: Boolean, onSelect: () -> Unit) {
+    val skin = LocalKellieSkin.current
+    var focused by remember { mutableStateOf(false) }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 3.dp)
+            .background(if (focused) skin.colors.cardFocused else skin.colors.card, skin.cardShape)
+            .border(
+                if (focused) skin.focusBorderWidth else 1.dp,
+                if (focused) skin.colors.focus else skin.colors.stroke,
+                skin.cardShape
+            )
+            .onFocusChanged { focused = it.isFocused }
+            .clickable(onClick = onSelect)
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = if (selected) "●  $title" else "○  $title",
+            color = if (selected) skin.colors.accent else skin.colors.text,
+            fontSize = 15.sp
+        )
     }
 }
