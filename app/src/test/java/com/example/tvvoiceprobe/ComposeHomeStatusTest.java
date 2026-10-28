@@ -25,6 +25,8 @@ public class ComposeHomeStatusTest {
         assertEquals("", ComposeHomeStatus.addressSummary("https://ha.local/api?token=" + token));
         assertEquals("", ComposeHomeStatus.addressSummary("https://ha.local/api#access_token=abc"));
         assertEquals("", ComposeHomeStatus.addressSummary("https://ha.local/api?password=secret"));
+        assertEquals("", ComposeHomeStatus.addressSummary("ftp://ha.local:8123/"));
+        assertEquals("", ComposeHomeStatus.addressSummary("javascript://ha.local/"));
         assertEquals("", ComposeHomeStatus.addressSummary("not a url"));
         assertEquals("", ComposeHomeStatus.addressSummary(""));
         assertEquals("", ComposeHomeStatus.addressSummary(null));
