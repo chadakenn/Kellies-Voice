@@ -12,7 +12,6 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -176,7 +175,6 @@ fun CategoryCard(
                 shape = skin.cardShape
             )
             .onFocusChanged { focused = it.isFocused }
-            .focusable()
             .clickable { onSelect() }
             .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -233,7 +231,6 @@ fun CategoryContent(
                                 skin.cardShape
                             )
                             .onFocusChanged { focused = it.isFocused }
-                            .focusable()
                             .clickable { onSkinChange(s) }
                             .padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -515,7 +512,6 @@ fun SettingSwitch(
                 skin.cardShape
             )
             .onFocusChanged { focused = it.isFocused }
-            .focusable()
             .clickable { onCheckedChange(!checked) }
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically
