@@ -927,8 +927,10 @@ fun CategoryContent(
                     try {
                         val saved = CredentialStore(context).load()
                         val address = ComposeHomeStatus.addressSummary(saved?.url)
+                        val safeAddress = if (ComposeHomeStatus.summaryHidesSecrets(address, saved?.token))
+                            address else ""
                         ComposeHomeStatus.configuredLabel(saved != null) +
-                            if (address.isNotEmpty()) "  ·  $address" else ""
+                            if (safeAddress.isNotEmpty()) "  ·  $safeAddress" else ""
                     } catch (e: Exception) {
                         "Saved login unavailable; check original SETTINGS"
                     }
