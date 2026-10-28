@@ -158,6 +158,14 @@ public class UpdateChannelTest {
         } catch (IllegalArgumentException expected) {
             assertEquals("Invalid release integrity metadata.", expected.getMessage());
         }
+        String stableWrongName = "{\\\"versionCode\\\":55,\\\"versionName\\\":\\\"0.16.14\\\","
+                + "\\\"tag\\\":\\\"v0.16.15\\\",\\\"sha256\\\":\\\"" + hash() + "\\\"}";
+        try {
+            UpdateChannel.requireMetadata("stable", "v0.16.15", stableWrongName);
+            throw new AssertionError("Stable release tag/name mismatch was accepted");
+        } catch (IllegalArgumentException expected) {
+            assertEquals("Invalid release integrity metadata.", expected.getMessage());
+        }
         assertEquals(UpdateChannel.OFFER, UpdateChannel.verdict("development", 28, 27, "0.16.10-dev.1"));
         assertEquals(UpdateChannel.CURRENT, UpdateChannel.verdict("development", 27, 27, "0.16.10-dev.1"));
         assertEquals(UpdateChannel.ROLLBACK_BLOCKED,
