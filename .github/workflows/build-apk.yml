@@ -28,7 +28,7 @@ jobs:
     timeout-minutes: 45
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Set up Java
         uses: actions/setup-java@v6
         with:
@@ -97,7 +97,7 @@ jobs:
       contents: write
     steps:
       - name: Check out the exact built commit
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Download APK verified by the build job
         uses: actions/download-artifact@v4
         with:

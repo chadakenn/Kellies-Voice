@@ -25,7 +25,7 @@ jobs:
       contents: write
     steps:
       - name: Check out exact approved dev commit
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Verify matched development versions and unpublished tag
         id: version
