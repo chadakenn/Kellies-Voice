@@ -20,11 +20,11 @@ The diagnostics photo is an example of the status screen, not a working screensa
 
 ## Additional direct ADB captures from PR #192 testing
 
-![Compose development preview for Frigate screensaver settings with camera entity names masked](../screenshots/compose-screensaver-preview.png)
+![Compose development preview for Frigate screensaver settings with camera entity names masked](https://raw.githubusercontent.com/chadakenn/Kellies-Voice/feature/compose-tv-settings/docs/screenshots/compose-screensaver-preview.png)
 
 Screensaver settings on the existing **0.16.14-test debug app**, captured October 28, 2026 on an onn 4K Pro. **This Compose settings page is a development preview**, not the released settings interface. Camera entity names are masked; the Frigate web URL was unconfigured.
 
-![Actual screensaver preview with the full camera area masked and the Close control retained](../screenshots/frigate-overview-redacted.png)
+![Actual screensaver preview with the full camera area masked and the Close control retained](https://raw.githubusercontent.com/chadakenn/Kellies-Voice/feature/compose-tv-settings/docs/screenshots/frigate-overview-redacted.png)
 
 The screensaver preview opened from that development UI. All camera imagery, tile labels, timestamps, faces and scene details are covered by one opaque mask; only the genuine **Close** control remains visible. This deliberately does not show the camera layout, prove moving video, or establish decoder reliability. Preview was closed with Back. No camera mode was changed. [Capture details](https://github.com/chadakenn/Kellies-Voice/blob/feature/compose-tv-settings/docs/screenshots/PR-192-CAPTURES.md).
 
