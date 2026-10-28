@@ -11,10 +11,13 @@ public final class EnergyVad {
     private boolean heardUtterance;
     private double backgroundRms = 0.002;
 
-    /** Already-sent wake/follow-up PCM is speech, and its elapsed time counts. */
+    /** Already-sent wake/follow-up PCM counts as speech and elapsed capture. */
     public void noteLead(long milliseconds) {
+        if (milliseconds <= 0) return;
         heardUtterance = true;
-        observedMs = Math.max(0L, milliseconds);
+        // Separate buffered segments can both be sent in a single run.
+        // Do not erase an earlier segment's duration when a second arrives.
+        observedMs += milliseconds;
         quietMs = 0L;
     }
 
