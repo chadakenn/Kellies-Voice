@@ -76,6 +76,17 @@ public class ComposeScreensaverConfigTest {
         assertEquals(0, ScreensaverDashboard.cameraList("").length);
     }
 
+    @Test public void cameraEditorRejectsInvalidInputWithoutFiltering() {
+        assertEquals("", ScreensaverCameraInput.validatedOrNull("  "));
+        assertEquals("camera.driveway,camera.doorbell",
+                ScreensaverCameraInput.validatedOrNull("camera.driveway, camera.doorbell"));
+        assertNull(ScreensaverCameraInput.validatedOrNull(null));
+        assertNull(ScreensaverCameraInput.validatedOrNull("not-a-camera"));
+        assertNull(ScreensaverCameraInput.validatedOrNull("camera.valid, binary_sensor.motion"));
+        assertNull(ScreensaverCameraInput.validatedOrNull("camera.a,camera.b,camera.c,camera.d,camera.e"));
+        assertNull(ScreensaverCameraInput.validatedOrNull(",,,"));
+    }
+
     @Test public void urlAndCameraKeysAreScreensaverLayoutUpdates() {
         assertTrue(HaLayout.isScreensaver(HaLayout.SCREENSAVER_URL));
         assertTrue(HaLayout.isScreensaver(HaLayout.SCREENSAVER_CAMERAS));
