@@ -21,8 +21,8 @@ class BetaReleasePolicyTests(unittest.TestCase):
         manifest = json.loads(
             (ROOT / "custom_components/kellies_voice/manifest.json").read_text()
         )
-        name = re.search(r"\\bversionName\\s+'([^']+)'", build)
-        code = re.search(r"\\bversionCode\\s+(\\d+)", build)
+        name = re.search(r"\bversionName\s+'([^']+)'", build)
+        code = re.search(r"\bversionCode\s+(\d+)", build)
         self.assertIsNotNone(name)
         self.assertIsNotNone(code)
         version = name.group(1)
