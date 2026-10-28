@@ -30,7 +30,13 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import com.example.tvvoiceprobe.ComposeHomeStatus
 import com.example.tvvoiceprobe.CredentialStore
+import com.example.tvvoiceprobe.HaDiscovery
+import com.example.tvvoiceprobe.ScreensaverWatchService
 import com.example.tvvoiceprobe.MicRoutePolicy
 import com.example.tvvoiceprobe.ComposeSettingsInterop
 import com.example.tvvoiceprobe.HaLayout
@@ -915,8 +921,102 @@ fun CategoryContent(
                     color = skin.colors.textMuted, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
             }
             "home" -> {
-                Text("HA layout management: ${if (prefs.haManage()) "ON" else "OFF"}", color = skin.colors.text)
-                Text("Use the legacy SETTINGS button for full HA address/token entry and reconnect. Those flows include URL validation and immediate Assist updates.", color = skin.colors.textMuted, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
+                val connection = remember {
+                    try { CredentialStore(context).load() } catch (e: Exception) { null }
+                }
+                val configured = connection != null
+                val address = ComposeHomeStatus.addressSummary(connection?.url)
+                Text("Home Assistant login", color = skin.colors.accent, fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                Text(
+                    text = ComposeHomeStatus.configuredLabel(configured) +
+                        if (address.isNotEmpty()) "  ·  $address" else "",
+                    color = skin.colors.text,
+                    fontSize = 16.sp
+                )
+                Text(
+                    "Token and full credentials stay encrypted. This screen never shows the token. " +
+                        "Enter or replace the login in original SETTINGS.",
+                    color = skin.colors.textMuted,
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("TV pairing ID", color = skin.colors.accent, fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                val pairingId = remember { prefs.deviceId() }
+                Text(
+                    text = pairingId,
+                    color = skin.colors.text,
+                    fontSize = 15.sp,
+                    modifier = Modifier.padding(vertical = 4.dp)
+                )
+                Text(
+                    "In Home Assistant: Settings → Devices & services → Add integration → Kellie's Voice. " +
+                        "This ID is not a password or your HA token.",
+                    color = skin.colors.textMuted,
+                    fontSize = 12.sp
+                )
+                SettingsChoice(
+                    title = "Copy pairing ID",
+                    selected = false,
+                    onSelect = {
+                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+                        if (clipboard == null) {
+                            Toast.makeText(context, "Clipboard is not available on this TV", Toast.LENGTH_LONG).show()
+                        } else {
+                            try {
+                                clipboard.setPrimaryClip(ClipData.newPlainText("Kellie's Voice pairing ID", pairingId))
+                                Toast.makeText(context, "Pairing ID copied", Toast.LENGTH_SHORT).show()
+                            } catch (e: RuntimeException) {
+                                Toast.makeText(context, "This TV blocked clipboard access", Toast.LENGTH_LONG).show()
+                            }
+                        }
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Home Assistant layout", color = skin.colors.accent, fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                var haLayout by remember { mutableStateOf(prefs.haManage()) }
+                SettingSwitch(
+                    title = "Manage layout from Home Assistant",
+                    subtitle = if (haLayout) "ON" else "OFF",
+                    checked = haLayout,
+                    onCheckedChange = { on ->
+                        prefs.setHaManage(on)
+                        haLayout = prefs.haManage()
+                        HaDiscovery.setWanted(context, haLayout)
+                        if (haLayout || prefs.screensaverDashboard()) {
+                            ScreensaverWatchService.startIfEnabled(context)
+                        } else {
+                            try {
+                                context.stopService(Intent(context, ScreensaverWatchService::class.java))
+                            } catch (e: RuntimeException) {
+                                Toast.makeText(context, "Could not stop the layout watcher", Toast.LENGTH_LONG).show()
+                            }
+                        }
+                        Toast.makeText(
+                            context,
+                            if (haLayout) "Layout ON. Pair with this TV's ID, or use Discovered in HA."
+                            else "Home Assistant layout control off.",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                )
+                Text(
+                    "Turns on discovery and the existing layout watcher. Returning to the voice screen " +
+                        "applies this to the current Assist connection. No second Home Assistant client is started, " +
+                        "and the microphone is not used.",
+                    color = skin.colors.textMuted,
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    "Connect / reconnect and login entry remain in original SETTINGS. " +
+                        "Those actions use the existing Assist client and must not open another connection.",
+                    color = skin.colors.textMuted,
+                    fontSize = 12.sp
+                )
             }
             "updates" -> {
                 Text("Installed version: ${BuildConfig.VERSION_NAME}", color = skin.colors.text)
