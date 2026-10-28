@@ -18,6 +18,18 @@ class UpdateSecurityTests(unittest.TestCase):
         self.assertNotIn("return (int) info.getLongVersionCode()", source)
         self.assertIn("private long installedVersionCode()", source)
 
+    def test_install_revalidates_persisted_receipt_before_intent(self):
+        updater = (SRC / "UpdateManager.java").read_text()
+        receipt = (SRC / "VerifiedApkReceipt.java").read_text()
+        self.assertIn("new VerifiedApkReceipt(release.code, release.name, release.sha256", updater)
+        self.assertIn(".save(receiptFile());", updater)
+        self.assertIn("VerifiedApkReceipt.read(receiptFile())", updater)
+        self.assertIn("receipt.verifyFile(apk, channel)", updater)
+        self.assertIn("verifyInstalledIdentity(apk, new Release(receipt.code", updater)
+        self.assertIn("if (epoch == offerEpoch) openVerifiedInstaller();", updater)
+        self.assertIn("sha256.equals(hex.toString())", receipt)
+        self.assertIn("app-release.verified", updater)
+
     def test_activity_closes_updater_and_callbacks(self):
         activity = (SRC / "VoiceActivity.java").read_text()
         updater = (SRC / "UpdateManager.java").read_text()
