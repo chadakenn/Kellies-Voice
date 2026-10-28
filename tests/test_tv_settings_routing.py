@@ -133,24 +133,29 @@ class TvSettingsRoutingTest(unittest.TestCase):
         self.assertIn('private void chooseMicrophoneDetection()', ACTIVITY)
 
 
-if __name__ == "__main__":
-    unittest.main()
     def test_premium_fullscreen_settings_activity_exists(self):
         settings = (
             Path(__file__).resolve().parents[1]
             / "app/src/main/java/com/example/tvvoiceprobe/SettingsActivity.java"
         ).read_text(encoding="utf-8")
         self.assertIn("class SettingsActivity", settings)
-        self.assertIn("Connection", settings)
+        self.assertIn("Credentials", settings)
         self.assertIn("Wake word", settings)
         self.assertIn("TV alerts", settings)
         self.assertIn("D-pad", settings)
         self.assertIn("AppPalette", settings)
+        # Must not use CLEAR_TOP (singleTask would destroy the Settings host)
+        self.assertNotIn("FLAG_ACTIVITY_CLEAR_TOP", settings)
         manifest = (
             Path(__file__).resolve().parents[1]
             / "app/src/main/AndroidManifest.xml"
         ).read_text(encoding="utf-8")
         self.assertIn("SettingsActivity", manifest)
+        # Action parity: the dispatcher must call the real VoiceActivity methods
+        self.assertIn("newConversation()", ACTIVITY)
+        self.assertIn("returnToPremiumSettingsIfNeeded", ACTIVITY)
+        self.assertNotIn("assist.newConversation()", ACTIVITY)
+
 
 
 if __name__ == "__main__":

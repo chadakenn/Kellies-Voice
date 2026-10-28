@@ -243,9 +243,10 @@ public class SettingsActivity extends Activity {
         if (action == null) return;
         Intent intent = new Intent(this, VoiceActivity.class);
         intent.putExtra(ACTION_EXTRA, action);
-        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        // VoiceActivity is singleTask. Starting it clears activities above it.
+        // After the action (or dialog dismiss) VoiceActivity re-launches this Activity
+        // so the premium full-screen UI remains the host and Back returns here.
         startActivity(intent);
-        // Stay open so Back returns here; VoiceActivity will handle the dialog/action.
     }
 
     private String mapAction(String category, String label) {
@@ -280,7 +281,7 @@ public class SettingsActivity extends Activity {
         try {
             configured = new CredentialStore(this).load() != null;
         } catch (Exception ignored) {}
-        statusConnection.setText(configured ? "Connection  •  Saved" : "Connection  •  Not configured");
+        statusConnection.setText(configured ? "Credentials  •  Saved" : "Connection  •  Not configured");
         statusConnection.setTextColor(configured ? 0xFF6FCF97 : colors.muted);
 
         boolean wakeOn = prefs.wakeWord();
@@ -290,7 +291,7 @@ public class SettingsActivity extends Activity {
         statusWake.setTextColor(listening ? 0xFF6FCF97 : colors.muted);
 
         boolean alerts = prefs.tvEvents();
-        statusAlerts.setText("TV alerts  •  " + (alerts ? "On" : "Off"));
+        statusAlerts.setText("TV alerts  •  " + (alerts ? "Enabled" : "Off"));
         statusAlerts.setTextColor(alerts ? 0xFF6FCF97 : colors.muted);
     }
 

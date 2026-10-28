@@ -49,3 +49,17 @@ A dedicated full-screen `SettingsActivity` replaces the previous dialog-based hu
 **Hardware note:** Physical onn 4K Pro testing is still required to confirm focus traversal, Back behavior, and readability under real TV conditions. Screenshots in the PR are mockups only; do not include private household information.
 
 **Draft PR:** This redesign is delivered as a draft pull request and must not be merged into `main` until owner review and on-device QA.
+
+
+## Navigation and Back behavior (PR #191 fixes)
+
+VoiceActivity remains `singleTask` (required for remote shortcut / overlay). Selecting a setting from the full-screen SettingsActivity delivers an action to VoiceActivity. After the action or dialog is dismissed, VoiceActivity re-launches SettingsActivity (`FLAG_ACTIVITY_REORDER_TO_FRONT`) so the premium UI stays the host and the remote Back key returns to it.
+
+Status chips are accurate:
+- Credentials • Saved — credentials exist; does not claim a live WebSocket connection.
+- Wake word • Listening / Stopped / Off — reflects the actual service state.
+- TV alerts • Enabled / Off — reflects the preference; the scoped receiver connection is shown in the existing TV alert status dialog.
+
+All six categories and existing safety confirmations are preserved. The Android compile error (`assist.newConversation()`) is fixed by calling the existing `VoiceActivity.newConversation()`.
+
+**onn 4K Pro testing still required** for focus traversal, Back from nested dialogs, scroll on 720p, and readability on 1080p/4K.

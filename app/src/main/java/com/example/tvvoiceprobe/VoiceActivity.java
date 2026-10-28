@@ -72,6 +72,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
     private boolean initialConnectionRequested;
     /** Only the UI navigation state; no settings or HA data are changed by entering sections. */
     private SettingsSection activeSettingsSection;
+    private boolean returnToPremiumSettings;
 
     private enum SettingsSection {
         HOME("Home Assistant", "Connection, pairing and conversation", "01"),
@@ -592,6 +593,10 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
 
     /** The settings landing screen: only six clear destinations, not 21 mixed actions. */
     private void showSettingsDashboard() {
+        if (returnToPremiumSettings) {
+            returnToPremiumSettingsIfNeeded();
+            return;
+        }
         activeSettingsSection = null;
         AppPalette colors = currentPalette();
         int pad = menuDp(18);
@@ -707,6 +712,10 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
 
     /** Called by existing option screens to return to the current section. */
     private void showSettingsMenu() {
+        if (returnToPremiumSettings) {
+            returnToPremiumSettingsIfNeeded();
+            return;
+        }
         if (activeSettingsSection == null) {
             showSettingsDashboard();
         } else {
@@ -2067,9 +2076,19 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         showScreensaverSettings();
     }
 
+
+    /** After a premium Settings action, bring the full-screen Settings back. */
+    private void returnToPremiumSettingsIfNeeded() {
+        if (!returnToPremiumSettings) return;
+        returnToPremiumSettings = false;
+        startActivity(new Intent(this, SettingsActivity.class)
+                .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT));
+    }
+
     /** Entry point for the full-screen SettingsActivity. Preserves all existing action logic. */
     public void handleSettingsAction(String action) {
         if (action == null) return;
+        returnToPremiumSettings = true;
         switch (action) {
             case "connect":
                 if (settings != null) assist.connect(settings.url, settings.token);
@@ -2079,7 +2098,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                 configure();
                 break;
             case "newConversation":
-                if (assist != null) assist.newConversation();
+                newConversation();
                 break;
             case "chooseHaLayout": chooseHaLayout(); break;
             case "chooseMicSensitivity": chooseMicSensitivity(); break;
@@ -2110,6 +2129,16 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
             case "confirmForget": confirmForget(); break;
             default:
                 status("Unknown settings action.");
+        }
+        // Dialog-based actions return via showSettingsMenu; others return here.
+        if (returnToPremiumSettings && !action.equals("chooseWakeWord")
+                && !action.equals("chooseHaLayout") && !action.equals("chooseMicSensitivity")
+                && !action.equals("chooseFollowUp") && !action.equals("chooseMicrophoneDetection")
+                && !action.equals("showOverlayPreferences") && !action.equals("chooseTvNotifications")
+                && !action.equals("chooseAnnouncementVolume") && !action.equals("showTvAlertStatus")
+                && !action.equals("chooseCameraMode") && !action.equals("showScreensaverSettings")
+                && !action.equals("chooseUpdates") && !action.equals("confirmForget")) {
+            returnToPremiumSettingsIfNeeded();
         }
     }
 
