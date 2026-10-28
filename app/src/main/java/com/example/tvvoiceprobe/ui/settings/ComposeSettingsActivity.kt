@@ -26,9 +26,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.tvvoiceprobe.CredentialStore
 import com.example.tvvoiceprobe.MicRoutePolicy
-import com.example.tvvoiceprobe.MicrophoneRouting
+import com.example.tvvoiceprobe.ComposeSettingsInterop
 import com.example.tvvoiceprobe.OverlayPreferences
-import com.example.tvvoiceprobe.ScreensaverSignals
 import com.example.tvvoiceprobe.ScreensaverWatchService
 import com.example.tvvoiceprobe.TvEventsService
 import com.example.tvvoiceprobe.WakeWordService
@@ -260,7 +259,7 @@ fun CategoryContent(
                                 Toast.makeText(context, MicRoutePolicy.MANUALLY_DISABLED_MESSAGE, Toast.LENGTH_LONG).show()
                                 return@SettingSwitch
                             }
-                            val routeIssue = MicrophoneRouting.preflight(context, prefs.allowUnverifiedMic())
+                            val routeIssue = ComposeSettingsInterop.microphonePreflight(context, prefs.allowUnverifiedMic())
                             if (routeIssue != null) {
                                 Toast.makeText(context, routeIssue, Toast.LENGTH_LONG).show()
                                 return@SettingSwitch
@@ -376,7 +375,7 @@ fun CategoryContent(
                                 context.startForegroundService(Intent(context, ScreensaverWatchService::class.java)
                                     .setAction(ScreensaverWatchService.ACTION_STOP))
                             } catch (e: Exception) { }
-                            ScreensaverSignals.settingsChanged()
+                            ComposeSettingsInterop.screensaverSettingsChanged()
                         }
                     }
                 )
