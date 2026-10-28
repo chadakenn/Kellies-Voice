@@ -14,6 +14,7 @@ public final class OverlayPreferences {
     public static final String SKIN_CLASSIC = "classic";
     public static final String SKIN_SIGNAL = "signal";
     public static final String SKIN_AURORA = "aurora";
+    public static final String SKIN_OBSIDIAN = "obsidian";
 
     public static final String POSITION_DEFAULT = "default";
     public static final String POSITION_TOP_LEFT = "top_left";
@@ -75,7 +76,8 @@ public final class OverlayPreferences {
 
     public String skin() {
         String value = preferences.getString(KEY_SKIN, SKIN_GLASS);
-        if (SKIN_CLASSIC.equals(value) || SKIN_SIGNAL.equals(value) || SKIN_AURORA.equals(value)) return value;
+        if (SKIN_CLASSIC.equals(value) || SKIN_SIGNAL.equals(value) || SKIN_AURORA.equals(value)
+                || SKIN_OBSIDIAN.equals(value)) return value;
         return SKIN_GLASS;
     }
 
@@ -84,6 +86,7 @@ public final class OverlayPreferences {
         if (SKIN_CLASSIC.equals(value)) stored = SKIN_CLASSIC;
         else if (SKIN_SIGNAL.equals(value)) stored = SKIN_SIGNAL;
         else if (SKIN_AURORA.equals(value)) stored = SKIN_AURORA;
+        else if (SKIN_OBSIDIAN.equals(value)) stored = SKIN_OBSIDIAN;
         preferences.edit().putString(KEY_SKIN, stored).apply();
     }
 
@@ -91,6 +94,7 @@ public final class OverlayPreferences {
         if (SKIN_CLASSIC.equals(value)) return "Compact Charcoal";
         if (SKIN_SIGNAL.equals(value)) return "Night Signal";
         if (SKIN_AURORA.equals(value)) return "Aurora Glass";
+        if (SKIN_OBSIDIAN.equals(value)) return "Neon Obsidian";
         return "Copper Glass";
     }
 
