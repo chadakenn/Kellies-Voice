@@ -94,7 +94,10 @@ public final class UpdateChannel {
             if (!devTag(tag) || !tag.equals("v" + name)) {
                 throw new IllegalArgumentException("Invalid release integrity metadata.");
             }
-        } else if (!ReleaseAssets.stableTag(tag) || name.isEmpty() || name.contains("-dev")) {
+        } else if (!ReleaseAssets.stableTag(tag) || name.isEmpty()
+                || name.contains("-dev") || !tag.equals("v" + name)) {
+            // Stable releases must describe their own tag, not just some
+            // differently named (potentially older) signed APK.
             throw new IllegalArgumentException("Invalid release integrity metadata.");
         }
         return new Meta((int) code, name, hash);
