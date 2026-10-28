@@ -35,6 +35,13 @@ public final class AppPalette {
     }
 
     public static AppPalette forSkin(String skin) {
+        if (OverlayPreferences.SKIN_OBSIDIAN.equals(skin)) {
+            // Neon Obsidian: near-black screen, electric cyan accent, violet focus.
+            return new AppPalette(
+                    0xff06070C, 0xff00E5FF, 0xffEAF0FF, 0xff8A93B2,
+                    0xff141829, 0xff6B46E0, 0xff12162A, 0xff070810,
+                    0xff1A1F36, 0xff5B3FD1, 0xff8B5CFF);
+        }
         if (OverlayPreferences.SKIN_AURORA.equals(skin)) {
             return new AppPalette(
                     0xff0A1225, 0xffBED6FF, 0xffE4ECFF, 0xff9CB9E9,
