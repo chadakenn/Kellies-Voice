@@ -14,7 +14,7 @@ Enable **SETTINGS → Alerts & cameras → TV notifications & camera popups** on
 
 ## Actual on-TV local preview capture
 
-![Neutral sample announcement over the Compose development settings preview on onn 4K Pro](../screenshots/announcement-preview.png)
+![Neutral sample announcement over the Compose development settings preview on onn 4K Pro](https://raw.githubusercontent.com/chadakenn/Kellies-Voice/feature/compose-tv-settings/docs/screenshots/announcement-preview.png)
 
 Captured on an onn 4K Pro running the existing **0.16.14-test debug APK**, October 28, 2026, using **COMPOSE → Alerts & cameras → Preview announcement popup**. The underlying Compose page is a **development-only preview**, not released Settings. This is the built-in local visual sample, not a new HA-delivery or spoken-audio test. The APK predates the latest PR #192 popup-theme fixes, so the image does not verify their parity. [Capture gallery](https://github.com/chadakenn/Kellies-Voice/blob/feature/compose-tv-settings/docs/screenshots/PR-192-CAPTURES.md).
 
