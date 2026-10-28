@@ -18,7 +18,8 @@
 - [ ] Install build containing `TvPopupPalette`, including Neon Obsidian action/forecast/camera styles. Confirm cyan-on-dark appearance after **reopening** any popup; old windows retain the previous skin.
 - [ ] Open floating voice overlay with Neon Obsidian active: verify header/text/wave/remote focus match theme and TALK/STOP/CLOSE remain usable. This was added after the first QA build.
 - [ ] Inspect camera popup snapshot and live video for media decoder/Back/focus/audio regressions across skins.
-- [ ] Verify a valid camera entity list can be edited and saved with TV keyboard, then survives a screen re-open. Invalid lists must reject, and Back/Cancel must not save. Do not change a production Frigate URL for validation.
+- [x] **Invalid camera input and Back safety (onn 4K Pro):** Owner entered `invalid_camera_test` in Compose → Frigate screensaver → Edit camera entities. Save rejected the invalid `camera.*` ID, and Back preserved the original saved camera list. Owner confirmed behavior as expected; not a valid-save test.
+- [ ] Verify a **valid** camera entity list can be edited and saved with TV keyboard, then survives a screen re-open. Do not change a production Frigate URL for validation.
 - [ ] Test TV announcement popup positioning/size, local preview and spoken announcement volume, if spoken alerts are intentionally enabled. Media/audio focus must remain unchanged.
 - [ ] Verify weather preview settings and forecast popup style in every supported skin.
 - [x] **Basic HA layout sync (physical onn 4K Pro):** Owner changed Compose **Overlay size Small → Medium** and returned to the app main screen. Read-only HA inspection immediately confirmed the paired debug TV's `select.kellie_s_voice_tv_new_overlay_size` = `Medium`, with generation **2 → 3**, while alert receiver stayed connected. This validates the authenticated deferred publish path for this single online setting, **not** offline retry or all controls.
