@@ -65,7 +65,8 @@ class KellieVoiceConfigFlow(ConfigFlow, domain=DOMAIN):
                     errors["name"] = "invalid_name"
                 else:
                     # Manual pairing cannot verify that a TV exists.
-                    # Require an explicit second confirmation of its full ID.
+                    # Display the full ID and verify a freshly typed TV suffix.
+                    # This is a typo guard, not authentication of the TV.
                     self._manual_device_id = device_id
                     self._manual_name = name
                     return await self.async_step_manual_confirm()
@@ -88,19 +89,30 @@ class KellieVoiceConfigFlow(ConfigFlow, domain=DOMAIN):
         """
         if not self._manual_device_id:
             return await self.async_step_user()
+        errors = {}
         if user_input is not None:
-            await self.async_set_unique_id(self._manual_device_id)
-            self._abort_if_unique_id_configured()
-            return self.async_create_entry(
-                title=self._manual_name,
-                data={"device_id": self._manual_device_id, "name": self._manual_name},
-            )
+            # Copy this suffix from the pairing ID shown *on the TV*, not
+            # from the previously submitted HA text field. It catches the
+            # common accidental confirmation click without claiming that HA
+            # has authenticated or contacted an offline/VLAN-isolated TV.
+            suffix = str(user_input.get("confirmation_suffix") or "").strip().lower()
+            if suffix != self._manual_device_id[-4:]:
+                errors["confirmation_suffix"] = "pairing_suffix_mismatch"
+            else:
+                await self.async_set_unique_id(self._manual_device_id)
+                self._abort_if_unique_id_configured()
+                return self.async_create_entry(
+                    title=self._manual_name,
+                    data={"device_id": self._manual_device_id, "name": self._manual_name},
+                )
         return self.async_show_form(
             step_id="manual_confirm",
+            data_schema=vol.Schema({vol.Required("confirmation_suffix"): str}),
             description_placeholders={
                 "name": self._manual_name,
                 "pairing_id": self._manual_device_id,
             },
+            errors=errors,
         )
 
     async def async_step_zeroconf(self, discovery_info: ZeroconfServiceInfo):

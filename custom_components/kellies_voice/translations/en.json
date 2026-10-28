@@ -8,7 +8,7 @@
       },
       "user": {
         "title": "Pair your Kellie's Voice TV",
-        "description": "On your TV, open Kellie's Voice → Settings → Home Assistant layout → Show this TV's pairing ID. Enter that TV PAIRING ID, not the separate Home Assistant device-registry ID. Manual pairing validates the ID's format but cannot contact or verify the TV. After upgrading both components, check the new 'TV alert receiver connected' diagnostic. It remains OFF and shows 'never' until that TV establishes a scoped alert connection. Turn on Home Assistant layout and TV notifications on the TV.",
+        "description": "On your TV, open Kellie's Voice → SETTINGS → Home Assistant → Manage TV layout from Home Assistant → Show this TV's pairing ID. Enter that TV PAIRING ID, not the separate Home Assistant device-registry ID. Manual pairing validates the ID's format but cannot contact or verify the TV. After upgrading both components, check the new 'TV alert receiver connected' diagnostic. It remains OFF and shows 'never' until that TV establishes a scoped alert connection. Turn on Home Assistant layout and TV notifications on the TV.",
         "data": {
           "device_id": "TV pairing ID",
           "name": "TV name"
@@ -16,7 +16,10 @@
       },
       "manual_confirm": {
         "title": "Verify the TV pairing ID",
-        "description": "Manual pairing cannot verify that this TV is online. Compare this ID with the one shown on the TV under Kellie's Voice → Settings → Home Assistant layout → Show this TV's pairing ID: {pairing_id}. TV: {name}. If one character is wrong, actions may not reach the TV. Submit again only when the IDs match; otherwise go Back and correct the ID."
+        "description": "Manual pairing cannot verify that a TV is online. Compare the FULL ID below with the one currently shown by the actual TV under Kellie's Voice → SETTINGS → Home Assistant → Manage TV layout from Home Assistant → Show this TV's pairing ID: {pairing_id}. TV: {name}. To proceed, type the LAST FOUR hexadecimal characters from the ID ON YOUR TV into the field below. This can catch mistakes in the last four characters, but cannot check earlier characters or prove the TV is connected. Compare the ENTIRE ID carefully. If anything differs, go Back and correct the full ID.",
+        "data": {
+          "confirmation_suffix": "Last four characters on TV"
+        }
       }
     },
     "abort": {
@@ -26,7 +29,8 @@
     },
     "error": {
       "invalid_device_id": "Enter the pairing ID shown on your TV.",
-      "invalid_name": "Enter a TV name up to 64 characters."
+      "invalid_name": "Enter a TV name up to 64 characters.",
+      "pairing_suffix_mismatch": "The four characters don't match the entered TV pairing ID. Recheck the ID on the TV and correct it using Back."
     }
   },
   "services": {

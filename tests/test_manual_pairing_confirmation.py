@@ -71,12 +71,65 @@ class ManualConfirmationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual("Garage", first["description_placeholders"]["name"])
         self.assertEqual([], flow.created)
         self.assertEqual([], flow.unique_ids)
-        last = await flow.async_step_manual_confirm({})
+        # The user must copy the final four characters from the ID ON THE TV.
+        self.assertIn("confirmation_suffix", first["data_schema"])
+        last = await flow.async_step_manual_confirm({
+            "confirmation_suffix": tv_id[-4:].upper(),
+        })
         self.assertEqual("create_entry", last["type"])
         self.assertEqual(tv_id, last["data"]["device_id"])
         self.assertEqual("Garage", last["title"])
         self.assertEqual([tv_id], flow.unique_ids)
         self.assertEqual(1, len(flow.created))
+
+    async def test_wrong_or_missing_last_four_cannot_create_pairing(self):
+        flow = FakeFlow()
+        tv_id = str(uuid.uuid4())
+        await flow.async_step_user({"device_id": tv_id, "name": "Garage"})
+        for typed in ("", "0000" if tv_id[-4:] != "0000" else "ffff", "oops"):
+            result = await flow.async_step_manual_confirm({
+                "confirmation_suffix": typed,
+            })
+            self.assertEqual("form", result["type"])
+            self.assertEqual("pairing_suffix_mismatch",
+                             result["errors"]["confirmation_suffix"])
+            self.assertEqual([], flow.created)
+            self.assertEqual([], flow.unique_ids)
+        accepted = await flow.async_step_manual_confirm({
+            "confirmation_suffix": tv_id[-4:],
+        })
+        self.assertEqual("create_entry", accepted["type"])
+
+    async def test_reported_valid_uuid_typo_is_blocked_by_actual_tv_suffix(self):
+        # Reporter #69 used a valid-looking UUID differing by one character
+        # near the end. Formats alone cannot distinguish two distinct TVs.
+        actual_on_tv = str(uuid.uuid4())
+        wrong_suffix = (
+            "0000" if actual_on_tv[-4:] != "0000" else "ffff"
+        )
+        mistyped = actual_on_tv[:-4] + wrong_suffix
+        self.assertEqual(4, uuid.UUID(mistyped).version)
+
+        flow = FakeFlow()
+        await flow.async_step_user({"device_id": mistyped, "name": "Second TV"})
+        rejected = await flow.async_step_manual_confirm({
+            "confirmation_suffix": actual_on_tv[-4:],
+        })
+        self.assertEqual("manual_confirm", rejected["step_id"])
+        self.assertEqual("pairing_suffix_mismatch",
+                         rejected["errors"]["confirmation_suffix"])
+        self.assertEqual([], flow.created)
+
+        # Returning to the first step allows the user to enter the real ID.
+        corrected = await flow.async_step_user({
+            "device_id": actual_on_tv, "name": "Second TV",
+        })
+        self.assertEqual("manual_confirm", corrected["step_id"])
+        accepted = await flow.async_step_manual_confirm({
+            "confirmation_suffix": actual_on_tv[-4:],
+        })
+        self.assertEqual("create_entry", accepted["type"])
+        self.assertEqual(actual_on_tv, accepted["data"]["device_id"])
 
     async def test_invalid_manual_id_does_not_advance(self):
         flow = FakeFlow()
@@ -105,6 +158,10 @@ class ManualConfirmationTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("{pairing_id}", description)
         self.assertIn("cannot verify", description)
         self.assertIn("Back", description)
+        self.assertIn("LAST FOUR", description)
+        self.assertEqual("Last four characters on TV",
+                         english["config"]["step"]["manual_confirm"]["data"]["confirmation_suffix"])
+        self.assertIn("pairing_suffix_mismatch", english["config"]["error"])
 
 
 if __name__ == "__main__":
