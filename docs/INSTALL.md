@@ -89,7 +89,7 @@ See the [full release notes](releases/v0.16.12.md), [hardware checklist](TESTING
 7. Open the newly added TV device in Home Assistant. Confirm its position, size, overlay theme/style, alert settings, and other controls appear. Changes can require the next TV connection or next popup to become visible.
 
 
-**Extra protection for manually entered IDs (next development version):** the confirmation page now asks you to enter the **last four characters from the pairing ID displayed on the TV**. A mismatched suffix cannot create the HA entry. This is a typo-check, not proof that Home Assistant is connected to the TV. The paired TV's receiver diagnostic must be checked separately after setup; old or disconnected TVs may remain offline.
+**Extra protection for manually entered IDs (next development version):** the confirmation page now asks you to enter the **last four characters from the pairing ID displayed on the TV**. A mismatched suffix cannot create the HA entry. This catches a mismatch **only in the final four characters**; compare the entire ID carefully. It does not prove the TV is connected or that an announcement was delivered. The paired TV's receiver diagnostic must be checked separately after setup; old or disconnected TVs may remain offline.
 
 **Don't confuse the IDs:** the TV's **Kellie's Voice pairing ID** is used when adding the device and in actions such as `kellies_voice.start_timer`. A separate Home Assistant **device-registry ID** is used internally for Assist source-device tracking, an internal value, not the pairing ID.
 
