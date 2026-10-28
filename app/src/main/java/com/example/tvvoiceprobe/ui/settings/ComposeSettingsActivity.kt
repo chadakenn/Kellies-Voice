@@ -30,6 +30,8 @@ import com.example.tvvoiceprobe.CredentialStore
 import com.example.tvvoiceprobe.MicRoutePolicy
 import com.example.tvvoiceprobe.ComposeSettingsInterop
 import com.example.tvvoiceprobe.HaLayout
+import com.example.tvvoiceprobe.UpdateChannel
+import com.example.tvvoiceprobe.BuildConfig
 import com.example.tvvoiceprobe.LiveCameraMode
 import com.example.tvvoiceprobe.ScreensaverDashboard
 import com.example.tvvoiceprobe.ScreensaverLiveMode
@@ -731,8 +733,48 @@ fun CategoryContent(
                 Text("Use the legacy SETTINGS button for full HA address/token entry and reconnect. Those flows include URL validation and immediate Assist updates.", color = skin.colors.textMuted, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
             }
             "updates" -> {
-                Text("Update channel: ${prefs.updateChannel()}", color = skin.colors.text)
-                Text("Use the legacy SETTINGS button for Check / Install / Forget. Those paths include release verification and safe deferred install.", color = skin.colors.textMuted, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
+                Text("Installed version: ${BuildConfig.VERSION_NAME}", color = skin.colors.text)
+                Spacer(modifier = Modifier.height(12.dp))
+                Text("App update channel", color = skin.colors.accent, fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                var updateChannel by remember { mutableStateOf(prefs.updateChannel()) }
+                SettingsChoice(
+                    title = "Stable public releases",
+                    selected = updateChannel == UpdateChannel.STABLE,
+                    onSelect = {
+                        if (updateChannel != UpdateChannel.STABLE) {
+                            prefs.setUpdateChannel(UpdateChannel.STABLE)
+                            updateChannel = prefs.updateChannel()
+                            ComposeSettingsInterop.notifyUpdateChannelChanged()
+                        }
+                    }
+                )
+                SettingsChoice(
+                    title = "Development prereleases (manual check only)",
+                    selected = updateChannel == UpdateChannel.DEVELOPMENT,
+                    onSelect = {
+                        if (updateChannel != UpdateChannel.DEVELOPMENT) {
+                            AlertDialog.Builder(context)
+                                .setTitle("Use development prereleases?")
+                                .setMessage("Development builds are for testing. Choosing this channel " +
+                                    "does not check for updates or download anything. " +
+                                    "Only published and verified releases can be installed.")
+                                .setNegativeButton("Cancel", null)
+                                .setPositiveButton("Use development") { _, _ ->
+                                    prefs.setUpdateChannel(UpdateChannel.DEVELOPMENT)
+                                    updateChannel = prefs.updateChannel()
+                                    ComposeSettingsInterop.notifyUpdateChannelChanged()
+                                }
+                                .show()
+                        }
+                    }
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Text("Update checking and installation remain in original SETTINGS. " +
+                    "All downloads require release verification and your explicit action. " +
+                    "An older stable version cannot be installed over a newer development version.",
+                    color = skin.colors.textMuted, fontSize = 12.sp)
+                Text("Use original SETTINGS to Check now, Install verified update, or Forget login.",
+                    color = skin.colors.textMuted, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
             }
             else -> {
                 Text("Category content", color = skin.colors.text)
