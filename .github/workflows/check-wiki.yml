@@ -21,7 +21,7 @@ jobs:
   wiki-links:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Check all wiki page links and anchors
         run: python3 scripts/check_wiki_docs.py
       - name: Confirm wiki publish transform
