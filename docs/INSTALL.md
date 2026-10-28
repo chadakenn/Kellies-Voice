@@ -28,7 +28,7 @@ Welcome! **Kellie's Voice** turns an Android TV / Google TV into a voice compani
 **Important for v0.16.14:** Update the Android signed **versionCode 54** APK and matching HACS **0.16.14** component. Install the APK over the previously signed release (v0.16.12 code 50 or experimental dev builds through code 53) without clearing saved logins. Updating HACS requires a Home Assistant restart to load the component.
 
 - **Follow-up listening:** On the TV, **Settings → Follow-up listening → On (8 seconds)**. This is OFF by default. A second question can be heard after Kellie's spoken answer without pressing TALK; an 8-second silence timeout and STOP both close the microphone. Tested on the maintainer's onn 4K Pro; other TVs and Back/Close/disconnect cases still need testing.
-- **Optional spoken alerts and speech gain:** Keep **Settings → TV announcements & cameras** on, and use **Settings → Announcement voice volume** for a separate 20–100% speech level (default 60%). An HA `kellies_voice.announce` with a short `speak` sentence reads it aloud; without `speak` the announcement stays silent. A real Home Assistant speech test at 40% was audibly quieter on onn 4K Pro.
+- **Optional spoken alerts and speech gain:** Keep **Settings → Alerts & cameras → TV notifications & camera popups** on, and use **Settings → Alerts & cameras → Announcement voice volume** for a separate 20–100% speech level (default 60%). An HA `kellies_voice.announce` with a short `speak` sentence reads it aloud; without `speak` the announcement stays silent. A real Home Assistant speech test at 40% was audibly quieter on onn 4K Pro.
 - **Camera voice commands:** Home Assistant must have the matching camera scripts exposed to Assist. If the AI says the camera is showing but no popup appears, check the **TV alert receiver connected** sensor and choose **Settings → TV alert status → Resume TV alerts**. For voice dismissal, a script must call `kellies_voice.hide_camera`, not merely fire an old custom event. Local conversation agents that send oversized prompts or bad tool JSON may need tuning (#39).
 - **Timers, pairing, microphones:** The native Assist TV timer bridge is OFF by default and remains unverified on owner hardware (#57); existing TV timer scripts remain supported. Manual pairing confirmation (#69) and 48 kHz microphone fallback (#71/#112) still need testing on affected hardware. Remote Google's Assistant mic button is not intercepted, and Fire TV is unverified (#41).
 
@@ -94,7 +94,7 @@ See the [current release notes](releases/v0.16.14.md), [hardware checklist](TEST
 
 ## Step 4: Enable TV popups (optional, but needed for cameras, forecasts, and timers)
 
-1. On the TV, open **Settings → TV announcements & cameras** and turn it **ON**. It is opt-in.
+1. On the TV, open **Settings → Alerts & cameras → TV notifications & camera popups** and turn it **ON**. It is opt-in.
 2. Grant Android's **Display over other apps** permission to Kellie's Voice when requested.
 3. Use the TV's **Preview announcement** action to confirm a floating popup appears. It should not start listening or interrupt your movie.
 4. In **Home Assistant → Developer tools → Actions**, test a text popup:
