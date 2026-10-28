@@ -147,7 +147,33 @@ object KellieSkins {
         animationScale = 0.6f
     )
 
-    val ALL = listOf(COPPER, MINIMAL, AURORA, NIGHT)
+    // Maps to OverlayPreferences.SKIN_OBSIDIAN — Neon Obsidian glass-and-glow
+    val OBSIDIAN = KellieSkin(
+        id = OverlayPreferences.SKIN_OBSIDIAN,
+        displayName = "Neon Obsidian",
+        colors = KellieColors(
+            screen = Color(0xFF06070C),
+            panel = Color(0xFF0E1018),
+            card = Color(0xB8101320),
+            cardFocused = Color(0xFF1A1D2E),
+            accent = Color(0xFF00E5FF),
+            accentSecondary = Color(0xFF8B5CFF),
+            text = Color(0xFFEAF0FF),
+            textMuted = Color(0xFF8A93B2),
+            stroke = Color(0xFF292A3C),
+            focus = Color(0xFF00E5FF),
+            success = Color(0xFFB6FF3B),
+            warning = Color(0xFFFF2E88)
+        ),
+        typography = Typography(),
+        panelShape = RoundedCornerShape(18.dp),
+        cardShape = RoundedCornerShape(16.dp),
+        focusBorderWidth = 3.dp,
+        spacing = 14.dp,
+        animationScale = 1.1f
+    )
+
+    val ALL = listOf(COPPER, MINIMAL, AURORA, NIGHT, OBSIDIAN)
 
     fun byId(id: String): KellieSkin = ALL.find { it.id == id } ?: COPPER
 }
