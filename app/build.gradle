@@ -53,6 +53,7 @@ android {
     }
     buildFeatures {
         compose true
+        buildConfig true
     }
     if (findProperty('skipWakeNative') != 'true') {
         ndkVersion '27.2.12479018'
