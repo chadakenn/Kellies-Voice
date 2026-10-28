@@ -1,3 +1,18 @@
+# Community test checklist (current stable v0.16.14)
+
+**For current testing:** install matching signed Android v0.16.14/HACS 0.16.14. The historical v0.16.5–v0.16.11 test plans below are retained for regression context. Before testing, record the actual device running Android (not merely the TV display brand), OS, Home Assistant, APK and HACS versions. Redact any token, QR, pairing ID, camera view, faces or home address.
+
+- **#69 TV pairing:** with a disposable deliberately mistyped but valid TV ID, confirm the confirmation page warns that it cannot verify it, the receiver diagnostic stays offline, and a targeted announcement does **not** claim delivery. Verify a correctly paired TV still displays the test popup. Never overwrite a working TV configuration.
+- **#71 Mic routing:** on a Philips device without a usable mic, report the exact input devices/actual AudioRecord route and whether TALK incorrectly reaches LISTENING. Try a known USB mic separately. Do not disclose personal audio or tokens.
+- **#57 Timers:** compare a direct timer HA action against a natural named/unnamed spoken command with and without optional native timer routing. Avoid changing other Assist satellites.
+- **#39 and #136 Camera:** confirm actual moving frames, selected full-screen sound, remote Back, 2×2 grid footer/height, and reboot/wake reconnect on the signed build.
+- **#92 Update channel:** default Stable, no unintended Development prerelease offer, safe blocked rollbacks and signed APK check.
+- **Okay Nabu:** OFF remains OFF; ON shows LISTENING only with a real microphone. Test one-breath speech, post-wake duck restoration, and resumption when opening the app after reboot. Android 14+ does **not** start microphone capture directly at boot.
+
+[Redacted real-device gallery, including historical UI screenshot and wake demo](screenshots/README.md) · [issue list](https://github.com/chadakenn/Kellies-Voice/issues).
+
+---
+
 **v0.16.11 owner-test status (2026-10-25):** Follow-up second question (8 sec), silence/mic indicator off and STOP, and local/HA-announced speech gain at 40% passed on the maintainer's onn 4K Pro. Camera direct dispatch succeeds while the alert receiver is connected; PS5LM/other model tool JSON and latency have been inconsistent (#39). More hardware QA needed for timers (#57), typed pairing (#69), Philips mic (#71) and Fire TV (#41). See [Install](INSTALL.md).
 
 # v0.16.5 community test checklist (issues #67–#71)
