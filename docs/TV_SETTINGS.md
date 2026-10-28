@@ -63,3 +63,19 @@ Status chips are accurate:
 All six categories and existing safety confirmations are preserved. The Android compile error (`assist.newConversation()`) is fixed by calling the existing `VoiceActivity.newConversation()`.
 
 **onn 4K Pro testing still required** for focus traversal, Back from nested dialogs, scroll on 720p, and readability on 1080p/4K.
+
+
+## Persistent host + mockup fidelity (October 28 follow-up)
+
+SettingsActivity is now a persistent host. Option selection never starts VoiceActivity, so the singleTask launch mode cannot destroy the Settings screen or reset focus. Preference changes, switches, and confirmation dialogs happen inside SettingsActivity. One-shot requests (reconnect, new conversation) are written to a private signal preference and consumed when the voice screen resumes.
+
+Visual treatment matches the two-column reference:
+- Copper/charcoal surfaces from AppPalette
+- Category cards with icons and persistent copper focus border
+- Right-hand panel with row dividers, icons, and real Switch controls (Wake word, follow-up, TV alerts, spoken announcements, HA layout, screensaver)
+- Status strip: Credentials • Saved, Wake word state, TV alerts • Enabled
+- Scrollable right column; category restored across configuration changes
+
+**Screenshots:** This environment cannot run an Android emulator (insufficient RAM). Actual on-device or emulator captures of the running APK are still required for final visual QA. Generated design references are not substitutes for APK screenshots.
+
+**onn 4K Pro QA still required:** D-pad focus, Back, scroll on 720p, readability on 1080p/4K, and confirmation that every setting preserves preferences.

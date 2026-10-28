@@ -144,8 +144,12 @@ class TvSettingsRoutingTest(unittest.TestCase):
         self.assertIn("TV alerts", settings)
         self.assertIn("D-pad", settings)
         self.assertIn("AppPalette", settings)
-        # Must not use CLEAR_TOP (singleTask would destroy the Settings host)
+        self.assertIn("Switch", settings)
+        self.assertIn("class SettingsActivity", settings)
+        # Persistent host: must not start VoiceActivity for option selection
         self.assertNotIn("FLAG_ACTIVITY_CLEAR_TOP", settings)
+        self.assertNotIn("startActivity(intent)", settings)
+        self.assertIn("request_connect", settings)
         manifest = (
             Path(__file__).resolve().parents[1]
             / "app/src/main/AndroidManifest.xml"

@@ -155,8 +155,23 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
             mainHandler.post(() -> {
                 if (!isFinishing() && !isDestroyed()) {
                     WakeWordStartup.resumeFromVisible(this);
+                    consumeSettingsSignals();
                 }
             });
+        }
+    }
+
+    /** Honor one-shot requests from the persistent SettingsActivity without bringing this singleTask root forward. */
+    private void consumeSettingsSignals() {
+        android.content.SharedPreferences sig =
+                getSharedPreferences("tv_voice_settings_signals", MODE_PRIVATE);
+        if (sig.getBoolean("request_connect", false)) {
+            sig.edit().putBoolean("request_connect", false).apply();
+            if (settings != null && assist != null) assist.connect(settings.url, settings.token);
+        }
+        if (sig.getBoolean("request_new_conversation", false)) {
+            sig.edit().putBoolean("request_new_conversation", false).apply();
+            newConversation();
         }
     }
 
