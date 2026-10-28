@@ -24,7 +24,11 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.tvvoiceprobe.CredentialStore
+import com.example.tvvoiceprobe.MicRoutePolicy
+import com.example.tvvoiceprobe.MicrophoneRouting
 import com.example.tvvoiceprobe.OverlayPreferences
+import com.example.tvvoiceprobe.ScreensaverSignals
 import com.example.tvvoiceprobe.ScreensaverWatchService
 import com.example.tvvoiceprobe.TvEventsService
 import com.example.tvvoiceprobe.WakeWordService
@@ -34,11 +38,9 @@ import com.example.tvvoiceprobe.ui.theme.LocalKellieSkin
 import com.example.tvvoiceprobe.ui.theme.SkinStore
 
 /**
- * Premium full-screen Jetpack Compose for TV Settings.
- * Fully functional for preference-backed controls and service side-effects.
- * Complex dialogs (HA URL/token entry, multi-choice menus) still route through
- * validated OverlayPreferences setters and existing services.
- * Original dialog Settings remain available via the SETTINGS toolbar button.
+ * Premium full-screen Jetpack Compose for TV Settings preview.
+ * Original dialog Settings remain fully available via the SETTINGS toolbar button.
+ * Controls reuse OverlayPreferences and existing service entry points.
  */
 class ComposeSettingsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -137,10 +139,12 @@ fun SettingsScreen(
         }
 
         Text(
-            text = "D-pad to move  •  OK to select  •  Back to return to voice screen",
+            text = "D-pad to move  •  OK to select  •  Back returns to voice screen",
             color = skin.colors.textMuted,
             fontSize = 14.sp,
-            modifier = Modifier.padding(top = 12.dp)
+            modifier = Modifier
+                .padding(top = 12.dp)
+                .clickable { onBack() }
         )
     }
 }
@@ -239,13 +243,32 @@ fun CategoryContent(
                 }
             }
             "voice" -> {
-                var wake by remember { mutableStateOf(prefs.wakeWord()) }
+                var wake by remember { mutableStateOf(prefs.wakeWord() && WakeWordService.isListening()) }
                 SettingSwitch(
                     title = "Wake word (Okay Nabu)",
-                    subtitle = if (wake && WakeWordService.isListening()) "LISTENING" else if (wake) "Opted in, stopped" else "OFF",
+                    subtitle = if (WakeWordService.isListening()) "LISTENING" else if (prefs.wakeWord()) "Opted in, stopped" else "OFF",
                     checked = wake,
                     onCheckedChange = { on ->
                         if (on) {
+                            // Match VoiceActivity.enableWakeWord() preflight
+                            val creds = try { CredentialStore(context).load() } catch (e: Exception) { null }
+                            if (creds == null) {
+                                Toast.makeText(context, "Configure Home Assistant before enabling the wake word", Toast.LENGTH_LONG).show()
+                                return@SettingSwitch
+                            }
+                            if (prefs.microphoneDisabled()) {
+                                Toast.makeText(context, MicRoutePolicy.MANUALLY_DISABLED_MESSAGE, Toast.LENGTH_LONG).show()
+                                return@SettingSwitch
+                            }
+                            val routeIssue = MicrophoneRouting.preflight(context, prefs.allowUnverifiedMic())
+                            if (routeIssue != null) {
+                                Toast.makeText(context, routeIssue, Toast.LENGTH_LONG).show()
+                                return@SettingSwitch
+                            }
+                            if (!Settings.canDrawOverlays(context)) {
+                                Toast.makeText(context, "Grant 'Display over other apps' before enabling the wake word", Toast.LENGTH_LONG).show()
+                                return@SettingSwitch
+                            }
                             if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
                                 Toast.makeText(context, "Grant microphone permission in Android settings first", Toast.LENGTH_LONG).show()
                                 return@SettingSwitch
@@ -255,16 +278,17 @@ fun CategoryContent(
                                 context.startForegroundService(Intent(context, WakeWordService::class.java)
                                     .setAction(WakeWordService.ACTION_START))
                                 wake = true
-                                Toast.makeText(context, "Wake word on", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "Wake word ON and saved", Toast.LENGTH_SHORT).show()
                             } catch (e: Exception) {
                                 prefs.setWakeWord(false)
-                                Toast.makeText(context, "Could not start wake word", Toast.LENGTH_SHORT).show()
+                                wake = false
+                                Toast.makeText(context, "Android couldn't start the wake word listener", Toast.LENGTH_SHORT).show()
                             }
                         } else {
                             prefs.setWakeWord(false)
                             context.stopService(Intent(context, WakeWordService::class.java))
                             wake = false
-                            Toast.makeText(context, "Wake word off", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Wake word off. The microphone is not listening.", Toast.LENGTH_SHORT).show()
                         }
                     }
                 )
@@ -282,6 +306,7 @@ fun CategoryContent(
                 Spacer(modifier = Modifier.height(8.dp))
                 Text("Sensitivity: ${OverlayPreferences.noiseLabel(prefs.noise())}", color = skin.colors.text)
                 Text("Mic disabled: ${prefs.microphoneDisabled()}", color = skin.colors.textMuted, fontSize = 13.sp)
+                Text("Use legacy SETTINGS for sensitivity, mic checks, and full wake-word diagnostics.", color = skin.colors.textMuted, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
             }
             "alerts" -> {
                 var events by remember { mutableStateOf(prefs.tvEvents()) }
@@ -291,6 +316,11 @@ fun CategoryContent(
                     checked = events,
                     onCheckedChange = { on ->
                         if (on) {
+                            val creds = try { CredentialStore(context).load() } catch (e: Exception) { null }
+                            if (creds == null) {
+                                Toast.makeText(context, "Configure Home Assistant before enabling TV notifications", Toast.LENGTH_LONG).show()
+                                return@SettingSwitch
+                            }
                             if (!Settings.canDrawOverlays(context)) {
                                 Toast.makeText(context, "Grant overlay permission first", Toast.LENGTH_LONG).show()
                                 return@SettingSwitch
@@ -300,14 +330,17 @@ fun CategoryContent(
                                 context.startForegroundService(Intent(context, TvEventsService::class.java)
                                     .setAction(TvEventsService.ACTION_START))
                                 events = true
+                                Toast.makeText(context, "TV alerts enabled", Toast.LENGTH_SHORT).show()
                             } catch (e: Exception) {
                                 prefs.setTvEvents(false)
-                                Toast.makeText(context, "Could not start TV alerts", Toast.LENGTH_SHORT).show()
+                                events = false
+                                Toast.makeText(context, "Android couldn't start the TV alert receiver", Toast.LENGTH_SHORT).show()
                             }
                         } else {
                             prefs.setTvEvents(false)
                             context.stopService(Intent(context, TvEventsService::class.java))
                             events = false
+                            Toast.makeText(context, "TV announcements and camera popups disabled", Toast.LENGTH_SHORT).show()
                         }
                     }
                 )
@@ -325,6 +358,7 @@ fun CategoryContent(
                 Spacer(modifier = Modifier.height(8.dp))
                 Text("Announcement volume: ${prefs.spokenAnnouncementVolume()}%", color = skin.colors.text)
                 Text("Camera decoder: ${prefs.cameraMode()}", color = skin.colors.textMuted, fontSize = 13.sp)
+                Text("Use legacy SETTINGS for volume, camera mode, and alert status.", color = skin.colors.textMuted, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
             }
             "screensaver" -> {
                 var ss by remember { mutableStateOf(prefs.screensaverDashboard()) }
@@ -337,12 +371,19 @@ fun CategoryContent(
                         ss = on
                         if (on) {
                             ScreensaverWatchService.startIfEnabled(context)
+                        } else {
+                            try {
+                                context.startForegroundService(Intent(context, ScreensaverWatchService::class.java)
+                                    .setAction(ScreensaverWatchService.ACTION_STOP))
+                            } catch (e: Exception) { }
+                            ScreensaverSignals.settingsChanged()
                         }
                     }
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text("URL: ${prefs.screensaverUrl().ifEmpty { "(none)" }}", color = skin.colors.textMuted, fontSize = 13.sp)
                 Text("Live mode: ${prefs.screensaverLiveMode()}", color = skin.colors.textMuted, fontSize = 13.sp)
+                Text("Use legacy SETTINGS for URL, cameras, size, fit, and preview.", color = skin.colors.textMuted, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
             }
             "home" -> {
                 Text("HA layout management: ${if (prefs.haManage()) "ON" else "OFF"}", color = skin.colors.text)

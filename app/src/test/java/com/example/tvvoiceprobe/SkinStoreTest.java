@@ -21,3 +21,12 @@ public class SkinStoreTest {
                 com.example.tvvoiceprobe.ui.theme.KellieSkins.INSTANCE.byId("unknown").getId());
     }
 }
+
+    @Test
+    public void skinIdsMatchValidatedConstants() {
+        // Ensures Compose skins stay compatible with OverlayPreferences persistence.
+        assertEquals("glass", com.example.tvvoiceprobe.ui.theme.KellieSkins.INSTANCE.getCOPPER().getId());
+        assertEquals("classic", com.example.tvvoiceprobe.ui.theme.KellieSkins.INSTANCE.getMINIMAL().getId());
+        assertEquals("aurora", com.example.tvvoiceprobe.ui.theme.KellieSkins.INSTANCE.getAURORA().getId());
+        assertEquals("signal", com.example.tvvoiceprobe.ui.theme.KellieSkins.INSTANCE.getNIGHT().getId());
+    }
