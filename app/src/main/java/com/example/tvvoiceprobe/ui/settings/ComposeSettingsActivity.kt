@@ -959,8 +959,11 @@ fun CategoryContent(
                     modifier = Modifier.padding(vertical = 4.dp)
                 )
                 Text(
-                    "In Home Assistant: Settings → Devices & services → Add integration → Kellie's Voice. " +
-                        "This ID is not a password or your HA token.",
+                    "For manual pairing: Home Assistant → Settings → Devices & services → " +
+                        "Add integration → Kellie's Voice. Enter this full TV ID. On the NEXT screen " +
+                        "type the last four characters of the ID shown above to confirm. " +
+                        "If Home Assistant says this TV is already configured, use its existing " +
+                        "device instead of adding a duplicate. This ID is not your HA token.",
                     color = skin.colors.textMuted,
                     fontSize = 12.sp
                 )
@@ -1011,9 +1014,11 @@ fun CategoryContent(
                     }
                 )
                 Text(
-                    "Turns on discovery and the existing layout watcher. Returning to the voice screen " +
-                        "applies this to the current Assist connection. No second Home Assistant client is started, " +
-                        "and the microphone is not used.",
+                    "Return to Kellie's Voice's main screen and leave it open while checking " +
+                        "Home Assistant's Discovered devices. Automatic discovery is advertised " +
+                        "only while the main app is active. The debug APK uses its own TV pairing " +
+                        "ID and saved login, separate from the installed release app. " +
+                        "The layout watcher does not start the microphone.",
                     color = skin.colors.textMuted,
                     fontSize = 12.sp,
                     modifier = Modifier.padding(top = 4.dp)
