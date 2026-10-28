@@ -15,7 +15,7 @@
 
 **You also need the [signed Android TV app](https://github.com/chadakenn/Kellies-Voice/releases/latest).** HACS installs only this integration. Enable **Home Assistant layout** in the TV settings and separately enable **TV announcements & cameras** for notifications and camera popups.
 
-**Actual screenshots:** we're collecting real onn 4K Pro captures of the current app and overlays. Promotional artwork and legacy previews are not actual captures. See the [screenshot checklist](../../docs/screenshots/README.md).
+**Actual screenshots/videos:** a privacy-reviewed onn 4K Pro gallery includes camera grids, overlays and the development Okay Nabu demo; the historic old Settings photo is not the current hub. Promotional artwork and legacy previews are not actual captures. See the [screenshot checklist](../../docs/screenshots/README.md).
 
 This integration changes overlay layout and can send announcement and camera events to configured TVs. It does not start the microphone, replace the TV login, or install an APK.
 
@@ -225,6 +225,10 @@ This does not change the announcement, camera, or hide-camera actions. The TV ap
 - If automatic start is blocked, open Kellie's Voice. **Settings → TV alert status** explains whether it is connected, reconnecting, missing overlay permission, signed out, or stopped, and **Resume TV alerts** starts it again. A one-time "Resume TV alerts" notification may also appear in the Android TV notification list. It is not a repeating nag.
 - Revoking **Display over other apps** or signing out stops popups until those are restored. Disabling TV alerts keeps them off across reboots.
 
-## Install v0.16.3 and configure alert placement
+## Historical v0.16.3 alert placement instructions
 
 Use HACS to update the Kellie's Voice custom integration to **v0.16.3**, then restart Home Assistant. Independently install the **v0.16.3 Android TV APK** using the app's signed in-place updater. The TV's HA device page now has **TV alert position** (Top left, Top right, Bottom left, Bottom right, Center) and **TV alert size** (Small, Medium, Large). The current layout appears on the **next** camera or announcement popup; the main voice overlay is unaffected. The Android receiver may auto-resume after a reboot or app update if you had enabled it, but Android can prevent background starts. Check the TV's **Settings → TV alert status** when delivery stops. No new scripts are required for these features; the [complete script setup](../../docs/VOICE_CAMERA_SCRIPTS.md) remains valid for voice camera commands.
+
+## Current public release: v0.16.14
+
+Install the [signed Android v0.16.14 APK](https://github.com/chadakenn/Kellies-Voice/releases/tag/v0.16.14) and matching HACS 0.16.14 custom integration. The on-TV Settings hub now groups **Home Assistant**, **Voice & microphone**, **Overlay & appearance**, **Alerts & cameras**, **Screensaver** and **Updates & account**. **Okay Nabu** is an optional local wake listener, OFF by default; it is configured on the TV under **Voice & microphone → Wake word** and is not activated by installing HACS. See the [redacted media gallery and test video](../../docs/screenshots/README.md) and [wake guide](../../docs/WAKE_WORD.md). This community integration does not grant access to Google's remote microphone and is not an official Home Assistant product.
