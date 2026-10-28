@@ -21,7 +21,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
-import com.example.tvvoiceprobe.TvEventPayload
+import com.example.tvvoiceprobe.ScreensaverCameraInput
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -785,15 +785,11 @@ fun CategoryContent(
                         title = "Save cameras",
                         selected = false,
                         onSelect = {
-                            val typed = cameraDraft.trim()
-                            val ids = if (typed.isEmpty()) emptyList() else typed.split(Regex("[,\\s]+")).filter { it.isNotEmpty() }
-                            val invalid = ids.size > ScreensaverDashboard.MAX_CAMERAS ||
-                                ids.any { TvEventPayload.cameraEntity(it) == null }
-                            if (invalid) {
+                            val stored = ScreensaverCameraInput.validatedOrNull(cameraDraft)
+                            if (stored == null) {
                                 cameraError = "Enter one to four valid camera.* entity IDs. Find them in Home Assistant → Developer Tools → States."
                                 return@SettingsChoice
                             }
-                            val stored = ScreensaverDashboard.cameras(typed)
                             prefs.setScreensaverCameras(stored)
                             savedCameras = stored
                             editingCameras = false
