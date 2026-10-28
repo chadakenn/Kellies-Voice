@@ -59,6 +59,9 @@
                 android:resource="@xml/file_paths" />
         </provider>
         <activity android:name=".MainActivity" android:exported="false"/>
+        <activity android:name=".ui.settings.ComposeSettingsActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Material.NoActionBar" />
         <activity android:name=".ScreensaverPreviewActivity"
             android:exported="false"
             android:excludeFromRecents="true"
