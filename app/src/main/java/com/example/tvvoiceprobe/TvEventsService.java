@@ -992,10 +992,14 @@ public final class TvEventsService extends Service {
                 button.setText(action.label);
                 button.setAllCaps(false);
                 button.setTextColor(colors.buttonText);
-                button.setBackgroundTintList(ColorStateList.valueOf(colors.buttonBackground));
-                button.setOnFocusChangeListener((v, focused) ->
-                        button.setBackgroundTintList(ColorStateList.valueOf(
-                                focused ? colors.buttonFocused : colors.buttonBackground)));
+                // Preserve the original Android button style for Copper Glass.
+                // Other skins get matching backgrounds and a visible D-pad focus color.
+                if (!OverlayPreferences.SKIN_GLASS.equals(placement.skin())) {
+                    button.setBackgroundTintList(ColorStateList.valueOf(colors.buttonBackground));
+                    button.setOnFocusChangeListener((v, focused) ->
+                            button.setBackgroundTintList(ColorStateList.valueOf(
+                                    focused ? colors.buttonFocused : colors.buttonBackground)));
+                }
                 button.setFocusable(true);
                 button.setOnClickListener(view -> {
                     if (stopping || generation != current || card != panel
