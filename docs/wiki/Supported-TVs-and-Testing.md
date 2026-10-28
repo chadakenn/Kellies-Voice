@@ -39,15 +39,15 @@ This table distinguishes **maintainer-tested results** from **community testing 
 
 Other Android TV / Google TV / Fire TV models are welcome for community testing but are **not comprehensively verified**. Some Philips models have been used for camera and HDMI-safe decoder testing; microphone access is limited on devices that only expose echo-reference or line-in inputs. USB microphones may be required.
 
-## What is *not* in the public v0.16.12 release
+## What is *not* verified in the public v0.16.14 release
 
-- Always-on wake word
+- Guaranteed zero-touch wake recording immediately after power-on (Okay Nabu is shipped as **opt-in**, but may require a foreground app launch after reboot on Android 14+)
 - Automatic always-on follow-up without enabling the TV setting (the shipped opt-in follow-up is OFF by default)
 - Automatic spoken named timers on every Assist pipeline without configuration (the optional native timer bridge is OFF by default and still requires device testing)
 - Universal Fire TV support
 - Spoken/actionable announcement buttons
 
-Draft PRs exist for some of these; they are not part of the public release.
+The shipped app includes opt-in Okay Nabu and the categorized Settings hub; other hardware and advanced features still need validation.
 
 ## Reporting results
 
@@ -68,3 +68,6 @@ Open a GitHub issue with:
 ---
 
 [← All documentation](Home.md) · [Next: FAQ →](FAQ.md)
+
+
+**Okay Nabu on onn 4K Pro:** Maintainer verified a one-breath command and post-wake YouTube ducking/volume restoration on a development build, but final signed-release reboot, permission-loss and cross-device acceptance are still outstanding. Do not infer a TV's remote mic works merely because the hardware has Google Assistant.
