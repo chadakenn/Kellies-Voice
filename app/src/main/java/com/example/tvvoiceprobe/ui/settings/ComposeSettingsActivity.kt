@@ -400,12 +400,48 @@ fun CategoryContent(
                     onCheckedChange = { on ->
                         prefs.setFollowUp(on)
                         follow = on
+                        ComposeSettingsInterop.queueLayoutUpdate(HaLayout.FOLLOW_TIMEOUT)
                     }
                 )
+                Spacer(modifier = Modifier.height(12.dp))
+                Text("Follow-up silence timeout", color = skin.colors.accent, fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                var followSecs by remember { mutableIntStateOf(prefs.followUpSeconds()) }
+                listOf(5, 8, 10, 15).forEach { seconds ->
+                    SettingsChoice(
+                        title = "$seconds seconds${if (seconds == 8) " (original)" else ""}",
+                        selected = follow && followSecs == seconds,
+                        onSelect = {
+                            prefs.setFollowUp(true)
+                            prefs.setFollowUpSeconds(seconds)
+                            follow = true
+                            followSecs = prefs.followUpSeconds()
+                            ComposeSettingsInterop.queueLayoutUpdate(HaLayout.FOLLOW_TIMEOUT)
+                        }
+                    )
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                Text("Microphone sensitivity", color = skin.colors.accent, fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                Text("Changes only how silence is detected; it does not enable the microphone.",
+                    color = skin.colors.textMuted, fontSize = 12.sp)
+                var noiseLevel by remember { mutableStateOf(prefs.noise()) }
+                listOf(
+                    OverlayPreferences.NOISE_QUIET, OverlayPreferences.NOISE_NORMAL,
+                    OverlayPreferences.NOISE_TV
+                ).forEach { value ->
+                    SettingsChoice(
+                        title = OverlayPreferences.noiseLabel(value),
+                        selected = noiseLevel == value,
+                        onSelect = {
+                            prefs.setNoise(value)
+                            noiseLevel = prefs.noise()
+                            ComposeSettingsInterop.queueLayoutUpdate(HaLayout.NOISE)
+                        }
+                    )
+                }
                 Spacer(modifier = Modifier.height(8.dp))
-                Text("Sensitivity: ${OverlayPreferences.noiseLabel(prefs.noise())}", color = skin.colors.text)
                 Text("Mic disabled: ${prefs.microphoneDisabled()}", color = skin.colors.textMuted, fontSize = 13.sp)
-                Text("Use legacy SETTINGS for sensitivity, mic checks, and full wake-word diagnostics.", color = skin.colors.textMuted, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
+                Text("Use original SETTINGS for mic routing, compatibility checks, and full wake-word diagnostics.",
+                    color = skin.colors.textMuted, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
             }
             "alerts" -> {
                 var events by remember { mutableStateOf(prefs.tvEvents()) }
