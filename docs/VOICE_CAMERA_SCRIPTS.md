@@ -8,7 +8,7 @@ This is the **public, copy-and-paste setup** for opening, timing, and closing ca
 
 1. **Android TV app v0.16.2 or newer**, installed in place from Kellie's Voice → Settings → Check for app updates. Do not uninstall the app.
 2. **Home Assistant Kellie's Voice integration v0.16.2 or newer**, installed through HACS. Restart Home Assistant after upgrading. HACS does **not** install the Android APK.
-3. On the TV, set **Settings → TV announcements & cameras → ON**; allow **Display over other apps**. Open the main app after an update to restart the opt-in event receiver. The app can be closed by Android when in standby; alerts are not guaranteed continuously.
+3. On the TV, set **SETTINGS → Alerts & cameras → TV notifications & camera popups → ON**; allow **Display over other apps**. Open the main app after an update to restart the opt-in event receiver. The app can be closed by Android when in standby; alerts are not guaranteed continuously.
 4. Pair the TV under Home Assistant **Settings → Devices & services → Kellie's Voice**. For manual pairing, show the ID inside TV Settings → Home Assistant layout → Show this TV's pairing ID. Never publish your own pairing ID in a screenshot.
 5. Confirm `camera.doorbell` and/or `camera.driveway` exist in Home Assistant and support streaming. **Replace all example `camera.*` IDs below with your own entities**. Any Assist-compatible conversation agent can work with these scripts; Ollama is optional.
 

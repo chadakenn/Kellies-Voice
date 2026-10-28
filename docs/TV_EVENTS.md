@@ -7,10 +7,8 @@ Live Home Assistant events require HA configuration in a later step.
 ## TV configuration
 
 **If TV alerts/timers stopped after a TV wake, HA restart or update:** On the
-Kellie's Voice **main screen**, select **SETTINGS → TV alert status → Resume
-TV alerts**. Scroll down to **TV alert status** within the main SETTINGS
-menu. **Resume TV alerts** is the button in the status dialog; it is *not*
-inside **TV announcements & cameras**. If missing, enable the latter first,
+Kellie's Voice **main screen**, select **SETTINGS → Alerts & cameras → TV alert status → Resume TV alerts**.
+**Resume TV alerts** is the button in the status dialog, not the TV alerts enable switch. If missing, enable the latter first,
 configure Home Assistant, and allow Android's **Display over other apps**
 permission. The TV alert receiver is separate from Assist's Connect /
 reconnect button. Check the HA **TV alert receiver connected** diagnostic
@@ -18,8 +16,8 @@ and then send a new test event. See
 [troubleshooting](TROUBLESHOOTING.md#tv-camera-or-announcement-popups-missing-find-resume-tv-alerts).
 
 
-1. Install the current signed Android APK (v0.16.9 at this documentation update) over the existing app (keep saved settings). Install the matching HACS Kellie's Voice integration and restart Home Assistant.
-2. In Kellie's Voice, open **Settings → TV announcements & cameras**.
+1. Install the current signed Android APK (v0.16.14 at this documentation update) over the existing app (keep saved settings). Install the matching HACS Kellie's Voice integration and restart Home Assistant.
+2. In Kellie's Voice, open **SETTINGS → Alerts & cameras → TV notifications & camera popups**.
 3. Turn it on. Android may require **Display over other apps** permission.
 4. Choose **Preview announcement** for a local test popup. It does
    **not** enable the microphone, pause/mute YouTube, or steal D-pad focus.
@@ -95,7 +93,7 @@ Android side listens for the following raw **Home Assistant event bus** events:
 ### Visual announcement
 
 
-**Optional spoken announcements** (v0.16.11+ draft): add a `speak` field to the announcement event. Enable in TV Settings → Spoken announcements. Audio is ducked transiently via AudioFocus and always restored. See YAML examples in the wiki.
+**Optional spoken announcements** (shipped in v0.16.11+): add a `speak` field to the announcement event. Enable in TV Settings → Spoken announcements. Audio is ducked transiently via AudioFocus and always restored. See YAML examples in the wiki.
 
 
 - Event type: `kellies_voice_announcement`
