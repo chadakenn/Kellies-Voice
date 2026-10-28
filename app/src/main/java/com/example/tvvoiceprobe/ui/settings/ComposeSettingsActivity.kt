@@ -27,6 +27,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -93,6 +95,10 @@ fun SettingsScreen(
 ) {
     val skin = LocalKellieSkin.current
     var selected by rememberSaveable { mutableStateOf("home") }
+    // Keep the initial TV remote focus on the first real category, not
+    // the instructional footer or a remembered element in the details pane.
+    val firstCategoryFocus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { firstCategoryFocus.requestFocus() }
     BackHandler(onBack = onBack)
 
     val categories = listOf(
@@ -135,7 +141,8 @@ fun SettingsScreen(
                     CategoryCard(
                         category = cat,
                         selected = selected == cat.id,
-                        onSelect = { selected = cat.id }
+                        onSelect = { selected = cat.id },
+                        firstFocus = if (cat.id == "home") firstCategoryFocus else null
                     )
                 }
             }
@@ -162,9 +169,9 @@ fun SettingsScreen(
             text = "D-pad to move  \u2022  OK to select  \u2022  Back returns to voice screen",
             color = skin.colors.textMuted,
             fontSize = 14.sp,
-            modifier = Modifier
-                .padding(top = 12.dp)
-                .clickable { onBack() }
+            // Instructional text is not a D-pad action. BackHandler above
+            // handles Back without stealing initial focus from categories.
+            modifier = Modifier.padding(top = 12.dp)
         )
     }
 }
@@ -173,7 +180,8 @@ fun SettingsScreen(
 fun CategoryCard(
     category: SettingsCategory,
     selected: Boolean,
-    onSelect: () -> Unit
+    onSelect: () -> Unit,
+    firstFocus: FocusRequester? = null
 ) {
     val skin = LocalKellieSkin.current
     var focused by remember { mutableStateOf(false) }
@@ -190,6 +198,7 @@ fun CategoryCard(
                 color = if (focused || selected) skin.colors.focus else skin.colors.stroke,
                 shape = skin.cardShape
             )
+            .then(if (firstFocus == null) Modifier else Modifier.focusRequester(firstFocus))
             .onFocusChanged { focused = it.isFocused }
             .clickable { onSelect() }
             .padding(14.dp),
