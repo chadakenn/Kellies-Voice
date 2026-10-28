@@ -24,6 +24,8 @@ public final class ComposeHomeStatus {
         if (value.indexOf('@') >= 0) return "";
         try {
             URI uri = new URI(value);
+            String scheme = uri.getScheme();
+            if (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme)) return "";
             if (uri.getUserInfo() != null) return "";
             String query = uri.getRawQuery();
             String fragment = uri.getRawFragment();
