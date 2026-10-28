@@ -158,8 +158,8 @@ public class UpdateChannelTest {
         } catch (IllegalArgumentException expected) {
             assertEquals("Invalid release integrity metadata.", expected.getMessage());
         }
-        String stableWrongName = "{\\\"versionCode\\\":55,\\\"versionName\\\":\\\"0.16.14\\\","
-                + "\\\"tag\\\":\\\"v0.16.15\\\",\\\"sha256\\\":\\\"" + hash() + "\\\"}";
+        String stableWrongName = "{\"versionCode\":55,\"versionName\":\"0.16.14\","
+                + "\"tag\":\"v0.16.15\",\"sha256\":\"" + hash() + "\"}";
         try {
             UpdateChannel.requireMetadata("stable", "v0.16.15", stableWrongName);
             throw new AssertionError("Stable release tag/name mismatch was accepted");
