@@ -39,7 +39,7 @@ For **first-time testers**, start with the [full installation, setup and tester 
 
 1. Make sure HACS is installed in your Home Assistant instance.
 2. **First-time only:** in **HACS → ⋮ → Custom repositories**, add `https://github.com/chadakenn/Kellies-Voice` with category **Integration**. The shortcut badge does not register an unknown repository automatically.
-3. Click **[Open in HACS](https://my.home-assistant.io/redirect/hacs_repository/?owner=chadakenn&repository=Kellies-Voice&category=integration)**. Download the **stable v0.16.12** Home Assistant integration to match the [signed v0.16.12 Android app](https://github.com/chadakenn/Kellies-Voice/releases/tag/v0.16.12). Development prereleases are separate opt-in versions.
+3. Click **[Open in HACS](https://my.home-assistant.io/redirect/hacs_repository/?owner=chadakenn&repository=Kellies-Voice&category=integration)**. Download the **latest stable** Home Assistant integration to match the [latest signed stable Android app](https://github.com/chadakenn/Kellies-Voice/releases/latest). For v0.16.14, update both the Android app and HACS integration to v0.16.14. Development prereleases are separate opt-in versions.
 4. Restart Home Assistant, then turn **Home Assistant layout ON** inside the Kellie's Voice TV app. Either add the TV under **Settings → Devices & services → Discovered** or use **Add Integration → Kellie's Voice** for manual pairing with its device ID (shown on the TV under Settings → Home Assistant layout → Show this TV's pairing ID). This works if mDNS is blocked across VLANs.
 5. Optionally turn on **TV announcements & cameras** on the TV to receive HA announcements and Frigate camera snapshots.
 
