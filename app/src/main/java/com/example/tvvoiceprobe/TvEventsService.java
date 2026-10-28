@@ -792,6 +792,7 @@ public final class TvEventsService extends Service {
         hideCard();
         int current = ++generation;
         OverlayPreferences placement = new OverlayPreferences(this);
+        boolean obsidian = OverlayPreferences.SKIN_OBSIDIAN.equals(placement.skin());
         boolean aurora = OverlayPreferences.SKIN_AURORA.equals(placement.skin());
         LinearLayout panel = new LinearLayout(this);
         panel.setOrientation(LinearLayout.VERTICAL);
@@ -801,15 +802,20 @@ public final class TvEventsService extends Service {
                 new int[] {0xf514100E, 0xf5241A14});
         background.setCornerRadius(dp(14));
         background.setStroke(dp(2), 0xffC4884A);
-        panel.setBackground(aurora ? new AuroraGlassDrawable(dp(14)) : background);
-        panel.addView(label(forecast.location, 18, aurora ? 0xffEDF3FF : 0xffEAC296));
-        panel.addView(label(forecast.heading(), 13, aurora ? 0xffA6BFEA : 0xffC4884A));
+        panel.setBackground(obsidian ? new ObsidianGlassDrawable(dp(14))
+                : aurora ? new AuroraGlassDrawable(dp(14)) : background);
+        panel.addView(label(forecast.location, 18,
+                obsidian ? 0xff00E5FF : aurora ? 0xffEDF3FF : 0xffEAC296));
+        panel.addView(label(forecast.heading(), 13,
+                obsidian ? 0xff8A93B2 : aurora ? 0xffA6BFEA : 0xffC4884A));
         for (ForecastCard.Day day : forecast.days) {
-            TextView row = label(day.line(forecast.units), 15, aurora ? 0xffF2F5FF : 0xffFAE8D5);
+            TextView row = label(day.line(forecast.units), 15,
+                    obsidian ? 0xffEAF0FF : aurora ? 0xffF2F5FF : 0xffFAE8D5);
             row.setMaxLines(1);
             panel.addView(row);
         }
-        panel.addView(label("Back closes this forecast", 12, aurora ? 0xffA6BFEA : 0xffAD835D));
+        panel.addView(label("Back closes this forecast", 12,
+                obsidian ? 0xff8A93B2 : aurora ? 0xffA6BFEA : 0xffAD835D));
         panel.setFocusable(true);
         panel.setOnKeyListener((view, key, event) -> {
             if (event.getAction() != android.view.KeyEvent.ACTION_DOWN) return false;
@@ -919,6 +925,8 @@ public final class TvEventsService extends Service {
         if (stopping || windowManager == null || !Settings.canDrawOverlays(this)) return;
         hideCard();
         int current = ++generation;
+        OverlayPreferences placement = new OverlayPreferences(this);
+        boolean obsidian = OverlayPreferences.SKIN_OBSIDIAN.equals(placement.skin());
         LinearLayout panel = new LinearLayout(this);
         panel.setOrientation(LinearLayout.VERTICAL);
         panel.setPadding(dp(18), dp(13), dp(18), dp(14));
@@ -927,20 +935,20 @@ public final class TvEventsService extends Service {
                 new int[] {0xf51B1512, 0xf52B1D17});
         background.setCornerRadius(dp(12));
         background.setStroke(dp(1), 0xffAD835D);
-        panel.setBackground(background);
+        panel.setBackground(obsidian ? new ObsidianGlassDrawable(dp(16)) : background);
         panel.setElevation(dp(12));
 
         TextView subtitle = null;
         if (entity == null || showHeader) {
             View goldRule = new View(this);
-            goldRule.setBackgroundColor(0xffE1B27B);
+            goldRule.setBackgroundColor(obsidian ? 0xff00E5FF : 0xffE1B27B);
             panel.addView(goldRule, new LinearLayout.LayoutParams(-1, dp(3)));
-            panel.addView(label(title.isEmpty() ? "Kellie's Voice" : title, 19, 0xffEAC296));
-            subtitle = label(text, 16, 0xffFAE8D5);
+            panel.addView(label(title.isEmpty() ? "Kellie's Voice" : title, 19,
+                    obsidian ? 0xff00E5FF : 0xffEAC296));
+            subtitle = label(text, 16, obsidian ? 0xffEAF0FF : 0xffFAE8D5);
             panel.addView(subtitle);
         }
         photo = null;
-        OverlayPreferences placement = new OverlayPreferences(this);
         String alertSize = placement.alertSize();
         String cameraMode = placement.cameraMode();
         if (entity != null && live) {
@@ -987,7 +995,7 @@ public final class TvEventsService extends Service {
                 Button button = new Button(this);
                 button.setText(action.label);
                 button.setAllCaps(false);
-                button.setTextColor(0xffFAE8D5);
+                button.setTextColor(obsidian ? 0xffEAF0FF : 0xffFAE8D5);
                 button.setFocusable(true);
                 button.setOnClickListener(view -> {
                     if (stopping || generation != current || card != panel
