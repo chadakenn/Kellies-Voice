@@ -53,7 +53,8 @@ class TvSettingsRoutingTest(unittest.TestCase):
         toolbar = ACTIVITY.split('addButton(toolbar, "SETTINGS", v -> {', 1)[1].split(
             'root.addView(toolbar', 1
         )[0]
-        self.assertIn("if (BuildConfig.DEBUG || BuildConfig.IS_QA)", toolbar)
+        self.assertIn("if (BuildConfig.DEBUG || BuildConfig.IS_QA", toolbar)
+        self.assertIn('BuildConfig.VERSION_NAME.contains("-dev.")', toolbar)
         self.assertIn("ComposeSettingsActivity.class", toolbar)
         self.assertIn("showSettingsDashboard();", toolbar)
         self.assertNotIn('addButton(toolbar, "COMPOSE"', toolbar)
