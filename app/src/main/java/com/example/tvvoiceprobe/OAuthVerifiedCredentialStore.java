@@ -126,8 +126,14 @@ public final class OAuthVerifiedCredentialStore {
                 envelope.put("ciphertext", Base64.encodeToString(encrypted, Base64.NO_WRAP));
                 Arrays.fill(encrypted, (byte) 0);
 
-                // SharedPreferences commit is synchronous; previous encrypted
-                // record is untouched by a failure before this operation.
+                // Replacement/re-pair needs an explicit crash-safe rollback
+                // protocol. Until that is independently reviewed, reject it
+                // instead of overwriting a working verified OAuth identity.
+                if (prefs().contains(SECRET)) {
+                    throw new IllegalStateException("Verified OAuth login already exists");
+                }
+                // SharedPreferences commit is synchronous. The existing
+                // manual connection is always in an entirely separate store.
                 if (!prefs().edit().putString(SECRET, envelope.toString()).commit()) {
                     throw new IllegalStateException("Verified login could not be saved");
                 }
