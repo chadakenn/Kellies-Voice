@@ -15,7 +15,40 @@ import hashlib
 import hmac
 
 from .pairing_key_commitment import CommitmentSession, commitment, _part, _session_bytes
-from .pairing_verification import _load_p256, public_der
+def public_der(private_key) -> bytes:
+    """Return canonical P-256 SPKI DER without depending on legacy v2."""
+    from cryptography.hazmat.primitives.asymmetric import ec
+    from cryptography.hazmat.primitives import serialization
+    if (not isinstance(private_key, ec.EllipticCurvePrivateKey)
+            or not isinstance(private_key.curve, ec.SECP256R1)):
+        raise ValueError("Only P-256 private keys are supported")
+    return private_key.public_key().public_bytes(
+        serialization.Encoding.DER,
+        serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+
+
+def _load_p256(encoded: bytes):
+    """Decode only canonical P-256 SPKI DER; reject non-P256 curves."""
+    from cryptography.hazmat.primitives.asymmetric import ec
+    from cryptography.hazmat.primitives.serialization import load_der_public_key
+    if type(encoded) is not bytes or not 70 <= len(encoded) <= 150:
+        raise ValueError("Invalid v3 key")
+    try:
+        key = load_der_public_key(encoded)
+    except (ValueError, TypeError):
+        raise ValueError("Invalid v3 key") from None
+    if not isinstance(key, ec.EllipticCurvePublicKey) or not isinstance(
+            key.curve, ec.SECP256R1):
+        raise ValueError("Invalid v3 curve")
+    from cryptography.hazmat.primitives import serialization
+    der = key.public_bytes(
+        serialization.Encoding.DER,
+        serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+    if not hmac.compare_digest(der, encoded):
+        raise ValueError("Noncanonical v3 public key")
+    return key
 from .validation import clean_tv_device_id
 
 _SAS_DOMAIN = b"KelliesVoice/v3/sas-transcript\x00"
