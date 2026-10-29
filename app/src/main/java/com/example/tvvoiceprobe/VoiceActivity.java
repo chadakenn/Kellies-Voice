@@ -1923,6 +1923,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
             if (homeShortcutSignature.equals(signature)) return;
             homeShortcutSignature = signature;
             boolean previouslyFocused = homeShortcutButtons.contains(getCurrentFocus());
+            int previousSelection = selected;
             homeShortcutRow.removeAllViews();
             homeShortcutButtons.clear();
             if (configured != null) {
@@ -1967,9 +1968,12 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
             if (selected >= buttons.size() + homeShortcutButtons.size()) {
                 selected = 0;
             }
-            // Replacing the row during a config edit must not lose remote
-            // focus. Routine 30-second identical responses never rebuild it.
-            if (previouslyFocused && hasWindowFocus()) focus(selected);
+            // Removal of an old focused Button may fire its focus-loss event.
+            // Restore the saved position, not the stale detached button index.
+            if (previouslyFocused && hasWindowFocus()) {
+                focus(Math.min(previousSelection,
+                        buttons.size() + homeShortcutButtons.size() - 1));
+            }
         });
     }
 
