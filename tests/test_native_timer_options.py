@@ -57,9 +57,12 @@ class NativeTimerOptionsTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual("form", view["type"])
         self.assertIn("native_timer_intents", view["data_schema"])
         enabled = await flow.async_step_init({"native_timer_intents": True})
-        self.assertEqual({"native_timer_intents": True}, enabled["data"])
+        self.assertIs(True, enabled["data"]["native_timer_intents"])
+        self.assertEqual("", enabled["data"]["shortcut_1_label"])
+        self.assertEqual("Turn on", enabled["data"]["shortcut_1_action"])
         disabled = await flow.async_step_init({"native_timer_intents": False})
-        self.assertEqual({"native_timer_intents": False}, disabled["data"])
+        self.assertIs(False, disabled["data"]["native_timer_intents"])
+        self.assertEqual("", disabled["data"]["shortcut_4_entity"])
 
     async def test_runtime_registration_is_guarded_and_reloads_on_change(self):
         src = (Path(__file__).resolve().parents[1] / "custom_components" /
