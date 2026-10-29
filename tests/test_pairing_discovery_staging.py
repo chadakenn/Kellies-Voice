@@ -20,7 +20,7 @@ class PairingDiscoverySourceTests(unittest.TestCase):
         self.assertIn('stopWindow()', screen)
         self.assertIn('PairingDiscoveryWindow.start(this', screen)
         for forbidden in ("CredentialStore", "HaAssistClient", "setToken(",
-                          "Authorization: Bearer", 'POST /', "grant_type="):
+                          "Authorization: Bearer", "grant_type=", "refresh_token"):
             self.assertNotIn(forbidden, listener)
             self.assertNotIn(forbidden, screen)
 
@@ -36,10 +36,14 @@ class PairingDiscoverySourceTests(unittest.TestCase):
 
     def test_ha_must_not_claim_capability_before_auth_is_available(self):
         manifest = json.loads((ROOT / "custom_components/kellies_voice/manifest.json").read_text())
-        self.assertNotIn("_kellies-pair._tcp.local.", manifest.get("zeroconf", []))
+        self.assertIn("_kellies-pair._tcp.local.", manifest.get("zeroconf", []))
         probe = (ROOT / "custom_components/kellies_voice/pairing_probe.py").read_text()
         self.assertIn('"authorized": False', probe)
         self.assertNotIn("async_create_entry", probe)
+        exchange = (ROOT / "custom_components/kellies_voice/pairing_exchange.py").read_text()
+        self.assertNotIn("async_create_entry", exchange)
+        self.assertNotIn("Bearer ", exchange)
+        self.assertIn("approved_proof", exchange)
 
 
 if __name__ == "__main__":
