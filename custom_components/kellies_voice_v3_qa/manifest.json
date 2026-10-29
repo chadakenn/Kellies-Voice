@@ -1,0 +1,18 @@
+{
+  "domain": "kellies_voice_v3_qa",
+  "name": "Kellie's Voice v3 Pairing QA (NO LOGIN)",
+  "codeowners": [
+    "@chadakenn"
+  ],
+  "config_flow": true,
+  "documentation": "https://github.com/chadakenn/Kellies-Voice/blob/qa/isolated-home-assistant-v3-integration/docs/HA_V3_TWO_SCREEN_DEVICE_QA.md",
+  "iot_class": "local_push",
+  "version": "0.0.1",
+  "dependencies": [
+    "zeroconf"
+  ],
+  "zeroconf": [
+    "_kellies-pair._tcp.local."
+  ],
+  "issue_tracker": "https://github.com/chadakenn/Kellies-Voice/issues/193"
+}

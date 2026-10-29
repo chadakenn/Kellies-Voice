@@ -1,0 +1,33 @@
+{
+  "config": {
+    "step": {
+      "compare_start": {
+        "title": "Kellie's Voice v3 verification test",
+        "description": "This is a temporary two-minute LAN test. Home Assistant and the TV will derive a matching eight-digit code without exchanging account credentials. Your normal Kellie's Voice integration will not be changed. Start the v3 test window on the TV first.",
+        "data": {
+          "start": "Start the secure v3 code test"
+        }
+      },
+      "compare_code": {
+        "title": "Compare the code on both screens",
+        "description": "Home Assistant calculated {code}. Compare ALL EIGHT DIGITS against the code displayed on the actual TV, then press OK on the TV remote. Confirm here afterwards. This DOES NOT sign the TV in.",
+        "data": {
+          "ha_code": "Eight-digit Home Assistant code",
+          "numbers_match": "All eight digits match the TV and I pressed remote OK"
+        }
+      }
+    },
+    "error": {
+      "unavailable": "Could not complete the temporary v3 exchange. Restart on the TV.",
+      "waiting_for_remote": "No physical TV remote confirmation yet. Compare the codes, press OK on the TV and try again."
+    },
+    "abort": {
+      "start_on_tv": "On the TV, open the v3 test screen and press START first. Then select the discovered TV in Devices & Services.",
+      "invalid_tv": "The TV's temporary v3 advertisement was invalid.",
+      "cancelled": "Verification was cancelled. Your normal TV login was not changed.",
+      "expired": "The temporary TV session expired or its proof was rejected. Try a new session.",
+      "mismatch": "The eight-digit codes did not match. Nothing was changed.",
+      "verified_test_only": "Secure v3 TV code and physical remote verified! This is a test only. No Home Assistant login or token was installed."
+    }
+  }
+}

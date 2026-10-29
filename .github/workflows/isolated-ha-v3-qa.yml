@@ -1,0 +1,76 @@
+name: Isolated Home Assistant v3 QA integration (no login)
+
+on:
+  pull_request:
+    paths:
+      - 'custom_components/kellies_voice_v3_qa/**'
+      - 'tests/test_isolated_v3_qa_integration.py'
+      - '.github/workflows/isolated-ha-v3-qa.yml'
+  workflow_dispatch:
+
+jobs:
+  validate-and-package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install isolated P-256 test dependency
+        run: python -m pip install 'cryptography>=44,<48'
+      - name: Compile isolated v3 component
+        run: python -m compileall -q custom_components/kellies_voice_v3_qa
+      - name: Test real QA-only config flow and protections
+        run: python -m unittest discover -s tests -p 'test_isolated_v3_qa_integration.py' -v
+      - name: Verify translations, domain, no token issuer and no writing to stable integration
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path('custom_components/kellies_voice_v3_qa')
+          manifest = json.loads((root/'manifest.json').read_text())
+          assert manifest['domain'] == root.name
+          assert manifest['config_flow'] is True
+          assert manifest['zeroconf'] == ['_kellies-pair._tcp.local.']
+          for file in ('strings.json', 'translations/en.json'):
+              msg = json.loads((root/file).read_text())
+              assert 'compare_code' in msg['config']['step']
+              assert 'verified_test_only' in msg['config']['abort']
+          files = list(root.rglob('*'))
+          assert all(x.is_file() for x in files if x.suffix in ('.py', '.json'))
+          for p in files:
+              if p.is_file():
+                  txt = p.read_text(errors='ignore')
+                  assert 'async_create_entry(' not in txt
+                  assert 'async_create_refresh_token' not in txt
+          print('PASS: independent v3 QA-only domain; no token installer')
+          PY
+      - name: Package only separate QA integration folder for HA File Editor
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile, ZIP_DEFLATED
+          root = Path('custom_components/kellies_voice_v3_qa')
+          with ZipFile('kellies-voice-v3-ha-qa.zip', 'w', ZIP_DEFLATED) as z:
+              for p in sorted(root.rglob('*')):
+                  if p.is_file() and p.suffix in ('.py', '.json'):
+                      z.write(p, p.relative_to('custom_components'))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kellies-voice-v3-ha-qa-only
+          path: kellies-voice-v3-ha-qa.zip
+          if-no-files-found: error
+          retention-days: 14
+      - name: Stage drag-and-drop HA config folder (one ZIP extract)
+        run: |
+          mkdir -p staging/custom_components
+          cp -a custom_components/kellies_voice_v3_qa staging/custom_components/
+          find staging -name __pycache__ -type d -prune -exec rm -rf {} +
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Kellies-v3-HA-DragIntoConfig
+          path: staging/
+          if-no-files-found: error
+          retention-days: 14
