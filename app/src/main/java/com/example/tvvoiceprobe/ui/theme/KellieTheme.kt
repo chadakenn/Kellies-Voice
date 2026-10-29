@@ -3,6 +3,7 @@ package com.example.tvvoiceprobe.ui.theme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Typography
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
@@ -200,8 +201,23 @@ fun KellieTheme(
     skin: KellieSkin = KellieSkins.COPPER,
     content: @Composable () -> Unit
 ) {
-    androidx.compose.runtime.CompositionLocalProvider(
-        LocalKellieSkin provides skin,
-        content = content
-    )
+    if (skin.id == OverlayPreferences.SKIN_OBSIDIAN) {
+        // Neon Obsidian paints its own animated backdrop (ObsidianBackdrop), so the
+        // screen is transparent and panels are translucent glass over it. Only the
+        // provided copy changes; KellieSkins.OBSIDIAN itself stays as defined above.
+        val glass = skin.copy(
+            colors = skin.colors.copy(
+                screen = Color.Transparent,
+                panel = Color(0xB30E1018)
+            )
+        )
+        CompositionLocalProvider(LocalKellieSkin provides glass) {
+            ObsidianBackdrop(content)
+        }
+    } else {
+        CompositionLocalProvider(
+            LocalKellieSkin provides skin,
+            content = content
+        )
+    }
 }
