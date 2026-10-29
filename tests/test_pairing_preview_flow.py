@@ -42,7 +42,7 @@ class Backend:
     async def begin(self, candidate):
         self.calls += 1
         self.candidate = candidate
-        return types.SimpleNamespace(code="12345678")
+        return types.SimpleNamespace(code="12345678", candidate=candidate)
 
     async def check(self, attempt):
         self.calls += 1
@@ -80,6 +80,8 @@ class FakeFlow:
     def __init__(self):
         self._preview_candidate = None
         self._preview_attempt = None
+        self._preview_tv_ok_confirmed = False
+        self._verified_tv_session = None
         self._oauth_attempt = None
         self._oauth_state = None
         self._name = "Demo TV"
@@ -148,6 +150,8 @@ class FlowTests(unittest.IsolatedAsyncioTestCase):
         gate = await self.flow.async_step_pairing_code({"numbers_match": True})
         self.assertEqual("form", gate["type"])
         self.assertEqual("oauth_authorize", gate["step_id"])
+        self.assertTrue(self.flow._preview_tv_ok_confirmed)
+        self.assertEqual("AQIDBAUGBwgJCgsMDQ4PEA", self.flow._verified_tv_session)
         self.assertEqual([], self.flow.created)
 
     async def test_user_rejects_mismatched_code(self):
