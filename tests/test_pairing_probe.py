@@ -55,7 +55,8 @@ class FakeBody:
     def __init__(self, data):
         self.data = data
     async def read(self, limit):
-        return self.data[:limit]
+        chunk, self.data = self.data[:limit], self.data[limit:]
+        return chunk
 
 
 class FakeResponse:
@@ -115,6 +116,10 @@ class ProbeTests(unittest.IsolatedAsyncioTestCase):
             candidate, _session_factory=lambda: FakeSession(b"x" * 513)))
         self.assertFalse(await module.probe_candidate(
             candidate, _session_factory=lambda: FakeSession(b"not-json")))
+        # A valid leading object must not hide extra body bytes past the bound.
+        self.assertFalse(await module.probe_candidate(
+            candidate, _session_factory=lambda: FakeSession(
+                json.dumps(base).encode() + b" " * 520)))
 
     async def test_never_requests_an_unvalidated_candidate(self):
         malicious = module.PairingCandidate("attacker.example", 45123, NONCE)
