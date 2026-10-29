@@ -16,6 +16,8 @@ import static org.junit.Assert.*;
 /** Java/HA-Python interop vector for #193; no HA tokens or sockets. */
 public class PairingVerificationCodeTest {
     private static final String SESSION = "AQIDBAUGBwgJCgsMDQ4PEA";
+    private static final String TV_UUID = "123e4567-e89b-42d3-a456-426614174000";
+    private static final String OTHER_UUID = "223e4567-e89b-42d3-a456-426614174000";
     private static final String TV =
             "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEaxfR8uEsQkf4vOblY6RA8ncDfYEt6zOg9KE5RdiYwpZP40Li_hp_m47n60p8D54WK84zV2sxXs7LtkBoN79R9Q";
     private static final String HA =
@@ -49,6 +51,29 @@ public class PairingVerificationCodeTest {
         assertEquals("zWMp2ha4rIAnsdSpGP8sow", tvProof);
         assertEquals(tvProof, PairingVerificationCode.approvedProof(
                 ha, false, SESSION, encoded(TV), encoded(HA)));
+    }
+
+    @Test public void v2UuidBoundProofMatchesPythonAndRejectsSubstitution() throws Exception {
+        KeyPair tv = testKey(1, TV);
+        KeyPair ha = testKey(2, HA);
+        String proof = PairingVerificationCode.approvedProof(
+                tv, true, SESSION, encoded(TV), encoded(HA), TV_UUID);
+        assertEquals("IQTCP6AIBcrvhq11xt54HA", proof);
+        assertEquals(proof, PairingVerificationCode.approvedProof(
+                ha, false, SESSION, encoded(TV), encoded(HA), TV_UUID));
+        assertNotEquals(proof, PairingVerificationCode.approvedProof(
+                tv, true, SESSION, encoded(TV), encoded(HA), OTHER_UUID));
+        assertNotEquals(proof, PairingVerificationCode.approvedProof(
+                tv, true, SESSION, encoded(TV), encoded(HA)));
+        for (String invalid : new String[] { "AQIDBAUGBwgJCgsMDQ4PEA",
+                TV_UUID.toUpperCase(), "123e4567-e89b-12d3-a456-426614174000",
+                "123e4567-e89b-42d3-7456-426614174000" }) {
+            try {
+                PairingVerificationCode.approvedProof(
+                        tv, true, SESSION, encoded(TV), encoded(HA), invalid);
+                fail("Invalid or uncanonical TV UUID accepted");
+            } catch (IllegalArgumentException expected) { }
+        }
     }
 
     @Test public void changesWhenSessionOrPeerChanges() throws Exception {
