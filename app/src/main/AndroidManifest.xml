@@ -59,6 +59,10 @@
                 android:resource="@xml/file_paths" />
         </provider>
         <activity android:name=".MainActivity" android:exported="false"/>
+        <!-- Opt-in, visible two-minute local pairing preview. No credentials,
+             no microphone, no OAuth, and no exported network activity. -->
+        <activity android:name=".PairingSetupActivity"
+            android:exported="false" />
         <activity android:name=".ScreensaverPreviewActivity"
             android:exported="false"
             android:excludeFromRecents="true"
