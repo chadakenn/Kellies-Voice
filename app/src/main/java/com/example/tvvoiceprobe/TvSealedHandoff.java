@@ -225,8 +225,13 @@ public final class TvSealedHandoff implements AutoCloseable {
     public synchronized byte[] tvProofFromVerifiedSocket(
             PairingAssistConnectionProbe.VerifiedCapabilityReceipt receipt) {
         expect(Stage.WAIT_CAPABILITIES);
+        // A successful WebSocket on another candidate must NEVER authorize
+        // this one, even when the owner, TV UUID and session are identical.
+        byte[] exactOfferedDigest = candidate == null ? null
+                : PairingCredentialCandidateCodec.fingerprint(candidate);
         if (receipt == null || !receipt.claim(
-                tvUuid, session, android.os.SystemClock.elapsedRealtime())) {
+                tvUuid, session, exactOfferedDigest,
+                android.os.SystemClock.elapsedRealtime())) {
             abort();
             throw new IllegalStateException("Live Assist/alerts receipt unavailable");
         }
