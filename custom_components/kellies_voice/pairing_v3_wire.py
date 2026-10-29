@@ -16,6 +16,7 @@ import hmac
 import ipaddress
 import json
 import re
+import time
 from dataclasses import dataclass
 
 from .pairing_key_commitment import CommitmentSession, _session_bytes
@@ -65,20 +66,21 @@ class HaV3WireAttempt:
     get(path, params), returning decoded strict JSON objects.
     """
 
-    def __init__(self, session: str, *, private=None):
+    def __init__(self, session: str, *, private=None, nonce=None):
         _session_bytes(session)
         from cryptography.hazmat.primitives.asymmetric import ec
         self._private = private or ec.generate_private_key(ec.SECP256R1())
         self.session = session
         self._barrier = CommitmentSession(
-            "ha", session, public_der(self._private))
+            "ha", session, public_der(self._private), nonce=nonce)
+        self._expires_at = time.monotonic() + 120
         self._used = False
         self._confirmed = False
         self.code: str | None = None
 
     async def start(self, transport) -> str:
-        if self._used:
-            raise ValueError("V3 attempt already started")
+        if self._used or time.monotonic() >= self._expires_at:
+            raise ValueError("V3 attempt already started or expired")
         self._used = True
         try:
             sid = self.session
@@ -115,7 +117,9 @@ class HaV3WireAttempt:
 
     async def confirmed_by_tv_remote(self, transport) -> VerifiedTv | None:
         """Query only after the owner has compared the v3 code on both UIs."""
-        if self._confirmed or not self._barrier.ready or self.code is None:
+        if (self._confirmed or not self._barrier.ready or self.code is None
+                or time.monotonic() >= self._expires_at):
+            self.close()
             raise ValueError("V3 physical confirmation not available")
         try:
             response = await transport.get("/v3/pair/status", {
