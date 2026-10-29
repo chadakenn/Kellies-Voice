@@ -177,15 +177,16 @@ class KellieVoiceConfigFlow(ConfigFlow, domain=DOMAIN):
             if user_input.get("numbers_match") is not True:
                 return self.async_abort(reason="preview_cancelled")
             try:
-                approved = await confirm_tv_ok(attempt)
+                verified = await confirm_tv_ok(attempt)
             except Exception:
                 errors["base"] = "preview_unavailable"
             else:
-                if approved:
-                    # This flag is only set after a transcript-bound proof
-                    # returned by the TV's physical OK control, not discovery.
+                if verified is not None:
+                    # Set the provisional TV UUID only from the cryptographically
+                    # verified proof. Never use the discovery session nonce.
                     self._preview_tv_ok_confirmed = True
-                    self._verified_tv_session = attempt.candidate.session
+                    self._verified_tv_session = verified.session
+                    self._provisional_tv_uuid = verified.tv_uuid
                     self._preview_attempt = None
                     return await self.async_step_oauth_authorize()
                 errors["base"] = "waiting_for_tv"
@@ -328,15 +329,11 @@ class KellieVoiceConfigFlow(ConfigFlow, domain=DOMAIN):
 
         Owner and TV identity come from server-side flow state, never from
         user_input. Requires an authenticated owner and a previously verified
-        TV session on this flow instance.
+        TV UUID from the ECDH/TV-OK proof.
         """
         owner_user_id = self.context.get("user_id")
         if not isinstance(owner_user_id, str) or not owner_user_id or owner_user_id == "unknown":
             return self.async_abort(reason="provisional_owner_required")
-        # An unauthenticated discovery session is a 16-byte random nonce,
-        # NOT the TV UUID. Treating it as a device ID could accidentally
-        # provision access to the wrong entity. The real TV UUID must arrive
-        # later from a verified, transcript-bound encrypted handoff.
         if (self._preview_tv_ok_confirmed is not True
                 or self._preview_candidate is None
                 or self._verified_tv_session != self._preview_candidate.session):
@@ -350,7 +347,6 @@ class KellieVoiceConfigFlow(ConfigFlow, domain=DOMAIN):
             if entry.data.get("device_id") == tv_uuid:
                 return self.async_abort(reason="provisional_exists")
         self._provisional_owner = owner_user_id
-        self._provisional_tv_uuid = tv_uuid
         return self.async_create_entry(
             title="Kellie's Voice (provisional)",
             data={
