@@ -3,6 +3,8 @@ package com.example.tvvoiceprobe;
 import android.app.Activity;
 import android.os.Bundle;
 import android.graphics.Color;
+import android.graphics.Typeface;
+import android.view.View;
 import android.view.Gravity;
 import android.widget.Button;
 import android.widget.LinearLayout;
@@ -17,6 +19,7 @@ import android.widget.TextView;
 public final class PairingSetupActivity extends Activity {
     private PairingDiscoveryWindow window;
     private TextView state;
+    private TextView codeDisplay;
     private Button startButton;
     private Button confirmButton;
 
@@ -43,6 +46,11 @@ public final class PairingSetupActivity extends Activity {
                 0xffcaa58b));
         state = message("Not discoverable yet. Press START when Home Assistant is open.", 18, 0xffE9B390);
         root.addView(state);
+        codeDisplay = message("", 44, Color.WHITE);
+        codeDisplay.setGravity(Gravity.CENTER);
+        codeDisplay.setTypeface(Typeface.DEFAULT_BOLD);
+        codeDisplay.setVisibility(View.GONE);
+        root.addView(codeDisplay);
 
         startButton = new Button(this);
         startButton.setText("START 2-MINUTE PAIRING");
@@ -90,13 +98,17 @@ public final class PairingSetupActivity extends Activity {
         try {
             window = PairingDiscoveryWindow.start(this, () -> {
                 window = null;
+                codeDisplay.setVisibility(View.GONE);
                 state.setText("Discovery ended. The listener is closed.");
                 confirmButton.setEnabled(false);
                 startButton.setEnabled(true);
             }, code -> {
-                state.setText("COMPARE THE CODE BELOW WITH HOME ASSISTANT:\n\n"
-                        + code + "\n\nOnly press Confirm if ALL eight digits match. "
-                        + "Never accept a pairing request you did not start.");
+                // Large digits remain readable across a living room.
+                codeDisplay.setText(code);
+                codeDisplay.setVisibility(View.VISIBLE);
+                state.setText("Compare all eight digits with Home Assistant. "
+                        + "Press OK only if they match. "
+                        + "Never approve a pairing request you did not start.");
                 confirmButton.setEnabled(true);
                 confirmButton.requestFocus();
             });
@@ -116,6 +128,7 @@ public final class PairingSetupActivity extends Activity {
             window = null;
         }
         if (confirmButton != null) confirmButton.setEnabled(false);
+        if (codeDisplay != null) codeDisplay.setVisibility(View.GONE);
     }
 
     private TextView message(String value, int sp, int color) {
