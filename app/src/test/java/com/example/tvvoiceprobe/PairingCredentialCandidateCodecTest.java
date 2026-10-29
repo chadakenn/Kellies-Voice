@@ -25,6 +25,13 @@ public class PairingCredentialCandidateCodecTest {
                 "https://ha.example", "a".repeat(32), "r".repeat(32),
                 TV, 1700001800000L, 1700000000000L);
         byte[] bytes = PairingCredentialCandidateCodec.encode(original);
+        assertEquals(218, bytes.length);
+        byte[] hash = PairingCredentialCandidateCodec.fingerprint(bytes);
+        StringBuilder hashHex = new StringBuilder();
+        for (byte value : hash) hashHex.append(String.format("%02x", value & 255));
+        // Independently calculated in Python HA draft: test_pairing_candidate_codec.py
+        assertEquals("a9baf0e2a82d08aca7ddb387b906016a25cd1ee7b5f138b96d0b972ee9440f23",
+                hashHex.toString());
         assertTrue(bytes.length <= PairingCredentialCandidateCodec.MAX_BYTES);
         PairedOAuthCredentials parsed = PairingCredentialCandidateCodec.decode(bytes);
         assertEquals(original.serverUrl, parsed.serverUrl);
