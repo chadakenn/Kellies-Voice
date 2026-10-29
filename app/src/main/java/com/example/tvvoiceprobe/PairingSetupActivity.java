@@ -54,8 +54,8 @@ public final class PairingSetupActivity extends Activity {
         confirmButton.setEnabled(false);
         confirmButton.setOnClickListener(v -> {
             if (window != null && window.approveFromTv()) {
-                state.setText("TV code verified. "
-                        + "Go back to Home Assistant to verify the proof. "
+                state.setText("TV remote OK recorded. "
+                        + "Go back to Home Assistant to finish checking the code. "
                         + "This test does NOT sign in or change your existing login.");
                 confirmButton.setEnabled(false);
             } else {
