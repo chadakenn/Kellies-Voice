@@ -13,7 +13,8 @@
     "websocket_api"
   ],
   "zeroconf": [
-    "_kellies-voice._tcp.local."
+    "_kellies-voice._tcp.local.",
+    "_kellies-pair._tcp.local."
   ],
   "issue_tracker": "https://github.com/chadakenn/Kellies-Voice/issues"
 }
