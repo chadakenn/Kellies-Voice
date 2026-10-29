@@ -10,7 +10,8 @@
   "version": "0.16.14",
   "dependencies": [
     "zeroconf",
-    "websocket_api"
+    "websocket_api",
+    "intent"
   ],
   "zeroconf": [
     "_kellies-voice._tcp.local."
