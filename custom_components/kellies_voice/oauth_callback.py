@@ -14,12 +14,6 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from aiohttp import web
-from homeassistant.components.http import HomeAssistantView
-from homeassistant.core import HomeAssistant
-
-from .const import DOMAIN
-
 _LOGGER = logging.getLogger(__name__)
 
 # In-memory store of pending authorization attempts keyed by the random state.
@@ -41,10 +35,12 @@ def register_pending_authorization(
 
     Must be called only after the HA owner has explicitly requested pairing
     and the TV OK proof has been verified. The state value itself is never
-    derived from the flow_id.
+    derived from the flow_id. Rejects missing or unknown owner identity.
     """
     if not isinstance(state, str) or not state:
         raise ValueError("Invalid state")
+    if not isinstance(owner_user_id, str) or not owner_user_id or owner_user_id == "unknown":
+        raise ValueError("Verified initiating owner required")
     _PENDING[state] = {
         "flow_id": flow_id,
         "owner_user_id": owner_user_id,
@@ -58,24 +54,38 @@ def consume_pending_authorization(state: str) -> dict[str, Any] | None:
     return _PENDING.pop(state, None)
 
 
-class OAuthCallbackView(HomeAssistantView):
-    """Public callback that receives the HA /auth/authorize redirect."""
+def clear_pending_authorizations() -> None:
+    """Test helper and cancel/error cleanup."""
+    _PENDING.clear()
+
+
+class OAuthCallbackView:
+    """Public callback that receives the HA /auth/authorize redirect.
+
+    HomeAssistantView and aiohttp are imported lazily so pure unit tests
+    of the state registry do not require the full HA runtime.
+    """
 
     url = "/api/kellies_voice/pair/oauth_callback"
     name = "api:kellies_voice:pair:oauth_callback"
     requires_auth = False
 
-    def __init__(self, hass: HomeAssistant) -> None:
+    def __init__(self, hass: Any) -> None:
         self.hass = hass
 
-    async def get(self, request: web.Request) -> web.Response:
+    async def get(self, request: Any) -> Any:
         """Validate state, then resume the exact config flow."""
+        from aiohttp import web
+
         state = request.query.get("state")
         code = request.query.get("code")
         error = request.query.get("error")
 
         if error or not state or not code:
             _LOGGER.debug("OAuth callback rejected: missing or error response")
+            # Clean up any leftover binding for this state if present.
+            if state:
+                consume_pending_authorization(state)
             return web.Response(
                 text="<html><body>Authorization rejected or cancelled.</body></html>",
                 content_type="text/html",
@@ -91,17 +101,17 @@ class OAuthCallbackView(HomeAssistantView):
                 status=400,
             )
 
-        # Resume the specific flow with only the validated code and state.
-        # The flow itself will re-validate owner/TV binding and perform the
-        # token exchange. We never put secrets in this response.
+        # Resume via a dedicated callback step so the external-step form is
+        # not re-entered. The flow will call attempt.consume_callback.
         try:
             await self.hass.config_entries.flow.async_configure(
                 binding["flow_id"],
                 user_input={
                     "oauth_state": state,
                     "oauth_code": code,
-                    "expected_owner": binding["owner_user_id"],
-                    "expected_tv": binding["tv_session"],
+                    "bound_owner": binding["owner_user_id"],
+                    "bound_tv": binding["tv_session"],
+                    "attempt": binding["attempt"],
                 },
             )
         except Exception:
@@ -118,6 +128,11 @@ class OAuthCallbackView(HomeAssistantView):
         )
 
 
-def async_setup_oauth_callback(hass: HomeAssistant) -> None:
-    """Register the callback view. Call from async_setup."""
-    hass.http.register_view(OAuthCallbackView(hass))
+async def async_setup_oauth_callback(hass: Any) -> None:
+    """Register the callback view. Genuinely async so HA setup can await it."""
+    from homeassistant.components.http import HomeAssistantView
+
+    class _RegisteredView(HomeAssistantView, OAuthCallbackView):
+        pass
+
+    hass.http.register_view(_RegisteredView(hass))
