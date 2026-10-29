@@ -120,6 +120,11 @@ fun SettingsScreen(
     }
     val latestSelected by rememberUpdatedState(selected)
     val categoryListState = rememberLazyListState()
+    // Editor state belongs to Screensaver. Don't leave its focus guard active
+    // if the remote switches categories while an editor was open.
+    LaunchedEffect(selected) {
+        if (selected != "screensaver") editorOpen = false
+    }
 
     // A one-shot onCreate focus request misses some onn keyboard/IME teardown
     // paths. Retry once after the actual Android window regains focus, and when
