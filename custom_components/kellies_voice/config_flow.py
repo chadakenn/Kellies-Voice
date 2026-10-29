@@ -65,6 +65,7 @@ class KellieVoiceConfigFlow(ConfigFlow, domain=DOMAIN):
         self._browser_attempt = None
         self._browser_state = None
         self._browser_owner = None
+        self._browser_probe_succeeded = False
 
     async def async_step_user(self, user_input=None):
         """Manual fallback when the TV cannot advertise across mDNS/VLANs."""
@@ -348,10 +349,14 @@ class KellieVoiceConfigFlow(ConfigFlow, domain=DOMAIN):
         self._browser_attempt = None
         self._browser_state = None
         self._owner_verified_tv = None
+        self._browser_probe_succeeded = True
         return self.async_external_step_done(
             next_step_id="owner_browser_done"
         )
 
     async def async_step_owner_browser_done(self, user_input=None):
-        """Owner browser approval verified; tokens deliberately never created."""
+        """Only the actual one-use callback can mark the browser round trip."""
+        if self._browser_probe_succeeded is not True:
+            return self.async_abort(reason="owner_probe_rejected")
+        self._browser_probe_succeeded = False
         return self.async_abort(reason="owner_browser_probe_complete")
