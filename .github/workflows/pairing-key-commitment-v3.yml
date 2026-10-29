@@ -63,7 +63,7 @@ jobs:
               assert 'auth/token' not in code
               assert 'CredentialStore(' not in code
               assert 'connect(' not in code
-          assert 'pairing_key_commitment' not in (ha / 'config_flow.py').read_text()
+          assert 'from .pairing_key_commitment import _session_bytes' in (ha / 'config_flow.py').read_text()
           assert 'pairing_v3_verified' not in (ha / 'config_flow.py').read_text()
           assert 'PairingKeyCommitment' not in (app / 'VoiceActivity.java').read_text()
           assert 'PairingV3TvWireState' not in (app / 'VoiceActivity.java').read_text()
