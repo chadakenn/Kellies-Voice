@@ -1,4 +1,4 @@
-name: Safe HA pairing preview (no OAuth)
+name: HA owner browser probe (token exchange disabled)
 
 on:
   pull_request:
@@ -7,6 +7,7 @@ on:
       - 'tests/test_pairing_probe.py'
       - 'tests/test_pairing_exchange.py'
       - 'tests/test_ha_safe_pairing_preview_flow.py'
+      - 'tests/test_pairing_browser_probe.py'
       - '.github/workflows/ha-pairing-preview-safe.yml'
   workflow_dispatch:
 
@@ -23,12 +24,13 @@ jobs:
         run: python -m pip install 'cryptography>=42,<47'
       - name: Compile all HA preview-only Python code
         run: python -m compileall -q custom_components/kellies_voice
-      - name: Test anonymous discovery, genuine ECDH and HA preview flow
+      - name: Test anonymous discovery, real ECDH and owner browser callback gates
         run: |
           python -m unittest discover -s tests -p 'test_pairing_probe.py' -v
           python -m unittest discover -s tests -p 'test_pairing_exchange.py' -v
           python -m unittest discover -s tests -p 'test_ha_safe_pairing_preview_flow.py' -v
-      - name: Reject OAuth and credential lifecycle files in safe preview artifact
+          python -m unittest discover -s tests -p 'test_pairing_browser_probe.py' -v
+      - name: Reject all token exchange and credential lifecycle code
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -41,24 +43,33 @@ jobs:
           assert 'async_step_pairing_code' in flow
           assert 'async_step_oauth_' not in flow
           assert 'async_create_entry' not in flow.split('async def async_step_pairing_code', 1)[1]
-          assert 'return self.async_abort(reason="preview_verified")' in flow
-          assert not list(root.glob('*oauth*.py')), 'No OAuth stack in safe preview'
+          assert 'async_step_owner_browser_open' in flow
+          assert 'async_step_owner_browser_consent' in flow
+          assert 'return self.async_abort(reason="owner_browser_probe_complete")' in flow
+          assert 'HomeAssistantTokenExchange' not in flow
+          assert 'exchange_from_consumed' not in flow
+          assert 'client.post(' not in flow
+          assert not (root / 'pairing_token_exchange.py').exists()
+          assert not (root / 'pairing_oauth_pending.py').exists()
+          assert not (root / 'pairing_candidate_codec.py').exists()
           assert not (root / 'pairing_handoff_state.py').exists()
-          print('SAFE: preview stops before account authorization and credential installation')
+          assert set(p.name for p in root.glob('*oauth*.py')) == {'pairing_owner_oauth.py'}
+          assert 'exchange_from_consumed' not in (root / 'pairing_browser_probe.py').read_text()
+          print('SAFE: Owner browser callback discards code, no token exchange or TV login')
           PY
-      - name: Bundle exact preview-only Home Assistant component
+      - name: Bundle exact token-free owner browser probe component
         run: |
-          mkdir -p ha-preview-artifact/custom_components
-          cp -R custom_components/kellies_voice ha-preview-artifact/custom_components/
+          mkdir -p ha-owner-browser-artifact/custom_components
+          cp -R custom_components/kellies_voice ha-owner-browser-artifact/custom_components/
           # CI compileall created Python 3.13 caches. Never ship bytecode
           # from the runner to a potentially different HA/Python runtime.
-          find ha-preview-artifact -type d -name __pycache__ -prune -exec rm -rf '{}' +
-          find ha-preview-artifact -type f -name '*.pyc' -delete
-          cd ha-preview-artifact
-          zip -q -r ../Kellies-Voice-HA-Pairing-Preview-Only.zip custom_components
+          find ha-owner-browser-artifact -type d -name __pycache__ -prune -exec rm -rf '{}' +
+          find ha-owner-browser-artifact -type f -name '*.pyc' -delete
+          cd ha-owner-browser-artifact
+          zip -q -r ../Kellies-Voice-HA-Owner-Browser-Probe-Only.zip custom_components
       - uses: actions/upload-artifact@v4
         with:
-          name: Kellies-Voice-HA-Pairing-Preview-Only
-          path: Kellies-Voice-HA-Pairing-Preview-Only.zip
+          name: Kellies-Voice-HA-Owner-Browser-Probe-Only
+          path: Kellies-Voice-HA-Owner-Browser-Probe-Only.zip
           if-no-files-found: error
           retention-days: 14
