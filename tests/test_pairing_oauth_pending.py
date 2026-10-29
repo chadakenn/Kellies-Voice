@@ -3,6 +3,7 @@
 Uses a fake exchanger so no network or aiohttp is required.
 """
 
+import time
 import unittest
 from unittest.mock import AsyncMock, MagicMock
 
@@ -22,7 +23,7 @@ class TestPendingOAuthTransaction(unittest.IsolatedAsyncioTestCase):
             owner_user_id="user-1",
             tv_session="tv-session-xyz",
             consumed=dict(self.consumed),
-            started=0.0,
+            started=time.time(),
         )
 
     async def test_exchange_stores_credentials_and_drops_verifier(self):
