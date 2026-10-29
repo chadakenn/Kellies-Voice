@@ -167,10 +167,15 @@ def discover(seconds: int) -> list[Candidate]:
     results: dict[tuple, Candidate] = {}
     started = time.monotonic()
     with Zeroconf() as zc:
-        def on_change(zc, service_type, name, state):
-            if state not in (ServiceStateChange.Added, ServiceStateChange.Updated):
+        # python-zeroconf dispatches handler callbacks by KEYWORD, not
+        # solely positional arguments. Names must match its public API
+        # (zeroconf, service_type, name, state_change) exactly.
+        def on_change(zeroconf, service_type, name, state_change):
+            if state_change not in (
+                ServiceStateChange.Added, ServiceStateChange.Updated
+            ):
                 return
-            info = zc.get_service_info(service_type, name, timeout=1000)
+            info = zeroconf.get_service_info(service_type, name, timeout=1000)
             if info is None:
                 return
             for ip in info.parsed_addresses():
