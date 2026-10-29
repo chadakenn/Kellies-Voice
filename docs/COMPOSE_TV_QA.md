@@ -1,6 +1,6 @@
 # Compose TV Settings: draft PR #192 hardware QA
 
-**Status:** in-device QA, **not a stable release**. The public `SETTINGS` menu remains the safe fallback. Debug-only `COMPOSE` is separate from production, and auto-pairing is planned independently in [#193](https://github.com/chadakenn/Kellies-Voice/issues/193).
+**Status:** in-device QA, **not a stable release**. Production `SETTINGS` remains the safe legacy hub. Updated development debug and signed QA builds have **one `SETTINGS` button opening Compose** (with legacy recovery routes available). Older `0.16.14-test` debug builds showed both `SETTINGS` and `COMPOSE`; those historical test notes refer to that older APK. Auto-pairing is planned independently in [#193](https://github.com/chadakenn/Kellies-Voice/issues/193).
 
 ## Confirmed on maintainer's onn 4K Pro (October 28, 2026)
 
