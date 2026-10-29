@@ -16,6 +16,7 @@ before enabling this in a production credential lifecycle.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import re
 from uuid import UUID
 from urllib.parse import urlsplit
 
@@ -48,13 +49,16 @@ def _canonical_tv_id(tv_uuid: str) -> str:
     return tv_uuid
 
 
-def proposed_tv_client_id(origin: str, tv_uuid: str) -> str:
-    """Candidate per-TV IndieAuth client_id, NOT verified by live HA OAuth.
+def proposed_tv_client_id(origin: str, tv_uuid: str, attempt_nonce: str) -> str:
+    """Candidate per-ATTEMPT IndieAuth client ID, NOT verified by HA OAuth.
 
     The application must confirm Home Assistant accepts this exact URI and
     redirects before any actual pairing code or token is exchanged.
     """
     tv_uuid = _canonical_tv_id(tv_uuid)
+    if type(attempt_nonce) is not str or re.fullmatch(
+            r"[0-9a-f]{32}", attempt_nonce) is None:
+        raise TvCredentialRejected("Pairing attempt identity invalid")
     if type(origin) is not str:
         raise TvCredentialRejected("Home Assistant origin invalid")
     parts = urlsplit(origin)
@@ -64,7 +68,8 @@ def proposed_tv_client_id(origin: str, tv_uuid: str) -> str:
         raise TvCredentialRejected("Home Assistant origin invalid")
     # The base origin must come from HA's trusted server-side network config,
     # not the TV, mDNS, DNS search or the URL field in an unauthenticated form.
-    return origin.rstrip("/") + "/kellies-voice/tv/" + tv_uuid
+    return (origin.rstrip("/") + "/kellies-voice/tv/" + tv_uuid
+            + "/attempt/" + attempt_nonce)
 
 
 def _matches_record(record, handle: DeviceTokenHandle) -> bool:
@@ -92,7 +97,10 @@ def verify_nonadmin_tv_candidate(
             expected_client_id))
             or tv_user_id == owner_user_id):
         raise TvCredentialRejected("TV credential identity invalid")
-    if not expected_client_id.endswith("/kellies-voice/tv/" + tv_uuid):
+    client_marker = "/kellies-voice/tv/" + tv_uuid + "/attempt/"
+    if (client_marker not in expected_client_id
+            or re.fullmatch(r"[0-9a-f]{32}",
+                expected_client_id.rsplit(client_marker, 1)[-1]) is None):
         raise TvCredentialRejected("TV client identity invalid")
 
     auth = hass.auth
