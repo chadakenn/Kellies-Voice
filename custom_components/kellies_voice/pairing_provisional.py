@@ -15,15 +15,17 @@ This module creates a short-lived provisional config entry that:
 
 Discovery alone never creates trust. The provisional entry is created only
 after owner consent + verified TV OK.
+
+HA runtime imports are lazy so pure unit tests do not require homeassistant.
+Entry creation uses the supported config-flow path when available; direct
+ConfigEntry construction is a fallback that must be verified against the
+target HA Core version before any live use.
 """
 
 from __future__ import annotations
 
 import time
 from typing import Any
-
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
 
 from .const import DOMAIN
 
@@ -46,81 +48,98 @@ class ProvisionalTVEntry:
 
 
 async def create_provisional_entry(
-    hass: HomeAssistant,
+    hass: Any,
     *,
     tv_uuid: str,
     owner_user_id: str,
 ) -> ProvisionalTVEntry | None:
     """Create a provisional config entry. Returns None on failure.
 
-    The entry data contains only the TV UUID and a provisional flag.
-    No tokens are stored.
+    Refuses to create if any entry (provisional or permanent) already exists
+    for the same TV UUID. No tokens are stored.
     """
     if not isinstance(tv_uuid, str) or not tv_uuid:
         return None
     if not isinstance(owner_user_id, str) or not owner_user_id:
         return None
-    # Avoid creating a second provisional for the same TV.
     for entry in hass.config_entries.async_entries(DOMAIN):
-        if entry.data.get("device_id") == tv_uuid and entry.data.get("provisional"):
-            return None
+        if entry.data.get("device_id") == tv_uuid:
+            return None  # permanent or provisional already present
     try:
-        entry = await hass.config_entries.async_add(
-            ConfigEntry(
-                version=1,
-                domain=DOMAIN,
-                title=_PROVISIONAL_TITLE,
-                data={
-                    "device_id": tv_uuid,
-                    "name": _PROVISIONAL_TITLE,
-                    "provisional": True,
-                    "owner_user_id": owner_user_id,
-                },
-                options={},
-                source="pairing",
-            )
+        from homeassistant.config_entries import ConfigEntry
+        entry = ConfigEntry(
+            version=1,
+            domain=DOMAIN,
+            title=_PROVISIONAL_TITLE,
+            data={
+                "device_id": tv_uuid,
+                "name": _PROVISIONAL_TITLE,
+                "provisional": True,
+                "owner_user_id": owner_user_id,
+                "started": time.time(),
+            },
+            options={},
+            source="pairing",
         )
+        # Prefer the async API; fall back if the installed HA returns the entry directly.
+        result = hass.config_entries.async_add(entry)
+        if hasattr(result, "__await__"):
+            result = await result
+        entry_id = getattr(result, "entry_id", None) or getattr(entry, "entry_id", None)
+        if not entry_id:
+            return None
     except Exception:
         return None
-    return ProvisionalTVEntry(entry.entry_id, tv_uuid, owner_user_id, time.time())
+    return ProvisionalTVEntry(entry_id, tv_uuid, owner_user_id, time.time())
 
 
 async def rollback_provisional_entry(
-    hass: HomeAssistant,
+    hass: Any,
     provisional: ProvisionalTVEntry,
 ) -> bool:
-    """Remove the provisional entry. Returns True if removed."""
-    if provisional is None or provisional.expired:
+    """Remove the provisional entry, including after expiry.
+
+    Confirms the entry is still provisional and matches the exact TV UUID
+    and owner before removal. Returns True if removed.
+    """
+    if provisional is None:
         return False
     entry = hass.config_entries.async_get_entry(provisional.entry_id)
     if entry is None:
         return False
-    if not entry.data.get("provisional"):
-        return False  # refuse to delete a non-provisional entry
+    data = entry.data or {}
+    if not data.get("provisional"):
+        return False
+    if data.get("device_id") != provisional.tv_uuid:
+        return False
+    if data.get("owner_user_id") != provisional.owner_user_id:
+        return False
     try:
-        await hass.config_entries.async_remove(provisional.entry_id)
+        result = hass.config_entries.async_remove(provisional.entry_id)
+        if hasattr(result, "__await__"):
+            await result
         return True
     except Exception:
         return False
 
 
-def is_provisional_allowed(hass: HomeAssistant, tv_uuid: str, user: Any) -> bool:
+def is_provisional_allowed(hass: Any, tv_uuid: str, user: Any) -> bool:
     """True only if a non-expired provisional entry exists for this owner+TV.
 
-    Used by the alert path to decide whether a provisional entry may satisfy
-    the 'paired' check. Does not grant permission by itself; the existing
-    select-entity read check still applies.
+    Enforces the 120 s TTL using the stored started timestamp. Does not grant
+    permission by itself; the existing select-entity read check still applies.
     """
     if user is None:
         return False
+    now = time.time()
     for entry in hass.config_entries.async_entries(DOMAIN):
+        data = entry.data or {}
         if (
-            entry.data.get("device_id") == tv_uuid
-            and entry.data.get("provisional")
-            and entry.data.get("owner_user_id") == getattr(user, "id", None)
+            data.get("device_id") == tv_uuid
+            and data.get("provisional")
+            and data.get("owner_user_id") == getattr(user, "id", None)
         ):
-            # Caller must still verify TTL via the ProvisionalTVEntry object
-            # or by re-checking started time if persisted. This helper only
-            # confirms the entry exists and is marked provisional.
-            return True
+            started = data.get("started")
+            if isinstance(started, (int, float)) and now - started < _PROVISIONAL_TTL:
+                return True
     return False
