@@ -103,11 +103,20 @@ async def probe_candidate(candidate: PairingCandidate, *, _session_factory=None)
         ) as response:
             if response.status != 200:
                 return False
-            raw = await response.content.read(_MAX_BODY + 1)
-            if len(raw) > _MAX_BODY:
-                return False
+            # Require EOF within the body limit, not merely a valid first
+            # packet followed by unexamined trailing bytes.
+            chunks: list[bytes] = []
+            size = 0
+            while True:
+                block = await response.content.read(min(256, _MAX_BODY + 1 - size))
+                if not block:
+                    break
+                size += len(block)
+                if size > _MAX_BODY:
+                    return False
+                chunks.append(block)
             try:
-                doc = json.loads(raw)
+                doc = json.loads(b"".join(chunks))
             except (ValueError, UnicodeDecodeError):
                 return False
 
