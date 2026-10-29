@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <!-- DEBUG SOURCE SET ONLY. Adds a separate TV launcher for QA without
+             modifying the production launcher, stable login or app services. -->
+        <activity
+            android:name=".PairingLabActivity"
+            android:exported="true"
+            android:label="Kellie's Voice Pairing Lab"
+            android:banner="@drawable/tv_banner"
+            android:icon="@drawable/ic_kellie_voice">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
