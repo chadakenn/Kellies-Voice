@@ -59,7 +59,8 @@
       "owner_probe_owner_required": "The initiating Home Assistant owner could not be verified for this discovery flow. Browser authorization was not started.",
       "owner_probe_unavailable": "Could not safely start an owner-bound browser authorization preview. No login was changed.",
       "owner_probe_rejected": "The owner/browser/TV pairing binding failed or was reused. Authorization preview stopped.",
-      "owner_browser_probe_complete": "Browser authorization callback verified and discarded. No token was exchanged, no TV was signed in, and no saved login changed."
+      "owner_browser_probe_complete": "Browser authorization callback verified and discarded. No token was exchanged, no TV was signed in, and no saved login changed.",
+      "owner_probe_https_required": "Browser authorization requires a trusted HTTPS Home Assistant URL. The current configured URL is not HTTPS; no authorization code or token was sent. Keep using the safe two-screen preview until HTTPS is configured."
     },
     "error": {
       "invalid_device_id": "Enter the pairing ID shown on your TV.",
