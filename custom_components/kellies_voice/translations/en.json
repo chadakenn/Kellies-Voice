@@ -38,10 +38,10 @@
       },
       "owner_browser_consent": {
         "title": "Owner-only browser authorization preview",
-        "description": "The TV's code and remote confirmation were verified. This optional QA step opens Home Assistant's own sign-in/authorization page, then discards the returned authorization code without requesting tokens or changing a TV login. Only the Home Assistant owner may continue. It expires quickly.",
+        "description": "The physical TV remote and matching eight-digit code were verified. Open Kellie's Voice Pairing in the Home Assistant sidebar using your signed-in owner account, select Approve this TV, then return to this setup dialog and continue. This is a token-free browser preview and DOES NOT log in the TV. If you didn't initiate pairing, cancel.",
         "data": {
           "test_only_notice": "Token-free browser test warning (read-only)",
-          "allow_browser_login": "I am the Home Assistant owner and want to test the browser authorization screen"
+          "allow_browser_login": "I approved this TV in Kellie's Voice Pairing as the signed-in Home Assistant owner and want to test browser authorization"
         }
       }
     },
