@@ -82,7 +82,9 @@ def candidate(address: str, port: int, props: dict) -> Candidate:
         raise ValueError("Bad pairing TXT record")
 
     def prop(key):
-        value = props.get(key)
+        # python-zeroconf reports TXT property keys as bytes; tests and
+        # curated sources may use strings. Accept either exact spelling.
+        value = props.get(key, props.get(key.encode("ascii")))
         if isinstance(value, bytes):
             try:
                 return value.decode("ascii")
