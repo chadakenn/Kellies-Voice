@@ -20,17 +20,39 @@
         "data": {
           "confirmation_suffix": "Last four characters on TV"
         }
+      },
+      "v3_preview": {
+        "title": "Verify a Kellie's Voice TV (secure v3 test)",
+        "description": "This TV is offering a two-minute, local-network-only v3 pairing test. Press START on the TV first. Home Assistant will exchange fresh public keys and compute a matching eight-digit code. No account login, Home Assistant token or credentials will be created or sent. Leave your existing Kellie's Voice installation unchanged.",
+        "data": {
+          "start_v3_test": "Start the secure TV code comparison test"
+        }
+      },
+      "v3_code": {
+        "title": "Compare the eight-digit code on both screens",
+        "description": "Your Home Assistant code is {code}. Compare all EIGHT digits to the code actually displayed on the TV, then press OK with the TV's physical remote. The code field below must remain identical. This verifies the TV key exchange ONLY and does not sign in the TV.",
+        "data": {
+          "ha_code": "Home Assistant's eight-digit code",
+          "numbers_match": "All eight digits match the actual TV screen and I pressed TV remote OK"
+        }
       }
     },
     "abort": {
       "already_configured": "This TV is already added.",
       "no_id": "The TV did not identify itself. Turn Home Assistant layout off and on in Kellie's Voice, then try again.",
-      "use_discovery": "If automatic detection is available, add the discovered TV. Otherwise use manual pairing."
+      "use_discovery": "If automatic detection is available, add the discovered TV. Otherwise use manual pairing.",
+      "v3_invalid_discovery": "The temporary TV v3 advertisement was invalid. Restart the two-minute pairing test on the TV.",
+      "v3_cancelled": "The secure TV verification test was cancelled. No connection or credentials were changed.",
+      "v3_code_mismatch": "The eight-digit code did not match. Nothing was paired or changed.",
+      "v3_expired": "The secure TV session was unavailable or expired. Start a new test on the TV.",
+      "v3_preview_verified": "TV verified successfully using the secure v3 code and physical remote. This is verification only; your TV login has NOT been installed or changed."
     },
     "error": {
       "invalid_device_id": "Enter the pairing ID shown on your TV.",
       "invalid_name": "Enter a TV name up to 64 characters.",
-      "pairing_suffix_mismatch": "The four characters don't match the entered TV pairing ID. Recheck the ID on the TV and correct it using Back."
+      "pairing_suffix_mismatch": "The four characters don't match the entered TV pairing ID. Recheck the ID on the TV and correct it using Back.",
+      "v3_unavailable": "Could not contact or verify that TV over v3. Restart the test on the actual TV and retry.",
+      "v3_waiting_for_tv": "Waiting for physical TV remote OK. Compare all eight digits on the TV before continuing."
     }
   },
   "services": {
