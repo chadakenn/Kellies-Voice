@@ -33,6 +33,35 @@ closes the socket and mDNS advertisement. A generation counter prevents
 old pairing callbacks from overwriting a newer attempt. After a timeout
 the code disappears and START becomes available again.
 
+## Troubleshooting immediate START reset (onn 4K Pro)
+
+In the original debug build, **START 2-MINUTE V3 TEST** could briefly
+show "Waiting for Home Assistant" and then reset with no actionable error.
+Android NSD registration was given the full service name
+`_kellies-pair._tcp.local.`, while Android's `NsdServiceInfo` registration
+takes `_kellies-pair._tcp.`. The HA discovery manifest must **continue**
+using the fully qualified `_kellies-pair._tcp.local.` name.
+
+In the revised debug build:
+
+- **V3 network discovery READY** means Android accepted the LAN advertisement.
+  The eight-digit number will *not* appear until the matching HA test flow
+  starts and both sides verify the key commitment. Open HA's new **v3 SAFE
+  TEST** discovery after seeing READY.
+- **Android NSD registration FAILED (code N)** is a definitive Android
+  registration failure, not a wrong HA code. Note the actual code.
+- **V3 START FAILED: ...** remains visible, including exception type and
+  message, so a failed socket/NSD start cannot flash by unnoticed.
+- **V3 test stopped because the QA screen left the foreground** means the
+  Activity's onStop cleanup ran. Don't launch another app or overlay during
+  the two-minute test.
+- **2-minute window expired** is the expected timeout; press START to
+  generate a new key and session. No code is cached.
+
+This build is a **draft DEBUG APK only**; the normal signed TV release,
+saved HA connection, microphone and alerts are unchanged. Do not merge main
+or sign in with credentials through the temporary listener.
+
 ## Hardware gate still pending
 
 The real onn TV cannot complete v3 verification yet using the user's
