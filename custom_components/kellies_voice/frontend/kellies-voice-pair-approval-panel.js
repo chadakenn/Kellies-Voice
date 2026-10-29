@@ -1,5 +1,5 @@
 /* Kellie's Voice owner-only pairing approval preview for Home Assistant.
- * NO OAuth, token issuance, localStorage, credentials or TV login.
+ * NO OAuth, token issuance, browser persistence, credentials or TV login.
  * HA supplies "hass" and authenticated connection in a custom panel.
  * All untrusted data is inserted using textContent, never innerHTML.
  */
