@@ -5,6 +5,8 @@ access to this configured TV's HA layout entity. No permanent message store,
 additional TV secret or elevated HA token is needed.
 """
 
+import time
+
 import probatio
 
 from homeassistant.auth.permissions.const import POLICY_READ
@@ -17,9 +19,11 @@ from .alert_actions import ledger
 from .alert_diagnostics import diagnostics
 from .const import DOMAIN, EVENT_ACTION_PRESSED
 from .validation import clean_tv_device_id
+from .pairing_provisional import is_provisional_allowed
 
 _REGISTERED = "alert_ws_registered"
 _WS_TYPE = "kellies_voice/subscribe_alerts"
+_PROVISIONAL_TTL = 120
 
 
 @callback
@@ -34,10 +38,27 @@ def async_register_alert_subscription(hass: HomeAssistant) -> None:
 
 
 def _tv_access_state(hass: HomeAssistant, user, tv_id: str) -> str:
-    """Separate a TV still being set up from a genuine authorization failure."""
-    paired = any(entry.data.get("device_id") == tv_id
-                 for entry in hass.config_entries.async_entries(DOMAIN))
-    if not paired or user is None:
+    """Separate a TV still being set up from a genuine authorization failure.
+
+    For a provisional entry the initiating owner and TTL must match in
+    addition to the existing select-entity read check. A bare device_id
+    match is never sufficient.
+    """
+    if user is None:
+        return "denied"
+    entries = list(hass.config_entries.async_entries(DOMAIN))
+    paired = False
+    provisional = False
+    for entry in entries:
+        if entry.data.get("device_id") != tv_id:
+            continue
+        if entry.data.get("provisional"):
+            provisional = True
+            if not is_provisional_allowed(hass, tv_id, user):
+                return "denied"
+        paired = True
+        break
+    if not paired:
         return "denied"
     # A paired UUID is never enough to authorize event delivery.
     permissions = user.permissions
