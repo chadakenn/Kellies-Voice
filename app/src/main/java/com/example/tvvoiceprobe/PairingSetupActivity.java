@@ -22,8 +22,8 @@ public final class PairingSetupActivity extends Activity {
     private TextView codeDisplay;
     private Button startButton;
     private Button confirmButton;
-    /** Generation of the active window; stale callbacks must not match. */
-    private int activeGeneration;
+    /** Shared, unit-tested ownership check for asynchronous UI callbacks. */
+    private final PairingGenerationGuard generationGuard = new PairingGenerationGuard();
 
     @Override public void onCreate(Bundle stateBundle) {
         super.onCreate(stateBundle);
@@ -105,10 +105,10 @@ public final class PairingSetupActivity extends Activity {
             confirmButton.setFocusable(false);
         }
         if (startButton != null) startButton.setEnabled(false);
-        final int generation = ++activeGeneration;
+        final long generation = generationGuard.advance();
         try {
             window = PairingDiscoveryWindow.start(this, () -> {
-                if (generation != activeGeneration) return; // Stale expiry.
+                if (!generationGuard.isCurrent(generation)) return; // Stale expiry.
                 window = null;
                 if (codeDisplay != null) {
                     codeDisplay.setText("");
@@ -121,7 +121,7 @@ public final class PairingSetupActivity extends Activity {
                 }
                 if (startButton != null) startButton.setEnabled(true);
             }, code -> {
-                if (generation != activeGeneration) return; // Stale code.
+                if (!generationGuard.isCurrent(generation)) return; // Stale code.
                 if (codeDisplay != null) {
                     codeDisplay.setText(code);
                     codeDisplay.setVisibility(View.VISIBLE);
@@ -149,7 +149,7 @@ public final class PairingSetupActivity extends Activity {
     }
 
     private void stopWindow() {
-        activeGeneration++; // Invalidate any in-flight callbacks.
+        generationGuard.advance(); // Invalidate any in-flight callbacks.
         if (window != null) {
             window.close();
             window = null;
