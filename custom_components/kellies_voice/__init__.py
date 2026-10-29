@@ -1,27 +1,36 @@
 """Kellie's Voice layout, TV events and optional native timer handler."""
 
 import logging
+from datetime import timedelta
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers.event import async_track_time_interval
 
 from .const import DOMAIN, PLATFORMS
 from .oauth_callback import async_setup_oauth_callback
+from .pairing_provisional import cleanup_expired_provisional_entries
 from .services import async_register_services
 from .timer_handler import TimerBridge, TimerHandlerRegistry
 from .websocket import async_register_alert_subscription
 
 _LOGGER = logging.getLogger(__name__)
 _TIMER_KEY = "native_timer_registries"
+_CLEANUP_INTERVAL = timedelta(seconds=30)
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     async_register_services(hass)
     async_register_alert_subscription(hass)
     # Same-origin OAuth callback for owner-approved pairing (#213).
-    # async_setup_oauth_callback is now a real coroutine.
     await async_setup_oauth_callback(hass)
+    # Reconcile any provisional entries left from a previous process.
+    await cleanup_expired_provisional_entries(hass)
+    # Periodic cleanup of expired provisional entries.
+    async_track_time_interval(
+        hass, lambda *_: cleanup_expired_provisional_entries(hass), _CLEANUP_INTERVAL
+    )
     return True
 
 
