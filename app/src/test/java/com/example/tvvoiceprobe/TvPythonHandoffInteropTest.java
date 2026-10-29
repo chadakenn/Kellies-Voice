@@ -67,7 +67,7 @@ public class TvPythonHandoffInteropTest {
         String path = System.getenv("KV_INTEROP_FIXTURE");
         Assume.assumeTrue("Python HA fixture is supplied by interop CI",
                 path != null && !path.isEmpty());
-        return new JSONObject(Files.readString(Path.of(path), StandardCharsets.UTF_8));
+        return new JSONObject(new String(Files.readAllBytes(java.nio.file.Paths.get(path)), StandardCharsets.UTF_8));
     }
 
     private static PairingAssistProofState syntheticVerifiedGate() {
@@ -111,7 +111,7 @@ public class TvPythonHandoffInteropTest {
             assertNotNull("CI must provide receipt output path", path);
             Path output = Path.of(path);
             Files.createDirectories(output.getParent());
-            Files.writeString(output, receipts.toString(), StandardCharsets.UTF_8);
+            Files.write(output, receipts.toString().getBytes(StandardCharsets.UTF_8));
             assertFalse(receipts.toString().contains("SYNTHETIC NON-SECRET"));
         }
     }
