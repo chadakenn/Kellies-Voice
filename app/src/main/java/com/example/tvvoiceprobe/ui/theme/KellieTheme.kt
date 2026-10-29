@@ -1,12 +1,17 @@
 package com.example.tvvoiceprobe.ui.theme
 
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Typography
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import android.content.Context
 import com.example.tvvoiceprobe.OverlayPreferences
 
@@ -173,7 +178,34 @@ object KellieSkins {
         animationScale = 1.1f
     )
 
-    val ALL = listOf(COPPER, MINIMAL, AURORA, NIGHT, OBSIDIAN)
+    // Maps to OverlayPreferences.SKIN_TERMINAL — Jade Terminal: green phosphor,
+    // monospace text, sharp corners. Amber is the warning color.
+    val TERMINAL = KellieSkin(
+        id = OverlayPreferences.SKIN_TERMINAL,
+        displayName = "Jade Terminal",
+        colors = KellieColors(
+            screen = Color(0xFF030A07),
+            panel = Color(0xFF08140D),
+            card = Color(0xFF0B1A12),
+            cardFocused = Color(0xFF0F2A1B),
+            accent = Color(0xFF39FF88),
+            accentSecondary = Color(0xFFFFC53D),
+            text = Color(0xFFD6FFE6),
+            textMuted = Color(0xFF5E8F73),
+            stroke = Color(0xFF1E5E3C),
+            focus = Color(0xFF39FF88),
+            success = Color(0xFF39FF88),
+            warning = Color(0xFFFFC53D)
+        ),
+        typography = Typography(),
+        panelShape = RoundedCornerShape(2.dp),
+        cardShape = RoundedCornerShape(2.dp),
+        focusBorderWidth = 2.dp,
+        spacing = 10.dp,
+        animationScale = 0.7f
+    )
+
+    val ALL = listOf(COPPER, MINIMAL, AURORA, NIGHT, OBSIDIAN, TERMINAL)
 
     fun byId(id: String): KellieSkin = ALL.find { it.id == id } ?: COPPER
 }
@@ -200,8 +232,30 @@ fun KellieTheme(
     skin: KellieSkin = KellieSkins.COPPER,
     content: @Composable () -> Unit
 ) {
-    androidx.compose.runtime.CompositionLocalProvider(
-        LocalKellieSkin provides skin,
-        content = content
-    )
+    if (skin.id == OverlayPreferences.SKIN_TERMINAL) {
+        // Jade Terminal paints its own backdrop (TerminalBackdrop), so the screen is
+        // transparent and the panel translucent over it. Only this provided copy
+        // changes; KellieSkins.TERMINAL stays as defined above. All Text switches to
+        // a monospace face through LocalTextStyle.
+        val chrome = skin.copy(
+            colors = skin.colors.copy(
+                screen = Color.Transparent,
+                panel = Color(0xCC08140D)
+            )
+        )
+        val mono = LocalTextStyle.current.merge(
+            TextStyle(fontFamily = FontFamily.Monospace, letterSpacing = 0.4.sp)
+        )
+        CompositionLocalProvider(
+            LocalKellieSkin provides chrome,
+            LocalTextStyle provides mono
+        ) {
+            TerminalBackdrop(content)
+        }
+    } else {
+        CompositionLocalProvider(
+            LocalKellieSkin provides skin,
+            content = content
+        )
+    }
 }
