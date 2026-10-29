@@ -26,7 +26,3 @@ jobs:
         uses: hacs/action@main
         with:
           category: integration
-          # This mixed Android TV/HA repository is distributed as a HACS
-          # custom repository rather than through the default HACS catalog.
-          # Bundled local brand icons are checked by HACS validation.
-          ignore: "topics"
