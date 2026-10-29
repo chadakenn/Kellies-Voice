@@ -16,6 +16,7 @@ from .oauth_callback import register_pending_authorization, consume_pending_auth
 from .pairing_oauth_pending import PendingOAuthTransaction
 
 _LOGGER = logging.getLogger(__name__)
+_PROVISIONAL_TTL = 120
 
 
 def _text(properties: dict, key: str) -> str:
@@ -65,6 +66,10 @@ class KellieVoiceConfigFlow(ConfigFlow, domain=DOMAIN):
         self._oauth_attempt = None
         self._oauth_state = None
         self._oauth_pending = None
+        self._provisional_tv_uuid = None
+        self._provisional_owner = None
+        self._preview_tv_ok_confirmed = False
+        self._verified_tv_session = None
 
     async def async_step_user(self, user_input=None):
         """Manual fallback when the TV cannot advertise across mDNS/VLANs."""
@@ -172,11 +177,16 @@ class KellieVoiceConfigFlow(ConfigFlow, domain=DOMAIN):
             if user_input.get("numbers_match") is not True:
                 return self.async_abort(reason="preview_cancelled")
             try:
-                approved = await confirm_tv_ok(attempt)
+                verified = await confirm_tv_ok(attempt)
             except Exception:
                 errors["base"] = "preview_unavailable"
             else:
-                if approved:
+                if verified is not None:
+                    # Set the provisional TV UUID only from the cryptographically
+                    # verified proof. Never use the discovery session nonce.
+                    self._preview_tv_ok_confirmed = True
+                    self._verified_tv_session = verified.session
+                    self._provisional_tv_uuid = verified.tv_uuid
                     self._preview_attempt = None
                     return await self.async_step_oauth_authorize()
                 errors["base"] = "waiting_for_tv"
@@ -310,10 +320,43 @@ class KellieVoiceConfigFlow(ConfigFlow, domain=DOMAIN):
         Any pending transaction is cleared.
         """
         if self._oauth_pending is not None:
-            # No exchanger available in this abort path; secrets are dropped.
             await self._oauth_pending.abort_and_revoke(None)
             self._oauth_pending = None
         return self.async_abort(reason="oauth_exchange_pending")
+
+    async def async_step_provisional_create(self, user_input=None):
+        """Supported config-flow path for a short-lived provisional entry.
+
+        Owner and TV identity come from server-side flow state, never from
+        user_input. Requires an authenticated owner and a previously verified
+        TV UUID from the ECDH/TV-OK proof.
+        """
+        owner_user_id = self.context.get("user_id")
+        if not isinstance(owner_user_id, str) or not owner_user_id or owner_user_id == "unknown":
+            return self.async_abort(reason="provisional_owner_required")
+        if (self._preview_tv_ok_confirmed is not True
+                or self._preview_candidate is None
+                or self._verified_tv_session != self._preview_candidate.session):
+            return self.async_abort(reason="provisional_tv_proof_required")
+        try:
+            tv_uuid = clean_tv_device_id(self._provisional_tv_uuid)
+        except (ValueError, TypeError, AttributeError):
+            return self.async_abort(reason="provisional_tv_required")
+        # Refuse if any entry already exists for this TV.
+        for entry in self.hass.config_entries.async_entries(DOMAIN):
+            if entry.data.get("device_id") == tv_uuid:
+                return self.async_abort(reason="provisional_exists")
+        self._provisional_owner = owner_user_id
+        return self.async_create_entry(
+            title="Kellie's Voice (provisional)",
+            data={
+                "device_id": tv_uuid,
+                "name": "Kellie's Voice (provisional)",
+                "provisional": True,
+                "owner_user_id": owner_user_id,
+                "started": time.time(),
+            },
+        )
 
     async def async_step_confirm(self, user_input=None):
         if user_input is not None:

@@ -144,3 +144,27 @@ def is_provisional_allowed(hass: Any, tv_uuid: str, user: Any) -> bool:
                     and 0 <= now - started < _PROVISIONAL_TTL):
                 return True
     return False
+
+
+async def cleanup_expired_provisional_entries(hass: Any) -> int:
+    """Remove all expired provisional entries. Returns the count removed.
+
+    Safe to call on HA startup and from a periodic timer. Never removes a
+    non-provisional entry.
+    """
+    now = time.time()
+    removed = 0
+    for entry in list(hass.config_entries.async_entries(DOMAIN)):
+        data = entry.data or {}
+        if not data.get("provisional"):
+            continue
+        started = data.get("started")
+        if not isinstance(started, (int, float)) or now - started >= _PROVISIONAL_TTL:
+            try:
+                result = hass.config_entries.async_remove(entry.entry_id)
+                if hasattr(result, "__await__"):
+                    await result
+                removed += 1
+            except Exception:
+                pass
+    return removed

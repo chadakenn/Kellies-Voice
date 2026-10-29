@@ -13,6 +13,7 @@ import re
 
 from .pairing_probe import PairingCandidate, candidate_from_discovery
 from .pairing_verification import approved_proof, calculate, fresh_keypair, public_der
+from .validation import clean_tv_device_id
 
 _KEY_RE = re.compile(r"[A-Za-z0-9_-]{110,200}\Z")
 
@@ -24,6 +25,17 @@ class PreviewAttempt:
     ha_der: bytes
     tv_der: bytes
     code: str
+
+
+@dataclass
+class VerifiedTVOK:
+    """Result of a cryptographically verified physical TV-OK.
+
+    The TV UUID is bound into the ECDH proof; it is never taken from the
+    discovery session nonce.
+    """
+    tv_uuid: str
+    session: str
 
 
 def _client():
@@ -93,11 +105,13 @@ async def begin_preview(candidate: PairingCandidate, *, _session_factory=None):
     return PreviewAttempt(candidate, private, ha_der, tv_der, code)
 
 
-async def confirm_tv_ok(attempt: PreviewAttempt, *, _session_factory=None) -> bool:
-    """Verify actual TV-OK ECDH proof. False means still waiting or mismatch.
+async def confirm_tv_ok(attempt: PreviewAttempt, *, _session_factory=None) -> VerifiedTVOK | None:
+    """Verify actual TV-OK ECDH proof and return the bound TV UUID.
 
-    Never infer that this is an HA login. The user must still authorize OAuth
-    and approve credential provisioning via a future encrypted transport.
+    Returns None while waiting. Raises on mismatch. The returned UUID is
+    taken from the TV's authenticated status response, validated as an
+    RFC4122 v4, and verified to be bound into the proof. It is never the
+    discovery session nonce.
     """
     candidate = attempt.candidate
     candidate_from_discovery(candidate.address, candidate.port, {
@@ -112,16 +126,23 @@ async def confirm_tv_ok(attempt: PreviewAttempt, *, _session_factory=None) -> bo
         ) as response:
             doc = await _read_small_json(response)
     if doc == {"approved": False}:
-        return False
-    if set(doc) != {"approved", "proof"} or doc["approved"] is not True:
+        return None
+    if set(doc) != {"approved", "proof", "tv_uuid"} or doc["approved"] is not True:
         raise ValueError("Invalid TV confirmation response")
     proof = doc["proof"]
     if not isinstance(proof, str) or not re.fullmatch(r"[A-Za-z0-9_-]{22}", proof):
         raise ValueError("Invalid TV confirmation proof")
+    try:
+        tv_uuid = clean_tv_device_id(doc["tv_uuid"])
+    except (ValueError, TypeError):
+        raise ValueError("Invalid TV UUID in confirmation") from None
+    if tv_uuid == candidate.session:
+        raise ValueError("Discovery session cannot be used as TV UUID")
     expected = approved_proof(
         attempt.private, local_is_tv=False, session=candidate.session,
         tv_key=attempt.tv_der, ha_key=attempt.ha_der,
+        tv_uuid=tv_uuid,
     )
     if not hmac.compare_digest(expected, proof):
         raise ValueError("TV confirmation cryptographic proof mismatch")
-    return True
+    return VerifiedTVOK(tv_uuid=tv_uuid, session=candidate.session)

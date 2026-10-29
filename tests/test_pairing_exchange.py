@@ -20,6 +20,7 @@ crypto = importlib.import_module(PACKAGE + ".pairing_verification")
 probe = importlib.import_module(PACKAGE + ".pairing_probe")
 
 SESSION = "AQIDBAUGBwgJCgsMDQ4PEA"
+TV_UUID = "123e4567-e89b-42d3-a456-426614174000"
 CANDIDATE = probe.candidate_from_discovery(
     "192.168.1.20", 45670,
     {"mode": "discovery-only", "protocol": "1", "session": SESSION},
@@ -54,6 +55,9 @@ class Peer:
         self.calls = []
         self.confirmed = False
         self.invalid_proof = False
+        self.wrong_uuid = False
+        self.missing_uuid = False
+        self.tv_uuid = TV_UUID
 
     async def __aenter__(self):
         return self
@@ -76,13 +80,20 @@ class Peer:
         self.calls.append(("GET", url, kwargs))
         if not self.confirmed:
             return Response({"approved": False})
+        if self.missing_uuid:
+            return Response({"approved": True, "proof": "AAAAAAAAAAAAAAAAAAAAAA"})
+        # The TV signs its real identity, then the hostile response layer
+        # substitutes a different advertised UUID. Re-signing the substitute
+        # would simulate the TV approving that identity, not an attack.
         proof = crypto.approved_proof(
             self.private, local_is_tv=True, session=SESSION,
             tv_key=crypto.public_der(self.private), ha_key=self.ha_key,
+            tv_uuid=self.tv_uuid,
         )
+        uuid = "223e4567-e89b-42d3-a456-426614174000" if self.wrong_uuid else self.tv_uuid
         if self.invalid_proof:
             proof = "AAAAAAAAAAAAAAAAAAAAAA"
-        return Response({"approved": True, "proof": proof})
+        return Response({"approved": True, "proof": proof, "tv_uuid": uuid})
 
 
 class PairingExchangeTests(unittest.IsolatedAsyncioTestCase):
@@ -95,11 +106,14 @@ class PairingExchangeTests(unittest.IsolatedAsyncioTestCase):
             crypto.calculate(peer.private, local_is_tv=True, session=SESSION,
                              tv_key=crypto.public_der(peer.private), ha_key=peer.ha_key),
         )
-        self.assertFalse(await exchange.confirm_tv_ok(
+        self.assertIsNone(await exchange.confirm_tv_ok(
             attempt, _session_factory=lambda: peer))
         peer.confirmed = True
-        self.assertTrue(await exchange.confirm_tv_ok(
-            attempt, _session_factory=lambda: peer))
+        verified = await exchange.confirm_tv_ok(
+            attempt, _session_factory=lambda: peer)
+        self.assertIsNotNone(verified)
+        self.assertEqual(TV_UUID, verified.tv_uuid)
+        self.assertEqual(SESSION, verified.session)
         self.assertEqual("POST", peer.calls[0][0])
         self.assertEqual("GET", peer.calls[1][0])
         self.assertFalse(peer.calls[0][2]["allow_redirects"])
@@ -114,6 +128,22 @@ class PairingExchangeTests(unittest.IsolatedAsyncioTestCase):
         attempt = await exchange.begin_preview(CANDIDATE, _session_factory=lambda: peer)
         peer.confirmed = True
         peer.invalid_proof = True
+        with self.assertRaises(ValueError):
+            await exchange.confirm_tv_ok(attempt, _session_factory=lambda: peer)
+
+    async def test_wrong_uuid_is_rejected(self):
+        peer = Peer()
+        attempt = await exchange.begin_preview(CANDIDATE, _session_factory=lambda: peer)
+        peer.confirmed = True
+        peer.wrong_uuid = True
+        with self.assertRaises(ValueError):
+            await exchange.confirm_tv_ok(attempt, _session_factory=lambda: peer)
+
+    async def test_missing_uuid_is_rejected(self):
+        peer = Peer()
+        attempt = await exchange.begin_preview(CANDIDATE, _session_factory=lambda: peer)
+        peer.confirmed = True
+        peer.missing_uuid = True
         with self.assertRaises(ValueError):
             await exchange.confirm_tv_ok(attempt, _session_factory=lambda: peer)
 
