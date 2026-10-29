@@ -7,7 +7,7 @@ This draft is based directly on `main`, not on the unreviewed OAuth or Android K
 - A TV with **no saved connection** opens a large **Waiting for Home Assistant** screen on ordinary app launch. Existing connected TVs, launcher overlay shortcuts, assistant invocations, and undecryptable legacy logins are deliberately not intercepted.
 - **START 2-MINUTE PAIRING** starts the visible, temporary `_kellies-pair._tcp.local.` advertisement with an actual HTTP listener on an ephemeral local port. It exchanges public keys only. No Nabu Casa, HTTPS, or account is required for THIS verification step.
 - In Home Assistant, an owner can use the **separate approved QA integration from PR #230** to discover the TV, compare the same eight-digit code, press OK once on the physical remote, and get independent UUID-bound proof verification.
-- **CLOSE / USE MANUAL LOGIN** closes the listener and returns to the pre-existing VoiceActivity with SETTINGS → Home Assistant → Edit address & token. No existing login, mic, TV event or wake word preferences are changed.
+- **USE EXISTING MANUAL LOGIN** closes the listener and directly opens the pre-existing Home Assistant address & token form. **CLOSE SETUP** and Android Back safely exit without showing a keyboard. No existing login, mic, TV event or wake word preferences are changed.
 - The existing TV Settings → Home Assistant menu also has **Pair with Home Assistant (two-screen code preview)** for later retests without wiping an existing connection.
 
 ## Explicitly not finished
@@ -20,7 +20,7 @@ This draft is based directly on `main`, not on the unreviewed OAuth or Android K
 2. Press START. The discovery listener is active for at most two minutes. Home Assistant's PR #230 test component discovers and displays an 8-digit code, and the TV shows the same code. TV remote OK returns authenticated approval proof, but no login is saved.
 3. Cancel, press Back, put the app in background or expire the 120-second timer. The listener and mDNS advertisement must close. There must be no listening or microphone on boot/standby.
 4. Test existing saved login: ordinary launcher, assistant button, and configured overlay shortcut must all retain their original behavior, not forcibly open onboarding.
-5. Tap CLOSE / USE MANUAL LOGIN. SETTINGS → Home Assistant → Edit address & token remains usable. Do not require Nabu Casa.
+5. Tap USE EXISTING MANUAL LOGIN. The original address-and-token screen must appear immediately. CLOSE SETUP / remote Back returns to the app with no credential changes. No Nabu Casa needed.
 6. Verify no unsolicited LAN listener is active before pressing START or after leaving the activity. Verify multi-TV identity and same-code matching. For now no real OAuth or credential data is permitted.
 
 ## Remaining design work
