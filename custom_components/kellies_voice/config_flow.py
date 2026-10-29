@@ -13,6 +13,7 @@ from .pairing_probe import candidate_from_discovery
 from .pairing_exchange import begin_preview, confirm_tv_ok
 from .pairing_owner_oauth import OwnerAuthorizationAttempt
 from .pairing_browser_probe import register_probe
+from .pairing_owner_claim import owner_claims
 
 _BROWSER_NOTICE = (
     "TEST ONLY: this opens Home Assistant's own browser login page. "
@@ -236,6 +237,20 @@ class KellieVoiceConfigFlow(ConfigFlow, domain=DOMAIN):
                     # Proof checked, including canonical TV UUID and P-256
                     # owner-initiated session. Stop here. No config entry,
                     # OAuth callback, real token, saved identity, or service.
+                    # Only a real TV UUID/session proof may create a
+                    # one-time owner claim. The actual owner must later
+                    # identify themselves through an authenticated HA
+                    # WebSocket, never via Zeroconf or a form field.
+                    try:
+                        owner_claims(self.hass).begin(
+                            flow_id=self.flow_id,
+                            session=verified.session,
+                            tv_uuid=verified.tv_uuid,
+                        )
+                    except ValueError:
+                        self._preview_attempt = None
+                        self._preview_candidate = None
+                        return self.async_abort(reason="owner_probe_unavailable")
                     self._preview_attempt = None
                     self._preview_candidate = None
                     self._owner_verified_tv = verified
@@ -285,13 +300,21 @@ class KellieVoiceConfigFlow(ConfigFlow, domain=DOMAIN):
                 }),
             )
         if user_input.get("allow_browser_login") is not True:
+            owner_claims(self.hass).cancel(self.flow_id)
             self._owner_verified_tv = None
             return self.async_abort(reason="owner_probe_cancelled")
         if user_input.get("test_only_notice") != _BROWSER_NOTICE:
+            owner_claims(self.hass).cancel(self.flow_id)
             self._owner_verified_tv = None
             return self.async_abort(reason="owner_probe_rejected")
 
-        user_id = self.context.get("user_id")
+        # The discovery config flow has no reliable authenticated
+        # initiating user. Explicitly claim it from a separate HA
+        # WebSocket whose connection.user is the actual signed-in owner.
+        tv = self._owner_verified_tv
+        user_id = owner_claims(self.hass).consume(
+            flow_id=self.flow_id, session=tv.session, tv_uuid=tv.tv_uuid,
+        )
         if not isinstance(user_id, str) or not user_id:
             return self.async_abort(reason="owner_probe_owner_required")
         try:
@@ -358,7 +381,7 @@ class KellieVoiceConfigFlow(ConfigFlow, domain=DOMAIN):
                 or user_input.get("probe_owner_id") != self._browser_owner
                 or user_input.get("probe_tv_session")
                 != getattr(self._owner_verified_tv, "session", None)
-                or self.context.get("user_id") != self._browser_owner):
+                or self._browser_owner is None):
             if attempt is not None:
                 attempt.cancel()
             return self.async_abort(reason="owner_probe_rejected")
