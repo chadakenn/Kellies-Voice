@@ -10,6 +10,7 @@ import org.json.JSONObject;
 
 import java.nio.charset.StandardCharsets;
 import java.security.KeyStore;
+import java.util.Arrays;
 
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
@@ -78,7 +79,13 @@ public final class OAuthCredentialStagingStore {
         Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
         cipher.init(Cipher.ENCRYPT_MODE, key());
         cipher.updateAAD("KelliesVoice/oauth-stage/v1".getBytes(StandardCharsets.US_ASCII));
-        byte[] encrypted = cipher.doFinal(value.toString().getBytes(StandardCharsets.UTF_8));
+        byte[] plaintext = value.toString().getBytes(StandardCharsets.UTF_8);
+        byte[] encrypted;
+        try {
+            encrypted = cipher.doFinal(plaintext);
+        } finally {
+            Arrays.fill(plaintext, (byte) 0);
+        }
         JSONObject envelope = new JSONObject();
         envelope.put("iv", Base64.encodeToString(cipher.getIV(), Base64.NO_WRAP));
         envelope.put("ciphertext", Base64.encodeToString(encrypted, Base64.NO_WRAP));
@@ -102,7 +109,12 @@ public final class OAuthCredentialStagingStore {
             cipher.init(Cipher.DECRYPT_MODE, key(), new GCMParameterSpec(128, iv));
             cipher.updateAAD("KelliesVoice/oauth-stage/v1".getBytes(StandardCharsets.US_ASCII));
             byte[] clear = cipher.doFinal(ciphertext);
-            JSONObject value = new JSONObject(new String(clear, StandardCharsets.UTF_8));
+            JSONObject value;
+            try {
+                value = new JSONObject(new String(clear, StandardCharsets.UTF_8));
+            } finally {
+                Arrays.fill(clear, (byte) 0);
+            }
             if (value.getInt("version") != 1) {
                 throw new IllegalArgumentException("Unknown staged credential version");
             }
@@ -125,7 +137,7 @@ public final class OAuthCredentialStagingStore {
 
     /** Cancel/timeout cleanup. Does NOT touch existing HA credentials. */
     public synchronized void discard() {
-        prefs().edit().remove(PENDING).commit();
+        boolean erased = prefs().edit().remove(PENDING).commit();
         try {
             KeyStore store = KeyStore.getInstance("AndroidKeyStore");
             store.load(null);
@@ -133,6 +145,10 @@ public final class OAuthCredentialStagingStore {
         } catch (Exception ignored) {
             // The plaintext is still gone; old keystore key material is
             // non-exportable and unusable without the deleted envelope.
+        }
+        if (!erased) {
+            // Do not claim cleanup succeeded if Android storage rejected it.
+            throw new IllegalStateException("Could not discard staged credentials");
         }
     }
 }
