@@ -24,6 +24,7 @@ sys.modules[PACKAGE] = package
 probe = importlib.import_module(PACKAGE + ".pairing_probe")
 oauth = importlib.import_module(PACKAGE + ".pairing_owner_oauth")
 browser = importlib.import_module(PACKAGE + ".pairing_browser_probe")
+claims = importlib.import_module(PACKAGE + ".pairing_owner_claim")
 
 source = (ROOT / "config_flow.py").read_text(encoding="utf-8")
 tree = ast.parse(source)
@@ -106,6 +107,7 @@ namespace = {
     "parse_qs": parse_qs,
     "OwnerAuthorizationAttempt": oauth.OwnerAuthorizationAttempt,
     "register_probe": browser.register_probe,
+    "owner_claims": claims.owner_claims,
 }
 exec(compile(ast.Module(body=methods, type_ignores=[]),
              "ha_preview_flow", "exec"), namespace)
@@ -121,6 +123,9 @@ class FakeFlow:
 
     def __init__(self):
         self.context = {}
+        # HA carries verified pairing state in per-instance hass.data, not in
+        # client-supplied flow context.
+        self.hass = types.SimpleNamespace(data={})
         self._preview_candidate = None
         self._preview_attempt = None
         self._preview_deadline = 0
@@ -233,6 +238,8 @@ class PreviewFlowTests(unittest.IsolatedAsyncioTestCase):
         })
         self.assertEqual("owner_browser_consent", result["step_id"])
         notice = FakeVol.defaults["test_only_notice"]
+        # Even a forged context user ID cannot claim the real user session.
+        self.flow.context["user_id"] = "owner-1"
         invalid = await self.flow.async_step_owner_browser_consent({
             "allow_browser_login": True, "test_only_notice": notice
         })
@@ -250,12 +257,12 @@ class PreviewFlowTests(unittest.IsolatedAsyncioTestCase):
             "numbers_match": True, "ha_code": "12345678"
         })
         self.assertEqual("owner_browser_consent", result["step_id"])
-        self.flow.context["user_id"] = "owner-1"
-        self.flow.hass = types.SimpleNamespace(
-            auth=types.SimpleNamespace(
-                async_get_user=AsyncMock(return_value=types.SimpleNamespace(
-                    is_owner=True, is_active=True))
-            )
+        user = types.SimpleNamespace(id="owner-1", is_owner=True, is_active=True)
+        self.assertTrue(claims.owner_claims(self.flow.hass).claim(
+            flow_id=self.flow.flow_id,
+            session=self.flow._owner_verified_tv.session, user=user))
+        self.flow.hass.auth = types.SimpleNamespace(
+            async_get_user=AsyncMock(return_value=user)
         )
         net = types.ModuleType("homeassistant.helpers.network")
         def select_https_cloud(_hass, **kwargs):
@@ -320,12 +327,12 @@ class PreviewFlowTests(unittest.IsolatedAsyncioTestCase):
         await self.flow.async_step_pairing_code({
             "numbers_match": True, "ha_code": "12345678"
         })
-        self.flow.context["user_id"] = "owner-1"
-        self.flow.hass = types.SimpleNamespace(
-            auth=types.SimpleNamespace(async_get_user=AsyncMock(
-                return_value=types.SimpleNamespace(
-                    is_owner=True, is_active=True)
-            ))
+        user = types.SimpleNamespace(id="owner-1", is_owner=True, is_active=True)
+        self.assertTrue(claims.owner_claims(self.flow.hass).claim(
+            flow_id=self.flow.flow_id,
+            session=self.flow._owner_verified_tv.session, user=user))
+        self.flow.hass.auth = types.SimpleNamespace(
+            async_get_user=AsyncMock(return_value=user)
         )
         net = types.ModuleType("homeassistant.helpers.network")
         net.get_url = lambda *_args, **_kw: "http://192.168.1.10:8123/"

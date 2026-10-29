@@ -8,6 +8,7 @@ from homeassistant.helpers import device_registry as dr
 
 from .const import DOMAIN, PLATFORMS
 from .pairing_browser_probe import async_register_browser_probe
+from .pairing_owner_ws import async_register_owner_claim
 from .services import async_register_services
 from .timer_handler import TimerBridge, TimerHandlerRegistry
 from .websocket import async_register_alert_subscription
@@ -23,6 +24,9 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     # code and DISCARDS it. No token exchange, OAuth credential or login
     # is installed by this experimental, main-based QA branch.
     await async_register_browser_probe(hass)
+    # Actual HA owner is authenticated on this WebSocket command, never
+    # inferred from a Zeroconf-created config-flow context.
+    async_register_owner_claim(hass)
     return True
 
 
