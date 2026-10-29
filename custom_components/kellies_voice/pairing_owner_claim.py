@@ -87,6 +87,25 @@ class OwnerClaimRegistry:
             return None
         return entry.owner_id
 
+    def pending(self, *, user: Any, now: float | None = None) -> list[dict]:
+        """Expose only unclaimed, physical-TV-verified sessions to a HA owner.
+
+        This is not an OAuth credential, public discovery listing, or login.
+        All rows are already bound to a confirmed TV UUID + session.
+        """
+        if (user is None or getattr(user, "is_owner", False) is not True
+                or getattr(user, "is_active", False) is not True):
+            return []
+        instant = time.monotonic() if now is None else now
+        self._prune(instant)
+        return [
+            {"flow_id": key, "tv_session": entry.session,
+             "tv_uuid": entry.tv_uuid,
+             "seconds_remaining": max(0, int(entry.started + _TTL - instant))}
+            for key, entry in self._pending.items()
+            if entry.owner_id is None
+        ]
+
     def cancel(self, flow_id: str) -> None:
         self._pending.pop(flow_id, None)
 
