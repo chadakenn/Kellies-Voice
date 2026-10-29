@@ -82,6 +82,7 @@ class FakeFlow:
         self._preview_attempt = None
         self._oauth_attempt = None
         self._oauth_state = None
+        self._name = "Demo TV"
         self.context = {}
         self.created = []
         self.unique_ids = []
