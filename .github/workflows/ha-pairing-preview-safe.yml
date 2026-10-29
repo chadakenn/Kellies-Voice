@@ -1,4 +1,4 @@
-name: HA authenticated owner claim and browser probe (no tokens)
+name: HA authenticated owner approval UI and crypto preview (no tokens)
 
 on:
   pull_request:
@@ -9,6 +9,7 @@ on:
       - 'tests/test_ha_safe_pairing_preview_flow.py'
       - 'tests/test_pairing_browser_probe.py'
       - 'tests/test_pairing_owner_claim.py'
+      - 'tests/test_pairing_owner_panel.py'
       - '.github/workflows/ha-pairing-preview-safe.yml'
   workflow_dispatch:
 
@@ -32,6 +33,9 @@ jobs:
           python -m unittest discover -s tests -p 'test_ha_safe_pairing_preview_flow.py' -v
           python -m unittest discover -s tests -p 'test_pairing_browser_probe.py' -v
           python -m unittest discover -s tests -p 'test_pairing_owner_claim.py' -v
+          python -m unittest discover -s tests -p 'test_pairing_owner_panel.py' -v
+      - name: Validate owner panel JavaScript syntax
+        run: node --check custom_components/kellies_voice/frontend/kellies-voice-pair-approval-panel.js
       - name: Reject all token exchange and credential lifecycle code
         run: |
           python - <<'PY'
@@ -50,6 +54,9 @@ jobs:
           assert 'owner_claims(self.hass).consume' in flow
           owner_ws = (root / 'pairing_owner_ws.py').read_text()
           assert 'connection.user' in owner_ws
+          assert 'kellies_voice/pair/list_verified' in owner_ws
+          assert 'websocket_list_verified' in owner_ws
+          assert 'require_admin=True' in (root / 'pairing_owner_panel.py').read_text()
           assert 'websocket_api.async_register_command' in owner_ws
           assert 'HomeAssistantTokenExchange' not in owner_ws
           assert 'return self.async_abort(reason="owner_browser_probe_complete")' in flow
