@@ -243,6 +243,8 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Check out repository for GitHub CLI release identity
+        uses: actions/checkout@v7
       - name: Download exactly the signed QA artifact
         uses: actions/download-artifact@v8
         with:
