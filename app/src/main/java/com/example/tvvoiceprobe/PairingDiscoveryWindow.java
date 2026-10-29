@@ -156,7 +156,11 @@ public final class PairingDiscoveryWindow implements AutoCloseable {
             socket.setSoTimeout((int) Math.min(remaining, 700L));
             int value = input.read();
             if (value < 0) return "";
-            if (value == '\n') return line.toString("US-ASCII").replace("\r", "");
+            if (value == '\n') {
+                String request = line.toString("US-ASCII");
+                return request.endsWith("\r")
+                        ? request.substring(0, request.length() - 1) : request;
+            }
             if (value < 32 && value != '\r') return "";
             line.write(value);
         }
