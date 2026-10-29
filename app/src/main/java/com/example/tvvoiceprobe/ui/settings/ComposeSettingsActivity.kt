@@ -15,6 +15,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -118,14 +119,22 @@ fun SettingsScreen(
             .associateWith { FocusRequester() }
     }
     val latestSelected by rememberUpdatedState(selected)
+    val categoryListState = rememberLazyListState()
 
     // A one-shot onCreate focus request misses some onn keyboard/IME teardown
     // paths. Retry once after the actual Android window regains focus, and when
     // an inline editor closes. Never steal focus while the user is typing.
     LaunchedEffect(windowFocusEpoch, editorOpen) {
         if (!editorOpen) {
+            val categoryOrder = listOf("home", "voice", "overlay", "alerts", "screensaver", "updates")
+            val targetIndex = categoryOrder.indexOf(latestSelected).coerceAtLeast(0)
+            // LazyColumn may not compose off-screen rows after a screen restore.
+            // Bring the category into composition before requesting remote focus.
+            if (categoryListState.layoutInfo.visibleItemsInfo.none { it.index == targetIndex }) {
+                categoryListState.scrollToItem(targetIndex)
+            }
             withFrameNanos { }
-            categoryFocus[latestSelected]?.requestFocus()
+            categoryFocus[categoryOrder[targetIndex]]?.requestFocus()
         }
     }
     BackHandler(onBack = onBack)
@@ -161,6 +170,7 @@ fun SettingsScreen(
 
         Row(modifier = Modifier.weight(1f)) {
             LazyColumn(
+                state = categoryListState,
                 modifier = Modifier
                     .weight(1.05f)
                     .padding(end = 16.dp),
