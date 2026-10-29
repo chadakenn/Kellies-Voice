@@ -101,7 +101,9 @@ def verify_nonadmin_tv_candidate(
         refresh = auth.async_get_refresh_token_by_token(refresh_token)
     except Exception:
         raise TvCredentialRejected("TV credential validation unavailable") from None
-    if access is None or refresh is None or access.id != refresh.id:
+    if (access is None or refresh is None
+            or not getattr(access, "id", None)
+            or getattr(access, "id", None) != getattr(refresh, "id", None)):
         raise TvCredentialRejected("TV credential pair invalid")
 
     user = getattr(refresh, "user", None)
