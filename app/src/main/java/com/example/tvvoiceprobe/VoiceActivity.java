@@ -711,7 +711,17 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         String[] entries;
         switch (section) {
             case HOME:
-                entries = new String[] {
+                // Never expose unfinished pairing in production releases.
+                // QA uses the separately installed .debug app variant only.
+                boolean debugBuild = (getApplicationInfo().flags
+                        & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0;
+                entries = debugBuild ? new String[] {
+                        "Connect / reconnect Home Assistant",
+                        "Edit Home Assistant address & token",
+                        "Start new conversation",
+                        "Manage TV layout from Home Assistant: " + (prefs.haManage() ? "ON" : "OFF"),
+                        "Secure pairing v3 (DEBUG TEST ONLY, no login)"
+                } : new String[] {
                         "Connect / reconnect Home Assistant",
                         "Edit Home Assistant address & token",
                         "Start new conversation",
@@ -771,6 +781,12 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                                 case 1: configure(); break;
                                 case 2: newConversation(); break;
                                 case 3: chooseHaLayout(); break;
+                                case 4:
+                                    if ((getApplicationInfo().flags
+                                            & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
+                                        startActivity(new Intent(this, PairingV3QaActivity.class));
+                                    }
+                                    break;
                                 default: break;
                             }
                             break;
