@@ -130,7 +130,7 @@ class PreviewCliTests(unittest.TestCase):
         self.assertNotIn("refresh_token", str(calls))
 
     def test_reject_uncanonical_sessions_and_public_keys(self):
-        for value in ("short", "A" * 22, SESSION + "=", ""):
+        for value in ("short", "Z" * 22, SESSION + "=", ""):
             with self.subTest(value=value), self.assertRaises(ValueError):
                 cli._sid(value)
         with self.assertRaises(ValueError):
