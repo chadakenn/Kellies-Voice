@@ -123,7 +123,7 @@ class OAuthCallbackView:
             )
 
         return web.Response(
-            text="<html><body><script>window.close();</script>Authorization complete. You may close this window.</body></html>",
+            text="<html><body><script>window.close();</script>Authorization received. Return to Home Assistant to finish setup.</body></html>",
             content_type="text/html",
         )
 
