@@ -1,5 +1,8 @@
 """Discovery flow. Home Assistant does not connect to the TV."""
 
+import logging
+import time
+
 import voluptuous as vol
 from homeassistant.config_entries import ConfigFlow, OptionsFlow
 from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
@@ -8,6 +11,10 @@ from .const import DOMAIN
 from .validation import clean_tv_device_id
 from .pairing_probe import candidate_from_discovery
 from .pairing_exchange import begin_preview, confirm_tv_ok
+from .pairing_owner_oauth import OwnerAuthorizationAttempt
+from .oauth_callback import register_pending_authorization
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def _text(properties: dict, key: str) -> str:
@@ -54,6 +61,8 @@ class KellieVoiceConfigFlow(ConfigFlow, domain=DOMAIN):
         self._manual_name = ""
         self._preview_candidate = None
         self._preview_attempt = None
+        self._oauth_attempt = None
+        self._oauth_state = None
 
     async def async_step_user(self, user_input=None):
         """Manual fallback when the TV cannot advertise across mDNS/VLANs."""
@@ -185,9 +194,9 @@ class KellieVoiceConfigFlow(ConfigFlow, domain=DOMAIN):
                 errors["base"] = "preview_unavailable"
             else:
                 if approved:
-                    # This preview never creates a device or installs secrets.
+                    # Preview complete. Next stage (still draft) is owner OAuth.
                     self._preview_attempt = None
-                    return self.async_abort(reason="verification_preview_complete")
+                    return await self.async_step_oauth_authorize()
                 errors["base"] = "waiting_for_tv"
         return self.async_show_form(
             step_id="pairing_code",
@@ -195,6 +204,85 @@ class KellieVoiceConfigFlow(ConfigFlow, domain=DOMAIN):
             data_schema=vol.Schema({vol.Required("numbers_match"): bool}),
             errors=errors,
         )
+
+    async def async_step_oauth_authorize(self, user_input=None):
+        """Start owner-approved OAuth after TV OK proof (#213).
+
+        Creates a CSPRNG state bound to this flow, the authenticated owner,
+        and the verified TV session. Redirects the browser to HA's own
+        /auth/authorize. The callback view later resumes this step.
+        """
+        if user_input is None:
+            # First visit: require explicit owner consent before generating state.
+            return self.async_show_form(
+                step_id="oauth_authorize",
+                data_schema=vol.Schema({
+                    vol.Required("confirm_authorize"): bool,
+                }),
+                description_placeholders={
+                    "name": self._name or "Kellie's Voice",
+                },
+            )
+
+        if user_input.get("confirm_authorize") is not True:
+            return self.async_abort(reason="oauth_cancelled")
+
+        # Build the one-time authorization attempt.
+        # Instance URL is taken from the current HA configuration.
+        try:
+            instance_url = self.hass.config.api.base_url or "http://homeassistant.local:8123"
+            tv_session = getattr(self._preview_candidate, "session", None) or "unknown"
+            attempt = OwnerAuthorizationAttempt.begin(
+                instance_url,
+                tv_session,
+                time.time(),
+                owner_requested=True,
+                tv_ok_verified=True,
+            )
+        except Exception:
+            _LOGGER.debug("Failed to begin owner authorization", exc_info=False)
+            return self.async_abort(reason="oauth_unavailable")
+
+        self._oauth_attempt = attempt
+        self._oauth_state = attempt.authorization_url().split("state=")[-1].split("&")[0]
+
+        # Bind the random state to this exact flow and the initiating owner.
+        owner_user_id = self.context.get("user_id") or "unknown"
+        register_pending_authorization(
+            self._oauth_state,
+            flow_id=self.flow_id,
+            owner_user_id=owner_user_id,
+            tv_session=tv_session,
+            attempt=attempt,
+        )
+
+        return self.async_external_step(
+            step_id="oauth_authorize",
+            url=attempt.authorization_url(),
+        )
+
+    async def async_step_oauth_callback(self, user_input=None):
+        """Resume after the callback view validated the state and code.
+
+        Token exchange happens here (or in a follow-on step). Tokens are
+        never returned to the browser. Connected is not marked yet.
+        """
+        if user_input is None:
+            return self.async_abort(reason="oauth_incomplete")
+
+        expected_owner = user_input.get("expected_owner")
+        expected_tv = user_input.get("expected_tv")
+        actual_owner = self.context.get("user_id") or "unknown"
+
+        if expected_owner != actual_owner or expected_tv != getattr(
+            self._preview_candidate, "session", None
+        ):
+            return self.async_abort(reason="oauth_owner_mismatch")
+
+        # Placeholder: real token exchange using HomeAssistantTokenExchange
+        # will be added once the callback path is verified. For now we abort
+        # cleanly so no incomplete credential is created.
+        return self.async_abort(reason="oauth_exchange_pending")
 
     async def async_step_confirm(self, user_input=None):
         if user_input is not None:
