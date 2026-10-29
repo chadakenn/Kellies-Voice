@@ -36,6 +36,8 @@ class _State(enum.Enum):
     LEASED = "leased"
     COMMITTED = "committed"
     ABORTED = "aborted"
+    REVOKING = "revoking"
+    REVOCATION_PENDING = "revocation_pending"
 
 
 class PendingOAuthTransaction:
@@ -87,9 +89,18 @@ class PendingOAuthTransaction:
         self._consumed = {}  # drop verifier before network call
         try:
             creds = await exchanger.exchange_from_consumed(consumed)
-        except Exception:
+        except BaseException:
+            # Include coroutine cancellation. The code is single-use even
+            # when HTTP fails; it must never become exchangeable again.
             self._state = _State.ABORTED
             raise
+        # Pairing may have been cancelled, timed out, or revoked while the
+        # network was awaiting an OAuth response. Never resurrect it.
+        if self._state is not _State.EXCHANGING or self.expired:
+            self._credentials = creds
+            self._state = _State.EXCHANGED
+            await self.abort_and_revoke(exchanger)
+            raise OAuthTokenError("Authorization was cancelled or expired")
         self._credentials = creds
         self._state = _State.EXCHANGED
 
@@ -114,29 +125,37 @@ class PendingOAuthTransaction:
         Only call this after the TV has acknowledged receipt and the
         Assist+alerts proof has passed. Secrets are forgotten.
         """
-        if self._state is not _State.LEASED:
-            raise OAuthTokenError("Pending transaction not leased")
+        if self._state is not _State.LEASED or self.expired:
+            raise OAuthTokenError("Pending transaction not leased or expired")
         self._credentials = None
         self._state = _State.COMMITTED
 
     async def abort_and_revoke(self, exchanger: HomeAssistantTokenExchange | None = None) -> None:
-        """Revoke any refresh token and clear secrets.
+        """Cancel pairing and revoke a provisional refresh credential.
 
-        After a successful exchange an exchanger is required; calling with
-        None raises so a future integration cannot silently drop a live token.
+        Never silently forget a refresh token after a failed revoke. Keep
+        it in a recoverable in-memory REVOCATION_PENDING state to allow
+        an explicit retry, even after the 120-second pairing window ends.
+        No live network exchange is wired to this draft flow yet.
         """
         if self._state in (_State.COMMITTED, _State.ABORTED):
             return
+        if self._state is _State.REVOKING:
+            raise OAuthTokenError("Credential revocation already in progress")
         creds = self._credentials
-        had_creds = creds is not None
-        self._credentials = None
+        if creds and creds.refresh_token and exchanger is None:
+            raise OAuthTokenError("Exchanger required to revoke after exchange")
         self._consumed = {}
+        if not creds or not creds.refresh_token:
+            self._credentials = None
+            self._state = _State.ABORTED
+            return
+        # Keep the refresh token in memory for safe retries on failure.
+        self._state = _State.REVOKING
+        try:
+            await exchanger.revoke_refresh(creds.refresh_token)
+        except Exception:
+            self._state = _State.REVOCATION_PENDING
+            raise OAuthTokenError("Provisional credential revocation failed") from None
+        self._credentials = None
         self._state = _State.ABORTED
-        if had_creds:
-            if exchanger is None:
-                raise OAuthTokenError("Exchanger required to revoke after exchange")
-            if creds.refresh_token:
-                try:
-                    await exchanger.revoke_refresh(creds.refresh_token)
-                except OAuthTokenError:
-                    pass  # secrets already dropped; caller may log the failure
