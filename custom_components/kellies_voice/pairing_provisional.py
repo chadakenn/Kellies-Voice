@@ -60,7 +60,7 @@ async def create_provisional_entry(
     """
     if not isinstance(tv_uuid, str) or not tv_uuid:
         return None
-    if not isinstance(owner_user_id, str) or not owner_user_id:
+    if not isinstance(owner_user_id, str) or not owner_user_id or owner_user_id == "unknown":
         return None
     for entry in hass.config_entries.async_entries(DOMAIN):
         if entry.data.get("device_id") == tv_uuid:
@@ -140,6 +140,7 @@ def is_provisional_allowed(hass: Any, tv_uuid: str, user: Any) -> bool:
             and data.get("owner_user_id") == getattr(user, "id", None)
         ):
             started = data.get("started")
-            if isinstance(started, (int, float)) and now - started < _PROVISIONAL_TTL:
+            if (type(started) in (int, float)
+                    and 0 <= now - started < _PROVISIONAL_TTL):
                 return True
     return False
