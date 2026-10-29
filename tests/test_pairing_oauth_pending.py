@@ -35,6 +35,24 @@ class TestPendingOAuthTransaction(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.txn._consumed, {})
         self.assertIsNotNone(self.txn._credentials)
 
+    async def test_concurrent_exchange_rejected(self):
+        exchanger = MagicMock()
+        async def slow(*a, **k):
+            await self.txn.exchange(exchanger)  # re-entrant while EXCHANGING
+            return AccessCredentials("a" * 16, 1800, "r" * 16)
+        exchanger.exchange_from_consumed = slow
+        with self.assertRaises(OAuthTokenError):
+            await self.txn.exchange(exchanger)
+
+    async def test_abort_after_exchange_requires_exchanger(self):
+        exchanger = MagicMock()
+        exchanger.exchange_from_consumed = AsyncMock(
+            return_value=AccessCredentials("access-token-value-ok", 1800, "refresh-token-value-ok")
+        )
+        await self.txn.exchange(exchanger)
+        with self.assertRaises(OAuthTokenError):
+            await self.txn.abort_and_revoke(None)
+
     async def test_abort_revokes_and_clears(self):
         exchanger = MagicMock()
         exchanger.exchange_from_consumed = AsyncMock(
@@ -45,18 +63,37 @@ class TestPendingOAuthTransaction(unittest.IsolatedAsyncioTestCase):
         await self.txn.abort_and_revoke(exchanger)
         exchanger.revoke_refresh.assert_awaited_once()
         self.assertIsNone(self.txn._credentials)
-        self.assertTrue(self.txn._aborted)
+        self.assertEqual(self.txn._state.name, "ABORTED")
 
-    async def test_mismatch_rejected(self):
-        with self.assertRaises(OAuthTokenError):
-            self.txn.take_for_provision(owner_user_id="other", tv_session="tv-session-xyz")
+    async def test_lease_keeps_revocable_until_commit(self):
+        exchanger = MagicMock()
+        creds = AccessCredentials("access-token-value-ok", 1800, "refresh-token-value-ok")
+        exchanger.exchange_from_consumed = AsyncMock(return_value=creds)
+        exchanger.revoke_refresh = AsyncMock()
+        await self.txn.exchange(exchanger)
+        leased = self.txn.lease_for_provision(owner_user_id="user-1", tv_session="tv-session-xyz")
+        self.assertIs(leased, creds)
+        # Still revocable while leased.
+        await self.txn.abort_and_revoke(exchanger)
+        exchanger.revoke_refresh.assert_awaited_once()
 
-    async def test_take_for_provision_returns_and_clears(self):
+    async def test_commit_after_proof_drops_token(self):
         exchanger = MagicMock()
         creds = AccessCredentials("access-token-value-ok", 1800, "refresh-token-value-ok")
         exchanger.exchange_from_consumed = AsyncMock(return_value=creds)
         await self.txn.exchange(exchanger)
-        taken = self.txn.take_for_provision(owner_user_id="user-1", tv_session="tv-session-xyz")
-        self.assertIs(taken, creds)
+        self.txn.lease_for_provision(owner_user_id="user-1", tv_session="tv-session-xyz")
+        self.txn.commit_after_proof()
         self.assertIsNone(self.txn._credentials)
-        self.assertTrue(self.txn._aborted)
+        self.assertEqual(self.txn._state.name, "COMMITTED")
+        # Second abort is a no-op.
+        await self.txn.abort_and_revoke(exchanger)
+
+    async def test_mismatch_rejected(self):
+        exchanger = MagicMock()
+        exchanger.exchange_from_consumed = AsyncMock(
+            return_value=AccessCredentials("access-token-value-ok", 1800, "refresh-token-value-ok")
+        )
+        await self.txn.exchange(exchanger)
+        with self.assertRaises(OAuthTokenError):
+            self.txn.lease_for_provision(owner_user_id="other", tv_session="tv-session-xyz")
