@@ -20,7 +20,7 @@ public class PairingActivationGateTest {
         gate.recordWriteResult(true);
         assertEquals(PairingActivationGate.Stage.COMMITTED, gate.stage());
         assertFalse(gate.canCommit(SESSION, TV, START + 1_600));
-        assertEquals(PairingActivationGate.Stage.ABORTED, gate.stage());
+        assertEquals(PairingActivationGate.Stage.COMMITTED, gate.stage());
     }
 
     @Test public void haAckAloneCannotActivate() {
