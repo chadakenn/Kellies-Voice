@@ -108,8 +108,18 @@ class KelliesVoicePairApprovalPanel extends HTMLElement {
     const detail = document.createElement("p");
     detail.className = "small sub";
     detail.textContent = "TV device ID: " + pair.tv_uuid;
+    const code = document.createElement("p");
+    code.style.fontSize = "2.3rem";
+    code.style.fontWeight = "700";
+    code.style.letterSpacing = "0.14em";
+    code.style.fontVariantNumeric = "tabular-nums";
+    const candidateCode = pair.comparison_code;
+    if (typeof candidateCode !== "string" || !/^\\d{8}$/.test(candidateCode)) {
+      return; // Never offer an approval button if the human code is absent.
+    }
+    code.textContent = candidateCode;
     const instruction = document.createElement("p");
-    instruction.textContent = "Approve ONLY if you initiated setup and confirmed that all eight digits matched on your TV and Home Assistant.";
+    instruction.textContent = "Compare the code above with the TV AGAIN. Approve only if you initiated setup and all eight digits match on the physical TV.";
     const ttl = document.createElement("p");
     ttl.className = "small sub";
     ttl.textContent = "Approval window: " + Math.max(0, Number(pair.seconds_remaining) || 0) + " seconds left";
@@ -137,7 +147,7 @@ class KelliesVoicePairApprovalPanel extends HTMLElement {
         button.textContent = "Approve this TV";
       }
     });
-    box.append(heading, detail, instruction, ttl, button);
+    box.append(heading, detail, code, instruction, ttl, button);
     list.append(box);
   }
 }
