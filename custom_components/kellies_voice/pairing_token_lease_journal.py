@@ -163,11 +163,14 @@ class TokenLeaseJournal:
                            tv_user_id: str, owner_id: str) -> TokenLease:
         """No token creation before a durable, unique attempt ID exists."""
         await self.load()
+        if type(origin) is not str:
+            raise LeaseRecoveryError("HA origin invalid")
         origin = origin.rstrip("/")
-        if (type(origin) is not str or urlsplit(origin).scheme not in ("http", "https")
-                or urlsplit(origin).path or urlsplit(origin).username
-                or urlsplit(origin).password or urlsplit(origin).query
-                or urlsplit(origin).fragment):
+        parts = urlsplit(origin)
+        if (parts.scheme not in ("http", "https")
+                or not parts.netloc or not parts.hostname
+                or parts.path or parts.username or parts.password
+                or parts.query or parts.fragment or any(ch.isspace() for ch in origin)):
             raise LeaseRecoveryError("HA origin invalid")
         nonce = secrets.token_hex(16)
         lease = TokenLease(
@@ -229,15 +232,21 @@ class TokenLeaseJournal:
                     continue
                 try:
                     person = await self._hass.auth.async_get_user(record.tv_user_id)
-                    if person is None:
+                    if (person is None or getattr(person, "id", None)
+                            != record.tv_user_id):
                         raise LeaseRecoveryError("TV user unavailable")
-                    matches = [
+                    candidates = [
                         rt for rt in person.refresh_tokens.values()
                         if getattr(rt, "client_id", None) == record.client_id
                         and getattr(getattr(rt, "user", None), "id", None)
                         == record.tv_user_id
-                        and (record.token_id is None or rt.id == record.token_id)
                     ]
+                    # An exact client ID with a DIFFERENT stored token ID
+                    # is not proof no token exists. Never clear its intent.
+                    if (record.token_id is not None and any(
+                            rt.id != record.token_id for rt in candidates)):
+                        raise LeaseRecoveryError("TV token identity mismatch")
+                    matches = candidates
                     if len(matches) > 1:
                         raise LeaseRecoveryError("Ambiguous TV token identity")
                     if matches:
