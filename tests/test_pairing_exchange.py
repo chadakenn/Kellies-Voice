@@ -102,9 +102,8 @@ class PairingExchangeTests(unittest.IsolatedAsyncioTestCase):
             attempt, _session_factory=lambda: peer))
         self.assertEqual("POST", peer.calls[0][0])
         self.assertEqual("GET", peer.calls[1][0])
-        self.assertEqual([{"allow_redirects": False}][0], peer.calls[0][2] | {
-            "json": None,
-        } if False else {"allow_redirects": peer.calls[0][2]["allow_redirects"]})
+        self.assertFalse(peer.calls[0][2]["allow_redirects"])
+        self.assertFalse(peer.calls[1][2]["allow_redirects"])
         self.assertEqual(
             {"session", "ha_key"}, set(peer.calls[0][2]["json"]))
         self.assertNotIn("token", json.dumps(peer.calls))
