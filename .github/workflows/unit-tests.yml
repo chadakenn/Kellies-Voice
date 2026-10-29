@@ -25,8 +25,32 @@ jobs:
         run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.2.12479018' 'cmake;3.22.1'
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
+      # Cross-runtime test: use the real exact HA #221 Python coordinator,
+      # not a second Java approximation of the HA protocol. This is a
+      # pinned draft SHA and includes no real OAuth credentials.
+      - name: Check out pinned Home Assistant Python handoff peer
+        uses: actions/checkout@v7
+        with:
+          ref: ad9e29f0a5802ba2aac65a2b0b97333096fc11c6
+          path: ha-peer
+          persist-credentials: false
+      - name: Generate Python-to-Android AES-GCM fixture
+        run: |
+          python3 -m pip install 'cryptography>=42,<47'
+          python3 tests/ha_tv_crosslang_wire.py generate \
+            --ha-root ha-peer \
+            --fixture app/build/interoperability/ha-packets.json
       - name: Run fast JVM unit tests without native engine
-        run: ./gradlew --no-daemon -PskipWakeNative=true :app:testDebugUnitTest
+        run: |
+          export KV_INTEROP_FIXTURE="$PWD/app/build/interoperability/ha-packets.json"
+          export KV_INTEROP_RECEIPTS="$PWD/app/build/interoperability/tv-receipts.json"
+          ./gradlew --no-daemon -PskipWakeNative=true :app:testDebugUnitTest
+      - name: Verify real Android Java receipts in HA Python
+        run: |
+          python3 tests/ha_tv_crosslang_wire.py verify \
+            --ha-root ha-peer \
+            --fixture app/build/interoperability/ha-packets.json \
+            --receipts app/build/interoperability/tv-receipts.json
       - name: Build actual JNI-enabled debug APK for TV hardware testing
         # The previous skipWakeNative assembleDebug uploaded an APK with NO
         # libmicrowakeword.so; it could not test wake-word capture on a TV.
