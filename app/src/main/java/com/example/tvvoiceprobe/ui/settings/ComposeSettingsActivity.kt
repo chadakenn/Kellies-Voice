@@ -394,6 +394,34 @@ fun CategoryContent(
                         Toast.makeText(context, "Weather duration: ${s}s", Toast.LENGTH_SHORT).show()
                     })
                 }
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Voice overlay launch", color = skin.colors.accent, fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                var autoListen by remember { mutableStateOf(prefs.autoListen()) }
+                SettingSwitch(
+                    title = "Automatically listen when I open the voice overlay",
+                    subtitle = if (autoListen) "ON · intentional overlay launch starts listening" else "OFF · press TALK",
+                    checked = autoListen,
+                    onCheckedChange = { on ->
+                        prefs.setAutoListen(on)
+                        autoListen = prefs.autoListen()
+                        ComposeSettingsInterop.queueLayoutUpdate(HaLayout.AUTO_LISTEN)
+                    }
+                )
+                var starFallback by remember { mutableStateOf(prefs.mainLauncherOpensOverlay()) }
+                SettingSwitch(
+                    title = "Use main launcher for TV remote shortcut",
+                    subtitle = if (starFallback) "ON · launcher opens the voice overlay" else "OFF · normal app launcher",
+                    checked = starFallback,
+                    onCheckedChange = { on ->
+                        prefs.setMainLauncherOpensOverlay(on)
+                        starFallback = prefs.mainLauncherOpensOverlay()
+                    }
+                )
+                SettingsChoice(
+                    title = "Open overlay & additional controls",
+                    selected = false,
+                    onSelect = { onLegacySection("OVERLAY") }
+                )
                 Text("Changes save locally. Returning to the voice screen attempts HA layout sync using the existing connection when HA-managed layout is enabled. Reopen the overlay to see visual changes.", color = skin.colors.textMuted, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
             }
             "voice" -> {
