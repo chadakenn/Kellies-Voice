@@ -1,4 +1,4 @@
-name: V3 TV remote QA and secure LAN protocol (no credentials)
+name: V3 HA ↔ TV real two-screen code QA (no credentials)
 
 on:
   pull_request:
@@ -17,6 +17,9 @@ on:
       - 'tests/test_pairing_v3_android_listener_contract.py'
       - 'app/src/main/java/com/example/tvvoiceprobe/PairingV3QaActivity.java'
       - 'tests/test_pairing_v3_debug_tv_ui.py'
+      - 'custom_components/kellies_voice/config_flow.py'
+      - 'custom_components/kellies_voice/manifest.json'
+      - 'tests/test_pairing_v3_ha_config_flow.py'
       - '.github/workflows/pairing-key-commitment-v3.yml'
   workflow_dispatch:
 
@@ -41,6 +44,8 @@ jobs:
         run: python -m unittest discover -s tests -p test_pairing_v3_android_listener_contract.py -v
       - name: Check debug-only Android v3 on-screen remote QA and lifecycle cleanup
         run: python -m unittest discover -s tests -p test_pairing_v3_debug_tv_ui.py -v
+      - name: Test actual Home Assistant config-flow discovery and human code form
+        run: python -m unittest discover -s tests -p test_pairing_v3_ha_config_flow.py -v
       - name: Prohibit live credential or v2 protocol activation
         run: |
           python - <<'PY'
@@ -64,7 +69,12 @@ jobs:
           assert 'PairingV3TvWireState' not in (app / 'VoiceActivity.java').read_text()
           assert 'PairingV3LanWindow' not in (app / 'VoiceActivity.java').read_text()
           assert 'FLAG_DEBUGGABLE' in (app / 'VoiceActivity.java').read_text()
-          assert 'pairing_v3_wire' not in (ha / 'config_flow.py').read_text()
+          flow = (ha / 'config_flow.py').read_text()
+          assert 'pairing_v3_wire' in flow
+          v3_section = flow.split('async def async_step_v3_preview(', 1)[1]
+          assert 'async_create_entry(' not in v3_section
+          assert 'v3_preview_verified' in v3_section
+          assert 'HaV3WireAttempt' in flow
           assert 'PairingKeyCommitment' not in (app / 'PairingDiscoveryWindow.java').read_text() if (app / 'PairingDiscoveryWindow.java').exists() else True
           print('PASS: v3 is offline only; existing v2 pairing unchanged')
           PY
