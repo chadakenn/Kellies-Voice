@@ -85,7 +85,7 @@ public final class UpdateManager {
         background.execute(() -> {
             String channel = UpdateChannel.STABLE;
             try {
-                channel = UpdateChannel.normalize(new OverlayPreferences(activity).updateChannel());
+                channel = activeChannel();
                 UpdateChannel.Selected selected = UpdateChannel.select(
                         channel, readText(UpdateChannel.feedUrl(channel), 750000));
                 UpdateChannel.Meta meta = UpdateChannel.requireMetadata(
@@ -112,8 +112,7 @@ public final class UpdateManager {
                         selected.size, channel);
                 post(() -> {
                     if (epoch != offerEpoch) return;
-                    String now = UpdateChannel.normalize(
-                            new OverlayPreferences(activity).updateChannel());
+                    String now = activeChannel();
                     if (!now.equals(offer.channel)) return;
                     available = offer;
                     listener.onAvailable(offer.name, offer.notes == null ? "" : offer.notes);
@@ -122,7 +121,9 @@ public final class UpdateManager {
                 if (epoch != offerEpoch) return;
                 String message = error.getMessage();
                 if (message != null && message.contains("404")) {
-                    message = UpdateChannel.DEVELOPMENT.equals(channel)
+                    message = UpdateChannel.QA.equals(channel)
+                            ? "No signed QA prerelease published yet. A manually approved QA prerelease is needed."
+                            : UpdateChannel.DEVELOPMENT.equals(channel)
                             ? "No development release is published. Install the signed Actions artifact instead."
                             : "No public GitHub Release has been published yet.";
                 } else if (message == null || message.toLowerCase(Locale.US).contains("http")) {
@@ -152,7 +153,7 @@ public final class UpdateManager {
     public void download() {
         final Release release = available;
         final int epoch = offerEpoch;
-        String channel = UpdateChannel.normalize(new OverlayPreferences(activity).updateChannel());
+        String channel = activeChannel();
         if (release == null || busy || !channel.equals(release.channel)) {
             post(() -> listener.onError("Check for updates first."));
             return;
@@ -214,9 +215,8 @@ public final class UpdateManager {
                 if (!release.sha256.equals(digest.toString())) {
                     throw new IllegalStateException("Downloaded APK failed SHA-256 verification.");
                 }
-                verifyInstalledIdentity(temp);
-                if (epoch != offerEpoch || !release.channel.equals(UpdateChannel.normalize(
-                        new OverlayPreferences(activity).updateChannel()))) {
+                verifyInstalledIdentity(temp, release);
+                if (epoch != offerEpoch || !release.channel.equals(activeChannel())) {
                     temp.delete();
                     if (apk.exists()) apk.delete();
                     throw new IllegalStateException("Check for updates first.");
@@ -279,7 +279,7 @@ public final class UpdateManager {
         }
     }
 
-    private void verifyInstalledIdentity(File apk) throws Exception {
+    private void verifyInstalledIdentity(File apk, Release release) throws Exception {
         PackageManager packages = activity.getPackageManager();
         int flags = Build.VERSION.SDK_INT >= 28
                 ? PackageManager.GET_SIGNING_CERTIFICATES
@@ -292,6 +292,11 @@ public final class UpdateManager {
             throw new IllegalStateException("Update APK is a different app and was rejected.");
         }
         PackageInfo installed = packages.getPackageInfo(activity.getPackageName(), flags);
+        if (!release.name.equals(incoming.versionName)
+                || incoming.getLongVersionCode() != release.code
+                || incoming.getLongVersionCode() <= installed.getLongVersionCode()) {
+            throw new IllegalStateException("Downloaded APK version does not match the signed update offer.");
+        }
         if (!sameSigners(signaturesOf(installed), signaturesOf(incoming))) {
             throw new IllegalStateException("Update APK is not signed with the installed release key.");
         }
@@ -330,8 +335,16 @@ public final class UpdateManager {
         }
     }
 
+    private String activeChannel() {
+        // QA uses its own package ID. Never offer stable/production APKs to it.
+        return BuildConfig.IS_QA ? UpdateChannel.QA
+                : UpdateChannel.normalize(new OverlayPreferences(activity).updateChannel());
+    }
+
     private File updateFolder() { return new File(activity.getCacheDir(), "updates"); }
-    private File downloadedApk() { return new File(updateFolder(), "app-release.apk"); }
+    private File downloadedApk() {
+        return new File(updateFolder(), BuildConfig.IS_QA ? "app-qa.apk" : "app-release.apk");
+    }
     private void post(Runnable runnable) { ui.post(runnable); }
 
     private String readText(String url, int maxBytes) throws Exception {

@@ -169,6 +169,69 @@ public class UpdateChannelTest {
         assertFalse(UpdateChannel.devTag("../v0.16.10-dev.1"));
     }
 
+    @Test public void qaOnlyAcceptsSignedPublicQaAssets() {
+        String qa = qaRelease("v0.16.14-qa.1", true);
+        UpdateChannel.Selected selected = UpdateChannel.select(UpdateChannel.QA, "[" + qa + "]");
+        assertEquals("v0.16.14-qa.1", selected.tag);
+        assertTrue(selected.apkUrl.endsWith("/v0.16.14-qa.1/app-qa.apk"));
+        assertEquals(UpdateChannel.DEV_FEED, UpdateChannel.feedUrl(UpdateChannel.QA));
+        assertFalse(UpdateChannel.allowsAutomaticCheck(UpdateChannel.QA));
+        assertEquals(UpdateChannel.STABLE, UpdateChannel.normalize(UpdateChannel.QA));
+        String bad = qa.replace("/app-qa.apk", "/app-release.apk");
+        try {
+            UpdateChannel.select(UpdateChannel.QA, "[" + bad + "]");
+            throw new AssertionError("Production APK was selected by QA");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("QA") || expected.getMessage().contains("signed"));
+        }
+        try {
+            UpdateChannel.select(UpdateChannel.QA, "[" + qa.replace(
+                    "https://github.com/chadakenn/Kellies-Voice",
+                    "https://malicious.example") + "]");
+            throw new AssertionError("Unexpected QA asset host accepted");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("QA") || expected.getMessage().contains("signed"));
+        }
+        try {
+            UpdateChannel.select(UpdateChannel.QA, "[" + qa.replace(
+                    "\"prerelease\":true", "\"prerelease\":false") + "]");
+            throw new AssertionError("Non-prerelease QA was offered");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("QA") || expected.getMessage().contains("signed"));
+        }
+    }
+
+    @Test public void qaSelectsHighestVersionNotGitHubListingOrder() {
+        String list = "[" + qaRelease("v0.16.14-qa.9", true) + ","
+                + qaRelease("v0.16.14-qa.10", true) + ","
+                + qaRelease("v0.16.14-qa.8", true) + "]";
+        assertEquals("v0.16.14-qa.10", UpdateChannel.select(UpdateChannel.QA, list).tag);
+        assertTrue(UpdateChannel.compareQaTags("v0.16.15-qa.1", "v0.16.14-qa.999") > 0);
+    }
+
+    @Test public void qaRejectsMetadataForOtherPackageOrBadTag() {
+        String meta = "{\"tag\":\"v0.16.14-qa.2\",\"versionCode\":56,"
+                + "\"versionName\":\"0.16.14-qa.2\",\"sha256\":\"" + hash() + "\"}";
+        assertEquals(56, UpdateChannel.requireMetadata(
+                UpdateChannel.QA, "v0.16.14-qa.2", meta).versionCode);
+        try {
+            UpdateChannel.requireMetadata(UpdateChannel.QA, "v0.16.14-qa.2",
+                    meta.replace("0.16.14-qa.2", "0.16.14-qa.3"));
+            throw new AssertionError("Mismatched QA release metadata accepted");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("metadata"));
+        }
+        assertFalse(UpdateChannel.qaTag("v0.16.14-dev.1"));
+        assertFalse(UpdateChannel.qaTag("../v0.16.14-qa.1"));
+    }
+
+    private static String qaRelease(String tag, boolean prerelease) {
+        return "{\"tag_name\":\"" + tag + "\",\"draft\":false,\"prerelease\":"
+                + prerelease + ",\"body\":\"QA\",\"assets\":["
+                + asset(tag, "app-qa.apk", 8000) + ","
+                + asset(tag, "update.json", 90) + "]}";
+    }
+
     private static String assetRelease(String tag, boolean prerelease) {
         return "{\"tag_name\":\"" + tag + "\",\"draft\":false,\"prerelease\":" + prerelease
                 + ",\"body\":\"Dev\",\"assets\":["

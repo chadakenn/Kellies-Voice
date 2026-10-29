@@ -205,24 +205,29 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         assist = new HaAssistClient(this, this);
         updater = new UpdateManager(this, new UpdateManager.Listener() {
             @Override public void onUpToDate(String message) {
-                if (UpdateChannel.allowsAutomaticCheck(new OverlayPreferences(VoiceActivity.this).updateChannel())) {
+                if (!BuildConfig.IS_QA && UpdateChannel.allowsAutomaticCheck(
+                        new OverlayPreferences(VoiceActivity.this).updateChannel())) {
                     rememberUpdateCheck();
                 }
                 if (manualUpdateCheck) status(message);
                 manualUpdateCheck = false;
             }
             @Override public void onAvailable(String version, String notes) {
-                boolean development = UpdateChannel.DEVELOPMENT.equals(
+                boolean qa = BuildConfig.IS_QA;
+                boolean development = !qa && UpdateChannel.DEVELOPMENT.equals(
                         new OverlayPreferences(VoiceActivity.this).updateChannel());
-                if (!development) rememberUpdateCheck();
+                if (!qa && !development) rememberUpdateCheck();
                 manualUpdateCheck = false;
                 if (isFinishing() || isDestroyed()) return;
                 String shown = notes == null ? "" : notes.substring(0, Math.min(notes.length(), 700));
                 new AlertDialog.Builder(VoiceActivity.this)
-                        .setTitle(development
+                        .setTitle(qa ? "Signed QA update available: " + version
+                                : development
                                 ? "Development update available: " + version
                                 : "Kellie's Voice update available: " + version)
-                        .setMessage(development
+                        .setMessage(qa ? "Download a verified QA update over Wi-Fi? " +
+                                    "Android will ask permission before installation.\n\n" + shown
+                                : development
                                 ? "Download this published development prerelease? It is not a stable release.\n\n" + shown
                                 : "Download the signed update from GitHub Releases?\n\n" + shown)
                         .setNegativeButton("Later", null)
@@ -328,7 +333,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
             long now = System.currentTimeMillis();
             android.content.SharedPreferences checks =
                     getSharedPreferences("tv_voice_update_checks", MODE_PRIVATE);
-            if (UpdateChannel.allowsAutomaticCheck(new OverlayPreferences(this).updateChannel())
+            if (!BuildConfig.IS_QA && UpdateChannel.allowsAutomaticCheck(new OverlayPreferences(this).updateChannel())
                     && now - checks.getLong("last_checked", 0) >= 24L * 60 * 60 * 1000) {
                 root.post(() -> updater.check());
             }
@@ -1156,11 +1161,28 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
     }
 
     private String updateChannelLabel() {
+        if (BuildConfig.IS_QA) return "QA signed (manual)";
         return UpdateChannel.DEVELOPMENT.equals(new OverlayPreferences(this).updateChannel())
                 ? "Development" : "Stable";
     }
 
     private void chooseUpdates() {
+        if (BuildConfig.IS_QA) {
+            showCopperMenu("SETTINGS  /  QA UPDATES",
+                    "This separately signed QA app only checks verified QA prereleases. "
+                            + "No GitHub token is stored, and nothing downloads or installs automatically. "
+                            + "Android asks before installing. Public stable stays separate.",
+                    new String[] {"Check for signed QA update", "Back to Settings"},
+                    which -> {
+                        if (which == 0) {
+                            manualUpdateCheck = true;
+                            status("Checking signed QA prereleases...");
+                            updater.check();
+                        }
+                        showSettingsMenu();
+                    });
+            return;
+        }
         OverlayPreferences prefs = new OverlayPreferences(this);
         boolean development = UpdateChannel.DEVELOPMENT.equals(prefs.updateChannel());
         showCopperMenu("SETTINGS  ✦  APP UPDATES",

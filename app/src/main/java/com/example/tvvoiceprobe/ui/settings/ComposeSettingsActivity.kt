@@ -1174,6 +1174,12 @@ fun CategoryContent(
                 Text("Installed version: ${BuildConfig.VERSION_NAME}", color = skin.colors.text)
                 Spacer(modifier = Modifier.height(12.dp))
                 Text("App update channel", color = skin.colors.accent, fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                if (BuildConfig.IS_QA) {
+                    Text("Signed QA prereleases only (manual check)", color = skin.colors.text)
+                    Text("Updates download over Wi-Fi, are checked against the installed QA app, " +
+                        "and require Android install approval. Production updates stay separate.",
+                        color = skin.colors.textMuted, fontSize = 12.sp)
+                } else {
                 var updateChannel by remember { mutableStateOf(prefs.updateChannel()) }
                 SettingsChoice(
                     title = "Stable public releases",
@@ -1206,6 +1212,7 @@ fun CategoryContent(
                         }
                     }
                 )
+                }
                 Spacer(modifier = Modifier.height(12.dp))
                 Text("Updates require signature verification and your approval. " +
                     "An older stable version cannot replace a newer build.",
