@@ -706,12 +706,23 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         }
     }
 
+    private boolean pairingPreviewBuild() {
+        // Production users must never see the incomplete discovery-only preview.
+        if ((getApplicationInfo().flags
+                & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0) return true;
+        try {
+            String version = getPackageManager().getPackageInfo(
+                    getPackageName(), 0).versionName;
+            return version != null
+                    && (version.contains("-dev") || version.contains("-qa"));
+        } catch (android.content.pm.PackageManager.NameNotFoundException ignored) {
+            return false;
+        }
+    }
+
     private void showSettingsSection(SettingsSection section) {
         OverlayPreferences prefs = new OverlayPreferences(this);
-        // This deliberately incomplete preview is never exposed by stable APKs.
-        boolean pairingPreview = BuildConfig.DEBUG
-                || BuildConfig.VERSION_NAME.contains("-dev")
-                || BuildConfig.VERSION_NAME.contains("-qa");
+        boolean pairingPreview = pairingPreviewBuild();
         String[] entries;
         switch (section) {
             case HOME:
