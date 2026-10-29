@@ -86,6 +86,11 @@ class CommitmentSession:
         self._closed = False
 
     @property
+    def role(self) -> str:
+        """Immutable local side of this role-bound key commitment."""
+        return self._role
+
+    @property
     def public_commit(self) -> bytes:
         return self._local_commit
 
