@@ -59,6 +59,8 @@
                 android:resource="@xml/file_paths" />
         </provider>
         <activity android:name=".MainActivity" android:exported="false"/>
+        <!-- Local-only opt-in discovery QA: no background service, no credential exchange. -->
+        <activity android:name=".PairingSetupActivity" android:exported="false" />
         <activity android:name=".ScreensaverPreviewActivity"
             android:exported="false"
             android:excludeFromRecents="true"

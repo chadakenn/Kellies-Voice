@@ -706,12 +706,33 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         }
     }
 
+    private boolean pairingPreviewBuild() {
+        // Production users must never see the incomplete discovery-only preview.
+        if ((getApplicationInfo().flags
+                & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0) return true;
+        try {
+            String version = getPackageManager().getPackageInfo(
+                    getPackageName(), 0).versionName;
+            return version != null
+                    && (version.contains("-dev") || version.contains("-qa"));
+        } catch (android.content.pm.PackageManager.NameNotFoundException ignored) {
+            return false;
+        }
+    }
+
     private void showSettingsSection(SettingsSection section) {
         OverlayPreferences prefs = new OverlayPreferences(this);
+        boolean pairingPreview = pairingPreviewBuild();
         String[] entries;
         switch (section) {
             case HOME:
-                entries = new String[] {
+                entries = pairingPreview ? new String[] {
+                        "Connect / reconnect Home Assistant",
+                        "Edit Home Assistant address & token",
+                        "Start new conversation",
+                        "Manage TV layout from Home Assistant: " + (prefs.haManage() ? "ON" : "OFF"),
+                        "Preview no-typing pairing discovery (development only)"
+                } : new String[] {
                         "Connect / reconnect Home Assistant",
                         "Edit Home Assistant address & token",
                         "Start new conversation",
@@ -771,6 +792,11 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                                 case 1: configure(); break;
                                 case 2: newConversation(); break;
                                 case 3: chooseHaLayout(); break;
+                                case 4:
+                                    if (pairingPreview) {
+                                        startActivity(new Intent(this, PairingSetupActivity.class));
+                                    }
+                                    break;
                                 default: break;
                             }
                             break;
