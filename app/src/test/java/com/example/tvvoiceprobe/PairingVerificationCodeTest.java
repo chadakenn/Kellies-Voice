@@ -44,6 +44,11 @@ public class PairingVerificationCodeTest {
                 ha, false, SESSION, encoded(TV), encoded(HA));
         assertEquals("34821918", tvCode);
         assertEquals(tvCode, haCode);
+        String tvProof = PairingVerificationCode.approvedProof(
+                tv, true, SESSION, encoded(TV), encoded(HA));
+        assertEquals("zWMp2ha4rIAnsdSpGP8sow", tvProof);
+        assertEquals(tvProof, PairingVerificationCode.approvedProof(
+                ha, false, SESSION, encoded(TV), encoded(HA)));
     }
 
     @Test public void changesWhenSessionOrPeerChanges() throws Exception {
