@@ -18,7 +18,7 @@ class FullscreenShortcutsContractTests(unittest.TestCase):
         self.assertIn('addButton(toolbar, "STOP", v -> assist.finishTalking())', home)
         self.assertIn('addButton(toolbar, "SETTINGS"', home)
         self.assertIn("homeShortcutButtons.get(selected - buttons.size()).performClick()", home)
-        self.assertIn("onFocusChangeListener", home)
+        self.assertIn("setOnFocusChangeListener", home)
         self.assertIn("KEYCODE_DPAD_CENTER", home)
         self.assertIn("void homeShortcuts(JSONArray slots)", client)
         self.assertIn('"kellies_voice/press_home_shortcut"', client)
