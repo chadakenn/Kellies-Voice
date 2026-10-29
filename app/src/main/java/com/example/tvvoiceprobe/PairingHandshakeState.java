@@ -19,6 +19,7 @@ public final class PairingHandshakeState {
     }
 
     private final String session;
+    private final String tvUuid;
     private final KeyPair tv;
     private final long startedAt;
     private boolean offered;
@@ -27,11 +28,12 @@ public final class PairingHandshakeState {
     private byte[] haKey;
     private String code;
 
-    public PairingHandshakeState(String session, long startedAt) {
+    public PairingHandshakeState(String session, String tvUuid, long startedAt) {
         if (session == null || !session.matches("[A-Za-z0-9_-]{22}") || startedAt < 0) {
             throw new IllegalArgumentException("Invalid pairing context");
         }
         this.session = session;
+        this.tvUuid = PairingVerificationCode.canonicalTvUuid(tvUuid);
         this.tv = PairingVerificationCode.freshKeyPair();
         this.startedAt = startedAt;
     }
@@ -73,11 +75,16 @@ public final class PairingHandshakeState {
         return true;
     }
 
+    /** Identity is exposed only alongside an approved physical-OK proof. */
+    public synchronized String approvedTvUuid(long now) {
+        return alive(now) && approved && haKey != null ? tvUuid : null;
+    }
+
     /** HMAC proof of the approved ephemeral transcript, not the visible code. */
     public synchronized String proof(long now) {
         if (!alive(now) || !approved || haKey == null) return null;
         return PairingVerificationCode.approvedProof(
-                tv, true, session, tv.getPublic().getEncoded(), haKey);
+                tv, true, session, tv.getPublic().getEncoded(), haKey, tvUuid);
     }
 
     public synchronized void close() {
