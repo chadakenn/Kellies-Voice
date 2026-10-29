@@ -122,6 +122,31 @@ public final class PairingVerificationCode {
      */
     public static String approvedProof(KeyPair own, boolean localIsTv, String session,
                                        byte[] tvKey, byte[] haKey) {
+        return approvedProofInternal(own, localIsTv, session, tvKey, haKey, null);
+    }
+
+    /** v2: bind the TV's stable canonical v4 UUID to the physical OK proof. */
+    public static String approvedProof(KeyPair own, boolean localIsTv, String session,
+                                       byte[] tvKey, byte[] haKey, String tvUuid) {
+        return approvedProofInternal(own, localIsTv, session, tvKey, haKey,
+                canonicalTvUuid(tvUuid));
+    }
+
+    public static String canonicalTvUuid(String tvUuid) {
+        if (tvUuid == null || !tvUuid.matches(
+                "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")) {
+            throw new IllegalArgumentException("Invalid canonical TV UUID");
+        }
+        java.util.UUID parsed = java.util.UUID.fromString(tvUuid);
+        if (parsed.version() != 4 || parsed.variant() != 2
+                || !parsed.toString().equals(tvUuid)) {
+            throw new IllegalArgumentException("TV UUID must be canonical RFC4122 v4");
+        }
+        return tvUuid;
+    }
+
+    private static String approvedProofInternal(KeyPair own, boolean localIsTv, String session,
+                                                byte[] tvKey, byte[] haKey, String tvUuid) {
         if (own == null || !(own.getPrivate() instanceof ECPrivateKey)) {
             throw new IllegalArgumentException("Missing private key");
         }
@@ -144,11 +169,13 @@ public final class PairingVerificationCode {
             transcriptPart(digest, sid);
             transcriptPart(digest, tvKey);
             transcriptPart(digest, haKey);
+            if (tvUuid != null) transcriptPart(digest, tvUuid.getBytes(StandardCharsets.US_ASCII));
             Mac mac = Mac.getInstance("HmacSHA256");
             mac.init(new SecretKeySpec(digest.digest(), "HmacSHA256"));
             prk = mac.doFinal(secret);
             mac.init(new SecretKeySpec(prk, "HmacSHA256"));
-            mac.update("KelliesVoice/v1/tv-approved".getBytes(StandardCharsets.US_ASCII));
+            mac.update((tvUuid == null ? "KelliesVoice/v1/tv-approved"
+                    : "KelliesVoice/v2/tv-approved-uuid").getBytes(StandardCharsets.US_ASCII));
             mac.update((byte) 1);
             expanded = mac.doFinal();
             return Base64.getUrlEncoder().withoutPadding()
