@@ -22,7 +22,11 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
+      - name: Install pairing cryptography test dependency
+        run: python -m pip install 'cryptography>=42,<47'
       - name: Check integration syntax
         run: python -m compileall -q custom_components/kellies_voice
-      - name: Test event contracts
+      - name: Test event contracts (including required P-256 interoperability)
+        env:
+          PAIRING_CRYPTO_REQUIRED: '1'
         run: python -m unittest discover -s tests -p 'test_*.py' -v
