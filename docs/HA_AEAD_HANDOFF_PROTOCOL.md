@@ -22,7 +22,7 @@ All AEAD packets use AES-256-GCM with a key derived from the ECDH shared secret 
 | Field | Type | Notes |
 |-------|------|-------|
 | `version` | uint8 | Protocol version = 1 |
-| `type` | string | `credential_offer`, `tv_proof_receipt`, or `ha_commit_authorization` |
+| `type` | string | `credential_offer`, `tv_proof_receipt`, `ha_commit_authorization`, or `tv_persisted_receipt` |
 | `tv_uuid` | string | Exact paired device UUID |
 | `session` | string | Pairing session id from ECDH |
 | `transcript_hash` | bytes32 | SHA-256 of the full ECDH transcript |
@@ -63,6 +63,17 @@ All AEAD packets use AES-256-GCM with a key derived from the ECDH shared secret 
 }
 ```
 
+### `tv_persisted_receipt` (TV → HA, encrypted)
+
+```json
+{
+  "ack_for": "ha_commit_authorization",
+  "tv_uuid": "...",
+  "session": "...",
+  "verified_store_committed": true
+}
+```
+
 ## Sequence (reconciled with #218)
 
 1. HA encrypts `credential_offer` for the verified TV and sends it on the sealed channel. Lease remains revocable.
@@ -70,14 +81,16 @@ All AEAD packets use AES-256-GCM with a key derived from the ECDH shared secret 
 3. TV sends authenticated `tv_proof_receipt` (fresh nonce).
 4. HA verifies the receipt against the exact session/TV/transcript, then sends authenticated `ha_commit_authorization`.
 5. TV receives the HA authorization, passes the #218 gate, and persists the credential.
-6. HA receives an optional persistence confirmation (or treats the authorization as the commit point) and calls `commit_after_proof()` only after the TV has acknowledged persistence, then drops the HA-side refresh token.
-7. On any failure, timeout, or mismatch HA calls `abort_and_revoke()`.
+6. TV sends mandatory authenticated `tv_persisted_receipt` only after synchronous, verified Keystore storage succeeds. HA must validate this exact TV/session/transcript before `commit_after_proof()` may drop its revocable token lease.
+7. If confirmation is missing, HA must treat the lease as uncommitted, invoke `abort_and_revoke()`, and require the TV to discard its unactivated candidate when the session times out. This is not a globally atomic transaction: crash/restart recovery and compensating rollback are still required before enabling live exchange.
+8. On any wrong-device proof, failed commit, timeout, or mismatch, fail closed and preserve the previous manual TV connection.
 
 ## Authentication labels
 
 - `kellies_voice/pair/credential_offer/v1`
 - `kellies_voice/pair/tv_proof_receipt/v1`
 - `kellies_voice/pair/ha_commit_authorization/v1`
+- `kellies_voice/pair/tv_persisted_receipt/v1`
 
 These labels are included in the AAD so a packet of one type cannot be replayed as another.
 
@@ -86,6 +99,8 @@ These labels are included in the AAD so a packet of one type cannot be replayed 
 - Wrong TV UUID or session
 - Transcript hash mismatch
 - Replay of any packet
+- HA revoking/leaving pending before authenticated persisted receipt
+- TV treating a bare boolean or public status as HA commit authorization
 - Expired nonce or TTL
 - Missing or forged consent
 - HA commit authorization arriving before the TV proof receipt
