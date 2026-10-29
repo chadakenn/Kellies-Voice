@@ -17,6 +17,8 @@ import java.util.Map;
 public final class UpdateChannel {
     public static final String STABLE = "stable";
     public static final String DEVELOPMENT = "development";
+    /** Internal, permanently signed separate-package QA feed. Not a user-set preference. */
+    public static final String QA = "qa";
     public static final String OFFER = "offer";
     public static final String CURRENT = "current";
     public static final String ROLLBACK_BLOCKED = "rollback-blocked";
@@ -33,11 +35,17 @@ public final class UpdateChannel {
 
     /** Daily checks stay on the public stable release. Development is manual. */
     public static boolean allowsAutomaticCheck(String channel) {
+        if (QA.equals(channel)) return false;
         return STABLE.equals(normalize(channel));
     }
 
     public static String feedUrl(String channel) {
+        if (QA.equals(channel)) return DEV_FEED;
         return DEVELOPMENT.equals(normalize(channel)) ? DEV_FEED : LATEST;
+    }
+
+    public static boolean qaTag(String tag) {
+        return tag != null && tag.matches("v[0-9]+\\.[0-9]+\\.[0-9]+-qa\\.[0-9]+");
     }
 
     public static boolean devTag(String tag) {
@@ -74,6 +82,7 @@ public final class UpdateChannel {
 
     public static Selected select(String channel, String payload) {
         Object parsed = readFeed(payload);
+        if (QA.equals(channel)) return selectQa(parsed);
         if (DEVELOPMENT.equals(normalize(channel))) return selectDevelopment(parsed);
         return selectStable(parsed);
     }
@@ -90,7 +99,11 @@ public final class UpdateChannel {
         if (!tag.equals(metaTag) || !hash.matches("[a-f0-9]{64}") || code <= 0 || code > 1_000_000L) {
             throw new IllegalArgumentException("Invalid release integrity metadata.");
         }
-        if (DEVELOPMENT.equals(normalize(channel))) {
+        if (QA.equals(channel)) {
+            if (!qaTag(tag) || !tag.equals("v" + name)) {
+                throw new IllegalArgumentException("Invalid QA release integrity metadata.");
+            }
+        } else if (DEVELOPMENT.equals(normalize(channel))) {
             if (!devTag(tag) || !tag.equals("v" + name)) {
                 throw new IllegalArgumentException("Invalid release integrity metadata.");
             }
@@ -140,7 +153,51 @@ public final class UpdateChannel {
         if (flag(release, "draft") || flag(release, "prerelease")) {
             throw new IllegalArgumentException("No stable release is available.");
         }
-        return fromRelease(release, false);
+        return fromRelease(release, STABLE);
+    }
+
+    private static Selected selectQa(Object parsed) {
+        List<Object> list = asList(parsed);
+        if (list == null) {
+            throw new IllegalArgumentException("QA updates require a public GitHub prerelease list.");
+        }
+        Selected newest = null;
+        for (int i = 0; i < Math.min(list.size(), 20); i++) {
+            Map<String, Object> release = asMap(list.get(i));
+            if (release == null) continue;
+            try {
+                if (flag(release, "draft") || !flag(release, "prerelease")) continue;
+                String tag = text(release, "tag_name");
+                if (!qaTag(tag)) continue;
+                compareQaTags(tag, tag); // Reject overflow before considering a candidate.
+                if (newest == null || compareQaTags(tag, newest.tag) > 0) {
+                    newest = fromRelease(release, QA);
+                }
+            } catch (IllegalArgumentException ignored) {
+                // Invalid or untrusted candidates do not replace a valid older QA offer.
+            }
+        }
+        if (newest != null) return newest;
+        throw new IllegalArgumentException(
+                "No signed QA prerelease is published. A signed Actions artifact cannot update over Wi-Fi.");
+    }
+
+    static int compareQaTags(String left, String right) {
+        if (!qaTag(left) || !qaTag(right)) {
+            throw new IllegalArgumentException("Invalid QA release tag.");
+        }
+        String[] a = left.substring(1).replace("-qa.", ".").split("\\.");
+        String[] b = right.substring(1).replace("-qa.", ".").split("\\.");
+        if (a.length != 4 || b.length != 4) throw new IllegalArgumentException("Invalid QA release tag.");
+        try {
+            for (int i = 0; i < 4; i++) {
+                int order = Long.compare(Long.parseLong(a[i]), Long.parseLong(b[i]));
+                if (order != 0) return order;
+            }
+            return 0;
+        } catch (NumberFormatException ignored) {
+            throw new IllegalArgumentException("Invalid QA release tag.");
+        }
     }
 
     private static Selected selectDevelopment(Object parsed) {
@@ -165,7 +222,7 @@ public final class UpdateChannel {
                 if (newest == null || compareDevTags(tag, newest.tag) > 0) {
                     // Validate exact trusted URLs, size and both required assets
                     // BEFORE this candidate can replace the previous valid one.
-                    newest = fromRelease(release, true);
+                    newest = fromRelease(release, DEVELOPMENT);
                 }
             } catch (IllegalArgumentException ignored) {
                 // Skip a malformed or unsafe higher tag and keep a valid older release.
@@ -197,15 +254,18 @@ public final class UpdateChannel {
         }
     }
 
-    private static Selected fromRelease(Map<String, Object> release, boolean development) {
+    private static Selected fromRelease(Map<String, Object> release, String channel) {
         String tag = text(release, "tag_name");
-        if (development) {
+        if (QA.equals(channel)) {
+            if (!qaTag(tag)) throw new IllegalArgumentException("Unexpected QA release tag.");
+        } else if (DEVELOPMENT.equals(channel)) {
             if (!devTag(tag)) throw new IllegalArgumentException("Unexpected release tag.");
         } else if (!ReleaseAssets.stableTag(tag)) {
             throw new IllegalArgumentException("Unexpected release tag.");
         }
         List<Object> assets = asList(release.get("assets"));
-        if (assets == null) throw new IllegalArgumentException("Release needs app-release.apk and update.json.");
+        String apkFile = QA.equals(channel) ? "app-qa.apk" : "app-release.apk";
+        if (assets == null) throw new IllegalArgumentException("Release needs " + apkFile + " and update.json.");
         String apk = null;
         String metadata = null;
         long size = -1;
@@ -213,7 +273,7 @@ public final class UpdateChannel {
             Map<String, Object> item = asMap(asset);
             if (item == null) continue;
             String filename = text(item, "name");
-            if ("app-release.apk".equals(filename)) {
+            if (apkFile.equals(filename)) {
                 apk = text(item, "browser_download_url");
                 size = whole(item.get("size"));
             } else if ("update.json".equals(filename)) {
@@ -221,9 +281,9 @@ public final class UpdateChannel {
             }
         }
         if (apk == null || apk.isEmpty() || metadata == null || metadata.isEmpty()) {
-            throw new IllegalArgumentException("Release needs app-release.apk and update.json.");
+            throw new IllegalArgumentException("Release needs " + apkFile + " and update.json.");
         }
-        ReleaseAssets.validateAssetUrl(apk, tag, "app-release.apk");
+        ReleaseAssets.validateAssetUrl(apk, tag, apkFile);
         ReleaseAssets.validateAssetUrl(metadata, tag, "update.json");
         if (size < 4096 || size > 150L * 1024L * 1024L) {
             throw new IllegalArgumentException("Invalid APK file size in release.");
