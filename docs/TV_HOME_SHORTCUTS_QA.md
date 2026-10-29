@@ -30,7 +30,7 @@ Examples: **Kitchen On → light.kitchen → Turn on**, **Lights Off → light.l
 - [ ] Signed `com.example.tvvoiceprobe.qa` install **over** the existing QA app (matching signing certificate and non-decreasing version code). Do not uninstall/clear app data or replace stable.
 - [ ] Configure exactly one action and confirm only one tile appears, no extra buttons, no mic permission needed.
 - [ ] Configure four actions; confirm readable labels in Copper, Neon and Jade on 720p/1080p and no clipping above TALK/STOP/SETTINGS.
-- [ ] Using only D-pad LEFT/RIGHT/OK, select TALK, STOP, SETTINGS and every shortcut. Focus border must be visible and only one command fires per press.
+- [ ] Using only D-pad LEFT/RIGHT/UP/DOWN/OK: LEFT/RIGHT stays in the current row; UP moves from TALK/STOP/SETTINGS to the matching Quick Action above; DOWN returns to the bottom row; OK activates only the focused tile. Focus border must be visible and only one command fires per press.
 - [ ] Power-cycle or disconnect HA; shortcut row clears or fails safely. Reconnect restores current definitions without app restart.
 - [ ] Edit labels and actions in HA while the TV stays on the home screen; updates arrive within 30 seconds or on foreground return.
 - [ ] Remove a slot in HA; its tile disappears and pressing its old slot cannot run an action.
