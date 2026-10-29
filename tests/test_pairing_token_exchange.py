@@ -144,9 +144,9 @@ class OAuthExchangeTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual("refresh_token", fake.requests[0][1]["grant_type"])
         self.assertEqual(REFRESH, fake.requests[0][1]["refresh_token"])
         await exchange.revoke_refresh(REFRESH)
-        self.assertEqual({"token": REFRESH, "action": "revoke"}, fake.requests[1][1])
-        self.assertTrue(all(url == LOOPBACK + "/auth/token"
-                            for url, _ in fake.requests))
+        self.assertEqual({"token": REFRESH}, fake.requests[1][1])
+        self.assertEqual(LOOPBACK + "/auth/token", fake.requests[0][0])
+        self.assertEqual(LOOPBACK + "/auth/revoke", fake.requests[1][0])
         for bad in ("", "bad", "really bad secret", True, None):
             with self.subTest(bad=bad):
                 with self.assertRaises(tokens.OAuthTokenError):
