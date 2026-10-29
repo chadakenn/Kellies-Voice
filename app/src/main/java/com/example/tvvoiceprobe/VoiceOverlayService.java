@@ -343,6 +343,7 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
         // to avoid the generic cyan/violet AI appearance.
         boolean signal = OverlayPreferences.SKIN_SIGNAL.equals(preferences.skin());
         boolean obsidian = OverlayPreferences.SKIN_OBSIDIAN.equals(preferences.skin());
+        boolean terminal = OverlayPreferences.SKIN_TERMINAL.equals(preferences.skin());
         AppPalette theme = AppPalette.forSkin(preferences.skin());
 
         panel = new VoicePanel();
@@ -352,41 +353,45 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
         panel.setFocusableInTouchMode(true);
         GradientDrawable background = new GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
-                obsidian ? new int[] {0xf506070c, 0xf50e1018}
+                terminal ? new int[] {0xf5030a07, 0xf508140d}
+                        : obsidian ? new int[] {0xf506070c, 0xf50e1018}
                         : signal ? new int[] {0xf21B1512, 0xf2261B15}
                         : glass ? new int[] {0xe8201513, 0xf0291a17, 0xed150f0d}
                         : new int[] {0xf02A1A16, 0xf017100e});
-        background.setCornerRadius(dp(obsidian ? 18 : signal ? 8 : glass ? 22 : 14));
-        background.setStroke(dp(obsidian ? 2 : 1),
-                obsidian ? theme.accent : signal ? 0xff805F48
+        background.setCornerRadius(dp(terminal ? 3 : obsidian ? 18 : signal ? 8 : glass ? 22 : 14));
+        background.setStroke(dp(terminal || obsidian ? 2 : 1),
+                terminal ? theme.accent : obsidian ? theme.accent : signal ? 0xff805F48
                         : glass ? 0x88E7A981 : 0xffD9946F);
         panel.setBackground(aurora ? new AuroraGlassDrawable(dp(18)) : background);
         panel.setElevation(dp(signal ? 10 : 14));
 
-        if (signal) {
+        if (signal || terminal) {
             View rule = new View(this);
-            rule.setBackgroundColor(0xffE1B27B);
+            rule.setBackgroundColor(terminal ? theme.accent : 0xffE1B27B);
             panel.addView(rule, new LinearLayout.LayoutParams(-1, dp(3)));
         }
 
-        TextView top = label(aurora ? "KELLIE’S VOICE"
+        TextView top = label(terminal ? "KELLIE@TV  /  VOICE"
+                        : aurora ? "KELLIE’S VOICE"
                         : obsidian ? "✦  KELLIE'S VOICE"
                         : signal ? "KELLIE'S VOICE"
                         : glass ? "✦  KELLIE'S VOICE" : "🎙  KELLIE'S VOICE",
-                obsidian ? 16 : signal ? 13 : glass ? 15 : 19,
-                obsidian ? theme.accent
+                terminal ? 15 : obsidian ? 16 : signal ? 13 : glass ? 15 : 19,
+                terminal ? theme.accent : obsidian ? theme.accent
                         : aurora ? 0xffBED6FF : signal ? 0xffE7C39B
                         : glass ? 0xffF5D6BD : 0xffE6AB82);
+        if (terminal) top.setTypeface(android.graphics.Typeface.MONOSPACE);
         top.setLetterSpacing(signal ? 0.18f : 0.12f);
         panel.addView(top);
 
         statusView = label("CONNECTING...", signal ? 13 : glass ? 14 : 15,
-                obsidian ? theme.text : aurora ? 0xffCFDAF4
+                terminal ? theme.text : obsidian ? theme.text : aurora ? 0xffCFDAF4
                         : signal ? 0xffF0DDC7 : 0xffF7E8DA);
         panel.addView(statusView);
 
         wave = new VoiceWaveView(this);
-        wave.setLook(obsidian ? VoiceWaveView.LOOK_OBSIDIAN
+        wave.setLook(terminal ? VoiceWaveView.LOOK_TERMINAL
+                : obsidian ? VoiceWaveView.LOOK_OBSIDIAN
                 : aurora ? VoiceWaveView.LOOK_AURORA
                 : signal ? VoiceWaveView.LOOK_SIGNAL : VoiceWaveView.LOOK_COPPER);
         wave.setMode(VoiceWaveView.CONNECTING);
@@ -396,23 +401,23 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
         // TALK/STOP/CLOSE/SETTINGS buttons remain visible and remote-friendly.
         LinearLayout words = new LinearLayout(this);
         words.setOrientation(LinearLayout.VERTICAL);
-        if (glass || signal) {
+        if (glass || signal || terminal) {
             words.addView(label(signal ? "You said" : "YOU SAID", 11,
-                    obsidian ? theme.muted : aurora ? 0xff9CB9E9
+                    terminal ? theme.muted : obsidian ? theme.muted : aurora ? 0xff9CB9E9
                             : signal ? 0xffAF9881 : 0xffD1AC92));
         }
         transcriptView = label("Say something when listening starts...",
                 signal ? 16 : glass ? 17 : 16,
-                obsidian ? theme.text : aurora ? 0xffE4ECFF
+                terminal ? theme.text : obsidian ? theme.text : aurora ? 0xffE4ECFF
                         : signal ? 0xffF0E2D0 : glass ? 0xffF7E9E0 : 0xffEBCDB9);
         words.addView(transcriptView);
 
         words.addView(label(signal ? "Home Assistant" : "HOME ASSISTANT SAYS", 11,
-                obsidian ? theme.muted : aurora ? 0xff9CB9E9
+                terminal ? theme.muted : obsidian ? theme.muted : aurora ? 0xff9CB9E9
                         : signal ? 0xffAF9881 : glass ? 0xffD1AC92 : 0xffC89A7B));
         answerView = label("Ready for your question",
                 aurora ? 27 : signal ? 26 : glass ? 23 : 19,
-                obsidian ? theme.text : 0xffffffff);
+                terminal ? theme.text : obsidian ? theme.text : 0xffffffff);
         words.addView(answerView);
 
         answerScroll = new ScrollView(this);
@@ -518,8 +523,9 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
         button.setTextSize(signal ? 14 : 13);
         button.setAllCaps(false);
         boolean obsidian = OverlayPreferences.SKIN_OBSIDIAN.equals(preferences.skin());
+        boolean terminal = OverlayPreferences.SKIN_TERMINAL.equals(preferences.skin());
         AppPalette theme = AppPalette.forSkin(preferences.skin());
-        button.setTextColor(obsidian ? theme.text : signal ? 0xffF8E8D6 : 0xffffffff);
+        button.setTextColor(terminal ? theme.text : obsidian ? theme.text : signal ? 0xffF8E8D6 : 0xffffffff);
         button.setFocusable(true);
         button.setFocusableInTouchMode(true);
         button.setMinHeight(0);
@@ -529,7 +535,7 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
             button.setPadding(dp(6), 0, dp(6), 0);
         } else {
             button.setBackgroundTintList(ColorStateList.valueOf(
-                    obsidian ? theme.menuButton
+                    terminal ? theme.menuButton : obsidian ? theme.menuButton
                             : OverlayPreferences.SKIN_AURORA.equals(preferences.skin())
                             ? 0xff172844 : 0xff574039));
         }
@@ -545,11 +551,12 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
                 button.setBackgroundTintList(null);
             } else {
                 button.setBackgroundTintList(ColorStateList.valueOf(
-                        obsidian ? (focused ? theme.accent : theme.menuButton)
+                        terminal ? (focused ? theme.accent : theme.menuButton)
+                                : obsidian ? (focused ? theme.accent : theme.menuButton)
                                 : OverlayPreferences.SKIN_AURORA.equals(preferences.skin())
                                 ? (focused ? 0xff3D65B2 : 0xff172844)
                                 : (focused ? 0xffBB7958 : 0xff574039)));
-                if (obsidian) {
+                if (obsidian || terminal) {
                     button.setTextColor(focused ? theme.screen : theme.text);
                 }
             }
