@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import ast
 import importlib
+import json
 from pathlib import Path
 import sys
 import types
@@ -240,6 +241,18 @@ class PreviewFlowTests(unittest.IsolatedAsyncioTestCase):
         result = await self.flow.async_step_pairing_preview({"start": True})
         self.assertEqual("preview_unavailable", result["errors"]["base"])
         self.assertEqual([], self.flow.created)
+
+    def test_qa_translation_has_friendly_text_and_code_label(self):
+        for path in (
+            ROOT / "strings.json", ROOT / "translations" / "en.json"
+        ):
+            config = json.loads(path.read_text(encoding="utf-8"))["config"]
+            code = config["step"]["pairing_code"]
+            self.assertIn("{code}", code["description"])
+            self.assertIn("Home Assistant verification code", code["data"]["ha_code"])
+            self.assertIn("numbers_match", code["data"])
+            self.assertIn("preview_code_missing", config["abort"])
+            self.assertIn("preview_verified", config["abort"])
 
     def test_no_oauth_handlers_or_new_entry_path_on_preview_only_branch(self):
         preview = next(x for x in flow_cls.body if
