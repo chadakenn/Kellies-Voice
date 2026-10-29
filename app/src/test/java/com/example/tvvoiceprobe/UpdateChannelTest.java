@@ -194,7 +194,7 @@ public class UpdateChannelTest {
         }
         try {
             UpdateChannel.select(UpdateChannel.QA, "[" + qa.replace(
-                    "\\"prerelease\\":true", "\\"prerelease\\":false") + "]");
+                    "\"prerelease\":true", "\"prerelease\":false") + "]");
             throw new AssertionError("Non-prerelease QA was offered");
         } catch (IllegalArgumentException expected) {
             assertTrue(expected.getMessage().contains("QA") || expected.getMessage().contains("signed"));
@@ -210,8 +210,8 @@ public class UpdateChannelTest {
     }
 
     @Test public void qaRejectsMetadataForOtherPackageOrBadTag() {
-        String meta = "{\\"tag\\":\\"v0.16.14-qa.2\\",\\"versionCode\\":56,"
-                + "\\"versionName\\":\\"0.16.14-qa.2\\",\\"sha256\\":\\"" + hash() + "\\"}";
+        String meta = "{\"tag\":\"v0.16.14-qa.2\",\"versionCode\":56,"
+                + "\"versionName\":\"0.16.14-qa.2\",\"sha256\":\"" + hash() + "\"}";
         assertEquals(56, UpdateChannel.requireMetadata(
                 UpdateChannel.QA, "v0.16.14-qa.2", meta).versionCode);
         try {
@@ -226,8 +226,8 @@ public class UpdateChannelTest {
     }
 
     private static String qaRelease(String tag, boolean prerelease) {
-        return "{\\"tag_name\\":\\"" + tag + "\\",\\"draft\\":false,\\"prerelease\\":"
-                + prerelease + ",\\"body\\":\\"QA\\",\\"assets\\":["
+        return "{\"tag_name\":\"" + tag + "\",\"draft\":false,\"prerelease\":"
+                + prerelease + ",\"body\":\"QA\",\"assets\":["
                 + asset(tag, "app-qa.apk", 8000) + ","
                 + asset(tag, "update.json", 90) + "]}";
     }
