@@ -113,6 +113,15 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         }
     };
     private BroadcastReceiver overlayLaunchReceiver;
+    private final Runnable shortcutsRefresh = new Runnable() {
+        @Override public void run() {
+            if (!transparentShortcut && assist != null && assist.isConnected()
+                    && !isFinishing() && !isDestroyed()) {
+                assist.requestHomeShortcuts();
+            }
+            mainHandler.postDelayed(this, 30_000L);
+        }
+    };
     private final Runnable overlayLaunchTimeout = () -> {
         stopListeningForOverlay();
         if (transparentShortcut) openNormalAppFromShortcut();
@@ -143,7 +152,9 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         }
         // These independent connections can diverge after Home Assistant restarts.
         mainHandler.removeCallbacks(connectionLabelRefresh);
+        mainHandler.removeCallbacks(shortcutsRefresh);
         if (!transparentShortcut && connection != null) {
+            mainHandler.postDelayed(shortcutsRefresh, 30_000L);
             mainHandler.post(connectionLabelRefresh);
         }
         // Reuse saved credentials without asking for a manual Reconnect click.
@@ -1891,6 +1902,10 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         });
     }
 
+    @Override public void connectionLost() {
+        homeShortcuts(new JSONArray());
+    }
+
     @Override public void homeShortcuts(JSONArray configured) {
         runOnUiThread(() -> {
             if (homeShortcutRow == null || isFinishing() || isDestroyed()) return;
@@ -1992,6 +2007,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
 
     @Override protected void onStop() {
         mainHandler.removeCallbacks(connectionLabelRefresh);
+        mainHandler.removeCallbacks(shortcutsRefresh);
         HaDiscovery.release(this);
         super.onStop();
     }
