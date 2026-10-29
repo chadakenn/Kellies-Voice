@@ -53,6 +53,12 @@ public final class AppPalette {
                     0xff49382F, 0xffA66A4B, 0xff261C17, 0xff120E0C,
                     0xff493128, 0xff86533A, 0xffB88664);
         }
+        if (OverlayPreferences.SKIN_OBSIDIAN.equals(skin)) {
+            return new AppPalette(
+                    0xff06070C, 0xff00E5FF, 0xffEAF0FF, 0xff8A93B2,
+                    0xff0E1018, 0xff8B5CFF, 0xff0E1018, 0xff06070C,
+                    0xff131520, 0xff1A1D2E, 0xff292A3C);
+        }
         // Current copper palette remains the default for existing installs.
         return new AppPalette(
                 0xff1B1412, 0xffE9B390, 0xffF7E8DB, 0xffC59A80,

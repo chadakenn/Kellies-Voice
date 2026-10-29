@@ -151,6 +151,32 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         // Activity, but not from BOOT_COMPLETED. Restore a prior user opt-in
         // automatically when the app becomes visible after a reboot/update.
         if (!transparentShortcut) {
+            if (ComposeSettingsInterop.takeUpdateChannelChanged() && updater != null) {
+                // Channel changes must never leave a verified offer cached for
+                // a different release feed. Checking/installing remains explicit.
+                updater.clearOffer();
+            }
+            // Compose never owns a Home Assistant connection. On return, reuse
+            // this Activity's existing authenticated publisher, with the
+            // original haManage() guard. No microphone or network is started.
+            for (String setting : ComposeSettingsInterop.takePendingLayoutUpdates()) {
+                if (HaLayout.STYLE.equals(setting)) applyMainPalette();
+                pushLayout(setting);
+            }
+            // The single QA Settings entry uses Compose. Critical recovery
+            // functions still reuse proven, authenticated Java screens, routed
+            // into the corresponding section after Compose closes.
+            String recoverySection = ComposeSettingsInterop.takeLegacySection();
+            if (recoverySection != null) {
+                mainHandler.post(() -> {
+                    if (!isFinishing() && !isDestroyed()) {
+                        try {
+                            activeSettingsSection = SettingsSection.valueOf(recoverySection);
+                            showSettingsMenu();
+                        } catch (IllegalArgumentException ignored) { }
+                    }
+                });
+            }
             mainHandler.post(() -> {
                 if (!isFinishing() && !isDestroyed()) {
                     WakeWordStartup.resumeFromVisible(this);
@@ -262,7 +288,16 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         toolbar.setOrientation(LinearLayout.HORIZONTAL);
         addButton(toolbar, "TALK", v -> startTalk());
         addButton(toolbar, "STOP", v -> assist.finishTalking());
-        addButton(toolbar, "SETTINGS", v -> showSettingsDashboard());
+        // One Settings entry in test builds. Production stays on the proven
+        // legacy hub until Compose passes TV hardware release gates.
+        addButton(toolbar, "SETTINGS", v -> {
+            if (BuildConfig.DEBUG || BuildConfig.IS_QA) {
+                startActivity(new Intent(this,
+                        com.example.tvvoiceprobe.ui.settings.ComposeSettingsActivity.class));
+            } else {
+                showSettingsDashboard();
+            }
+        });
         root.addView(toolbar, new LinearLayout.LayoutParams(-1, -2));
 
         // A short, focus-safe welcome view on ordinary full-screen launches.

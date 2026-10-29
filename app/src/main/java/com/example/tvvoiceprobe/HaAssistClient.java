@@ -87,6 +87,7 @@ public final class HaAssistClient {
     private volatile long conversationTouchedMs;
     private volatile boolean discardConversationUpdate;
     private final Map<Integer, String> layoutWrites = new HashMap<>();
+    private final LayoutWriteFeedback layoutFeedback = new LayoutWriteFeedback();
     private final HaNetworkWatch networks;
     private volatile int commandId = 1;
     private volatile boolean layoutSync;
@@ -254,6 +255,7 @@ public final class HaAssistClient {
             layoutStatesId = -1;
             layoutEntities.clear();
             layoutWrites.clear(); // Results from a lost socket can never arrive.
+            layoutFeedback.reset();
             stopForRunEnd();
             if (reconnectEnabled) scheduleReconnect();
         }
@@ -275,6 +277,7 @@ public final class HaAssistClient {
             layoutStatesId = -1;
             layoutEntities.clear();
             layoutWrites.clear(); // Do not retain unacknowledged old-transport writes.
+            layoutFeedback.reset();
             stopForRunEnd();
             events.connectionLost(); // Release overlay mic/listening UI on Wi-Fi recovery.
         }
@@ -354,10 +357,9 @@ public final class HaAssistClient {
             String layoutSetting;
             synchronized (this) { layoutSetting = layoutWrites.remove(id); }
             if (layoutSetting != null) {
-                if (!msg.optBoolean("success", false)) {
-                    events.status("Home Assistant didn't accept the "
-                            + layoutSetting.replace('_', ' ') + " change.");
-                }
+                String messageForUser = layoutFeedback.onResult(id, layoutSetting,
+                        msg.optBoolean("success", false));
+                if (messageForUser != null) events.status(messageForUser);
                 return;
             }
             if (id == currentRunId && !msg.optBoolean("success", false)) {
@@ -1062,6 +1064,7 @@ public final class HaAssistClient {
         conversationTouchedMs = 0L;
         discardConversationUpdate = false;
         layoutWrites.clear();
+        layoutFeedback.reset();
         layoutSubscribed = false;
         layoutStatesId = -1;
         layoutEntities.clear();
