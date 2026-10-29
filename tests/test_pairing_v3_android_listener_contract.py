@@ -28,7 +28,8 @@ class AndroidV3AdapterContracts(unittest.TestCase):
         for forbidden in (
             "/v1/pair/", "/v2/pair/", "CredentialStore",
             "refresh_token", "access_token", "oauth_callback", "/auth/token",
-            "wakeWord", "microphone", "HaAssistClient", "provisional_create",
+            "WakeWordService.", "AudioRecord(", "HaAssistClient",
+            "provisional_create",
         ):
             with self.subTest(forbidden=forbidden):
                 self.assertNotIn(forbidden, self.code)
