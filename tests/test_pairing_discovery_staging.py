@@ -27,9 +27,10 @@ class PairingDiscoverySourceTests(unittest.TestCase):
     def test_preview_hidden_from_stable(self):
         activity = (APP / "VoiceActivity.java").read_text()
         manifest = (ROOT / "app/src/main/AndroidManifest.xml").read_text()
-        self.assertIn("boolean pairingPreview = BuildConfig.DEBUG", activity)
-        self.assertIn('BuildConfig.VERSION_NAME.contains("-dev")', activity)
-        self.assertIn('BuildConfig.VERSION_NAME.contains("-qa")', activity)
+        self.assertIn("boolean pairingPreview = pairingPreviewBuild()", activity)
+        self.assertIn("ApplicationInfo.FLAG_DEBUGGABLE", activity)
+        self.assertIn('version.contains("-dev")', activity)
+        self.assertIn('version.contains("-qa")', activity)
         self.assertIn('if (pairingPreview) {', activity)
         self.assertIn('android:name=".PairingSetupActivity" android:exported="false"', manifest)
 
