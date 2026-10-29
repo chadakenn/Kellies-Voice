@@ -34,6 +34,9 @@ class Vol:
     @staticmethod
     def Required(name): return name
 
+TV_UUID = "123e4567-e89b-42d3-a456-426614174000"
+SESSION = "AQIDBAUGBwgJCgsMDQ4PEA"
+
 class Backend:
     def __init__(self):
         self.calls = 0
@@ -46,7 +49,9 @@ class Backend:
 
     async def check(self, attempt):
         self.calls += 1
-        return self.approved
+        if not self.approved:
+            return None
+        return types.SimpleNamespace(tv_uuid=TV_UUID, session=SESSION)
 
 
 backend = Backend()
@@ -82,6 +87,7 @@ class FakeFlow:
         self._preview_attempt = None
         self._preview_tv_ok_confirmed = False
         self._verified_tv_session = None
+        self._provisional_tv_uuid = None
         self._oauth_attempt = None
         self._oauth_state = None
         self._name = "Demo TV"
@@ -151,7 +157,8 @@ class FlowTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual("form", gate["type"])
         self.assertEqual("oauth_authorize", gate["step_id"])
         self.assertTrue(self.flow._preview_tv_ok_confirmed)
-        self.assertEqual("AQIDBAUGBwgJCgsMDQ4PEA", self.flow._verified_tv_session)
+        self.assertEqual(SESSION, self.flow._verified_tv_session)
+        self.assertEqual(TV_UUID, self.flow._provisional_tv_uuid)
         self.assertEqual([], self.flow.created)
 
     async def test_user_rejects_mismatched_code(self):
