@@ -249,6 +249,7 @@ class KellieVoiceConfigFlow(ConfigFlow, domain=DOMAIN):
                             flow_id=self.flow_id,
                             session=verified.session,
                             tv_uuid=verified.tv_uuid,
+                            comparison_code=attempt.code,
                         )
                     except ValueError:
                         self._preview_attempt = None
