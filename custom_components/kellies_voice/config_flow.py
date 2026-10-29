@@ -16,6 +16,7 @@ from .oauth_callback import register_pending_authorization, consume_pending_auth
 from .pairing_oauth_pending import PendingOAuthTransaction
 
 _LOGGER = logging.getLogger(__name__)
+_PROVISIONAL_TTL = 120
 
 
 def _text(properties: dict, key: str) -> str:
@@ -310,10 +311,40 @@ class KellieVoiceConfigFlow(ConfigFlow, domain=DOMAIN):
         Any pending transaction is cleared.
         """
         if self._oauth_pending is not None:
-            # No exchanger available in this abort path; secrets are dropped.
             await self._oauth_pending.abort_and_revoke(None)
             self._oauth_pending = None
         return self.async_abort(reason="oauth_exchange_pending")
+
+    async def async_step_provisional_create(self, user_input=None):
+        """Supported config-flow path for a short-lived provisional entry.
+
+        Called only after owner consent + verified TV OK. Uses
+        async_create_entry so HA populates the required metadata. The entry
+        is marked provisional and contains no tokens. Expiry cleanup is the
+        caller's responsibility (timer + restart reconciliation).
+        """
+        if user_input is None:
+            return self.async_abort(reason="provisional_incomplete")
+        tv_uuid = user_input.get("tv_uuid")
+        owner_user_id = user_input.get("owner_user_id")
+        if not isinstance(tv_uuid, str) or not tv_uuid:
+            return self.async_abort(reason="provisional_incomplete")
+        if not isinstance(owner_user_id, str) or not owner_user_id or owner_user_id == "unknown":
+            return self.async_abort(reason="provisional_owner_required")
+        # Refuse if any entry already exists for this TV.
+        for entry in self.hass.config_entries.async_entries(DOMAIN):
+            if entry.data.get("device_id") == tv_uuid:
+                return self.async_abort(reason="provisional_exists")
+        return self.async_create_entry(
+            title="Kellie's Voice (provisional)",
+            data={
+                "device_id": tv_uuid,
+                "name": "Kellie's Voice (provisional)",
+                "provisional": True,
+                "owner_user_id": owner_user_id,
+                "started": time.time(),
+            },
+        )
 
     async def async_step_confirm(self, user_input=None):
         if user_input is not None:
