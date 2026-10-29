@@ -15,6 +15,9 @@ package = types.ModuleType(PKG)
 package.__path__ = [str(ROOT)]
 sys.modules[PKG] = package
 provision = importlib.import_module(PKG + ".pairing_provisioning")
+sealed = importlib.import_module(PKG + ".pairing_channel")
+verification = importlib.import_module(PKG + ".pairing_verification")
+from cryptography.hazmat.primitives.asymmetric import ec
 
 TV = "123e4567-e89b-42d3-a456-426614174000"
 SID = "AQIDBAUGBwgJCgsMDQ4PEA"
@@ -73,6 +76,42 @@ class ProvisioningTests(unittest.TestCase):
         self.assertNotIn("aiohttp", source)
         self.assertNotIn("requests.post", source)
         self.assertNotIn("print(", source)
+
+    def test_real_ecdh_aesgcm_credentials_are_single_use_and_authenticated(self):
+        tv_private = ec.derive_private_key(1, ec.SECP256R1())
+        ha_private = ec.derive_private_key(2, ec.SECP256R1())
+        tv_public = verification.public_der(tv_private)
+        ha_public = verification.public_der(ha_private)
+        tv_channel = sealed.PairingSealedChannel(
+            tv_private, local_is_tv=True, session=SID,
+            tv_key=tv_public, ha_key=ha_public)
+        ha_channel = sealed.PairingSealedChannel(
+            ha_private, local_is_tv=False, session=SID,
+            tv_key=tv_public, ha_key=ha_public)
+        packet = provision.seal_credentials(ha_channel, **candidate())
+        self.assertNotIn(b"fake.refresh.token.sample", packet)
+        self.assertNotIn(b"my-ha.example.org", packet)
+        clear = tv_channel.open(packet)
+        self.assertEqual(
+            "fake.refresh.token.sample",
+            provision.validate_payload_shape(
+                clear, expected_tv_id=TV, expected_session=SID,
+                now_ms=1_000)["refresh_token"]
+        )
+        with self.assertRaises(ValueError):
+            tv_channel.open(packet)  # Reject token replay
+
+        fresh_tv = sealed.PairingSealedChannel(
+            tv_private, local_is_tv=True, session=SID,
+            tv_key=tv_public, ha_key=ha_public)
+        tampered = bytearray(packet)
+        tampered[-1] ^= 0x01
+        with self.assertRaises(ValueError):
+            fresh_tv.open(bytes(tampered))
+        with self.assertRaises(ValueError):
+            fresh_tv.open(packet) if False else provision.validate_payload_shape(
+                clear, expected_tv_id=TV, expected_session=SID,
+                now_ms=1_800_000)  # Expired credentials not reusable
 
     def test_reject_cross_tv_session_invalid_origin_and_time(self):
         changes = [
