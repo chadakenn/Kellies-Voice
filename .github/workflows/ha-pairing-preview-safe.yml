@@ -50,6 +50,10 @@ jobs:
         run: |
           mkdir -p ha-preview-artifact/custom_components
           cp -R custom_components/kellies_voice ha-preview-artifact/custom_components/
+          # CI compileall created Python 3.13 caches. Never ship bytecode
+          # from the runner to a potentially different HA/Python runtime.
+          find ha-preview-artifact -type d -name __pycache__ -prune -exec rm -rf '{}' +
+          find ha-preview-artifact -type f -name '*.pyc' -delete
           cd ha-preview-artifact
           zip -q -r ../Kellies-Voice-HA-Pairing-Preview-Only.zip custom_components
       - uses: actions/upload-artifact@v4
