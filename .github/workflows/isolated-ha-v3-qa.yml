@@ -63,3 +63,14 @@ jobs:
           path: kellies-voice-v3-ha-qa.zip
           if-no-files-found: error
           retention-days: 14
+      - name: Stage drag-and-drop HA config folder (one ZIP extract)
+        run: |
+          mkdir -p staging/custom_components
+          cp -a custom_components/kellies_voice_v3_qa staging/custom_components/
+          find staging -name __pycache__ -type d -prune -exec rm -rf {} +
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Kellies-v3-HA-DragIntoConfig
+          path: staging/
+          if-no-files-found: error
+          retention-days: 14
