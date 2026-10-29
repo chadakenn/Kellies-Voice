@@ -17,6 +17,7 @@ public final class PairingSetupActivity extends Activity {
     private PairingDiscoveryWindow window;
     private TextView state;
     private Button startButton;
+    private Button confirmButton;
 
     @Override public void onCreate(Bundle stateBundle) {
         super.onCreate(stateBundle);
@@ -31,10 +32,10 @@ public final class PairingSetupActivity extends Activity {
 
         TextView title = message("HOME ASSISTANT PAIRING", 24, 0xffE9B390);
         root.addView(title);
-        root.addView(message("Discovery preview for developers", 19, Color.WHITE));
-        root.addView(message("Start a temporary 2-minute LAN discovery window. "
-                + "The TV will advertise a real, read-only endpoint so we can test "
-                + "Home Assistant detection. No login is created and no Home Assistant "
+        root.addView(message("Two-screen verification preview for developers", 19, Color.WHITE));
+        root.addView(message("Start a temporary 2-minute LAN verification window. "
+                + "The TV will exchange only temporary public keys with Home Assistant so we can test "
+                + "the eight-digit code on both screens. No login is created and no Home Assistant "
                 + "URL, token, authorization code, or microphone audio is exchanged.", 17, 0xffe7d7c9));
         root.addView(message("Automatic authorization is not implemented yet. "
                 + "Keep using the existing Home Assistant login for normal TV operation.", 15,
@@ -47,6 +48,22 @@ public final class PairingSetupActivity extends Activity {
         startButton.setOnClickListener(v -> begin());
         root.addView(startButton);
 
+        confirmButton = new Button(this);
+        confirmButton.setText("THE EIGHT DIGITS MATCH - CONFIRM ON TV");
+        confirmButton.setEnabled(false);
+        confirmButton.setOnClickListener(v -> {
+            if (window != null && window.approveFromTv()) {
+                state.setText("TV remote approved this visual code. "
+                        + "Go back to Home Assistant to verify the proof. "
+                        + "This preview does NOT connect your account.");
+                confirmButton.setEnabled(false);
+            } else {
+                state.setText("No active verification. Start a new discovery preview.");
+                confirmButton.setEnabled(false);
+            }
+        });
+        root.addView(confirmButton);
+
         Button closeButton = new Button(this);
         closeButton.setText("CANCEL / BACK");
         closeButton.setOnClickListener(v -> finish());
@@ -58,11 +75,19 @@ public final class PairingSetupActivity extends Activity {
 
     private void begin() {
         stopWindow();
+        confirmButton.setEnabled(false);
         try {
             window = PairingDiscoveryWindow.start(this, () -> {
                 window = null;
                 state.setText("Discovery ended. The listener is closed.");
+                confirmButton.setEnabled(false);
                 startButton.setEnabled(true);
+            }, code -> {
+                state.setText("COMPARE THE CODE BELOW WITH HOME ASSISTANT:\n\n"
+                        + code + "\n\nOnly press Confirm if ALL eight digits match. "
+                        + "Never accept a pairing request you did not start.");
+                confirmButton.setEnabled(true);
+                confirmButton.requestFocus();
             });
             startButton.setEnabled(false);
             state.setText("LAN discovery preview active for 120 seconds. "
@@ -79,6 +104,7 @@ public final class PairingSetupActivity extends Activity {
             window.close();
             window = null;
         }
+        if (confirmButton != null) confirmButton.setEnabled(false);
     }
 
     private TextView message(String value, int sp, int color) {
