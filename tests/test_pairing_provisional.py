@@ -86,6 +86,27 @@ class TestProvisionalEntry(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(is_provisional_allowed(self.hass, "tv-1", other))
         self.assertFalse(is_provisional_allowed(self.hass, "tv-1", None))
 
+    async def test_future_dated_entry_does_not_extend_authorization(self):
+        entry = MagicMock()
+        entry.data = {
+            "device_id": "tv-1", "provisional": True,
+            "owner_user_id": "user-1",
+            "started": time.time() + 3600,
+        }
+        self.hass.config_entries.async_entries.return_value = [entry]
+        user = MagicMock()
+        user.id = "user-1"
+        self.assertFalse(is_provisional_allowed(self.hass, "tv-1", user))
+        entry.data["started"] = True
+        self.assertFalse(is_provisional_allowed(self.hass, "tv-1", user))
+
+    async def test_unknown_owner_cannot_start_provisional_entry(self):
+        result = await create_provisional_entry(
+            self.hass, tv_uuid="tv-1", owner_user_id="unknown"
+        )
+        self.assertIsNone(result)
+        self.hass.config_entries.async_add.assert_not_awaited()
+
     async def test_expired_provisional_rejected(self):
         entry = MagicMock()
         entry.data = {
