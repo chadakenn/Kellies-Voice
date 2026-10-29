@@ -45,10 +45,31 @@ def websocket_claim_verified_owner(hass: HomeAssistant,
     connection.send_result(msg["id"], {"owner_verified": True})
 
 
+@websocket_api.websocket_command({
+    probatio.Required("type"): "kellies_voice/pair/list_verified",
+})
+@callback
+def websocket_list_verified(hass: HomeAssistant,
+                            connection: websocket_api.ActiveConnection,
+                            msg: dict) -> None:
+    """Read-only pending list from this already authenticated HA session."""
+    user = connection.user
+    if (user is None or getattr(user, "is_owner", False) is not True
+            or getattr(user, "is_active", False) is not True):
+        connection.send_error(msg["id"], websocket_api.ERR_UNAUTHORIZED,
+                              "An active Home Assistant owner is required")
+        return
+    connection.send_result(msg["id"], {
+        "pending": owner_claims(hass).pending(user=user),
+        "preview_only": True,
+    })
+
+
 @callback
 def async_register_owner_claim(hass: HomeAssistant) -> None:
     data = hass.data.setdefault(DOMAIN, {})
     if data.get(_REGISTERED):
         return
     websocket_api.async_register_command(hass, websocket_claim_verified_owner)
+    websocket_api.async_register_command(hass, websocket_list_verified)
     data[_REGISTERED] = True
