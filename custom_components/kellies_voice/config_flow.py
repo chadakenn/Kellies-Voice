@@ -68,6 +68,8 @@ class KellieVoiceConfigFlow(ConfigFlow, domain=DOMAIN):
         self._oauth_pending = None
         self._provisional_tv_uuid = None
         self._provisional_owner = None
+        self._preview_tv_ok_confirmed = False
+        self._verified_tv_session = None
 
     async def async_step_user(self, user_input=None):
         """Manual fallback when the TV cannot advertise across mDNS/VLANs."""
@@ -180,6 +182,10 @@ class KellieVoiceConfigFlow(ConfigFlow, domain=DOMAIN):
                 errors["base"] = "preview_unavailable"
             else:
                 if approved:
+                    # This flag is only set after a transcript-bound proof
+                    # returned by the TV's physical OK control, not discovery.
+                    self._preview_tv_ok_confirmed = True
+                    self._verified_tv_session = attempt.candidate.session
                     self._preview_attempt = None
                     return await self.async_step_oauth_authorize()
                 errors["base"] = "waiting_for_tv"
@@ -327,8 +333,17 @@ class KellieVoiceConfigFlow(ConfigFlow, domain=DOMAIN):
         owner_user_id = self.context.get("user_id")
         if not isinstance(owner_user_id, str) or not owner_user_id or owner_user_id == "unknown":
             return self.async_abort(reason="provisional_owner_required")
-        tv_uuid = getattr(self._preview_candidate, "session", None) or self._provisional_tv_uuid
-        if not isinstance(tv_uuid, str) or not tv_uuid:
+        # An unauthenticated discovery session is a 16-byte random nonce,
+        # NOT the TV UUID. Treating it as a device ID could accidentally
+        # provision access to the wrong entity. The real TV UUID must arrive
+        # later from a verified, transcript-bound encrypted handoff.
+        if (self._preview_tv_ok_confirmed is not True
+                or self._preview_candidate is None
+                or self._verified_tv_session != self._preview_candidate.session):
+            return self.async_abort(reason="provisional_tv_proof_required")
+        try:
+            tv_uuid = clean_tv_device_id(self._provisional_tv_uuid)
+        except (ValueError, TypeError, AttributeError):
             return self.async_abort(reason="provisional_tv_required")
         # Refuse if any entry already exists for this TV.
         for entry in self.hass.config_entries.async_entries(DOMAIN):
