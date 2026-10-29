@@ -67,9 +67,12 @@ class VerifiedSasTests(unittest.TestCase):
         ha_code = verified.comparison_code(hpriv, ha)
         self.assertEqual(tv_code, ha_code)
         self.assertRegex(tv_code, r"^[0-9]{8}$")
+        # Frozen cross-language fixture using P-256 private scalars 1/2.
+        self.assertEqual("83428994", tv_code)
         tv_proof = verified.physical_tv_ok_proof(tpriv, tv, tv_uuid=UUID)
         ha_expected = verified.physical_tv_ok_proof(hpriv, ha, tv_uuid=UUID)
         self.assertEqual(tv_proof, ha_expected)
+        self.assertEqual("TuUIMiT-zkUz3XaKygd5Gw", tv_proof)
         self.assertEqual(22, len(tv_proof))
         self.assertNotEqual(tv_proof, verified.physical_tv_ok_proof(
             tpriv, tv, tv_uuid=OTHER_UUID))
