@@ -5,6 +5,7 @@ import logging
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import config_validation as cv
 
 from .const import DOMAIN, PLATFORMS
 from .services import async_register_services
@@ -13,6 +14,9 @@ from .websocket import async_register_alert_subscription
 
 _LOGGER = logging.getLogger(__name__)
 _TIMER_KEY = "native_timer_registries"
+
+# UI/config-entry only: reject accidental YAML configuration and satisfy hassfest.
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
