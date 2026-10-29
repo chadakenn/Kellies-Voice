@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.ui.text.input.KeyboardType
@@ -63,12 +64,26 @@ import com.example.tvvoiceprobe.ui.theme.SkinStore
  * Controls reuse OverlayPreferences and existing service entry points.
  */
 class ComposeSettingsActivity : ComponentActivity() {
+    // Window focus can return after the soft keyboard closes even when the
+    // Compose screen did not re-enter composition.
+    private var focusEpoch by mutableIntStateOf(0)
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) focusEpoch++
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             var skin by remember { mutableStateOf(SkinStore.getSelected(this)) }
             KellieTheme(skin = skin) {
                 SettingsScreen(
+                    windowFocusEpoch = focusEpoch,
+                    onLegacySection = { section ->
+                        ComposeSettingsInterop.requestLegacySection(section)
+                        finish()
+                    },
                     onSkinChange = { newSkin ->
                         SkinStore.setSelected(this, newSkin)
                         skin = newSkin
@@ -90,15 +105,29 @@ data class SettingsCategory(
 
 @Composable
 fun SettingsScreen(
+    windowFocusEpoch: Int,
+    onLegacySection: (String) -> Unit,
     onSkinChange: (com.example.tvvoiceprobe.ui.theme.KellieSkin) -> Unit,
     onBack: () -> Unit
 ) {
     val skin = LocalKellieSkin.current
     var selected by rememberSaveable { mutableStateOf("home") }
-    // Keep the initial TV remote focus on the first real category, not
-    // the instructional footer or a remembered element in the details pane.
-    val firstCategoryFocus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { firstCategoryFocus.requestFocus() }
+    var editorOpen by remember { mutableStateOf(false) }
+    val categoryFocus = remember {
+        listOf("home", "voice", "overlay", "alerts", "screensaver", "updates")
+            .associateWith { FocusRequester() }
+    }
+    val latestSelected by rememberUpdatedState(selected)
+
+    // A one-shot onCreate focus request misses some onn keyboard/IME teardown
+    // paths. Retry once after the actual Android window regains focus, and when
+    // an inline editor closes. Never steal focus while the user is typing.
+    LaunchedEffect(windowFocusEpoch, editorOpen) {
+        if (!editorOpen) {
+            withFrameNanos { }
+            categoryFocus[latestSelected]?.requestFocus()
+        }
+    }
     BackHandler(onBack = onBack)
 
     val categories = listOf(
@@ -142,7 +171,7 @@ fun SettingsScreen(
                         category = cat,
                         selected = selected == cat.id,
                         onSelect = { selected = cat.id },
-                        firstFocus = if (cat.id == "home") firstCategoryFocus else null
+                        categoryFocus = categoryFocus[cat.id]
                     )
                 }
             }
@@ -158,7 +187,9 @@ fun SettingsScreen(
                     item {
                         CategoryContent(
                             categoryId = selected,
-                            onSkinChange = onSkinChange
+                            onSkinChange = onSkinChange,
+                            onLegacySection = onLegacySection,
+                            onEditorStateChanged = { editorOpen = it }
                         )
                     }
                 }
@@ -181,7 +212,7 @@ fun CategoryCard(
     category: SettingsCategory,
     selected: Boolean,
     onSelect: () -> Unit,
-    firstFocus: FocusRequester? = null
+    categoryFocus: FocusRequester? = null
 ) {
     val skin = LocalKellieSkin.current
     var focused by remember { mutableStateOf(false) }
@@ -190,15 +221,15 @@ fun CategoryCard(
         modifier = Modifier
             .fillMaxWidth()
             .background(
-                if (focused || selected) skin.colors.cardFocused else skin.colors.card,
+                if (focused) skin.colors.cardFocused else skin.colors.card,
                 skin.cardShape
             )
             .border(
-                width = if (focused || selected) skin.focusBorderWidth else 1.dp,
-                color = if (focused || selected) skin.colors.focus else skin.colors.stroke,
+                width = if (focused) skin.focusBorderWidth else if (selected) 2.dp else 1.dp,
+                color = if (focused) skin.colors.focus else if (selected) skin.colors.accentSecondary else skin.colors.stroke,
                 shape = skin.cardShape
             )
-            .then(if (firstFocus == null) Modifier else Modifier.focusRequester(firstFocus))
+            .then(if (categoryFocus == null) Modifier else Modifier.focusRequester(categoryFocus))
             .onFocusChanged { focused = it.isFocused }
             .clickable { onSelect() }
             .padding(14.dp),
@@ -215,7 +246,9 @@ fun CategoryCard(
 @Composable
 fun CategoryContent(
     categoryId: String,
-    onSkinChange: (com.example.tvvoiceprobe.ui.theme.KellieSkin) -> Unit
+    onSkinChange: (com.example.tvvoiceprobe.ui.theme.KellieSkin) -> Unit,
+    onLegacySection: (String) -> Unit,
+    onEditorStateChanged: (Boolean) -> Unit
 ) {
     val skin = LocalKellieSkin.current
     val context = androidx.compose.ui.platform.LocalContext.current
