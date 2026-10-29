@@ -16,7 +16,8 @@ import okhttp3.WebSocketListener;
 
 /**
  * One-shot read-only proof that a PENDING token is actually accepted by
- * Home Assistant and can access an Assist pipeline.
+ * Home Assistant, has a usable Assist pipeline AND is authorized to
+ * subscribe to alerts for this exact paired TV.
  *
  * Never sends a microphone frame, never starts Assist, never touches a saved
  * login, never stages/promotes a credential and never marks HA pairing done.
@@ -26,7 +27,7 @@ import okhttp3.WebSocketListener;
 public final class PairingAssistConnectionProbe implements AutoCloseable {
     public interface Result {
         /** Delivered on Android's main thread, at most once. */
-        void complete(boolean authenticatedAndAssistAvailable);
+        void complete(boolean assistAndScopedAlertsAuthorized);
     }
 
     private static final long TIMEOUT_MS = 15_000L;
@@ -46,10 +47,12 @@ public final class PairingAssistConnectionProbe implements AutoCloseable {
     private boolean finished;
     private Runnable timeout;
     private String token;
+    private final String tvId;
 
-    private PairingAssistConnectionProbe(Result callback, String token) {
+    private PairingAssistConnectionProbe(Result callback, String token, String tvId) {
         this.callback = callback;
         this.token = token;
+        this.tvId = tvId;
     }
 
     /** Never call from a live TV route until #193 consent/AEAD is reviewed. */
@@ -72,7 +75,7 @@ public final class PairingAssistConnectionProbe implements AutoCloseable {
             throw new IllegalArgumentException("Pairing proof requires trusted HTTPS");
         }
         PairingAssistConnectionProbe probe =
-                new PairingAssistConnectionProbe(callback, credentials.accessToken);
+                new PairingAssistConnectionProbe(callback, credentials.accessToken, expectedTvId);
         probe.open(base);
         return probe;
     }
@@ -129,9 +132,42 @@ public final class PairingAssistConnectionProbe implements AutoCloseable {
                     return;
                 }
                 if ("result".equals(type)) {
-                    boolean verified = gate.pipelineResult(
-                            message.optInt("id", -1), message.optBoolean("success", false));
-                    finish(verified);
+                    int id = message.optInt("id", -1);
+                    boolean ok = message.optBoolean("success", false);
+                    if (gate.stage() == PairingAssistProofState.Stage.WAIT_PIPELINES) {
+                        // A successful API call with no usable Assist pipeline
+                        // must not be reported as a functioning assistant.
+                        JSONObject result = message.optJSONObject("result");
+                        org.json.JSONArray pipelines = result == null
+                                ? null : result.optJSONArray("pipelines");
+                        if (!gate.pipelineResult(id, ok,
+                                pipelines != null && pipelines.length() > 0)) {
+                            finish(false);
+                            return;
+                        }
+                        JSONObject command = new JSONObject();
+                        command.put("id", PairingAssistProofState.SCOPED_ALERTS_REQUEST_ID);
+                        command.put("type", "kellies_voice/subscribe_alerts");
+                        command.put("device_id", tvId);
+                        if (!ws.send(command.toString())) finish(false);
+                        return;
+                    }
+                    if (gate.stage() == PairingAssistProofState.Stage.WAIT_SCOPED_ALERTS) {
+                        boolean bothAuthorized = gate.scopedAlertResult(id, ok);
+                        if (bothAuthorized) {
+                            // Cancel the temporary alert listener before
+                            // closing this one-shot proof socket.
+                            JSONObject unsubscribe = new JSONObject();
+                            unsubscribe.put("id", 77113);
+                            unsubscribe.put("type", "unsubscribe_events");
+                            unsubscribe.put("subscription",
+                                    PairingAssistProofState.SCOPED_ALERTS_REQUEST_ID);
+                            ws.send(unsubscribe.toString());
+                        }
+                        finish(bothAuthorized);
+                        return;
+                    }
+                    finish(false);
                     return;
                 }
                 if ("auth_invalid".equals(type)) {

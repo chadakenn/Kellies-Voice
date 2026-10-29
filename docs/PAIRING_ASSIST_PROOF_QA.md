@@ -1,27 +1,34 @@
-# #193: Temporary Assist login proof on the TV (research / QA primitive)
+# #193: Read-only Assist + TV-alert authorization proof
 
-**Status: not wired to the pairing listener or user credentials, not public beta-ready.** After HA owner authorizes a candidate token and the encrypted provisioning session has delivered it to the correct TV, the TV must prove that token works **before** replacing any existing working login.
+**Draft only.** This code is not connected to the network pairing listener or a live user account, and it cannot activate or replace the current login.
 
-## What this draft supplies
+## What the TV must prove before a future credential commit
 
-- `PairingAssistProofState`: strict order: HA `auth_required` → TV authentication attempt → HA `auth_ok` → read-only `assist_pipeline/pipeline/list` reply with exact request ID and `success=true` → successful Assist capability proof. Wrong order, duplicate challenge, invalid response, unexpected ID and cancellation fail closed.
-- `PairingAssistConnectionProbe`: one-shot read-only WebSocket, at most 15 seconds, using an already-validated staged `PairedOAuthCredentials` for a verified TV pairing session. **Requires trusted HTTPS** with ordinary platform TLS certificate validation and disables redirects; does NOT send secrets over plaintext local LAN HTTP. Never records audio, invokes an Assist pipeline, stores credentials or starts the mic. Callback once on Android main thread.
-- Tests: `PairingAssistProofStateTest` and `tests/test_pairing_assist_probe.py`.
+1. Pending credentials are bound to the expected OAuth client, actual HA origin, exact TV UUID and active two-minute pairing session, previously authorized by the HA owner and confirmed with TV OK.
+2. A one-shot HTTPS WebSocket (platform TLS, no redirects) receives `auth_required`, then successfully authenticates the candidate token with `auth_ok`.
+3. The read-only `assist_pipeline/pipeline/list` command returns a matching successful result with at least one pipeline.
+4. Only then may the TV ask `kellies_voice/subscribe_alerts` for the **exact same TV UUID**. A matching `success: true` result proves HA has accepted that user's read access to the correct paired TV.
+5. The temporary subscription is removed and the short-lived socket closed. **Neither check activates credentials, turns on the microphone, or marks pairing Connected.**
 
-## What this does not prove
+Auth rejection, empty pipeline list, unknown command, wrong TV access, wrong result ID, out-of-order event, retry beyond 15 seconds, TLS/certificate failure and cancellation fail closed. HA may temporarily return `tv_not_ready` while the TV select entity is loading; this helper fails, rather than weakening permission checks. An eventual real onboarding coordinator needs a bounded, secure retry with the original session lifetime.
 
-- A successful response means the token authenticates to this HA server and it can list Assist pipelines. It does **not** prove the token can actually run a voice pipeline, subscribe to scoped Kellie's Voice alerts, access selected device entities or refresh after expiry.
-- The probe cannot prove TV identity or HA owner consent. Those must already have been verified by HA OAuth/PKCE + TV remote OK + session-bound ECDH/AES-GCM *before* the probe receives a candidate.
-- It does not create a config entry, mark pairing Connected, activate saved credentials, start a public listener, support `http://` local HA servers, or replace the old manual token.
-- Do not run this from the real main Activity until encrypted provision, additional scoped alert permissions and atomic promotion/rollback have been reviewed.
+## Limitations
 
-## Remaining checks before v0.17.0-dev.1
+- A successful read-only query is not proof an actual STT/TTS run or audio output works.
+- A successful scoped alert **subscription** is not proof future alerts will arrive or that the token has broad device control rights.
+- The OAuth client ID/callback must still be validated on real HA; the owner consent + TV verified encryption channel is not connected.
+- Plaintext local HTTP for OAuth credentials remains blocked; support requires a reviewed end-to-end authenticated encrypted channel or trusted HTTPS.
+- No Android Keystore activation, background token refresh, token revocation, owner-side unpair or failure rollback is implemented by this helper.
+- Requires the matching HA integration and registered paired TV config entry before the alert authorization check can pass.
 
-1. Review secure browser callback and owner context in Grok's [#210 OAuth research](https://github.com/chadakenn/Kellies-Voice/pull/210) (a public callback does **not** automatically inherit HA owner identity).
-2. Implement owner-approved HA OAuth, precise TV binding and authorized encrypted provisioning, then stage access/refresh in Android Keystore.
-3. Confirm read-only Assist auth **and** scoped `kellies_voice/subscribe_alerts` for the correct paired device. Failure means revoke the provisional refresh token and delete pending credentials without losing the user's old working login.
-4. Implement refresh/revocation under approved HTTPS/secure tunnel rules; preserve existing sessions/reconnect behavior.
-5. Test fresh onn TV setup, bad code, replay, expired/revoked credentials, two TVs, VLAN/no mDNS, app/HA reboot and TLS/redirect refusal.
-6. Only after successful hardware tests and security review, integrate with the matching theme/main/shortcut beta candidate [#206](https://github.com/chadakenn/Kellies-Voice/pull/206).
+## QA before beta
 
-No production changes; all pairing branches remain draft.
+- [ ] JVM state tests pass (auth only, Assist only, no pipeline, alerts denied, wrong ID, replay, cancellation).
+- [ ] Android debug/native JNI APK compiles on the exact commit; HA/HACS CI passes.
+- [ ] Real onn 4K Pro with the *matching* test HA integration: authorized user with TV select read permission passes; user without read permission fails.
+- [ ] Two TVs with separate UUIDs: a token for one TV cannot prove scoped alerts for the other.
+- [ ] Test reconnect and restart, expired/revoked tokens, stale HA select and no-mDNS/VLAN fallback.
+- [ ] Independent security review and actual first-install OAuth->AEAD->Keystore->Assist+alerts->atomic-activation path, with rollback preserving any existing working account.
+
+Source: Home Assistant WebSocket API (`auth_required`/`auth_ok`, subscriptions and `unsubscribe_events`) https://contributors.home-assistant.io/core/internals/websocket-api/ .
+Related: #193, #211, #212, public beta candidate #206.
