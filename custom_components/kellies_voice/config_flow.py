@@ -66,6 +66,8 @@ class KellieVoiceConfigFlow(ConfigFlow, domain=DOMAIN):
         self._oauth_attempt = None
         self._oauth_state = None
         self._oauth_pending = None
+        self._provisional_tv_uuid = None
+        self._provisional_owner = None
 
     async def async_step_user(self, user_input=None):
         """Manual fallback when the TV cannot advertise across mDNS/VLANs."""
@@ -318,23 +320,22 @@ class KellieVoiceConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_provisional_create(self, user_input=None):
         """Supported config-flow path for a short-lived provisional entry.
 
-        Called only after owner consent + verified TV OK. Uses
-        async_create_entry so HA populates the required metadata. The entry
-        is marked provisional and contains no tokens. Expiry cleanup is the
-        caller's responsibility (timer + restart reconciliation).
+        Owner and TV identity come from server-side flow state, never from
+        user_input. Requires an authenticated owner and a previously verified
+        TV session on this flow instance.
         """
-        if user_input is None:
-            return self.async_abort(reason="provisional_incomplete")
-        tv_uuid = user_input.get("tv_uuid")
-        owner_user_id = user_input.get("owner_user_id")
-        if not isinstance(tv_uuid, str) or not tv_uuid:
-            return self.async_abort(reason="provisional_incomplete")
+        owner_user_id = self.context.get("user_id")
         if not isinstance(owner_user_id, str) or not owner_user_id or owner_user_id == "unknown":
             return self.async_abort(reason="provisional_owner_required")
+        tv_uuid = getattr(self._preview_candidate, "session", None) or self._provisional_tv_uuid
+        if not isinstance(tv_uuid, str) or not tv_uuid:
+            return self.async_abort(reason="provisional_tv_required")
         # Refuse if any entry already exists for this TV.
         for entry in self.hass.config_entries.async_entries(DOMAIN):
             if entry.data.get("device_id") == tv_uuid:
                 return self.async_abort(reason="provisional_exists")
+        self._provisional_owner = owner_user_id
+        self._provisional_tv_uuid = tv_uuid
         return self.async_create_entry(
             title="Kellie's Voice (provisional)",
             data={
