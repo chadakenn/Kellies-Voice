@@ -145,6 +145,18 @@ class HomeAssistantTokenExchange:
                 received_state=state, code=code, tv_session=tv_session, now=now)
         except ValueError:
             raise OAuthTokenError("Owner authorization rejected") from None
+        return await self.exchange_from_consumed(consumed)
+
+    async def exchange_from_consumed(self, consumed: dict) -> AccessCredentials:
+        """Exchange a code that has already been consumed exactly once.
+
+        The caller is responsible for having called consume_callback and for
+        discarding the verifier after this returns.
+        """
+        if not isinstance(consumed, dict):
+            raise OAuthTokenError("Consumed authorization required")
+        if self._client_id != consumed.get("client_id"):
+            raise OAuthTokenError("Wrong authorized Home Assistant instance")
         return await self._post({
             "grant_type": "authorization_code",
             "client_id": self._client_id,
