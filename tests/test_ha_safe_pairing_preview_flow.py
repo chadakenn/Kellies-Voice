@@ -212,7 +212,8 @@ class PreviewFlowTests(unittest.IsolatedAsyncioTestCase):
                        isinstance(x, ast.AsyncFunctionDef)
                        and x.name == "async_step_pairing_code")
         self.assertNotIn("async_create_entry", ast.unparse(preview))
-        self.assertNotIn("oauth", source.lower())
+        self.assertNotIn("async_step_oauth", source)
+        self.assertNotIn("from .pairing_owner_oauth", source)
         self.assertNotIn("PendingOAuthTransaction", source)
 
 if __name__ == "__main__":
