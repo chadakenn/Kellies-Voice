@@ -259,6 +259,7 @@ public final class HaLayout {
 
     private static String styleKey(String value) {
         if ("Aurora Glass".equals(value)) return OverlayPreferences.SKIN_AURORA;
+        if ("Neon Obsidian".equals(value)) return OverlayPreferences.SKIN_OBSIDIAN;
         switch (value) {
             case "Copper Glass":
             case OverlayPreferences.SKIN_GLASS:
@@ -269,6 +270,8 @@ public final class HaLayout {
             case "Night Signal":
             case OverlayPreferences.SKIN_SIGNAL:
                 return OverlayPreferences.SKIN_SIGNAL;
+            case OverlayPreferences.SKIN_OBSIDIAN:
+                return OverlayPreferences.SKIN_OBSIDIAN;
             default:
                 return null;
         }
