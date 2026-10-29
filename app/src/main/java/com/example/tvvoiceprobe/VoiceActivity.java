@@ -57,6 +57,11 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
     private TextView recognized;
     private TextView response;
     private TextView connection;
+    private TextView homeSubtitle;
+    private LinearLayout homeAnswerCard;
+    private LinearLayout homeTranscriptCard;
+    private LinearLayout homeStatusCard;
+    private LinearLayout homeConnectionCard;
     private CredentialStore store;
     private HaAssistClient assist;
     private WakeWordService.Cancellation talkHandoff;
@@ -244,52 +249,110 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
             }
         });
 
+        // Refresh of the ordinary fullscreen home screen. This is visual only:
+        // all voice, HA, wake-word, update and Settings actions remain owned by
+        // the existing Activity and exactly the same callback methods.
+        AppPalette palette = currentPalette();
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(34, 22, 34, 22);
+        root.setPadding(menuDp(34), menuDp(21), menuDp(34), menuDp(20));
         mainRoot = root;
-        AppPalette palette = currentPalette();
         root.setBackgroundColor(palette.screen);
 
-        mainTitle = label("KELLIE'S VOICE   ✦   HOME ASSISTANT", 24, palette.accent);
-        root.addView(mainTitle);
+        LinearLayout masthead = new LinearLayout(this);
+        masthead.setOrientation(LinearLayout.HORIZONTAL);
+        masthead.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout brand = new LinearLayout(this);
+        brand.setOrientation(LinearLayout.VERTICAL);
+        mainTitle = label("KELLIE'S VOICE", 30, palette.accent);
+        mainTitle.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
+        mainTitle.setLetterSpacing(0.09f);
+        mainTitle.setPadding(0, 0, 0, 0);
+        brand.addView(mainTitle);
+        homeSubtitle = label("YOUR HOME ASSISTANT  /  ANDROID TV", 12, palette.muted);
+        homeSubtitle.setLetterSpacing(0.12f);
+        homeSubtitle.setPadding(0, menuDp(1), 0, menuDp(3));
+        brand.addView(homeSubtitle);
+        masthead.addView(brand, new LinearLayout.LayoutParams(0, -2, 1f));
+        TextView privacy = label("LOCAL FIRST  •  MIC BY CHOICE", 12, palette.muted);
+        privacy.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
+        privacy.setPadding(menuDp(12), 0, 0, 0);
+        // Static, non-focusable footer text: no misleading mic-on indicator.
+        masthead.addView(privacy);
+        root.addView(masthead);
 
-        connection = label("Home Assistant: not configured", 15, palette.muted);
-        root.addView(connection);
+        homeConnectionCard = new LinearLayout(this);
+        homeConnectionCard.setOrientation(LinearLayout.VERTICAL);
+        homeConnectionCard.setPadding(menuDp(15), menuDp(7), menuDp(15), menuDp(7));
+        connection = label("VOICE  •  NOT CONFIGURED     TV ALERTS  •  OFF", 14, palette.text);
+        connection.setPadding(0, 0, 0, 0);
+        homeConnectionCard.addView(connection);
+        LinearLayout.LayoutParams connectionSpace = new LinearLayout.LayoutParams(-1, -2);
+        connectionSpace.topMargin = menuDp(12);
+        root.addView(homeConnectionCard, connectionSpace);
 
-        status = label("Connect, then press TALK.", 17, palette.accent);
-        root.addView(status);
+        homeStatusCard = new LinearLayout(this);
+        homeStatusCard.setPadding(menuDp(15), menuDp(8), menuDp(15), menuDp(8));
+        status = label("Connect Home Assistant, then choose TALK.", 17, palette.accent);
+        status.setPadding(0, 0, 0, 0);
+        status.setMaxLines(3);
+        status.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        homeStatusCard.addView(status);
+        LinearLayout.LayoutParams promptSpace = new LinearLayout.LayoutParams(-1, -2);
+        promptSpace.topMargin = menuDp(9);
+        root.addView(homeStatusCard, promptSpace);
 
-        // Prioritize the conversation on small TV screens. The large seven-button
-        // diagnostic layout hid all but the first line of the recognized speech.
+        // Scrollable answer first, then recognized speech. Large responses
+        // remain readable on 720p TVs rather than disappearing below controls.
         ScrollView scroller = new ScrollView(this);
         scroller.setFocusable(false);
-        scroller.setFillViewport(true);
+        scroller.setFillViewport(false);
+        scroller.setVerticalScrollBarEnabled(true);
         LinearLayout history = new LinearLayout(this);
         history.setOrientation(LinearLayout.VERTICAL);
-        history.setPadding(10, 6, 10, 6);
+        history.setPadding(0, menuDp(7), 0, menuDp(7));
 
-        answerHeading = label("HOME ASSISTANT SAYS", 16, palette.muted);
-        history.addView(answerHeading);
-        response = label("Your answer will appear here.", 25, palette.text);
-        history.addView(response);
+        homeAnswerCard = new LinearLayout(this);
+        homeAnswerCard.setOrientation(LinearLayout.VERTICAL);
+        homeAnswerCard.setPadding(menuDp(22), menuDp(15), menuDp(22), menuDp(17));
+        homeAnswerCard.setMinimumHeight(menuDp(148));
+        answerHeading = label("KELLIE'S RESPONSE", 13, palette.accent);
+        answerHeading.setLetterSpacing(0.10f);
+        answerHeading.setTypeface(null, android.graphics.Typeface.BOLD);
+        homeAnswerCard.addView(answerHeading);
+        response = label("Your answer will appear here.", 27, palette.text);
+        response.setLineSpacing(menuDp(3), 1.03f);
+        response.setTextIsSelectable(false);
+        homeAnswerCard.addView(response);
+        history.addView(homeAnswerCard);
 
-        transcriptHeading = label("YOU SAID", 16, palette.muted);
-        history.addView(transcriptHeading);
-        recognized = label("Nothing yet", 21, palette.text);
-        history.addView(recognized);
+        homeTranscriptCard = new LinearLayout(this);
+        homeTranscriptCard.setOrientation(LinearLayout.VERTICAL);
+        homeTranscriptCard.setPadding(menuDp(22), menuDp(12), menuDp(22), menuDp(13));
+        homeTranscriptCard.setMinimumHeight(menuDp(80));
+        transcriptHeading = label("YOU SAID", 13, palette.muted);
+        transcriptHeading.setTypeface(null, android.graphics.Typeface.BOLD);
+        transcriptHeading.setLetterSpacing(0.10f);
+        homeTranscriptCard.addView(transcriptHeading);
+        recognized = label("Nothing yet", 19, palette.text);
+        recognized.setLineSpacing(menuDp(2), 1f);
+        homeTranscriptCard.addView(recognized);
+        LinearLayout.LayoutParams saidSpace = new LinearLayout.LayoutParams(-1, -2);
+        saidSpace.topMargin = menuDp(10);
+        history.addView(homeTranscriptCard, saidSpace);
 
         scroller.addView(history);
-        root.addView(scroller, new LinearLayout.LayoutParams(-1, 0, 1));
+        LinearLayout.LayoutParams conversationSpace = new LinearLayout.LayoutParams(-1, 0, 1f);
+        conversationSpace.topMargin = menuDp(5);
+        root.addView(scroller, conversationSpace);
 
-        // Three controls in one bottom row leave most of the screen for the
-        // actual Home Assistant response. The other actions live in SETTINGS.
+        // Exactly the original three actions and callbacks. This toolbar is
+        // intentionally a single D-pad row: TALK, STOP, SETTINGS.
         LinearLayout toolbar = new LinearLayout(this);
         toolbar.setOrientation(LinearLayout.HORIZONTAL);
+        toolbar.setPadding(0, menuDp(5), 0, 0);
         addButton(toolbar, "TALK", v -> startTalk());
         addButton(toolbar, "STOP", v -> assist.finishTalking());
-        // One Settings entry in test builds. Production stays on the proven
-        // legacy hub until Compose passes TV hardware release gates.
         addButton(toolbar, "SETTINGS", v -> {
             if (BuildConfig.DEBUG || BuildConfig.IS_QA) {
                 startActivity(new Intent(this,
@@ -299,6 +362,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
             }
         });
         root.addView(toolbar, new LinearLayout.LayoutParams(-1, -2));
+        applyMainPalette();
 
         // A short, focus-safe welcome view on ordinary full-screen launches.
         // Keep the existing root ready underneath, so HA configuration and
@@ -414,22 +478,51 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         return AppPalette.forSkin(new OverlayPreferences(this).skin());
     }
 
-    /** Repaint the existing screen in place, preserving text, focus and Assist. */
+    /** Repaint in place without resetting the conversation, D-pad or Assist. */
     private void applyMainPalette() {
         if (mainRoot == null || transparentShortcut) return;
         AppPalette colors = currentPalette();
         mainRoot.setBackgroundColor(colors.screen);
         if (mainTitle != null) mainTitle.setTextColor(colors.accent);
-        if (connection != null) connection.setTextColor(colors.muted);
+        if (homeSubtitle != null) homeSubtitle.setTextColor(colors.muted);
+        if (connection != null) connection.setTextColor(colors.text);
         if (status != null) status.setTextColor(colors.accent);
-        if (answerHeading != null) answerHeading.setTextColor(colors.muted);
+        if (answerHeading != null) answerHeading.setTextColor(colors.accent);
         if (transcriptHeading != null) transcriptHeading.setTextColor(colors.muted);
         if (response != null) response.setTextColor(colors.text);
         if (recognized != null) recognized.setTextColor(colors.text);
-        for (Button b : buttons) {
+        if (homeAnswerCard != null) homeAnswerCard.setBackground(homeCardBackground(colors, false));
+        if (homeTranscriptCard != null) homeTranscriptCard.setBackground(homeCardBackground(colors, false));
+        if (homeStatusCard != null) homeStatusCard.setBackground(homeCardBackground(colors, true));
+        if (homeConnectionCard != null) homeConnectionCard.setBackground(homeCardBackground(colors, false));
+        for (int i = 0; i < buttons.size(); i++) {
+            Button b = buttons.get(i);
             b.setTextColor(colors.text);
-            b.setBackgroundTintList(ColorStateList.valueOf(b.hasFocus() ? colors.focus : colors.button));
+            b.setBackground(homeActionBackground(colors, i == 0, b.hasFocus()));
         }
+    }
+
+    private GradientDrawable homeCardBackground(AppPalette colors, boolean emphasis) {
+        GradientDrawable bg = new GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                new int[] { colors.menuStart, colors.menuEnd });
+        bg.setCornerRadius(menuDp(emphasis ? 12 : 18));
+        bg.setStroke(menuDp(emphasis ? 2 : 1), emphasis ? colors.accent : colors.stroke);
+        return bg;
+    }
+
+    private GradientDrawable homeActionBackground(AppPalette colors,
+                                                   boolean primary, boolean focused) {
+        GradientDrawable bg = new GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                new int[] {
+                        focused ? colors.menuFocus : colors.menuButton,
+                        focused ? colors.menuFocus : colors.button
+                });
+        bg.setCornerRadius(menuDp(12));
+        bg.setStroke(menuDp(focused ? 3 : primary ? 2 : 1),
+                focused || primary ? colors.accent : colors.stroke);
+        return bg;
     }
 
     private void addButton(LinearLayout parent, String value, View.OnClickListener action) {
@@ -437,19 +530,25 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         int index = buttons.size();
         b.setText(value);
         b.setAllCaps(false);
-        b.setTextSize(16);
+        b.setTextSize(19);
+        b.setTypeface(null, android.graphics.Typeface.BOLD);
         b.setTextColor(currentPalette().text);
+        b.setContentDescription(value.equals("TALK") ? "Start voice conversation" :
+                value.equals("STOP") ? "Stop current voice request" : "Open settings");
         b.setFocusable(true);
         b.setFocusableInTouchMode(true);
-        b.setBackgroundTintList(ColorStateList.valueOf(currentPalette().button));
+        b.setMinimumHeight(menuDp(56));
+        b.setPadding(menuDp(8), menuDp(7), menuDp(8), menuDp(7));
+        b.setBackground(homeActionBackground(currentPalette(), index == 0, false));
         b.setOnClickListener(action);
         b.setOnFocusChangeListener((v, focused) -> {
             if (focused) selected = index;
-            AppPalette colors = currentPalette();
-            b.setBackgroundTintList(ColorStateList.valueOf(focused ? colors.focus : colors.button));
+            b.setBackground(homeActionBackground(currentPalette(), index == 0, focused));
         });
         buttons.add(b);
-        parent.addView(b, new LinearLayout.LayoutParams(0, -2, 1f));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, -2, 1f);
+        if (index > 0) params.leftMargin = menuDp(12);
+        parent.addView(b, params);
     }
 
     private void focus(int index) {
@@ -497,9 +596,9 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
 
     private void updateConnectionLabel() {
         if (connection == null) return;
-        String voice = settings == null ? "Home Assistant voice: not configured"
-                : "Home Assistant voice: " + settings.url
-                + (assist != null && assist.isConnected() ? "  ✓ connected" : "  (not connected)");
+        // Main UI shows connection health, not a potentially sensitive HA URL.
+        String voice = settings == null ? "NOT CONFIGURED"
+                : assist != null && assist.isConnected() ? "CONNECTED" : "DISCONNECTED";
         OverlayPreferences prefs = new OverlayPreferences(this);
         String alert;
         if (!prefs.tvEvents()) alert = "off";
@@ -514,7 +613,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
             else if (TvEventsRecovery.UPDATE_HACS.equals(state)) alert = "check HACS version";
             else alert = "not connected (see TV alert status)";
         }
-        connection.setText(voice + "\nTV alerts: " + alert);
+        connection.setText("HOME ASSISTANT  •  " + voice + "     TV ALERTS  •  " + alert);
     }
 
     /**
