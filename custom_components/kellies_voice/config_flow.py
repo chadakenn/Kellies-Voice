@@ -14,6 +14,11 @@ from .pairing_exchange import begin_preview, confirm_tv_ok
 from .pairing_owner_oauth import OwnerAuthorizationAttempt
 from .pairing_browser_probe import register_probe
 
+_BROWSER_NOTICE = (
+    "TEST ONLY: this opens Home Assistant's own browser login page. "
+    "It will discard the authorization code and NEVER install a TV login."
+)
+
 
 def _text(properties: dict, key: str) -> str:
     value = properties.get(key)
@@ -271,11 +276,19 @@ class KellieVoiceConfigFlow(ConfigFlow, domain=DOMAIN):
         if user_input is None:
             return self.async_show_form(
                 step_id="owner_browser_consent",
-                data_schema=vol.Schema({vol.Required("allow_browser_login"): bool}),
+                # Visible even when a local HA installation fails to load
+                # translated titles and descriptions (as in owner QA).
+                data_schema=vol.Schema({
+                    vol.Required("test_only_notice", default=_BROWSER_NOTICE): str,
+                    vol.Required("allow_browser_login"): bool,
+                }),
             )
         if user_input.get("allow_browser_login") is not True:
             self._owner_verified_tv = None
             return self.async_abort(reason="owner_probe_cancelled")
+        if user_input.get("test_only_notice") != _BROWSER_NOTICE:
+            self._owner_verified_tv = None
+            return self.async_abort(reason="owner_probe_rejected")
 
         user_id = self.context.get("user_id")
         if not isinstance(user_id, str) or not user_id:
