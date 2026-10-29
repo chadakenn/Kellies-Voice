@@ -4,6 +4,7 @@ Mock only HTTP transport; cryptography is real, including ECDH on both peers.
 """
 import base64
 import importlib
+import importlib.util
 import json
 import pathlib
 import sys
@@ -96,6 +97,11 @@ class Peer:
         return Response({"approved": True, "proof": proof, "tv_uuid": uuid})
 
 
+# The existing legacy Home Assistant CI runner does not install this optional
+# test dependency. The dedicated 'Safe HA pairing preview' workflow installs
+# cryptography and always executes the complete real ECDH tests.
+@unittest.skipUnless(importlib.util.find_spec("cryptography"),
+                     "cryptography tested in dedicated HA preview CI")
 class PairingExchangeTests(unittest.IsolatedAsyncioTestCase):
     async def test_temporary_keys_real_crypto_and_remote_ok_proof(self):
         peer = Peer()
