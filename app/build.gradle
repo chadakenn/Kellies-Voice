@@ -57,7 +57,8 @@ android {
             // under the same key that signs production.
             initWith release
             applicationIdSuffix '.qa'
-            versionNameSuffix '-qa'
+            // QA releases have monotonic signed version codes and independent tags.
+            versionNameSuffix "-qa.${project.findProperty('qaBuildNumber') ?: '1'}"
             buildConfigField 'boolean', 'IS_QA', 'true'
             manifestPlaceholders['appDisplayName'] = "Kellie's Voice QA"
             manifestPlaceholders['overlayDisplayName'] = "Kellie's Voice QA Overlay"
@@ -89,6 +90,22 @@ android {
                 path 'src/main/cpp/CMakeLists.txt'
                 version '3.22.1'
             }
+        }
+    }
+}
+
+// Only the separate QA package gets an independent monotonically increasing
+// versionCode. Never bump the production code merely to issue a QA build.
+// Each published QA prerelease must increase -PqaVersionCode.
+android.applicationVariants.all { variant ->
+    if (variant.buildType.name == 'qa') {
+        def codeText = (project.findProperty('qaVersionCode') ?: '55').toString()
+        if (!(codeText ==~ /[0-9]+/) || codeText.toLong() > 1000000L
+                || codeText.toLong() <= android.defaultConfig.versionCode) {
+            throw new GradleException('QA versionCode must be numeric and above current production build')
+        }
+        variant.outputs.all { output ->
+            output.versionCodeOverride = codeText.toInteger()
         }
     }
 }
