@@ -39,5 +39,6 @@ async def async_register_pairing_approval_panel(hass) -> None:
         require_admin=True,
         embed_iframe=False,
         config={},
+        config_panel_domain=DOMAIN,
     )
     data[_PANEL_KEY] = True
