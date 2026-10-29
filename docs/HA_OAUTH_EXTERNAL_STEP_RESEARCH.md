@@ -30,8 +30,11 @@ As of the 2026-10-23 change, **`step_id` is required** on `async_external_step` 
 ```python
 return self.async_external_step(
     step_id="authorize",          # required; name of the step method without async_step_
-    url=authorize_url,           # must include flow_id (or state that carries it)
+    url=authorize_url,            # URL carries an unpredictable, expiring OAuth state
 )
+# IMPORTANT: the OAuth state must be an independent cryptographically random
+# nonce, stored server-side with flow_id, authorized owner and verified TV.
+# Never put a bare flow_id in the state parameter.
 ```
 
 ### 2. Browser authorization
@@ -47,33 +50,37 @@ https://<ha-origin>/auth/authorize
   &code_challenge_method=S256
 ```
 
-- Client ID is an IndieAuth URL (typically the HA origin itself or a documented metadata URL).
-- Redirect URI must be same-origin (or declared via HTML link tag / OAuth client metadata document at the client_id URL).
-- PKCE S256 is required for native / non-confidential clients.
-- Owner must be authenticated and explicitly consent. Never silent.
+- Client ID is an IndieAuth URL. Using the HA origin itself as *this custom app's* client ID is a **proposal**, not proof HA accepts that identity; verify with actual HA authorization and token endpoints, particularly redirect URI constraints. Do not impersonate the companion app.
+- Redirect URI must be permitted by the client identity, and match the value used in token exchange. The same-origin HA callback is a proposal subject to live verification.
+- PKCE S256 is required for this native / non-confidential client design, but PKCE does not replace random state, user consent, TV proof or token-channel authentication.
+- Owner must be authenticated and explicitly consent. Never silent. The public callback itself is *not* automatically authenticated merely because an owner used HA's frontend to initiate the flow.
 
 ### 3. Callback (`HomeAssistantView`)
 
 The integration registers a view (or uses a known path) that receives the redirect with `code` and `state`.
 
-Typical pattern:
+**Security design sketch (not copy-paste-ready code):**
 
-```python
-class OAuthCallbackView(HomeAssistantView):
-    url = "/api/kellies_voice/oauth/callback"   # example
-    name = "api:kellies_voice:oauth:callback"
-    requires_auth = False                       # public callback; security via state + PKCE
-
-    async def get(self, request):
-        flow_id = request.query.get("state")
-        code = request.query.get("code")
-        # Validate state matches an active flow, then:
-        await hass.config_entries.flow.async_configure(
-            flow_id,
-            user_input={"code": code, "state": flow_id},
-        )
-        return web.Response(text="<script>window.close()</script>")
+```text
+HA owner starts explicit pairing, after the TV ECDH/code/OK proof
+  -> create unpredictable random OAuth state (NOT the flow ID)
+  -> server-side bind: state, flow_id, authenticated owner identity,
+     verified TV identifier, ECDH transcript, expiry, single-use marker
+OAuth redirects to same-origin HomeAssistantView callback
+  -> callback may be public to receive OAuth redirects
+  -> accept only canonical exact state, code and expected callback origin
+  -> atomically consume still-live state; independently validate bound
+     owner/session + authorization and TV proof
+  -> pass only the validated code/state to the exact saved flow via
+     hass.config_entries.flow.async_configure(flow_id, user_input=...)
+  -> never issue secrets in the callback's response or its logs
+  -> any failure aborts and revokes any token issued on a failed attempt
 ```
+
+A `HomeAssistantView` with `requires_auth = False` is an **unauthenticated HTTP endpoint**. It cannot infer the initiating HA user from the redirect or trust a query-string `flow_id`. Look up the server-side state and verify the initiating authenticated owner and pairing context. Even after authorization, a returned code does not establish that the intended TV received credentials or that Assist connected.
+
+**Important:** Verify whether a custom integration can safely associate browser consent with the initiating HA owner identity using supported HA APIs. If that ownership guarantee cannot be established, do not implement a public callback based solely on a random state value. Fail closed and choose a supported authorization route.
+
 
 ### 4. Resume the flow
 
@@ -83,8 +90,10 @@ async def async_step_authorize(self, user_input=None):
         # first call – show external step
         return self.async_external_step(step_id="authorize", url=...)
 
-    # second call – data arrived from callback
-    # validate code / state / PKCE, then:
+    # second call – the callback validated the random state and bound
+    # owner/TV/flow context; the code has not yet been exchanged.
+    # The actual token exchange and encrypted TV provisioning must still
+    # independently validate consent and authentication, then:
     return self.async_external_step_done(next_step_id="exchange")
 ```
 
@@ -96,7 +105,7 @@ Work with the code happens in the *next* step, not inside the callback view.
 - Same-origin redirect URIs work with both local HTTP (`http://homeassistant.local:8123`) and HTTPS.
 - Reverse proxies must preserve query parameters and the original host (or correctly set `X-Forwarded-*` / `HA-Frontend-Base`).
 - Loopback HTTP is acceptable for local HA; public LAN plaintext HTTP is not for token endpoints.
-- User identity is preserved because the owner is already authenticated in the HA frontend session when they approve the authorize request.
+- **Identity warning:** the browser owner who approves OAuth is not automatically identifiable to a public callback. Record a server-side owner/flow binding when the flow begins, recheck the returned state, and prove which authorized HA user issued the credential before provisioning it. Do not assume the callback request retains the HA frontend's session.
 
 ## What this research does *not* do
 
