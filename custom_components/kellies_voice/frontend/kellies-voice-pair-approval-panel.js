@@ -114,7 +114,7 @@ class KelliesVoicePairApprovalPanel extends HTMLElement {
     code.style.letterSpacing = "0.14em";
     code.style.fontVariantNumeric = "tabular-nums";
     const candidateCode = pair.comparison_code;
-    if (typeof candidateCode !== "string" || !/^\\d{8}$/.test(candidateCode)) {
+    if (typeof candidateCode !== "string" || !/^[0-9]{8}$/.test(candidateCode)) {
       return; // Never offer an approval button if the human code is absent.
     }
     code.textContent = candidateCode;
