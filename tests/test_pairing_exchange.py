@@ -82,12 +82,15 @@ class Peer:
             return Response({"approved": False})
         if self.missing_uuid:
             return Response({"approved": True, "proof": "AAAAAAAAAAAAAAAAAAAAAA"})
-        uuid = "223e4567-e89b-42d3-a456-426614174000" if self.wrong_uuid else self.tv_uuid
+        # The TV signs its real identity, then the hostile response layer
+        # substitutes a different advertised UUID. Re-signing the substitute
+        # would simulate the TV approving that identity, not an attack.
         proof = crypto.approved_proof(
             self.private, local_is_tv=True, session=SESSION,
             tv_key=crypto.public_der(self.private), ha_key=self.ha_key,
-            tv_uuid=uuid,
+            tv_uuid=self.tv_uuid,
         )
+        uuid = "223e4567-e89b-42d3-a456-426614174000" if self.wrong_uuid else self.tv_uuid
         if self.invalid_proof:
             proof = "AAAAAAAAAAAAAAAAAAAAAA"
         return Response({"approved": True, "proof": proof, "tv_uuid": uuid})
