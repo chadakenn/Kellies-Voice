@@ -1,0 +1,40 @@
+name: Offline v3 pairing key commitment (no tokens)
+
+on:
+  pull_request:
+    paths:
+      - 'custom_components/kellies_voice/pairing_key_commitment.py'
+      - 'app/src/main/java/com/example/tvvoiceprobe/PairingKeyCommitment.java'
+      - 'app/src/test/java/com/example/tvvoiceprobe/PairingKeyCommitmentTest.java'
+      - 'tests/test_pairing_key_commitment_v3.py'
+      - '.github/workflows/pairing-key-commitment-v3.yml'
+  workflow_dispatch:
+
+jobs:
+  offline-python-commitment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+      - name: Verify Python commit ordering, tamper refusal and shared Java vectors
+        run: python -m unittest discover -s tests -p test_pairing_key_commitment_v3.py -v
+      - name: Prohibit live credential or v2 protocol activation
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          ha = Path('custom_components/kellies_voice')
+          app = Path('app/src/main/java/com/example/tvvoiceprobe')
+          core = (ha / 'pairing_key_commitment.py').read_text()
+          android = (app / 'PairingKeyCommitment.java').read_text()
+          for code in (core, android):
+              assert 'auth/token' not in code
+              assert 'CredentialStore(' not in code
+              assert 'connect(' not in code
+          assert 'pairing_key_commitment' not in (ha / 'config_flow.py').read_text()
+          assert 'PairingKeyCommitment' not in (app / 'VoiceActivity.java').read_text()
+          assert 'PairingKeyCommitment' not in (app / 'PairingDiscoveryWindow.java').read_text() if (app / 'PairingDiscoveryWindow.java').exists() else True
+          print('PASS: v3 is offline only; existing v2 pairing unchanged')
+          PY
