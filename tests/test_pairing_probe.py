@@ -74,6 +74,10 @@ class FakeSession:
         self.status = status
         self.urls = []
         self.kwargs = []
+    async def __aenter__(self):
+        return self
+    async def __aexit__(self, *_args):
+        return None
     def get(self, url, **kwargs):
         self.urls.append(url)
         self.kwargs.append(kwargs)
@@ -86,9 +90,10 @@ class ProbeTests(unittest.IsolatedAsyncioTestCase):
         data = json.dumps({"protocol": 1, "mode": "discovery-only",
                            "authorized": False, "session": NONCE}).encode()
         client = FakeSession(data)
-        self.assertTrue(await module.probe_candidate(candidate, client))
+        self.assertTrue(await module.probe_candidate(
+            candidate, _session_factory=lambda: client))
         self.assertEqual([candidate.url], client.urls)
-        self.assertEqual([{"allow_redirects": False, "timeout": 3}], client.kwargs)
+        self.assertEqual([{"allow_redirects": False}], client.kwargs)
 
     async def test_refuses_wrong_session_auth_claim_redirect_big_body_or_junk(self):
         candidate = module.candidate_from_discovery("192.168.1.7", 45123, PROPS)
@@ -102,20 +107,20 @@ class ProbeTests(unittest.IsolatedAsyncioTestCase):
         ):
             with self.subTest(doc=doc):
                 self.assertFalse(await module.probe_candidate(
-                    candidate, FakeSession(json.dumps(doc).encode())))
+                    candidate, _session_factory=lambda: FakeSession(json.dumps(doc).encode())))
         for status in (301, 302, 401, 500):
             self.assertFalse(await module.probe_candidate(
-                candidate, FakeSession(json.dumps(base).encode(), status)))
+                candidate, _session_factory=lambda: FakeSession(json.dumps(base).encode(), status)))
         self.assertFalse(await module.probe_candidate(
-            candidate, FakeSession(b"x" * 513)))
+            candidate, _session_factory=lambda: FakeSession(b"x" * 513)))
         self.assertFalse(await module.probe_candidate(
-            candidate, FakeSession(b"not-json")))
+            candidate, _session_factory=lambda: FakeSession(b"not-json")))
 
     async def test_never_requests_an_unvalidated_candidate(self):
         malicious = module.PairingCandidate("attacker.example", 45123, NONCE)
         client = FakeSession(b"{}")
         with self.assertRaises(ValueError):
-            await module.probe_candidate(malicious, client)
+            await module.probe_candidate(malicious, _session_factory=lambda: client)
         self.assertEqual([], client.urls)
 
 
