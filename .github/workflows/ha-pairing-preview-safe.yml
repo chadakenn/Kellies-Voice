@@ -1,0 +1,60 @@
+name: Safe HA pairing preview (no OAuth)
+
+on:
+  pull_request:
+    paths:
+      - 'custom_components/kellies_voice/**'
+      - 'tests/test_pairing_probe.py'
+      - 'tests/test_pairing_exchange.py'
+      - 'tests/test_ha_safe_pairing_preview_flow.py'
+      - '.github/workflows/ha-pairing-preview-safe.yml'
+  workflow_dispatch:
+
+jobs:
+  ha-pairing-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+      - name: Install public-key test dependency only
+        run: python -m pip install 'cryptography>=42,<47'
+      - name: Compile all HA preview-only Python code
+        run: python -m compileall -q custom_components/kellies_voice
+      - name: Test anonymous discovery, genuine ECDH and HA preview flow
+        run: |
+          python -m unittest discover -s tests -p 'test_pairing_probe.py' -v
+          python -m unittest discover -s tests -p 'test_pairing_exchange.py' -v
+          python -m unittest discover -s tests -p 'test_ha_safe_pairing_preview_flow.py' -v
+      - name: Reject OAuth and credential lifecycle files in safe preview artifact
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          root = Path('custom_components/kellies_voice')
+          flow = (root / 'config_flow.py').read_text()
+          manifest = json.loads((root / 'manifest.json').read_text())
+          assert '_kellies-voice._tcp.local.' in manifest['zeroconf']
+          assert '_kellies-pair._tcp.local.' in manifest['zeroconf']
+          assert 'async_step_pairing_code' in flow
+          assert 'async_step_oauth_' not in flow
+          assert 'async_create_entry' not in flow.split('async def async_step_pairing_code', 1)[1]
+          assert 'return self.async_abort(reason="preview_verified")' in flow
+          assert not list(root.glob('*oauth*.py')), 'No OAuth stack in safe preview'
+          assert not (root / 'pairing_handoff_state.py').exists()
+          print('SAFE: preview stops before account authorization and credential installation')
+          PY
+      - name: Bundle exact preview-only Home Assistant component
+        run: |
+          mkdir -p ha-preview-artifact/custom_components
+          cp -R custom_components/kellies_voice ha-preview-artifact/custom_components/
+          cd ha-preview-artifact
+          zip -q -r ../Kellies-Voice-HA-Pairing-Preview-Only.zip custom_components
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Kellies-Voice-HA-Pairing-Preview-Only
+          path: Kellies-Voice-HA-Pairing-Preview-Only.zip
+          if-no-files-found: error
+          retention-days: 14
