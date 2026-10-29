@@ -173,8 +173,8 @@ class HomeAssistantTokenExchange:
         try:
             async with self._session_factory() as session:
                 async with session.post(
-                    self._endpoint,
-                    data={"token": refresh_token, "action": "revoke"},
+                    self._endpoint.replace("/auth/token", "/auth/revoke"),
+                    data={"token": refresh_token},
                     allow_redirects=False,
                 ) as response:
                     # HA deliberately returns 200 regardless of token
