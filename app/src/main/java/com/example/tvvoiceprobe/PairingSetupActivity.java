@@ -10,8 +10,9 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 /**
- * Deliberately explicit development screen for #193 discovery-stage QA.
- * It is NOT a production login screen and cannot install any credentials.
+ * User-friendly, opt-in TV setup preview for #193. This can discover and
+ * visually verify Home Assistant locally without a cloud subscription.
+ * It is NOT a finished login: no credentials, tokens or HA URL are installed.
  */
 public final class PairingSetupActivity extends Activity {
     private PairingDiscoveryWindow window;
@@ -30,32 +31,32 @@ public final class PairingSetupActivity extends Activity {
         root.setBackgroundColor(0xff181512);
         scroll.addView(root);
 
-        TextView title = message("HOME ASSISTANT PAIRING", 24, 0xffE9B390);
+        TextView title = message("CONNECT KELLIE'S VOICE", 24, 0xffE9B390);
         root.addView(title);
-        root.addView(message("Two-screen verification preview for developers", 19, Color.WHITE));
-        root.addView(message("Start a temporary 2-minute LAN verification window. "
-                + "The TV will exchange only temporary public keys with Home Assistant so we can test "
-                + "the eight-digit code on both screens. No login is created and no Home Assistant "
+        root.addView(message("Waiting for Home Assistant", 19, Color.WHITE));
+        root.addView(message("Press START to let Home Assistant find this TV for two minutes. "
+                + "The TV will exchange only temporary public keys with Home Assistant to show "
+                + "the SAME eight-digit code on both screens. No login is created and no Home Assistant "
                 + "URL, token, authorization code, or microphone audio is exchanged.", 17, 0xffe7d7c9));
-        root.addView(message("Automatic authorization is not implemented yet. "
+        root.addView(message("Secure one-tap account authorization is coming in a future update. "
                 + "Keep using the existing Home Assistant login for normal TV operation.", 15,
                 0xffcaa58b));
-        state = message("Inactive. No pairing listener is running.", 18, 0xffE9B390);
+        state = message("Not discoverable yet. Press START when Home Assistant is open.", 18, 0xffE9B390);
         root.addView(state);
 
         startButton = new Button(this);
-        startButton.setText("START DISCOVERY PREVIEW");
+        startButton.setText("START 2-MINUTE PAIRING");
         startButton.setOnClickListener(v -> begin());
         root.addView(startButton);
 
         confirmButton = new Button(this);
-        confirmButton.setText("THE EIGHT DIGITS MATCH - CONFIRM ON TV");
+        confirmButton.setText("THE EIGHT DIGITS MATCH • PRESS OK");
         confirmButton.setEnabled(false);
         confirmButton.setOnClickListener(v -> {
             if (window != null && window.approveFromTv()) {
-                state.setText("TV remote approved this visual code. "
+                state.setText("TV code verified. "
                         + "Go back to Home Assistant to verify the proof. "
-                        + "This preview does NOT connect your account.");
+                        + "This test does NOT sign in or change your existing login.");
                 confirmButton.setEnabled(false);
             } else {
                 state.setText("No active verification. Start a new discovery preview.");
@@ -65,7 +66,7 @@ public final class PairingSetupActivity extends Activity {
         root.addView(confirmButton);
 
         Button closeButton = new Button(this);
-        closeButton.setText("CANCEL / BACK");
+        closeButton.setText("CLOSE / USE MANUAL LOGIN");
         closeButton.setOnClickListener(v -> finish());
         root.addView(closeButton);
 
@@ -90,8 +91,8 @@ public final class PairingSetupActivity extends Activity {
                 confirmButton.requestFocus();
             });
             startButton.setEnabled(false);
-            state.setText("LAN discovery preview active for 120 seconds. "
-                    + "Home Assistant authorization is not yet implemented.");
+            state.setText("Waiting for Home Assistant for up to two minutes. "
+                    + "On your phone or PC, open Home Assistant → Settings → Devices & services, then choose the discovered Kellie's Voice TV.");
         } catch (Exception ignored) {
             stopWindow();
             state.setText("Could not start LAN discovery. Check local networking.");
