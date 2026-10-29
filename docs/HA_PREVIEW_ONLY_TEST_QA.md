@@ -1,3 +1,45 @@
+## Known Home Assistant UI display issue and QA fallback
+
+### User-visible regression reproduced on actual Home Assistant (Oct 29, 2026)
+
+The owner installed the preview-only v0.16.14 custom component and
+successfully completed the physical TV-OK proof, but the HA browser
+rendered raw labels `start` / `numbers_match` and `preview_verified`,
+and **did not render the eight-digit comparison code at all**. That is
+a critical **human verification UX failure** even though ECDH proof
+succeeded. Do not claim a complete visual code match based on this UI.
+
+The updated preview-only QA build now adds a required, prefilled
+`ha_code` field to the HA `pairing_code` form. Home Assistant's form
+schema carries the exact server-generated eight-digit code even when
+stale/missing custom integration translations suppress the description.
+This field is meant only to DISPLAY the code; do not edit it. Backend
+rejects an absent or altered value with `preview_code_missing` and
+never checks TV confirmation in that case. The existing
+`numbers_match` checkbox remains; do not check unless the TV shows
+the **same** digits. Translations/en.json now also has a friendly label
+for `ha_code`, The manifest remains at v0.16.14 to satisfy the repository release-policy
+checks; the visible code field is independent of the translation cache.
+
+**Test validation after replacing the QA folder and restarting HA:**
+1. On the fresh HA preview flow, the step displays an input box
+   containing an eight-digit Home Assistant code, even if the descriptive
+   text remains untranslated.
+2. TV independently displays the exact same number.
+3. Only then press TV remote confirm, keep the prefilled code unchanged,
+   check the box and submit.
+4. The flow aborts with `preview_verified` or the friendly translation
+   if localized; this is intentional safe preview completion.
+5. If the field is absent or empty, do not check the box, cancel, and
+   inspect HA's runtime translation installation and version.
+6. Never register a config entry or install OAuth tokens from this flow.
+
+Because the versioned integration contains existing user-facing controls,
+only replace it after a full backup. Preserve/restore the original folder
+if normal camera/alert/voice functions change. A hard browser refresh
+after a backend restart can clear stale frontend text, but the form field
+is deliberately NOT dependent on that.
+
 # Safe HA pairing-code preview (draft #193, no OAuth)
 
 This is a **separate, main-based Home Assistant test branch**, not the

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import ast
 import importlib
+import json
 from pathlib import Path
 import sys
 import types
@@ -32,11 +33,14 @@ methods = [x for x in flow_cls.body
 assert len(methods) == 3
 
 class FakeVol:
+    defaults = {}
     @staticmethod
     def Schema(value):
         return value
     @staticmethod
-    def Required(value):
+    def Required(value, default=None):
+        if default is not None:
+            FakeVol.defaults[value] = default
         return value
 
 class FakeClock:
@@ -129,6 +133,7 @@ class PreviewFlowTests(unittest.IsolatedAsyncioTestCase):
         backend.fail_open = False
         FakeClock.now = 5000
         self.flow = FakeFlow()
+        FakeVol.defaults = {}
 
     async def discover(self, extra=None):
         props = {
@@ -154,11 +159,20 @@ class PreviewFlowTests(unittest.IsolatedAsyncioTestCase):
         start = await self.flow.async_step_pairing_preview({"start": True})
         self.assertEqual("pairing_code", start["step_id"])
         self.assertEqual("12345678", start["description_placeholders"]["code"])
+        # The code MUST be in the actual HA form schema, not only in
+        # translated description strings that can be stale or absent.
+        self.assertEqual("12345678", FakeVol.defaults["ha_code"])
+        self.assertEqual(str, start["data_schema"]["ha_code"])
+        self.assertIn("numbers_match", start["data_schema"])
         self.assertEqual(1, backend.calls)
-        waiting = await self.flow.async_step_pairing_code({"numbers_match": True})
+        waiting = await self.flow.async_step_pairing_code({
+            "numbers_match": True, "ha_code": "12345678"
+        })
         self.assertEqual("waiting_for_tv", waiting["errors"]["base"])
         backend.remote_ok = True
-        verified = await self.flow.async_step_pairing_code({"numbers_match": True})
+        verified = await self.flow.async_step_pairing_code({
+            "numbers_match": True, "ha_code": "12345678"
+        })
         self.assertEqual({"type": "abort", "reason": "preview_verified"}, verified)
         self.assertEqual([], self.flow.created)
         self.assertIsNone(self.flow._preview_candidate)
@@ -177,6 +191,25 @@ class PreviewFlowTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual("preview_cancelled", result["reason"])
         self.assertEqual([], self.flow.created)
 
+    async def test_missing_or_modified_visible_code_cannot_claim_success(self):
+        for code in (None, "", "87654321", "1234567", "12345678 "):
+            with self.subTest(code=code):
+                self.flow = FakeFlow()
+                await self.discover()
+                await self.flow.async_step_pairing_preview({"start": True})
+                backend.remote_ok = True
+                data = {"numbers_match": True}
+                if code is not None:
+                    data["ha_code"] = code
+                before = backend.calls
+                result = await self.flow.async_step_pairing_code(data)
+                self.assertEqual(
+                    {"type": "abort", "reason": "preview_code_missing"}, result
+                )
+                self.assertEqual(before, backend.calls)
+                self.assertEqual([], self.flow.created)
+                self.assertIsNone(self.flow._preview_attempt)
+
     async def test_stale_window_never_authorizes_tv(self):
         await self.discover()
         await self.flow.async_step_pairing_preview({"start": True})
@@ -191,7 +224,9 @@ class PreviewFlowTests(unittest.IsolatedAsyncioTestCase):
         await self.discover()
         await self.flow.async_step_pairing_preview({"start": True})
         backend.invalid_uuid = True
-        result = await self.flow.async_step_pairing_code({"numbers_match": True})
+        result = await self.flow.async_step_pairing_code({
+            "numbers_match": True, "ha_code": "12345678"
+        })
         self.assertEqual("preview_unavailable", result["errors"]["base"])
         self.assertEqual([], self.flow.created)
 
@@ -206,6 +241,18 @@ class PreviewFlowTests(unittest.IsolatedAsyncioTestCase):
         result = await self.flow.async_step_pairing_preview({"start": True})
         self.assertEqual("preview_unavailable", result["errors"]["base"])
         self.assertEqual([], self.flow.created)
+
+    def test_qa_translation_has_friendly_text_and_code_label(self):
+        for path in (
+            ROOT / "strings.json", ROOT / "translations" / "en.json"
+        ):
+            config = json.loads(path.read_text(encoding="utf-8"))["config"]
+            code = config["step"]["pairing_code"]
+            self.assertIn("{code}", code["description"])
+            self.assertIn("Home Assistant verification code", code["data"]["ha_code"])
+            self.assertIn("numbers_match", code["data"])
+            self.assertIn("preview_code_missing", config["abort"])
+            self.assertIn("preview_verified", config["abort"])
 
     def test_no_oauth_handlers_or_new_entry_path_on_preview_only_branch(self):
         preview = next(x for x in flow_cls.body if
