@@ -116,7 +116,7 @@ public final class PairingV3QaActivity extends Activity {
         confirm.setEnabled(false);
         code.setText("");
         code.setVisibility(View.GONE);
-        status.setText("Waiting for Home Assistant over the local network...");
+        status.setText("Starting Android network discovery...");
         try {
             PairingV3LanWindow opened = PairingV3LanWindow.start(
                 this,
@@ -130,11 +130,14 @@ public final class PairingV3QaActivity extends Activity {
                     confirm.setEnabled(true);
                     confirm.requestFocus();
                 },
-                () -> {
+                stateMessage -> {
+                    if (attempt != generation || isFinishing() || isDestroyed()) return;
+                    status.setText(stateMessage);
+                },
+                stopReason -> {
                     if (attempt != generation || isFinishing() || isDestroyed()) return;
                     stopWindow();
-                    status.setText("Pairing window expired or was closed. "
-                            + "Press START to try again.");
+                    status.setText(stopReason);
                     start.setEnabled(true);
                     start.requestFocus();
                 });
@@ -146,8 +149,11 @@ public final class PairingV3QaActivity extends Activity {
             window = opened;
         } catch (IOException | RuntimeException error) {
             stopWindow();
-            status.setText("Could not start v3 local discovery. "
-                    + "Check Wi-Fi and try again.");
+            // Keep the underlying failure visible instead of briefly flashing.
+            // Never print credentials: this QA path handles none.
+            status.setText("V3 START FAILED: " + error.getClass().getSimpleName()
+                    + ": " + String.valueOf(error.getMessage())
+                    + ". Check TV network and try again.");
             start.setEnabled(true);
             start.requestFocus();
         }
@@ -167,7 +173,12 @@ public final class PairingV3QaActivity extends Activity {
     }
 
     @Override protected void onStop() {
+        boolean wasRunning = window != null;
         stopWindow();
+        if (wasRunning && status != null) {
+            status.setText("V3 test stopped because the QA screen left the foreground. "
+                    + "Return here and press START again.");
+        }
         super.onStop();
     }
 

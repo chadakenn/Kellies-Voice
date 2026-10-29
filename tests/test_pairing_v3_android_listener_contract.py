@@ -50,6 +50,15 @@ class AndroidV3AdapterContracts(unittest.TestCase):
         ):
             self.assertIn(marker, self.code)
 
+    def test_android_nsd_registration_has_no_local_suffix_and_reports_failures(self):
+        # Android NsdServiceInfo takes the service type, not the mDNS FQDN.
+        self.assertIn('SERVICE = "_kellies-pair._tcp."', self.code)
+        self.assertNotIn('SERVICE = "_kellies-pair._tcp.local."', self.code)
+        self.assertIn('onServiceRegistered(NsdServiceInfo info)', self.code)
+        self.assertIn('NSD registration FAILED (code ', self.code)
+        self.assertIn('statusListener.accept(', self.code)
+        self.assertIn('expiredCallback.accept(reason)', self.code)
+
     def test_only_remote_handler_can_emit_approval(self):
         self.assertEqual(1, self.code.count("state.approveFromPhysicalTvRemote(session)"))
         self.assertIn("public boolean approveFromPhysicalRemote()", self.code)
