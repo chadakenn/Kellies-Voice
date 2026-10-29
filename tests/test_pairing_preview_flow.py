@@ -2,6 +2,7 @@
 
 The preview must never create a device entry or start a network exchange before
 the owner explicitly selects Start on the Home Assistant discovery card.
+After TV OK the flow now advances to the owner OAuth consent step.
 """
 import ast
 import asyncio
@@ -22,10 +23,10 @@ tree = ast.parse((ROOT / "config_flow.py").read_text())
 flow = next(node for node in tree.body if isinstance(node, ast.ClassDef)
             and node.name == "KellieVoiceConfigFlow")
 names = {"async_step_zeroconf", "async_step_pairing_preview",
-         "async_step_pairing_code"}
+         "async_step_pairing_code", "async_step_oauth_authorize"}
 methods = [node for node in flow.body if isinstance(node, ast.AsyncFunctionDef)
            and node.name in names]
-assert len(methods) == 3
+assert len(methods) == 4
 
 class Vol:
     @staticmethod
@@ -62,6 +63,11 @@ namespace = {
     "candidate_from_discovery": probes.candidate_from_discovery,
     "begin_preview": backend.begin,
     "confirm_tv_ok": backend.check,
+    "OwnerAuthorizationAttempt": None,
+    "register_pending_authorization": lambda *a, **k: None,
+    "consume_pending_authorization": lambda *a, **k: None,
+    "time": types.SimpleNamespace(time=lambda: 0),
+    "_LOGGER": types.SimpleNamespace(debug=lambda *a, **k: None),
 }
 exec(compile(ast.Module(body=methods, type_ignores=[]), "pairing_flow", "exec"), namespace)
 
@@ -69,13 +75,20 @@ class FakeFlow:
     async_step_zeroconf = namespace["async_step_zeroconf"]
     async_step_pairing_preview = namespace["async_step_pairing_preview"]
     async_step_pairing_code = namespace["async_step_pairing_code"]
+    async_step_oauth_authorize = namespace["async_step_oauth_authorize"]
 
     def __init__(self):
         self._preview_candidate = None
         self._preview_attempt = None
+        self._oauth_attempt = None
+        self._oauth_state = None
         self.context = {}
         self.created = []
         self.unique_ids = []
+        self.flow_id = "test-flow"
+        self.hass = types.SimpleNamespace(
+            config=types.SimpleNamespace(api=types.SimpleNamespace(base_url=None))
+        )
 
     async def async_set_unique_id(self, value):
         self.unique_ids.append(value)
@@ -91,6 +104,9 @@ class FakeFlow:
     def async_create_entry(self, **kwargs):
         self.created.append(kwargs)
         return {"type": "created"}
+
+    def async_external_step(self, **kwargs):
+        return {"type": "external", **kwargs}
 
 
 class FlowTests(unittest.IsolatedAsyncioTestCase):
@@ -127,9 +143,10 @@ class FlowTests(unittest.IsolatedAsyncioTestCase):
         waiting = await self.flow.async_step_pairing_code({"numbers_match": True})
         self.assertEqual("waiting_for_tv", waiting["errors"]["base"])
         backend.approved = True
-        done = await self.flow.async_step_pairing_code({"numbers_match": True})
-        self.assertEqual("abort", done["type"])
-        self.assertEqual("verification_preview_complete", done["reason"])
+        # After TV OK the flow advances to the OAuth consent gate.
+        gate = await self.flow.async_step_pairing_code({"numbers_match": True})
+        self.assertEqual("form", gate["type"])
+        self.assertEqual("oauth_authorize", gate["step_id"])
         self.assertEqual([], self.flow.created)
 
     async def test_user_rejects_mismatched_code(self):
@@ -149,6 +166,16 @@ class FlowTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual("abort", result["type"])
         self.assertEqual("invalid_pairing_preview", result["reason"])
         self.assertEqual(0, backend.calls)
+
+    async def test_oauth_gate_requires_verified_owner(self):
+        await self.discover()
+        await self.flow.async_step_pairing_preview({"start": True})
+        backend.approved = True
+        await self.flow.async_step_pairing_code({"numbers_match": True})
+        # No user_id in context → fail closed.
+        result = await self.flow.async_step_oauth_authorize({"confirm_authorize": True})
+        self.assertEqual("abort", result["type"])
+        self.assertEqual("oauth_owner_required", result["reason"])
 
 
 if __name__ == "__main__":
