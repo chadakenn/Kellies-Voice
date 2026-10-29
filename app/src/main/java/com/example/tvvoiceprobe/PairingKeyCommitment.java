@@ -75,6 +75,30 @@ public final class PairingKeyCommitment {
         }
     }
 
+    /**
+     * One consistent, independently copied view of a fully verified session.
+     * No exposed field refers to live mutable state. Only the v3 verifier in
+     * this Java package needs to consume this internal transcript.
+     */
+    static final class VerifiedTranscript {
+        final String role;
+        final String session;
+        final byte[] ownPublic;
+        final byte[] otherPublic;
+        final byte[] ownNonce;
+        final byte[] otherNonce;
+
+        private VerifiedTranscript(String role, String session, byte[] ownPublic,
+                byte[] otherPublic, byte[] ownNonce, byte[] otherNonce) {
+            this.role = role;
+            this.session = session;
+            this.ownPublic = ownPublic.clone();
+            this.otherPublic = otherPublic.clone();
+            this.ownNonce = ownNonce.clone();
+            this.otherNonce = otherNonce.clone();
+        }
+    }
+
     public static final class Session implements AutoCloseable {
         private final String role;
         private final String session;
@@ -145,6 +169,14 @@ public final class PairingKeyCommitment {
 
         public synchronized boolean ready() {
             return !closed && peerPublic != null;
+        }
+
+        synchronized VerifiedTranscript verifiedTranscript() {
+            if (!ready()) throw new IllegalStateException("v3 peer not verified");
+            // Capture all six fields with one lock. A cancellation on another
+            // thread cannot splice data from two independent pairing attempts.
+            return new VerifiedTranscript(role, session, localPublic,
+                    peerPublic, localNonce, peerNonce);
         }
 
         public synchronized byte[] peerPublic() {
