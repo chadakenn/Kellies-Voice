@@ -29,11 +29,15 @@ to call it from the same HA session.
    pairing sessions, with device UUID and expiry. It uses
    `hass.connection.sendMessagePromise` over the browser's authenticated
    WebSocket. If a TV is not shown, do not manually add a user ID.
-5. Click **Approve this TV** only for the exact TV you initiated. Backend
+5. The panel displays the **same eight-digit code** calculated by the
+   backend after actual remote-OK cryptographic proof. Verify this code against
+   the physical TV once more. If missing or not exactly eight ASCII digits,
+   the panel shows no approval button.
+6. Click **Approve this TV** only for the exact TV you initiated. Backend
    checks `connection.user.is_owner` + `is_active` and binds to exact
    `flow_id` + TV session. Wrong owner, expired session and repeated approval
    are denied. This is a one-use, process-local claim.
-6. Return to the original HA setup dialog to continue the still token-free
+7. Return to the original HA setup dialog to continue the still token-free
    browser callback preview. This stage does NOT exchange `/auth/token`,
    store a credential, modify the existing HA entries or sign in the TV.
 
