@@ -6,13 +6,13 @@
 
 ## Goal
 
-Deliver a one-use OAuth credential set from HA to a physically verified TV, then receive an authenticated commit ACK, without exposing tokens on any public or unauthenticated path.
+Deliver a one-use OAuth credential set from HA to a physically verified TV, then exchange two directional authenticated messages so the TV may commit only after an independently authenticated HA authorization, and HA may drop its lease only after the TV has persisted.
 
 ## Preconditions (all required)
 
 1. Owner has completed the HA OAuth external step and the single-use PKCE exchange has produced a refresh token held in a `PendingOAuthTransaction` (LEASED state).
 2. The TV session, ECDH transcript, and matching-code/TV-OK proof are bound to the same flow.
-3. The TV has a provisional HA config entry (see below) so the scoped alert subscription can succeed.
+3. The TV has a non-expired provisional HA config entry so the scoped alert subscription can succeed.
 4. Transport is HTTPS (or loopback). Bare private-LAN HTTP is a blocker; do not send tokens over it.
 
 ## Packet fields (authenticated)
@@ -22,7 +22,7 @@ All AEAD packets use AES-256-GCM with a key derived from the ECDH shared secret 
 | Field | Type | Notes |
 |-------|------|-------|
 | `version` | uint8 | Protocol version = 1 |
-| `type` | string | `credential_offer` or `commit_ack` |
+| `type` | string | `credential_offer`, `tv_proof_receipt`, or `ha_commit_authorization` |
 | `tv_uuid` | string | Exact paired device UUID |
 | `session` | string | Pairing session id from ECDH |
 | `transcript_hash` | bytes32 | SHA-256 of the full ECDH transcript |
@@ -30,7 +30,7 @@ All AEAD packets use AES-256-GCM with a key derived from the ECDH shared secret 
 | `expiry` | uint64 | Unix timestamp, ≤ 120 s from issue |
 | `payload` | ciphertext | See below |
 
-### `credential_offer` payload (encrypted)
+### `credential_offer` (HA → TV, encrypted)
 
 ```json
 {
@@ -41,7 +41,7 @@ All AEAD packets use AES-256-GCM with a key derived from the ECDH shared secret 
 }
 ```
 
-### `commit_ack` payload (encrypted)
+### `tv_proof_receipt` (TV → HA, encrypted)
 
 ```json
 {
@@ -53,29 +53,42 @@ All AEAD packets use AES-256-GCM with a key derived from the ECDH shared secret 
 }
 ```
 
-## Sequence
+### `ha_commit_authorization` (HA → TV, encrypted)
 
-1. HA encrypts `credential_offer` for the verified TV and sends it on the sealed channel.
-2. TV decrypts, stages the credential in the isolated Keystore slot (#218), runs Assist + scoped-alert proof.
-3. TV sends authenticated `commit_ack` (separate packet, fresh nonce).
-4. HA verifies the ACK against the exact session/TV/transcript, then calls `commit_after_proof()` on the pending transaction and drops the HA-side refresh token.
-5. On any failure, timeout, or mismatch HA calls `abort_and_revoke()`.
+```json
+{
+  "authorize_commit": true,
+  "tv_uuid": "...",
+  "session": "..."
+}
+```
+
+## Sequence (reconciled with #218)
+
+1. HA encrypts `credential_offer` for the verified TV and sends it on the sealed channel. Lease remains revocable.
+2. TV decrypts, stages the credential in the isolated Keystore slot, runs Assist + scoped-alert proof.
+3. TV sends authenticated `tv_proof_receipt` (fresh nonce).
+4. HA verifies the receipt against the exact session/TV/transcript, then sends authenticated `ha_commit_authorization`.
+5. TV receives the HA authorization, passes the #218 gate, and persists the credential.
+6. HA receives an optional persistence confirmation (or treats the authorization as the commit point) and calls `commit_after_proof()` only after the TV has acknowledged persistence, then drops the HA-side refresh token.
+7. On any failure, timeout, or mismatch HA calls `abort_and_revoke()`.
 
 ## Authentication labels
 
 - `kellies_voice/pair/credential_offer/v1`
-- `kellies_voice/pair/commit_ack/v1`
+- `kellies_voice/pair/tv_proof_receipt/v1`
+- `kellies_voice/pair/ha_commit_authorization/v1`
 
-These labels are included in the AAD so a packet of one type cannot be replayed as the other.
+These labels are included in the AAD so a packet of one type cannot be replayed as another.
 
 ## Rejected cases (fail closed)
 
 - Wrong TV UUID or session
 - Transcript hash mismatch
-- Replay of either packet
+- Replay of any packet
 - Expired nonce or TTL
 - Missing or forged consent
-- Commit ACK arriving before the offer was leased
+- HA commit authorization arriving before the TV proof receipt
 - Any packet on mDNS, offer, status, or unauthenticated HTTP
 
 ## Crash/restart
