@@ -53,7 +53,8 @@ public final class PairingDiscoveryWindow implements AutoCloseable {
         this.expiredCallback = expiredCallback;
         this.codeListener = codeListener;
         startedAt = android.os.SystemClock.elapsedRealtime();
-        handshake = new PairingHandshakeState(session, startedAt);
+        handshake = new PairingHandshakeState(
+                session, new OverlayPreferences(app).deviceId(), startedAt);
         nsd = (NsdManager) app.getSystemService(Context.NSD_SERVICE);
         registration = new NsdManager.RegistrationListener() {
             @Override public void onServiceRegistered(NsdServiceInfo info) { }
@@ -163,7 +164,10 @@ public final class PairingDiscoveryWindow implements AutoCloseable {
                     String proof = handshake.proof(android.os.SystemClock.elapsedRealtime());
                     respond(socket.getOutputStream(), "200 OK",
                             proof == null ? "{\"approved\":false}" :
-                                    "{\"approved\":true,\"proof\":\"" + proof + "\"}");
+                                    "{\"approved\":true,\"proof\":\"" + proof
+                                            + "\",\"tv_uuid\":\""
+                                            + handshake.approvedTvUuid(android.os.SystemClock.elapsedRealtime())
+                                            + "\"}");
                 } else {
                     respond(socket.getOutputStream(), "404 Not Found",
                             "{\"error\":\"not_available\"}");

@@ -9,13 +9,14 @@ import static org.junit.Assert.*;
 /** A forged or stale LAN message cannot silently approve pairing. */
 public class PairingHandshakeStateTest {
     private static final String SESSION = "AQIDBAUGBwgJCgsMDQ4PEA";
+    private static final String TV_UUID = "123e4567-e89b-42d3-a456-426614174000";
 
     private static String b64(byte[] bytes) {
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
 
     @Test public void publicKeyExchangeDisplaysSameCodeButNeedsTvOk() {
-        PairingHandshakeState tv = new PairingHandshakeState(SESSION, 500);
+        PairingHandshakeState tv = new PairingHandshakeState(SESSION, TV_UUID, 500);
         KeyPair ha = PairingVerificationCode.freshKeyPair();
         assertNull(tv.code(510));
         assertNull(tv.proof(510));
@@ -30,19 +31,22 @@ public class PairingHandshakeStateTest {
                 ha, false, SESSION, Base64.getUrlDecoder().decode(offer.tvKey),
                 ha.getPublic().getEncoded()));
         assertNull(tv.proof(513));
+        assertNull(tv.approvedTvUuid(513));
         assertTrue(tv.approve(514));
         assertFalse(tv.approve(515));
         assertEquals(PairingVerificationCode.approvedProof(
                 ha, false, SESSION, Base64.getUrlDecoder().decode(offer.tvKey),
-                ha.getPublic().getEncoded()), tv.proof(516));
+                ha.getPublic().getEncoded(), TV_UUID), tv.proof(516));
+        assertEquals(TV_UUID, tv.approvedTvUuid(516));
         tv.close();
         assertNull(tv.code(517));
         assertNull(tv.proof(517));
+        assertNull(tv.approvedTvUuid(517));
         assertFalse(tv.approve(517));
     }
 
     @Test public void rejectedAndRepeatedOffersNeverRotateDisplayedCode() {
-        PairingHandshakeState tv = new PairingHandshakeState(SESSION, 100);
+        PairingHandshakeState tv = new PairingHandshakeState(SESSION, TV_UUID, 100);
         KeyPair first = PairingVerificationCode.freshKeyPair();
         KeyPair second = PairingVerificationCode.freshKeyPair();
         try {
@@ -59,7 +63,7 @@ public class PairingHandshakeStateTest {
     }
 
     @Test public void timeoutForbidsOfferApprovalAndProof() {
-        PairingHandshakeState expired = new PairingHandshakeState(SESSION, 50);
+        PairingHandshakeState expired = new PairingHandshakeState(SESSION, TV_UUID, 50);
         KeyPair ha = PairingVerificationCode.freshKeyPair();
         try {
             expired.offer(SESSION, b64(ha.getPublic().getEncoded()), 120050);
@@ -70,7 +74,7 @@ public class PairingHandshakeStateTest {
     }
 
     @Test public void malformedKeyCannotYieldApproval() {
-        PairingHandshakeState tv = new PairingHandshakeState(SESSION, 50);
+        PairingHandshakeState tv = new PairingHandshakeState(SESSION, TV_UUID, 50);
         try {
             tv.offer(SESSION, "bad", 51);
             fail("Malformed key accepted");
