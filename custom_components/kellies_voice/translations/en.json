@@ -20,17 +20,37 @@
         "data": {
           "confirmation_suffix": "Last four characters on TV"
         }
+      },
+      "pairing_preview": {
+        "title": "Verify a temporary Kellie's Voice TV pairing code",
+        "description": "On the test TV open Kellie's Voice Pairing Lab → Open LAN Two-Screen Code Preview → Start Discovery Preview. This verification exchanges temporary public keys only. It will NOT sign in, create an integration entry, or change your working TV login. Start the comparison?",
+        "data": {
+          "start": "Start public-key comparison"
+        }
+      },
+      "pairing_code": {
+        "title": "Compare the eight digits on both screens",
+        "description": "The code from this Home Assistant session is **{code}**. Compare every digit with the code shown on the physical TV. ONLY IF THEY MATCH, confirm on the TV using its remote, then tick the confirmation below. This preview stops after verifying physical TV OK. It never authorizes OAuth or installs credentials.",
+        "data": {
+          "numbers_match": "The eight digits match, and I pressed Confirm on the TV"
+        }
       }
     },
     "abort": {
       "already_configured": "This TV is already added.",
       "no_id": "The TV did not identify itself. Turn Home Assistant layout off and on in Kellie's Voice, then try again.",
-      "use_discovery": "If automatic detection is available, add the discovered TV. Otherwise use manual pairing."
+      "use_discovery": "If automatic detection is available, add the discovered TV. Otherwise use manual pairing.",
+      "preview_verified": "SUCCESS: Verified the TV's physical remote OK and cryptographic identity. No Home Assistant account, access token, TV configuration, or saved login was changed.",
+      "preview_expired": "The temporary 120-second TV discovery window expired. Start a new TV preview and try again.",
+      "preview_cancelled": "The temporary pairing preview was cancelled. Nothing was changed.",
+      "invalid_pairing_preview": "This untrusted TV pairing advertisement was rejected. No credentials were exchanged."
     },
     "error": {
       "invalid_device_id": "Enter the pairing ID shown on your TV.",
       "invalid_name": "Enter a TV name up to 64 characters.",
-      "pairing_suffix_mismatch": "The four characters don't match the entered TV pairing ID. Recheck the ID on the TV and correct it using Back."
+      "pairing_suffix_mismatch": "The four characters don't match the entered TV pairing ID. Recheck the ID on the TV and correct it using Back.",
+      "preview_unavailable": "Could not complete the public-key preview. Restart discovery on the TV and try again.",
+      "waiting_for_tv": "The TV has not confirmed the matching code with its remote yet. Confirm there, then submit here again."
     }
   },
   "services": {
