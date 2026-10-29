@@ -66,8 +66,18 @@ public final class PairingSetupActivity extends Activity {
         root.addView(confirmButton);
 
         Button closeButton = new Button(this);
-        closeButton.setText("CLOSE / USE MANUAL LOGIN");
-        closeButton.setOnClickListener(v -> finish());
+        closeButton.setText("USE EXISTING MANUAL LOGIN");
+        closeButton.setOnClickListener(v -> {
+            // Return to the already-running app. The parent Activity opens
+            // its existing manual login form; this screen never handles a token.
+            setResult(RESULT_OK);
+            finish();
+        });
+
+        Button cancelButton = new Button(this);
+        cancelButton.setText("CLOSE SETUP");
+        cancelButton.setOnClickListener(v -> finish());
+        root.addView(cancelButton);
         root.addView(closeButton);
 
         setContentView(scroll);
