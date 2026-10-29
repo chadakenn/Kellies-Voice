@@ -1,4 +1,4 @@
-name: V3 TV LAN protocol and crypto QA (no credentials)
+name: V3 TV remote QA and secure LAN protocol (no credentials)
 
 on:
   pull_request:
@@ -15,6 +15,8 @@ on:
       - 'app/src/test/java/com/example/tvvoiceprobe/PairingV3TvWireStateTest.java'
       - 'app/src/main/java/com/example/tvvoiceprobe/PairingV3LanWindow.java'
       - 'tests/test_pairing_v3_android_listener_contract.py'
+      - 'app/src/main/java/com/example/tvvoiceprobe/PairingV3QaActivity.java'
+      - 'tests/test_pairing_v3_debug_tv_ui.py'
       - '.github/workflows/pairing-key-commitment-v3.yml'
   workflow_dispatch:
 
@@ -37,6 +39,8 @@ jobs:
         run: python -m unittest discover -s tests -p test_pairing_v3_wire.py -v
       - name: Check bounded Android v3-only LAN listener and absence of credential routes
         run: python -m unittest discover -s tests -p test_pairing_v3_android_listener_contract.py -v
+      - name: Check debug-only Android v3 on-screen remote QA and lifecycle cleanup
+        run: python -m unittest discover -s tests -p test_pairing_v3_debug_tv_ui.py -v
       - name: Prohibit live credential or v2 protocol activation
         run: |
           python - <<'PY'
@@ -49,7 +53,8 @@ jobs:
           wire = (ha / 'pairing_v3_wire.py').read_text()
           tv_wire = (app / 'PairingV3TvWireState.java').read_text()
           tv_listener = (app / 'PairingV3LanWindow.java').read_text()
-          for code in (core, android, v3, wire, tv_wire, tv_listener):
+          tv_ui = (app / 'PairingV3QaActivity.java').read_text()
+          for code in (core, android, v3, wire, tv_wire, tv_listener, tv_ui):
               assert 'auth/token' not in code
               assert 'CredentialStore(' not in code
               assert 'connect(' not in code
@@ -58,6 +63,7 @@ jobs:
           assert 'PairingKeyCommitment' not in (app / 'VoiceActivity.java').read_text()
           assert 'PairingV3TvWireState' not in (app / 'VoiceActivity.java').read_text()
           assert 'PairingV3LanWindow' not in (app / 'VoiceActivity.java').read_text()
+          assert 'FLAG_DEBUGGABLE' in (app / 'VoiceActivity.java').read_text()
           assert 'pairing_v3_wire' not in (ha / 'config_flow.py').read_text()
           assert 'PairingKeyCommitment' not in (app / 'PairingDiscoveryWindow.java').read_text() if (app / 'PairingDiscoveryWindow.java').exists() else True
           print('PASS: v3 is offline only; existing v2 pairing unchanged')
