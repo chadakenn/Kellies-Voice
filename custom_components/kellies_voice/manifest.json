@@ -10,7 +10,9 @@
   "version": "0.16.14",
   "dependencies": [
     "zeroconf",
-    "websocket_api"
+    "websocket_api",
+    "frontend",
+    "panel_custom"
   ],
   "zeroconf": [
     "_kellies-voice._tcp.local.",

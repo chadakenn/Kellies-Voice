@@ -9,6 +9,7 @@ from homeassistant.helpers import device_registry as dr
 from .const import DOMAIN, PLATFORMS
 from .pairing_browser_probe import async_register_browser_probe
 from .pairing_owner_ws import async_register_owner_claim
+from .pairing_owner_panel import async_register_pairing_approval_panel
 from .services import async_register_services
 from .timer_handler import TimerBridge, TimerHandlerRegistry
 from .websocket import async_register_alert_subscription
@@ -27,6 +28,10 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     # Actual HA owner is authenticated on this WebSocket command, never
     # inferred from a Zeroconf-created config-flow context.
     async_register_owner_claim(hass)
+    # Owner-only UI is an optional, no-token QR/code approval preview.
+    # It can be reached directly from HA's sidebar while the pairing
+    # config flow is still open. Only authenticated HA owners can claim.
+    await async_register_pairing_approval_panel(hass)
     return True
 
 

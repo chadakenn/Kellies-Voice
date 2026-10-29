@@ -28,7 +28,8 @@ class OwnerClaimRegistryTests(unittest.TestCase):
         self.registry = claims.OwnerClaimRegistry()
 
     def begin(self, flow="flow-verified-1", now=100):
-        self.registry.begin(flow_id=flow, session=SESSION, tv_uuid=TV_UUID, now=now)
+        self.registry.begin(flow_id=flow, session=SESSION, tv_uuid=TV_UUID,
+                            comparison_code="12345678", now=now)
 
     def test_cannot_claim_without_verified_remote_tv_proof(self):
         self.assertFalse(self.registry.claim(
@@ -91,7 +92,15 @@ class OwnerClaimRegistryTests(unittest.TestCase):
             dict(flow_id="flow-verified-1", session=SESSION, tv_uuid="bad"),
         ):
             with self.subTest(invalid=invalid), self.assertRaises(ValueError):
-                self.registry.begin(**invalid, now=100)
+                self.registry.begin(**invalid, comparison_code="12345678", now=100)
+
+    def test_rejects_bad_comparison_code(self):
+        for code in ("", "123", "1234567", "123456789", "1234ABCD",
+                     "１２３４５６７８", None):
+            with self.subTest(code=code), self.assertRaises(ValueError):
+                self.registry.begin(
+                    flow_id="flow-verified-1", session=SESSION,
+                    tv_uuid=TV_UUID, comparison_code=code, now=100)
 
     def test_per_instance_registry_isolation(self):
         hass1, hass2 = types.SimpleNamespace(data={}), types.SimpleNamespace(data={})
@@ -99,7 +108,7 @@ class OwnerClaimRegistryTests(unittest.TestCase):
         b = claims.owner_claims(hass2)
         self.assertIsNot(a, b)
         a.begin(flow_id="flow-verified-1", session=SESSION,
-                tv_uuid=TV_UUID, now=100)
+                tv_uuid=TV_UUID, comparison_code="12345678", now=100)
         self.assertFalse(b.claim(flow_id="flow-verified-1",
                                  session=SESSION, user=user(), now=101))
 
@@ -135,7 +144,8 @@ class OwnerClaimWebSocketTests(unittest.TestCase):
         self.ws = importlib.import_module(module_name)
         self.hass = types.SimpleNamespace(data={})
         claims.owner_claims(self.hass).begin(
-            flow_id="flow-verified-1", session=SESSION, tv_uuid=TV_UUID)
+            flow_id="flow-verified-1", session=SESSION, tv_uuid=TV_UUID,
+            comparison_code="12345678")
         self.api = fake_api
 
     def call(self, person):
@@ -159,13 +169,55 @@ class OwnerClaimWebSocketTests(unittest.TestCase):
         again = self.call(user(id="authenticated-owner"))
         again.send_result.assert_not_called()
 
+    def test_owner_only_list_shows_unclaimed_verified_tv_and_no_secrets(self):
+        pending = claims.owner_claims(self.hass)
+        self.assertEqual([], pending.pending(user=user(owner=False)))
+        self.assertEqual([], pending.pending(user=user(active=False)))
+        listing = pending.pending(user=user(id="owner"))
+        self.assertEqual(1, len(listing))
+        self.assertEqual("flow-verified-1", listing[0]["flow_id"])
+        self.assertEqual(SESSION, listing[0]["tv_session"])
+        self.assertEqual(TV_UUID, listing[0]["tv_uuid"])
+        self.assertEqual("12345678", listing[0]["comparison_code"])
+        self.assertTrue(0 < listing[0]["seconds_remaining"] <= 120)
+        self.assertNotIn("owner_id", listing[0])
+        self.assertNotIn("access_token", listing[0])
+        conn = types.SimpleNamespace(
+            user=user(id="owner"), send_result=MagicMock(),
+            send_error=MagicMock())
+        self.ws.websocket_list_verified(
+            self.hass, conn, {"id": 4, "type": "kellies_voice/pair/list_verified"})
+        payload = conn.send_result.call_args.args[1]
+        self.assertEqual(1, len(payload["pending"]))
+        self.assertIs(True, payload["preview_only"])
+        conn2 = types.SimpleNamespace(
+            user=user(owner=False), send_result=MagicMock(),
+            send_error=MagicMock())
+        self.ws.websocket_list_verified(
+            self.hass, conn2, {"id": 5, "type": "kellies_voice/pair/list_verified"})
+        conn2.send_result.assert_not_called()
+        conn2.send_error.assert_called_once()
+
+    def test_approved_or_expired_sessions_disappear_from_list(self):
+        registry = claims.owner_claims(self.hass)
+        self.assertTrue(registry.claim(
+            flow_id="flow-verified-1", session=SESSION, user=user()))
+        self.assertEqual([], registry.pending(user=user()))
+        self.assertTrue(registry.consume(
+            flow_id="flow-verified-1", session=SESSION, tv_uuid=TV_UUID))
+        self.assertEqual([], registry.pending(user=user()))
+
     def test_register_once_and_reject_unsigned_owners(self):
         conn = self.call(user(owner=False))
         conn.send_error.assert_called_once()
         self.api.async_register_command.assert_not_called()
         self.ws.async_register_owner_claim(self.hass)
         self.ws.async_register_owner_claim(self.hass)
-        self.api.async_register_command.assert_called_once()
+        self.assertEqual(2, self.api.async_register_command.call_count)
+        registered = [call.args[1].__name__
+                      for call in self.api.async_register_command.call_args_list]
+        self.assertIn("websocket_claim_verified_owner", registered)
+        self.assertIn("websocket_list_verified", registered)
 
 
 if __name__ == "__main__":

@@ -30,6 +30,7 @@ _OWNER_KEY = "verified_pairing_owner_claims"
 class _Pairing:
     session: str
     tv_uuid: str
+    comparison_code: str
     started: float
     owner_id: str | None = None
 
@@ -44,20 +45,27 @@ class OwnerClaimRegistry:
                 del self._pending[key]
 
     def begin(self, *, flow_id: str, session: str, tv_uuid: str,
-              now: float | None = None) -> None:
+              comparison_code: str, now: float | None = None) -> None:
         """Accept only a previously verified flow and canonical TV identity."""
         instant = time.monotonic() if now is None else now
         if (not isinstance(flow_id, str) or not _FLOW_ID.fullmatch(flow_id)
                 or type(instant) not in (int, float) or instant < 0):
             raise ValueError("Invalid verified pairing flow")
         _session_bytes(session)
+        # The backend-derived code is only shown to an authenticated owner.
+        # A client-supplied code never becomes the authority for a claim.
+        if (type(comparison_code) is not str or len(comparison_code) != 8
+                or not comparison_code.isascii()
+                or not comparison_code.isdigit()):
+            raise ValueError("Invalid verified comparison code")
         normalized = clean_tv_device_id(tv_uuid)
         if tv_uuid != normalized:
             raise ValueError("TV identity must be canonical")
         self._prune(instant)
         if flow_id in self._pending or len(self._pending) >= _LIMIT:
             raise ValueError("Pairing flow already pending or capacity reached")
-        self._pending[flow_id] = _Pairing(session, normalized, instant)
+        self._pending[flow_id] = _Pairing(
+            session, normalized, comparison_code, instant)
 
     def claim(self, *, flow_id: str, session: str, user: Any,
               now: float | None = None) -> bool:
@@ -86,6 +94,26 @@ class OwnerClaimRegistry:
                 or entry.session != session or entry.tv_uuid != tv_uuid):
             return None
         return entry.owner_id
+
+    def pending(self, *, user: Any, now: float | None = None) -> list[dict]:
+        """Expose only unclaimed, physical-TV-verified sessions to a HA owner.
+
+        This is not an OAuth credential, public discovery listing, or login.
+        All rows are already bound to a confirmed TV UUID + session.
+        """
+        if (user is None or getattr(user, "is_owner", False) is not True
+                or getattr(user, "is_active", False) is not True):
+            return []
+        instant = time.monotonic() if now is None else now
+        self._prune(instant)
+        return [
+            {"flow_id": key, "tv_session": entry.session,
+             "tv_uuid": entry.tv_uuid,
+             "comparison_code": entry.comparison_code,
+             "seconds_remaining": max(0, int(entry.started + _TTL - instant))}
+            for key, entry in self._pending.items()
+            if entry.owner_id is None
+        ]
 
     def cancel(self, flow_id: str) -> None:
         self._pending.pop(flow_id, None)

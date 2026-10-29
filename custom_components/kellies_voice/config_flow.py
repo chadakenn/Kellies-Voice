@@ -16,8 +16,11 @@ from .pairing_browser_probe import register_probe
 from .pairing_owner_claim import owner_claims
 
 _BROWSER_NOTICE = (
-    "TEST ONLY: this opens Home Assistant's own browser login page. "
-    "It will discard the authorization code and NEVER install a TV login."
+    "TEST ONLY. Open 'Kellie's Voice Pairing' in Home Assistant's "
+    "sidebar, approve the verified TV while signed in as the owner, "
+    "then return to this dialog and check the box. "
+    "Any browser authorization code will be discarded. "
+    "This NEVER installs a TV login."
 )
 
 
@@ -246,6 +249,7 @@ class KellieVoiceConfigFlow(ConfigFlow, domain=DOMAIN):
                             flow_id=self.flow_id,
                             session=verified.session,
                             tv_uuid=verified.tv_uuid,
+                            comparison_code=attempt.code,
                         )
                     except ValueError:
                         self._preview_attempt = None

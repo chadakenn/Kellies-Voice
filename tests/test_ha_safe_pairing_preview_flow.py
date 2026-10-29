@@ -216,8 +216,8 @@ class PreviewFlowTests(unittest.IsolatedAsyncioTestCase):
             "numbers_match": True, "ha_code": "12345678"
         })
         self.assertEqual("owner_browser_consent", verified["step_id"])
-        self.assertEqual("TEST ONLY: this opens Home Assistant's own browser login page. It will discard the authorization code and NEVER install a TV login.",
-                         FakeVol.defaults["test_only_notice"])
+        self.assertIn("Kellie's Voice Pairing", FakeVol.defaults["test_only_notice"])
+        self.assertIn("NEVER installs a TV login", FakeVol.defaults["test_only_notice"])
         self.assertEqual([], self.flow.created)
         self.assertIsNone(self.flow._preview_candidate)
         self.assertIsNone(self.flow._preview_attempt)
