@@ -70,11 +70,12 @@ def candidate_from_discovery(
     return PairingCandidate(str(ip), port, nonce)
 
 
-async def probe_candidate(candidate: PairingCandidate, http_session: Any) -> bool:
-    """Public capability check only: never send HA auth headers or follow redirects.
+async def probe_candidate(candidate: PairingCandidate, *, _session_factory=None) -> bool:
+    """Check public capabilities with an isolated, no-cookies/no-auth client.
 
-    The caller must be an explicit owner-initiated HA flow, not a passive mDNS
-    callback. No input to this function contains a token or HA base URL.
+    A future owner-approved HA flow may call this after explicit selection;
+    never trigger it automatically from arbitrary mDNS packets.
+    _session_factory is test injection only, not for callers in HA production.
     """
     if candidate_from_discovery(
         candidate.address,
@@ -82,18 +83,34 @@ async def probe_candidate(candidate: PairingCandidate, http_session: Any) -> boo
         {"mode": "discovery-only", "protocol": "1", "session": candidate.session},
     ) != candidate:
         raise ValueError("Invalid pairing candidate")
-    async with http_session.get(
-        candidate.url, allow_redirects=False, timeout=3
-    ) as response:
-        if response.status != 200:
-            return False
-        raw = await response.content.read(_MAX_BODY + 1)
-        if len(raw) > _MAX_BODY:
-            return False
-        try:
-            doc = json.loads(raw)
-        except (ValueError, UnicodeDecodeError):
-            return False
+
+    if _session_factory is None:
+        import aiohttp
+
+        def _session_factory():
+            # Never inherit the user's or HA's active HTTP session, cookies,
+            # bearer tokens, environment proxy, or Basic authentication.
+            return aiohttp.ClientSession(
+                cookie_jar=aiohttp.DummyCookieJar(),
+                headers={},
+                trust_env=False,
+                timeout=aiohttp.ClientTimeout(total=3),
+            )
+
+    async with _session_factory() as http_session:
+        async with http_session.get(
+            candidate.url, allow_redirects=False
+        ) as response:
+            if response.status != 200:
+                return False
+            raw = await response.content.read(_MAX_BODY + 1)
+            if len(raw) > _MAX_BODY:
+                return False
+            try:
+                doc = json.loads(raw)
+            except (ValueError, UnicodeDecodeError):
+                return False
+
     return (
         type(doc) is dict
         and doc == {
