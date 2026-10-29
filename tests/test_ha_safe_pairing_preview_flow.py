@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import ast
 import importlib
+from urllib.parse import parse_qs, urlsplit
 import json
 from pathlib import Path
 import sys
@@ -21,6 +22,8 @@ package = types.ModuleType(PACKAGE)
 package.__path__ = [str(ROOT)]
 sys.modules[PACKAGE] = package
 probe = importlib.import_module(PACKAGE + ".pairing_probe")
+oauth = importlib.import_module(PACKAGE + ".pairing_owner_oauth")
+browser = importlib.import_module(PACKAGE + ".pairing_browser_probe")
 
 source = (ROOT / "config_flow.py").read_text(encoding="utf-8")
 tree = ast.parse(source)
@@ -32,6 +35,10 @@ method_names = ("async_step_zeroconf", "async_step_pairing_preview",
 methods = [x for x in flow_cls.body
            if isinstance(x, ast.AsyncFunctionDef) and x.name in method_names]
 assert len(methods) == 6
+notice = next(ast.literal_eval(x.value) for x in tree.body
+              if isinstance(x, ast.Assign) and any(
+                  isinstance(t, ast.Name) and t.id == "_BROWSER_NOTICE"
+                  for t in x.targets))
 methods.append(next(x for x in flow_cls.body
                     if isinstance(x, ast.FunctionDef)
                     and x.name == "_owner_proof_live"))
@@ -52,6 +59,9 @@ class FakeClock:
     @classmethod
     def monotonic(cls):
         return cls.now
+    @staticmethod
+    def time():
+        return 1700000000
 
 class Backend:
     def __init__(self):
@@ -91,6 +101,11 @@ namespace = {
     "begin_preview": backend.begin,
     "confirm_tv_ok": backend.confirm,
     "time": FakeClock,
+    "_BROWSER_NOTICE": notice,
+    "urlsplit": urlsplit,
+    "parse_qs": parse_qs,
+    "OwnerAuthorizationAttempt": oauth.OwnerAuthorizationAttempt,
+    "register_probe": browser.register_probe,
 }
 exec(compile(ast.Module(body=methods, type_ignores=[]),
              "ha_preview_flow", "exec"), namespace)
@@ -112,6 +127,10 @@ class FakeFlow:
         self._owner_verified_tv = None
         self._owner_proof_expires = 0.0
         self._browser_probe_succeeded = False
+        self._browser_attempt = None
+        self._browser_state = None
+        self._browser_owner = None
+        self.flow_id = "flow-owner-1"
         self._name = "Normal TV"
         self._device_id = ""
         self.created = []
@@ -129,6 +148,12 @@ class FakeFlow:
     def async_show_form(self, **kw):
         return {"type": "form", **kw}
 
+    def async_external_step(self, **kw):
+        return {"type": "external_step", **kw}
+
+    def async_external_step_done(self, **kw):
+        return {"type": "external_step_done", **kw}
+
     def async_create_entry(self, **kw):
         self.created.append(kw)
         return {"type": "entry", **kw}
@@ -145,6 +170,7 @@ class PreviewFlowTests(unittest.IsolatedAsyncioTestCase):
         FakeClock.now = 5000
         self.flow = FakeFlow()
         FakeVol.defaults = {}
+        browser.clear_probes()
 
     async def discover(self, extra=None):
         props = {
@@ -214,6 +240,86 @@ class PreviewFlowTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual([], self.flow.created)
         self.assertEqual("owner_probe_rejected",
                          (await self.flow.async_step_owner_browser_done())["reason"])
+
+    async def test_browser_probe_success_needs_verified_owner_and_single_use_callback(self):
+        from unittest.mock import AsyncMock
+        await self.discover()
+        await self.flow.async_step_pairing_preview({"start": True})
+        backend.remote_ok = True
+        result = await self.flow.async_step_pairing_code({
+            "numbers_match": True, "ha_code": "12345678"
+        })
+        self.assertEqual("owner_browser_consent", result["step_id"])
+        self.flow.context["user_id"] = "owner-1"
+        self.flow.hass = types.SimpleNamespace(
+            auth=types.SimpleNamespace(
+                async_get_user=AsyncMock(return_value=types.SimpleNamespace(
+                    is_owner=True, is_active=True))
+            )
+        )
+        net = types.ModuleType("homeassistant.helpers.network")
+        net.get_url = lambda *_args, **_kw: "https://ha.example/"
+        with patch.dict(sys.modules, {
+            "homeassistant": types.ModuleType("homeassistant"),
+            "homeassistant.helpers": types.ModuleType("homeassistant.helpers"),
+            "homeassistant.helpers.network": net,
+        }):
+            start = await self.flow.async_step_owner_browser_consent({
+                "allow_browser_login": True, "test_only_notice": notice
+            })
+        self.assertEqual("external_step", start["type"])
+        args = parse_qs(urlsplit(start["url"]).query)
+        self.assertEqual(["S256"], args["code_challenge_method"])
+        self.assertNotIn("code_verifier", start["url"])
+        self.assertIn("client_id", args)
+        state = args["state"][0]
+        record = browser.consume_probe(state)
+        self.assertEqual("flow-owner-1", record.flow_id)
+        self.assertEqual("owner-1", record.owner_id)
+        self.assertEqual(self.flow._owner_verified_tv.session, record.tv_session)
+        user_input = {
+            "probe_state": state,
+            "probe_code": "VALIDAUTHORIZATIONCODE123456",
+            "probe_owner_id": "owner-1",
+            "probe_tv_session": record.tv_session,
+        }
+        done = await self.flow.async_step_owner_browser_open(user_input)
+        self.assertEqual("external_step_done", done["type"])
+        self.assertEqual("owner_browser_done", done["next_step_id"])
+        self.assertIsNone(self.flow._browser_attempt)
+        self.assertIsNone(self.flow._owner_verified_tv)
+        success = await self.flow.async_step_owner_browser_done()
+        self.assertEqual("owner_browser_probe_complete", success["reason"])
+        again = await self.flow.async_step_owner_browser_done()
+        self.assertEqual("owner_probe_rejected", again["reason"])
+        self.assertEqual([], self.flow.created)
+
+    async def test_plain_http_cannot_start_browser_probe(self):
+        from unittest.mock import AsyncMock
+        await self.discover()
+        await self.flow.async_step_pairing_preview({"start": True})
+        backend.remote_ok = True
+        await self.flow.async_step_pairing_code({
+            "numbers_match": True, "ha_code": "12345678"
+        })
+        self.flow.context["user_id"] = "owner-1"
+        self.flow.hass = types.SimpleNamespace(
+            auth=types.SimpleNamespace(async_get_user=AsyncMock(
+                return_value=types.SimpleNamespace(
+                    is_owner=True, is_active=True)
+            ))
+        )
+        net = types.ModuleType("homeassistant.helpers.network")
+        net.get_url = lambda *_args, **_kw: "http://192.168.1.10:8123/"
+        with patch.dict(sys.modules, {
+            "homeassistant": types.ModuleType("homeassistant"),
+            "homeassistant.helpers": types.ModuleType("homeassistant.helpers"),
+            "homeassistant.helpers.network": net,
+        }):
+            result = await self.flow.async_step_owner_browser_consent({
+                "allow_browser_login": True, "test_only_notice": notice
+            })
+        self.assertEqual("owner_probe_https_required", result["reason"])
 
     async def test_start_false_cancels_without_contacting_tv(self):
         await self.discover()
