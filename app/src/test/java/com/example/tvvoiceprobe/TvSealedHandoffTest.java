@@ -145,6 +145,17 @@ public class TvSealedHandoffTest {
         }
     }
 
+    @Test public void liveProofCannotUseNullOrCallerBoolean() throws Exception {
+        try (Peer p = new Peer()) {
+            p.offer();
+            try {
+                p.tv.tvProofFromVerifiedSocket(null);
+                fail("Live TV proof accepted without actual WebSocket receipt");
+            } catch (IllegalStateException expected) { }
+            assertEquals(TvSealedHandoff.Stage.ABORTED, p.tv.stage());
+        }
+    }
+
     @Test public void missingOrFailedDualCapabilityNeverSendsReceipt() throws Exception {
         try (Peer p = new Peer()) {
             p.offer();

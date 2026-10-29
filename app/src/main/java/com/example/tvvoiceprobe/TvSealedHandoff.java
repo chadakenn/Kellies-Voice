@@ -212,6 +212,28 @@ public final class TvSealedHandoff implements AutoCloseable {
             abort();
             throw new IllegalStateException("Assist and scoped alerts not both verified");
         }
+        return sealTvProof();
+    }
+
+    /**
+     * The future live protocol MUST use the actual scoped Assist/WebSocket
+     * receipt, never a caller-controlled gate or boolean. The receipt is
+     * minted only by PairingAssistConnectionProbe after a TLS-authenticated
+     * auth_ok, nonempty Assist list AND per-TV alerts subscription.
+     * Still synthetic-only: onSyntheticOffer refuses all real token payloads.
+     */
+    public synchronized byte[] tvProofFromVerifiedSocket(
+            PairingAssistConnectionProbe.VerifiedCapabilityReceipt receipt) {
+        expect(Stage.WAIT_CAPABILITIES);
+        if (receipt == null || !receipt.claim(
+                tvUuid, session, android.os.SystemClock.elapsedRealtime())) {
+            abort();
+            throw new IllegalStateException("Live Assist/alerts receipt unavailable");
+        }
+        return sealTvProof();
+    }
+
+    private byte[] sealTvProof() {
         try {
             JSONObject frame = frame("tv_proof_receipt");
             frame.put("ack_for", "credential_offer");
