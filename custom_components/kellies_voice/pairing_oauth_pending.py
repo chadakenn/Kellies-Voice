@@ -1,25 +1,41 @@
 """#213: bounded, in-memory pending OAuth transaction for HA-side pairing.
 
-Holds an already-consumed authorization-code result and optional credentials
-only in process memory, bound to exact owner + TV session. Never writes to
-config-entry data, mDNS, discovery endpoints, or logs.
+State machine:
+  NEW → EXCHANGING → EXCHANGED → LEASED → COMMITTED
+                  ↘
+                   ABORTED (from any non-COMMITTED state)
 
-On abort, expiry, or failed provision the refresh token (if any) is revoked
-via HomeAssistantTokenExchange.revoke_refresh and the object is cleared.
+- EXCHANGING is set before the HTTP await so concurrent callers fail closed.
+- LEASED keeps the refresh token so a failed AEAD delivery can still revoke.
+- Only COMMITTED drops the refresh token permanently (after TV proof ack).
 
-This module does not mark Connected or create a config entry. The AEAD
-provisioning channel (#203 / #212) must be ready before any credential is
-handed to a TV.
+Crash/restart policy: this object is process-local. A restart loses the
+in-memory refresh token. Until a durable, encrypted pending store exists,
+any live exchange must be followed by immediate revoke on process exit or
+by a short-lived HA token that expires before restart recovery is needed.
+This draft does not enable live exchange.
+
+Never writes to config-entry data, mDNS, discovery endpoints, or logs.
 """
 
 from __future__ import annotations
 
+import enum
 import time
 from typing import Any
 
 from .pairing_token_exchange import AccessCredentials, HomeAssistantTokenExchange, OAuthTokenError
 
 _PENDING_TTL = 120  # seconds
+
+
+class _State(enum.Enum):
+    NEW = "new"
+    EXCHANGING = "exchanging"
+    EXCHANGED = "exchanged"
+    LEASED = "leased"
+    COMMITTED = "committed"
+    ABORTED = "aborted"
 
 
 class PendingOAuthTransaction:
@@ -44,11 +60,13 @@ class PendingOAuthTransaction:
         self._consumed = consumed
         self.started = started
         self._credentials: AccessCredentials | None = None
-        self._aborted = False
+        self._state = _State.NEW
 
     @property
     def expired(self) -> bool:
-        return time.time() - self.started >= _PENDING_TTL or self._aborted
+        return time.time() - self.started >= _PENDING_TTL or self._state in (
+            _State.ABORTED, _State.COMMITTED
+        )
 
     def matches(self, *, owner_user_id: str, tv_session: str) -> bool:
         return (
@@ -58,42 +76,67 @@ class PendingOAuthTransaction:
         )
 
     async def exchange(self, exchanger: HomeAssistantTokenExchange) -> None:
-        """Perform the one-use code exchange using the already-consumed result.
-
-        Credentials stay in memory. The verifier is discarded after the call.
-        """
-        if self._aborted or self._credentials is not None:
-            raise OAuthTokenError("Pending transaction already finished")
+        """Perform the one-use code exchange. Atomic transition before await."""
+        if self._state is not _State.NEW:
+            raise OAuthTokenError("Pending transaction not in exchangeable state")
         if self.expired:
             raise OAuthTokenError("Pending transaction expired")
-        creds = await exchanger.exchange_from_consumed(self._consumed)
+        # Atomic: mark EXCHANGING before the await so a concurrent caller fails.
+        self._state = _State.EXCHANGING
+        consumed = self._consumed
+        self._consumed = {}  # drop verifier before network call
+        try:
+            creds = await exchanger.exchange_from_consumed(consumed)
+        except Exception:
+            self._state = _State.ABORTED
+            raise
         self._credentials = creds
-        # Drop the verifier immediately.
-        self._consumed = {}
+        self._state = _State.EXCHANGED
 
-    async def abort_and_revoke(self, exchanger: HomeAssistantTokenExchange | None = None) -> None:
-        """Revoke any refresh token and clear secrets."""
-        self._aborted = True
-        creds = self._credentials
-        self._credentials = None
-        self._consumed = {}
-        if creds and creds.refresh_token and exchanger is not None:
-            try:
-                await exchanger.revoke_refresh(creds.refresh_token)
-            except OAuthTokenError:
-                pass  # best-effort; secrets already dropped from memory
+    def lease_for_provision(self, *, owner_user_id: str, tv_session: str) -> AccessCredentials:
+        """Lease credentials for AEAD delivery. Refresh token remains revocable.
 
-    def take_for_provision(self, *, owner_user_id: str, tv_session: str) -> AccessCredentials:
-        """Return credentials only for the exact bound owner+TV, then clear.
-
-        Caller must immediately encrypt and deliver via the AEAD channel.
-        If delivery fails the caller must call abort_and_revoke.
+        Caller must call commit_after_proof() on success or abort_and_revoke()
+        on failure/timeout. The returned object is the same instance held here.
         """
+        if self._state is not _State.EXCHANGED:
+            raise OAuthTokenError("Pending transaction not ready to lease")
         if not self.matches(owner_user_id=owner_user_id, tv_session=tv_session):
             raise OAuthTokenError("Pending transaction mismatch")
         if self._credentials is None:
             raise OAuthTokenError("No credentials available")
-        creds = self._credentials
+        self._state = _State.LEASED
+        return self._credentials
+
+    def commit_after_proof(self) -> None:
+        """Drop the HA-side refresh token after TV proof and atomic promotion.
+
+        Only call this after the TV has acknowledged receipt and the
+        Assist+alerts proof has passed. Secrets are forgotten.
+        """
+        if self._state is not _State.LEASED:
+            raise OAuthTokenError("Pending transaction not leased")
         self._credentials = None
-        self._aborted = True
-        return creds
+        self._state = _State.COMMITTED
+
+    async def abort_and_revoke(self, exchanger: HomeAssistantTokenExchange | None = None) -> None:
+        """Revoke any refresh token and clear secrets.
+
+        After a successful exchange an exchanger is required; calling with
+        None raises so a future integration cannot silently drop a live token.
+        """
+        if self._state in (_State.COMMITTED, _State.ABORTED):
+            return
+        creds = self._credentials
+        had_creds = creds is not None
+        self._credentials = None
+        self._consumed = {}
+        self._state = _State.ABORTED
+        if had_creds:
+            if exchanger is None:
+                raise OAuthTokenError("Exchanger required to revoke after exchange")
+            if creds.refresh_token:
+                try:
+                    await exchanger.revoke_refresh(creds.refresh_token)
+                except OAuthTokenError:
+                    pass  # secrets already dropped; caller may log the failure
