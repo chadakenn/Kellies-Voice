@@ -45,7 +45,7 @@ class AndroidV3AdapterContracts(unittest.TestCase):
             "onRegistrationFailed",
             "SocketTimeoutException", "closeResources()",
             "activeSocket", "main.removeCallbacksAndMessages(null)",
-            "allow_redirects=False" if False else "new SecureRandom()",
+            "new SecureRandom()",
         ):
             self.assertIn(marker, self.code)
 
@@ -55,8 +55,6 @@ class AndroidV3AdapterContracts(unittest.TestCase):
         self.assertIn("state.approvedStatus(session)", self.code)
         self.assertIn("no redirect to v2", self.code)
         self.assertIn("tvUuid", self.code)
-        self.assertIn('request line', self.code.lower() if 'request line' in self.code.lower()
-                      else (self.code + " request line"))
 
 
 if __name__ == "__main__":
