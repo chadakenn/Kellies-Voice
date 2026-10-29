@@ -20,17 +20,36 @@
         "data": {
           "confirmation_suffix": "Last four characters on TV"
         }
+      },
+      "pairing_preview": {
+        "title": "Verify this TV (developer preview)",
+        "description": "The TV must have Settings → Home Assistant → Start discovery preview open. This test exchanges ONLY temporary public keys over your local network. Check Start to display the same eight-digit code on this page and the TV. NO Home Assistant login or device entry is created.",
+        "data": {
+          "start": "Start temporary verification"
+        }
+      },
+      "pairing_code": {
+        "title": "Compare the eight-digit number",
+        "description": "Home Assistant shows: {code}. Compare ALL eight digits with the number now displayed on the physical TV. If they match and you deliberately started pairing, press CONFIRM on the TV remote first. Then select Yes below to verify that TV OK happened. This development preview NEVER installs HA credentials or creates a device.",
+        "data": {
+          "numbers_match": "All eight digits match; I pressed OK on the TV"
+        }
       }
     },
     "abort": {
       "already_configured": "This TV is already added.",
       "no_id": "The TV did not identify itself. Turn Home Assistant layout off and on in Kellie's Voice, then try again.",
-      "use_discovery": "If automatic detection is available, add the discovered TV. Otherwise use manual pairing."
+      "use_discovery": "If automatic detection is available, add the discovered TV. Otherwise use manual pairing.",
+      "invalid_pairing_preview": "The temporary TV discovery announcement was invalid or expired. Restart preview on the TV.",
+      "preview_cancelled": "The verification preview was cancelled; no connection or token changed.",
+      "verification_preview_complete": "TV remote confirmation verified cryptographically. This was a development preview only; login and credential provisioning are not implemented."
     },
     "error": {
       "invalid_device_id": "Enter the pairing ID shown on your TV.",
       "invalid_name": "Enter a TV name up to 64 characters.",
-      "pairing_suffix_mismatch": "The four characters don't match the entered TV pairing ID. Recheck the ID on the TV and correct it using Back."
+      "pairing_suffix_mismatch": "The four characters don't match the entered TV pairing ID. Recheck the ID on the TV and correct it using Back.",
+      "preview_unavailable": "Could not complete the local verification. Cancel on TV and retry. No login changed.",
+      "waiting_for_tv": "The TV has not confirmed yet. Compare both codes and press the TV confirmation button, then try again."
     }
   },
   "services": {
