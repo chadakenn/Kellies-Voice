@@ -65,8 +65,8 @@ public final class PairingSetupActivity extends Activity {
                 startButton.setEnabled(true);
             });
             startButton.setEnabled(false);
-            state.setText("Waiting for Home Assistant discovery (120 seconds). "
-                    + "Local read-only endpoint available. No authentication occurs.");
+            state.setText("LAN discovery preview active for 120 seconds. "
+                    + "Home Assistant authorization is not yet implemented.");
         } catch (Exception ignored) {
             stopWindow();
             state.setText("Could not start LAN discovery. Check local networking.");
