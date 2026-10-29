@@ -5,6 +5,7 @@ import android.os.Looper;
 import android.os.SystemClock;
 
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.security.MessageDigest;
 
 import org.json.JSONObject;
 
@@ -43,18 +44,29 @@ public final class PairingAssistConnectionProbe implements AutoCloseable {
         private final String tvId;
         private final String session;
         private final long issuedElapsed;
+        private final byte[] candidateFingerprint;
         private final AtomicBoolean claimed = new AtomicBoolean();
 
-        private VerifiedCapabilityReceipt(String tvId, String session, long issuedElapsed) {
+        private VerifiedCapabilityReceipt(String tvId, String session,
+                                          byte[] candidateFingerprint, long issuedElapsed) {
+            if (candidateFingerprint == null || candidateFingerprint.length != 32)
+                throw new IllegalArgumentException("Missing exact candidate binding");
             this.tvId = tvId;
             this.session = session;
+            this.candidateFingerprint = candidateFingerprint.clone();
             this.issuedElapsed = issuedElapsed;
         }
 
-        /** Single-use exact TV/session binding; use a monotonic Android clock. */
-        public boolean claim(String expectedTvId, String expectedSession, long nowElapsed) {
+        /**
+         * Consumed only for the *same encrypted candidate bytes* that produced
+         * the WSS-authenticated access token. No bare TV/session check suffices.
+         */
+        public boolean claim(String expectedTvId, String expectedSession,
+                             byte[] offeredFingerprint, long nowElapsed) {
             return expectedTvId != null && expectedSession != null
+                    && offeredFingerprint != null && offeredFingerprint.length == 32
                     && tvId.equals(expectedTvId) && session.equals(expectedSession)
+                    && MessageDigest.isEqual(candidateFingerprint, offeredFingerprint)
                     && nowElapsed >= issuedElapsed
                     && nowElapsed - issuedElapsed < RECEIPT_TTL_MS
                     && claimed.compareAndSet(false, true);
@@ -81,6 +93,7 @@ public final class PairingAssistConnectionProbe implements AutoCloseable {
     private final Result callback;
     private final VerifiedResult verifiedCallback;
     private final String expectedSession;
+    private final byte[] candidateFingerprint;
     private WebSocket socket;
     private boolean finished;
     private Runnable timeout;
@@ -88,12 +101,15 @@ public final class PairingAssistConnectionProbe implements AutoCloseable {
     private final String tvId;
 
     private PairingAssistConnectionProbe(Result callback, VerifiedResult verifiedCallback,
-                                         String token, String tvId, String session) {
+                                         String token, String tvId, String session,
+                                         byte[] candidateFingerprint) {
         this.callback = callback;
         this.verifiedCallback = verifiedCallback;
         this.token = token;
         this.tvId = tvId;
         this.expectedSession = session;
+        this.candidateFingerprint =
+                candidateFingerprint == null ? null : candidateFingerprint.clone();
     }
 
     /** Existing boolean proof callback remains for draft compatibility. */
@@ -103,7 +119,7 @@ public final class PairingAssistConnectionProbe implements AutoCloseable {
         if (callback == null) throw new IllegalArgumentException("Callback required");
         HttpUrl base = approvedOrigin(credentials, expectedSession, expectedTvId);
         PairingAssistConnectionProbe probe = new PairingAssistConnectionProbe(
-                callback, null, credentials.accessToken, expectedTvId, expectedSession);
+                callback, null, credentials.accessToken, expectedTvId, expectedSession, null);
         probe.open(base);
         return probe;
     }
@@ -118,8 +134,13 @@ public final class PairingAssistConnectionProbe implements AutoCloseable {
             String expectedTvId, VerifiedResult callback) {
         if (callback == null) throw new IllegalArgumentException("Callback required");
         HttpUrl base = approvedOrigin(credentials, expectedSession, expectedTvId);
+        // The exact canonical candidate object must be the same one that
+        // was decoded from the encrypted TV offer. A future coordinator
+        // compares this digest to the TV's stored offer bytes before proof.
+        byte[] fingerprint = PairingCredentialCandidateCodec.fingerprint(credentials);
         PairingAssistConnectionProbe probe = new PairingAssistConnectionProbe(
-                null, callback, credentials.accessToken, expectedTvId, expectedSession);
+                null, callback, credentials.accessToken,
+                expectedTvId, expectedSession, fingerprint);
         probe.open(base);
         return probe;
     }
@@ -249,9 +270,11 @@ public final class PairingAssistConnectionProbe implements AutoCloseable {
         finished = true;
         if (!ok) gate.fail();
         VerifiedCapabilityReceipt verifiedProof =
-                ok && gate.stage() == PairingAssistProofState.Stage.VERIFIED
+                ok && verifiedCallback != null && candidateFingerprint != null
+                && gate.stage() == PairingAssistProofState.Stage.VERIFIED
                 ? new VerifiedCapabilityReceipt(
-                        tvId, expectedSession, SystemClock.elapsedRealtime())
+                        tvId, expectedSession,
+                        candidateFingerprint, SystemClock.elapsedRealtime())
                 : null;
         token = null;
         if (timeout != null) handler.removeCallbacks(timeout);
@@ -261,7 +284,7 @@ public final class PairingAssistConnectionProbe implements AutoCloseable {
         client.dispatcher().executorService().shutdown();
         client.connectionPool().evictAll();
         if (callback != null)
-            handler.post(() -> callback.complete(verifiedProof != null));
+            handler.post(() -> callback.complete(ok));
         if (verifiedCallback != null)
             handler.post(() -> verifiedCallback.complete(verifiedProof));
     }
