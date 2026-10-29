@@ -108,8 +108,9 @@ class ProvisioningTests(unittest.TestCase):
         tampered[-1] ^= 0x01
         with self.assertRaises(ValueError):
             fresh_tv.open(bytes(tampered))
+        self.assertEqual(clear, fresh_tv.open(packet))
         with self.assertRaises(ValueError):
-            fresh_tv.open(packet) if False else provision.validate_payload_shape(
+            provision.validate_payload_shape(
                 clear, expected_tv_id=TV, expected_session=SID,
                 now_ms=1_800_000)  # Expired credentials not reusable
 
