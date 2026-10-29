@@ -158,6 +158,7 @@ public final class PairingV3QaActivity extends Activity {
         PairingV3LanWindow existing = window;
         window = null;
         if (existing != null) existing.close();
+        if (start != null) start.setEnabled(true);
         if (confirm != null) confirm.setEnabled(false);
         if (code != null) {
             code.setText("");
