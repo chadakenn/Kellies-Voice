@@ -31,8 +31,8 @@ class PreviewAttempt:
 class VerifiedTVOK:
     """Result of a cryptographically verified physical TV-OK.
 
-    The TV UUID is bound to the ECDH transcript and the proof; it is never
-    taken from the discovery session nonce.
+    The TV UUID is bound into the ECDH proof; it is never taken from the
+    discovery session nonce.
     """
     tv_uuid: str
     session: str
@@ -109,8 +109,9 @@ async def confirm_tv_ok(attempt: PreviewAttempt, *, _session_factory=None) -> Ve
     """Verify actual TV-OK ECDH proof and return the bound TV UUID.
 
     Returns None while waiting. Raises on mismatch. The returned UUID is
-    taken from the TV's authenticated status response and validated as an
-    RFC4122 v4; it is never the discovery session nonce.
+    taken from the TV's authenticated status response, validated as an
+    RFC4122 v4, and verified to be bound into the proof. It is never the
+    discovery session nonce.
     """
     candidate = attempt.candidate
     candidate_from_discovery(candidate.address, candidate.port, {
@@ -135,12 +136,12 @@ async def confirm_tv_ok(attempt: PreviewAttempt, *, _session_factory=None) -> Ve
         tv_uuid = clean_tv_device_id(doc["tv_uuid"])
     except (ValueError, TypeError):
         raise ValueError("Invalid TV UUID in confirmation") from None
-    # Reject the discovery nonce masquerading as a UUID.
     if tv_uuid == candidate.session:
         raise ValueError("Discovery session cannot be used as TV UUID")
     expected = approved_proof(
         attempt.private, local_is_tv=False, session=candidate.session,
         tv_key=attempt.tv_der, ha_key=attempt.ha_der,
+        tv_uuid=tv_uuid,
     )
     if not hmac.compare_digest(expected, proof):
         raise ValueError("TV confirmation cryptographic proof mismatch")
