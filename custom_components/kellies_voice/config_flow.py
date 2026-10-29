@@ -239,9 +239,10 @@ class KellieVoiceConfigFlow(ConfigFlow, domain=DOMAIN):
                     self._preview_attempt = None
                     self._preview_candidate = None
                     self._owner_verified_tv = verified
-                    self._owner_proof_expires = min(
-                        self._preview_deadline, time.monotonic() + 90
-                    )
+                    # An independently verified TV OK starts its own
+                    # strictly bounded owner consent window. It need not
+                    # borrow the remaining time from the LAN listener.
+                    self._owner_proof_expires = time.monotonic() + 120
                     # The former preview success is now an explicit owner
                     # opt-in gate. It does NOT authorize OAuth automatically.
                     return await self.async_step_owner_browser_consent()
