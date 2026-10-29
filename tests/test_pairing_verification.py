@@ -52,6 +52,13 @@ class PairingVisualCodeTests(unittest.TestCase):
                                    tv_key=self.public(TV), ha_key=self.public(HA))
         self.assertEqual("34821918", code_tv)
         self.assertEqual(code_tv, code_ha)
+        tv_proof = verify.approved_proof(
+            tv, local_is_tv=True, session=SESSION,
+            tv_key=self.public(TV), ha_key=self.public(HA))
+        self.assertEqual("zWMp2ha4rIAnsdSpGP8sow", tv_proof)
+        self.assertEqual(tv_proof, verify.approved_proof(
+            ha, local_is_tv=False, session=SESSION,
+            tv_key=self.public(TV), ha_key=self.public(HA)))
 
     def test_new_peer_new_session_change_code(self):
         tv, _ha = self.keys()

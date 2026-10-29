@@ -115,6 +115,53 @@ public final class PairingVerificationCode {
         }
     }
 
+    /**
+     * A separate domain-separated MAC only emitted AFTER a physical TV OK.
+     * Do not use the visible eight-digit code as a MAC or session password.
+     * The HA peer independently recomputes this exact 128-bit proof from ECDH.
+     */
+    public static String approvedProof(KeyPair own, boolean localIsTv, String session,
+                                       byte[] tvKey, byte[] haKey) {
+        if (own == null || !(own.getPrivate() instanceof ECPrivateKey)) {
+            throw new IllegalArgumentException("Missing private key");
+        }
+        byte[] sid = decodeSession(session);
+        ECPublicKey tv = requireP256(tvKey), ha = requireP256(haKey);
+        if (MessageDigest.isEqual(tv.getEncoded(), ha.getEncoded())
+                || !MessageDigest.isEqual(own.getPublic().getEncoded(),
+                    localIsTv ? tvKey : haKey)) {
+            throw new IllegalArgumentException("Peer identity mismatch");
+        }
+        requireCurve(((ECPrivateKey) own.getPrivate()).getParams(), p256Params());
+        byte[] secret = null, prk = null, expanded = null;
+        try {
+            KeyAgreement agreement = KeyAgreement.getInstance("ECDH");
+            agreement.init(own.getPrivate());
+            agreement.doPhase(localIsTv ? ha : tv, true);
+            secret = agreement.generateSecret();
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            digest.update(TRANSCRIPT_DOMAIN);
+            transcriptPart(digest, sid);
+            transcriptPart(digest, tvKey);
+            transcriptPart(digest, haKey);
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(new SecretKeySpec(digest.digest(), "HmacSHA256"));
+            prk = mac.doFinal(secret);
+            mac.init(new SecretKeySpec(prk, "HmacSHA256"));
+            mac.update("KelliesVoice/v1/tv-approved".getBytes(StandardCharsets.US_ASCII));
+            mac.update((byte) 1);
+            expanded = mac.doFinal();
+            return Base64.getUrlEncoder().withoutPadding()
+                    .encodeToString(Arrays.copyOf(expanded, 16));
+        } catch (Exception error) {
+            throw new IllegalStateException("TV confirmation proof unavailable", error);
+        } finally {
+            if (secret != null) Arrays.fill(secret, (byte) 0);
+            if (prk != null) Arrays.fill(prk, (byte) 0);
+            if (expanded != null) Arrays.fill(expanded, (byte) 0);
+        }
+    }
+
     private static void transcriptPart(MessageDigest sha, byte[] bytes) {
         if (bytes.length > 65535) throw new IllegalArgumentException("Oversized pairing data");
         sha.update((byte) (bytes.length >>> 8));
