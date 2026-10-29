@@ -1,14 +1,16 @@
 {
   "domain": "kellies_voice",
   "name": "Kellie's Voice",
+  "after_dependencies": [
+    "intent"
+  ],
   "codeowners": [
     "@chadakenn"
   ],
   "config_flow": true,
   "dependencies": [
     "zeroconf",
-    "websocket_api",
-    "intent"
+    "websocket_api"
   ],
   "documentation": "https://github.com/chadakenn/Kellies-Voice/blob/main/custom_components/kellies_voice/README.md",
   "iot_class": "local_push",
