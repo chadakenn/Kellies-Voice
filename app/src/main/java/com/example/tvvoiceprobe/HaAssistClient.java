@@ -366,7 +366,8 @@ public final class HaAssistClient {
                 }
                 return;
             }
-            Integer pressed = homeShortcutPresses.remove(id);
+            Integer pressed;
+            synchronized (this) { pressed = homeShortcutPresses.remove(id); }
             if (pressed != null) {
                 events.status(msg.optBoolean("success", false)
                         ? "Shortcut accepted by Home Assistant."
