@@ -77,8 +77,8 @@ public final class PairingSetupActivity extends Activity {
         Button cancelButton = new Button(this);
         cancelButton.setText("CLOSE SETUP");
         cancelButton.setOnClickListener(v -> finish());
-        root.addView(cancelButton);
         root.addView(closeButton);
+        root.addView(cancelButton);
 
         setContentView(scroll);
         startButton.requestFocus();
