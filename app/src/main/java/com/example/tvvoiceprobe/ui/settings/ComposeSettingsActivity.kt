@@ -155,7 +155,8 @@ fun SettingsScreen(
             .padding(32.dp)
     ) {
         Text(
-            text = "Kellie's Voice  \u00b7  Compose Settings (preview)",
+            text = if (BuildConfig.IS_QA) "Kellie's Voice  \u00b7  Settings"
+                else "Kellie's Voice  \u00b7  Compose Settings (preview)",
             color = skin.colors.accent,
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold
