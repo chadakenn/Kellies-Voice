@@ -35,6 +35,14 @@
           "ha_code": "Home Assistant verification code (must match the TV)",
           "numbers_match": "All eight digits match the TV; I pressed Confirm on the TV remote"
         }
+      },
+      "owner_browser_consent": {
+        "title": "Owner-only browser authorization preview",
+        "description": "The TV's code and remote confirmation were verified. This optional QA step opens Home Assistant's own sign-in/authorization page, then discards the returned authorization code without requesting tokens or changing a TV login. Only the Home Assistant owner may continue. It expires quickly.",
+        "data": {
+          "test_only_notice": "Token-free browser test warning (read-only)",
+          "allow_browser_login": "I am the Home Assistant owner and want to test the browser authorization screen"
+        }
       }
     },
     "abort": {
@@ -45,7 +53,14 @@
       "preview_expired": "The temporary 120-second TV discovery window expired. Start a new TV preview and try again.",
       "preview_cancelled": "The temporary pairing preview was cancelled. Nothing was changed.",
       "invalid_pairing_preview": "This untrusted TV pairing advertisement was rejected. No credentials were exchanged.",
-      "preview_code_missing": "Verification stopped safely: the Home Assistant comparison code was missing or changed. Do not approve an invisible or mismatched code. Restart the TV discovery preview and try again."
+      "preview_code_missing": "Verification stopped safely: the Home Assistant comparison code was missing or changed. Do not approve an invisible or mismatched code. Restart the TV discovery preview and try again.",
+      "owner_probe_expired": "The verified pairing session expired. Restart discovery on the TV and compare a fresh code.",
+      "owner_probe_cancelled": "Browser authorization preview cancelled. No credential was created.",
+      "owner_probe_owner_required": "The initiating Home Assistant owner could not be verified for this discovery flow. Browser authorization was not started.",
+      "owner_probe_unavailable": "Could not safely start an owner-bound browser authorization preview. No login was changed.",
+      "owner_probe_rejected": "The owner/browser/TV pairing binding failed or was reused. Authorization preview stopped.",
+      "owner_browser_probe_complete": "Browser authorization callback verified and discarded. No token was exchanged, no TV was signed in, and no saved login changed.",
+      "owner_probe_https_required": "Browser authorization requires a trusted HTTPS Home Assistant URL. The current configured URL is not HTTPS; no authorization code or token was sent. Keep using the safe two-screen preview until HTTPS is configured."
     },
     "error": {
       "invalid_device_id": "Enter the pairing ID shown on your TV.",

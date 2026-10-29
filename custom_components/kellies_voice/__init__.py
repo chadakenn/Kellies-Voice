@@ -7,6 +7,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 
 from .const import DOMAIN, PLATFORMS
+from .pairing_browser_probe import async_register_browser_probe
 from .services import async_register_services
 from .timer_handler import TimerBridge, TimerHandlerRegistry
 from .websocket import async_register_alert_subscription
@@ -18,6 +19,10 @@ _TIMER_KEY = "native_timer_registries"
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     async_register_services(hass)
     async_register_alert_subscription(hass)
+    # This callback only accepts a one-use, owner/TV-bound authorization
+    # code and DISCARDS it. No token exchange, OAuth credential or login
+    # is installed by this experimental, main-based QA branch.
+    await async_register_browser_probe(hass)
     return True
 
 
