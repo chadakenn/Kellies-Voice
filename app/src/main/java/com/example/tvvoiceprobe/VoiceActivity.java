@@ -51,6 +51,8 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
     private static final int WAKE_WORD_MIC_REQUEST = 20;
     private final List<Button> buttons = new ArrayList<>();
     private final List<Button> homeShortcutButtons = new ArrayList<>();
+    private String homeShortcutSignature = "";
+
     private LinearLayout homeShortcutRow;
     private TextView homeShortcutHint;
     private TextView homeShortcutHeading;
@@ -621,12 +623,20 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
     @Override public boolean dispatchKeyEvent(KeyEvent event) {
         int code = event.getKeyCode();
         if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
-            if (code == KeyEvent.KEYCODE_DPAD_DOWN || code == KeyEvent.KEYCODE_DPAD_RIGHT) {
-                focus(selected + 1);
+            if (code == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                focus(TvHomeNavigation.right(selected, homeShortcutButtons.size()));
                 return true;
             }
-            if (code == KeyEvent.KEYCODE_DPAD_UP || code == KeyEvent.KEYCODE_DPAD_LEFT) {
-                focus(selected - 1);
+            if (code == KeyEvent.KEYCODE_DPAD_LEFT) {
+                focus(TvHomeNavigation.left(selected, homeShortcutButtons.size()));
+                return true;
+            }
+            if (code == KeyEvent.KEYCODE_DPAD_UP) {
+                focus(TvHomeNavigation.up(selected, homeShortcutButtons.size()));
+                return true;
+            }
+            if (code == KeyEvent.KEYCODE_DPAD_DOWN) {
+                focus(TvHomeNavigation.down(selected));
                 return true;
             }
             if (code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER
@@ -1909,6 +1919,10 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
     @Override public void homeShortcuts(JSONArray configured) {
         runOnUiThread(() -> {
             if (homeShortcutRow == null || isFinishing() || isDestroyed()) return;
+            String signature = configured == null ? "" : configured.toString();
+            if (homeShortcutSignature.equals(signature)) return;
+            homeShortcutSignature = signature;
+            boolean previouslyFocused = homeShortcutButtons.contains(getCurrentFocus());
             homeShortcutRow.removeAllViews();
             homeShortcutButtons.clear();
             if (configured != null) {
@@ -1952,8 +1966,10 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
             }
             if (selected >= buttons.size() + homeShortcutButtons.size()) {
                 selected = 0;
-                focus(0);
             }
+            // Replacing the row during a config edit must not lose remote
+            // focus. Routine 30-second identical responses never rebuild it.
+            if (previouslyFocused && hasWindowFocus()) focus(selected);
         });
     }
 
