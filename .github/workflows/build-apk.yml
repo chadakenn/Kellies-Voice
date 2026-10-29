@@ -8,6 +8,21 @@ on:
         required: false
         default: false
         type: boolean
+      publish_qa:
+        description: 'Manually publish a separately signed QA prerelease (dev branch only)'
+        required: false
+        default: false
+        type: boolean
+      qa_build_number:
+        description: 'QA tag sequence N in vX.Y.Z-qa.N (increase for every publication)'
+        required: false
+        default: '1'
+        type: string
+      qa_version_code:
+        description: 'QA Android versionCode (must increase for in-place updates)'
+        required: false
+        default: '55'
+        type: string
   push:
     branches: [main]
     paths:
@@ -61,7 +76,7 @@ jobs:
           echo "TV_SIGNING_KEYSTORE_PATH=$RUNNER_TEMP/kellies-voice-signing.p12" >> "$GITHUB_ENV"
 
       - name: Test Android and Home Assistant before public release
-        if: (github.event_name == 'workflow_dispatch' && inputs.publish_release == true)
+        if: github.event_name == 'workflow_dispatch' && (inputs.publish_release == true || inputs.publish_qa == true)
         run: |
           ./gradlew --no-daemon -PskipWakeNative=true :app:assembleDebug :app:testDebugUnitTest
           python3 -m compileall -q custom_components/kellies_voice
@@ -98,7 +113,13 @@ jobs:
         if: github.event_name == 'workflow_dispatch' && inputs.publish_release != true
         env:
           TV_SIGNING_PASSWORD: ${{ secrets.TV_SIGNING_PASSWORD }}
-        run: ./gradlew --no-daemon :app:assembleQa
+          QA_BUILD_NUMBER: ${{ inputs.qa_build_number }}
+          QA_VERSION_CODE: ${{ inputs.qa_version_code }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$QA_BUILD_NUMBER" =~ ^[1-9][0-9]*$ && "$QA_VERSION_CODE" =~ ^[1-9][0-9]*$ ]] || exit 1
+          ./gradlew --no-daemon :app:assembleQa -PqaBuildNumber="$QA_BUILD_NUMBER" -PqaVersionCode="$QA_VERSION_CODE"
 
       - name: Verify QA package, signature and native wake assets
         if: github.event_name == 'workflow_dispatch' && inputs.publish_release != true
@@ -141,7 +162,7 @@ jobs:
   publish-release:
     # Publishing requires a deliberate manual workflow-dispatch approval.
     # Never infer authorization from a commit message on main.
-    if: github.ref == 'refs/heads/main' && ((github.event_name == 'workflow_dispatch' && inputs.publish_release == true))
+    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && inputs.publish_release == true && inputs.publish_qa != true
     needs: signed-release
     runs-on: ubuntu-latest
     permissions:
@@ -213,3 +234,62 @@ jobs:
             --title "Kellie's Voice $RELEASE_TAG" \
             "${notes[@]}" \
             --latest
+
+  publish-qa:
+    # Public *prerelease*, not stable. Only an explicit run from dev may publish.
+    if: github.ref == 'refs/heads/dev' && github.event_name == 'workflow_dispatch' && inputs.publish_qa == true && inputs.publish_release != true
+    needs: signed-release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download exactly the signed QA artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: kellies-voice-qa-signed
+          path: qa-files
+      - name: Validate signed QA APK manifest, tag and checksum
+        id: qa
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          apk=qa-files/app-qa.apk
+          test -s "$apk"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$apk"
+          badging="$("$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$apk")"
+          [[ "$badging" == *"package: name='com.example.tvvoiceprobe.qa'"* ]] || exit 1
+          name="$(sed -nE "s/^package: name='[^']+' versionCode='[0-9]+' versionName='([^']+)'.*/\\1/p" <<< "$badging" | head -1)"
+          code="$(sed -nE "s/^package: name='[^']+' versionCode='([0-9]+)' versionName='[^']+'.*/\\1/p" <<< "$badging" | head -1)"
+          [[ "$name" =~ ^[0-9]+\\.[0-9]+\\.[0-9]+-qa\\.[1-9][0-9]*$ ]] || exit 1
+          [[ "$code" =~ ^[1-9][0-9]*$ ]] || exit 1
+          tag="v$name"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "::error::QA tag already exists; bump QA build number and Android code."
+            exit 1
+          fi
+          export name code tag
+          python3 - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          apk = Path('qa-files/app-qa.apk')
+          data = {
+              'tag': os.environ['tag'],
+              'versionName': os.environ['name'],
+              'versionCode': int(os.environ['code']),
+              'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
+          }
+          Path('qa-files/update.json').write_text(json.dumps(data, indent=2) + '\\n')
+          PY
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+      - name: Publish explicitly approved QA prerelease (never latest)
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          QA_TAG: ${{ steps.qa.outputs.tag }}
+        run: |
+          gh release create "$QA_TAG" qa-files/app-qa.apk qa-files/update.json \\
+            --target "$GITHUB_SHA" --prerelease --latest=false \\
+            --title "Kellie's Voice QA $QA_TAG" \\
+            --notes "Signed QA-only update for testers. Not a production release. Install only over the separately signed Kellie's Voice QA app; Android asks for confirmation."
