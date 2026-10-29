@@ -306,7 +306,12 @@ class KellieVoiceConfigFlow(ConfigFlow, domain=DOMAIN):
             # No public/plain-LAN OAuth credential transport. This branch
             # does not exchange a token at all. The local URL still must
             # pass the exact Home Assistant OAuth origin rules.
-            origin = get_url(self.hass, prefer_external=False, allow_cloud=False)
+            origin = get_url(self.hass, prefer_external=True, allow_cloud=False)
+            # This is a browser *authorization code*, not an inert URL.
+            # Refuse private-LAN HTTP even with PKCE. Do not transmit codes
+            # in plaintext between the owner's browser and Home Assistant.
+            if urlsplit(origin).scheme != "https":
+                return self.async_abort(reason="owner_probe_https_required")
             attempt = OwnerAuthorizationAttempt.begin(
                 origin,
                 self._owner_verified_tv.session,
