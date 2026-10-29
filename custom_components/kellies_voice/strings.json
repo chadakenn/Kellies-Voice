@@ -30,9 +30,10 @@
       },
       "pairing_code": {
         "title": "Compare the eight digits on both screens",
-        "description": "The code from this Home Assistant session is **{code}**. Compare every digit with the code shown on the physical TV. ONLY IF THEY MATCH, confirm on the TV using its remote, then tick the confirmation below. This preview stops after verifying physical TV OK. It never authorizes OAuth or installs credentials.",
+        "description": "The temporary Home Assistant code is {code}. You should also see it in the prefilled 'Home Assistant verification code' field below. Compare every digit with the eight-digit code on the physical TV. If the code is absent on EITHER screen or differs, CANCEL. Only after an exact match, press Confirm with the physical TV remote and check the confirmation box. This is a public-key test only. No login, account or token is changed.",
         "data": {
-          "numbers_match": "The eight digits match, and I pressed Confirm on the TV"
+          "ha_code": "Home Assistant verification code (must match the TV)",
+          "numbers_match": "All eight digits match the TV; I pressed Confirm on the TV remote"
         }
       }
     },
@@ -43,7 +44,8 @@
       "preview_verified": "SUCCESS: Verified the TV's physical remote OK and cryptographic identity. No Home Assistant account, access token, TV configuration, or saved login was changed.",
       "preview_expired": "The temporary 120-second TV discovery window expired. Start a new TV preview and try again.",
       "preview_cancelled": "The temporary pairing preview was cancelled. Nothing was changed.",
-      "invalid_pairing_preview": "This untrusted TV pairing advertisement was rejected. No credentials were exchanged."
+      "invalid_pairing_preview": "This untrusted TV pairing advertisement was rejected. No credentials were exchanged.",
+      "preview_code_missing": "Verification stopped safely: the Home Assistant comparison code was missing or changed. Do not approve an invisible or mismatched code. Restart the TV discovery preview and try again."
     },
     "error": {
       "invalid_device_id": "Enter the pairing ID shown on your TV.",
