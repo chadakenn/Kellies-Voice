@@ -28,7 +28,8 @@ class OwnerClaimRegistryTests(unittest.TestCase):
         self.registry = claims.OwnerClaimRegistry()
 
     def begin(self, flow="flow-verified-1", now=100):
-        self.registry.begin(flow_id=flow, session=SESSION, tv_uuid=TV_UUID, now=now)
+        self.registry.begin(flow_id=flow, session=SESSION, tv_uuid=TV_UUID,
+                            comparison_code="12345678", now=now)
 
     def test_cannot_claim_without_verified_remote_tv_proof(self):
         self.assertFalse(self.registry.claim(
@@ -91,7 +92,15 @@ class OwnerClaimRegistryTests(unittest.TestCase):
             dict(flow_id="flow-verified-1", session=SESSION, tv_uuid="bad"),
         ):
             with self.subTest(invalid=invalid), self.assertRaises(ValueError):
-                self.registry.begin(**invalid, now=100)
+                self.registry.begin(**invalid, comparison_code="12345678", now=100)
+
+    def test_rejects_bad_comparison_code(self):
+        for code in ("", "123", "1234567", "123456789", "1234ABCD",
+                     "１２３４５６７８", None):
+            with self.subTest(code=code), self.assertRaises(ValueError):
+                self.registry.begin(
+                    flow_id="flow-verified-1", session=SESSION,
+                    tv_uuid=TV_UUID, comparison_code=code, now=100)
 
     def test_per_instance_registry_isolation(self):
         hass1, hass2 = types.SimpleNamespace(data={}), types.SimpleNamespace(data={})
@@ -99,7 +108,7 @@ class OwnerClaimRegistryTests(unittest.TestCase):
         b = claims.owner_claims(hass2)
         self.assertIsNot(a, b)
         a.begin(flow_id="flow-verified-1", session=SESSION,
-                tv_uuid=TV_UUID, now=100)
+                tv_uuid=TV_UUID, comparison_code="12345678", now=100)
         self.assertFalse(b.claim(flow_id="flow-verified-1",
                                  session=SESSION, user=user(), now=101))
 
@@ -135,7 +144,8 @@ class OwnerClaimWebSocketTests(unittest.TestCase):
         self.ws = importlib.import_module(module_name)
         self.hass = types.SimpleNamespace(data={})
         claims.owner_claims(self.hass).begin(
-            flow_id="flow-verified-1", session=SESSION, tv_uuid=TV_UUID)
+            flow_id="flow-verified-1", session=SESSION, tv_uuid=TV_UUID,
+            comparison_code="12345678")
         self.api = fake_api
 
     def call(self, person):
@@ -168,6 +178,7 @@ class OwnerClaimWebSocketTests(unittest.TestCase):
         self.assertEqual("flow-verified-1", listing[0]["flow_id"])
         self.assertEqual(SESSION, listing[0]["tv_session"])
         self.assertEqual(TV_UUID, listing[0]["tv_uuid"])
+        self.assertEqual("12345678", listing[0]["comparison_code"])
         self.assertTrue(0 < listing[0]["seconds_remaining"] <= 120)
         self.assertNotIn("owner_id", listing[0])
         self.assertNotIn("access_token", listing[0])
