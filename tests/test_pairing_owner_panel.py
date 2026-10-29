@@ -44,6 +44,7 @@ class OwnerPanelTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual("kellies-voice-pair-approval-panel", args["webcomponent_name"])
             self.assertEqual("kellies-voice-pairing", args["frontend_url_path"])
             self.assertIs(args["require_admin"], True)
+            self.assertEqual("kellies_voice", args["config_panel_domain"])
             self.assertEqual("/api/kellies_voice/pair/approval-frontend.js", args["module_url"])
             self.assertIs(args["embed_iframe"], False)
             static = hass.http.async_register_static_paths.await_args.args[0][0]
