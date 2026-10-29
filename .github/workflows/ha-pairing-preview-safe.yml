@@ -1,4 +1,4 @@
-name: HA owner browser probe (token exchange disabled)
+name: HA authenticated owner claim and browser probe (no tokens)
 
 on:
   pull_request:
@@ -8,6 +8,7 @@ on:
       - 'tests/test_pairing_exchange.py'
       - 'tests/test_ha_safe_pairing_preview_flow.py'
       - 'tests/test_pairing_browser_probe.py'
+      - 'tests/test_pairing_owner_claim.py'
       - '.github/workflows/ha-pairing-preview-safe.yml'
   workflow_dispatch:
 
@@ -30,6 +31,7 @@ jobs:
           python -m unittest discover -s tests -p 'test_pairing_exchange.py' -v
           python -m unittest discover -s tests -p 'test_ha_safe_pairing_preview_flow.py' -v
           python -m unittest discover -s tests -p 'test_pairing_browser_probe.py' -v
+          python -m unittest discover -s tests -p 'test_pairing_owner_claim.py' -v
       - name: Reject all token exchange and credential lifecycle code
         run: |
           python - <<'PY'
@@ -45,6 +47,11 @@ jobs:
           assert 'async_create_entry' not in flow.split('async def async_step_pairing_code', 1)[1]
           assert 'async_step_owner_browser_open' in flow
           assert 'async_step_owner_browser_consent' in flow
+          assert 'owner_claims(self.hass).consume' in flow
+          owner_ws = (root / 'pairing_owner_ws.py').read_text()
+          assert 'connection.user' in owner_ws
+          assert 'websocket_api.async_register_command' in owner_ws
+          assert 'HomeAssistantTokenExchange' not in owner_ws
           assert 'return self.async_abort(reason="owner_browser_probe_complete")' in flow
           assert 'HomeAssistantTokenExchange' not in flow
           assert 'exchange_from_consumed' not in flow
