@@ -26,10 +26,11 @@ class PairingAssistProbeSafetyTests(unittest.TestCase):
         self.assertIn('addPathSegments("api/websocket")', SOURCE)
         self.assertIn("new Request.Builder().url(endpoint).build()", SOURCE)
         for forbidden in ("hostnameVerifier(", "sslSocketFactory(", "TrustManager",
-                          "acceptAll", "http://", "access_token", ""):
-            # The code has one exact access_token JSON send, and that is expected.
-            if forbidden.startswith("access_token"): continue
+                          "acceptAll", "http://", "followRedirects(true)",
+                          "followSslRedirects(true)"):
             self.assertNotIn(forbidden, SOURCE)
+        self.assertIn("followRedirects(false)", SOURCE)
+        self.assertIn("followSslRedirects(false)", SOURCE)
 
     def test_needs_auth_and_actual_assist_query_before_success(self):
         self.assertIn('"auth_required".equals(type)', SOURCE)
