@@ -16,6 +16,14 @@ Remote control should require at most a **single OK to approve** with an easy-to
 - A debug APK has a different Android application ID and credential/pairing storage. Do not replace production credentials or reuse IDs implicitly.
 - HA itself advertises `_home-assistant._tcp.local.` over zeroconf, so the address can be discovered rather than typed. This is a transport hint, not permission to authenticate.
 
+## Confirmed authorization facts (October 29, 2026)
+
+Home Assistant's documented native-app authentication is OAuth 2 **authorization code plus PKCE S256**, with `/auth/authorize`, `/auth/token`, short-lived access tokens and separately revocable refresh tokens. This is **not an OAuth device-code grant**. Native custom callback URIs require registration from the app's `client_id` web page (or supported client metadata). The implementation must decide how a logged-in HA owner completes browser authorization on a PC/phone and how the response reaches the *correct* TV via a **cryptographically verified local pairing channel**. Simply collecting a code from mDNS or a config flow is insecure.
+
+An HA refresh token represents its linked user, **not automatically a per-TV permission-limited scope**. Do not claim that a custom integration can silently issue device-only admin-restricted tokens; first verify the installed Home Assistant permission and user model, get deliberate owner consent, and make revocation obvious. The only committed implementation so far is the standalone short-lived PKCE/state helper in draft [PR #197](https://github.com/chadakenn/Kellies-Voice/pull/197); it performs no credential exchange or LAN listening.
+
+Official references: [Authentication API](https://contributors.home-assistant.io/core/internals/auth-api/) and [Native app login](https://contributors.home-assistant.io/companion/mobile-app-api/setup/).
+
 ## Candidate protocol, with explicit security gates
 
 1. **Pairing intent**: only a visible first-run/onboarding activity starts a short-lived pairing session and local listener. Create a fresh unpredictable session ID and ephemeral key pair; show `Waiting for Home Assistant` plus the device name. Lifetime e.g. **120 seconds**, renewed only by explicit user action. Pairing advertisement is removed after success/cancel/timeout.
