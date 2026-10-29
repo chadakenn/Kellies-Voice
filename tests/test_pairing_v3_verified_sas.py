@@ -7,7 +7,12 @@ from pathlib import Path
 import sys
 import types
 import unittest
-from cryptography.hazmat.primitives.asymmetric import ec
+try:
+    from cryptography.hazmat.primitives.asymmetric import ec
+except ImportError:
+    # Repository's general HA integration validation does not install the
+    # optional P-256 library; dedicated v3 CI does and runs these tests.
+    ec = None
 
 ROOT = Path(__file__).resolve().parents[1] / "custom_components" / "kellies_voice"
 PACKAGE = "kv_v3_verified_tests"
@@ -17,7 +22,7 @@ sys.modules[PACKAGE] = pkg
 
 keys = importlib.import_module(PACKAGE + ".pairing_key_commitment")
 verified = importlib.import_module(PACKAGE + ".pairing_v3_verified")
-crypto = importlib.import_module(PACKAGE + ".pairing_verification")
+# v3 must work on main without importing an old, draft-only v2 module.
 
 SID = "AQIDBAUGBwgJCgsMDQ4PEA"
 UUID = "123e4567-e89b-42d3-a456-426614174000"
@@ -30,9 +35,9 @@ def make_sessions(tv_nonce=TV_NONCE, ha_nonce=HA_NONCE):
     tv_private = ec.derive_private_key(1, ec.SECP256R1())
     ha_private = ec.derive_private_key(2, ec.SECP256R1())
     tv = keys.CommitmentSession(
-        "tv", SID, crypto.public_der(tv_private), tv_nonce)
+        "tv", SID, verified.public_der(tv_private), tv_nonce)
     ha = keys.CommitmentSession(
-        "ha", SID, crypto.public_der(ha_private), ha_nonce)
+        "ha", SID, verified.public_der(ha_private), ha_nonce)
     return tv_private, ha_private, tv, ha
 
 
@@ -45,6 +50,7 @@ def finish(tv, ha):
     ha.receive_peer_reveal(tv_key, tv_nonce)
 
 
+@unittest.skipUnless(ec is not None, "P-256 test dependency not installed")
 class VerifiedSasTests(unittest.TestCase):
     def test_no_sas_or_tv_ok_mac_until_both_commits_and_reveals(self):
         tpriv, hpriv, tv, ha = make_sessions()
@@ -81,10 +87,9 @@ class VerifiedSasTests(unittest.TestCase):
         tpriv, hpriv, tv, ha = make_sessions()
         finish(tv, ha)
         code = verified.comparison_code(tpriv, tv)
-        old_code = crypto.calculate(tpriv, local_is_tv=True, session=SID,
-                                    tv_key=crypto.public_der(tpriv),
-                                    ha_key=crypto.public_der(hpriv))
-        self.assertNotEqual(old_code, code)
+        # Frozen v2 fixture for the same two scalar keys and session.
+        # The new v3 number must not silently reuse the older derivation.
+        self.assertNotEqual("34821918", code)
         tpriv2, hpriv2, tv2, ha2 = make_sessions(
             tv_nonce=bytes([32])*32, ha_nonce=HA_NONCE)
         finish(tv2, ha2)
