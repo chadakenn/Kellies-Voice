@@ -1,10 +1,12 @@
-name: HA TV token privilege and offline revocation QA (no live tokens)
+name: HA TV credential privilege and restart recovery QA (no live tokens)
 
 on:
   pull_request:
     paths:
       - 'custom_components/kellies_voice/pairing_device_token_guard.py'
       - 'tests/test_pairing_device_token_guard.py'
+      - 'custom_components/kellies_voice/pairing_token_lease_journal.py'
+      - 'tests/test_pairing_token_lease_journal.py'
       - '.github/workflows/ha-tv-token-security-qa.yml'
   workflow_dispatch:
 
@@ -18,9 +20,11 @@ jobs:
         with:
           python-version: '3.13'
       - name: Compile standalone privilege and revocation guard
-        run: python -m py_compile custom_components/kellies_voice/pairing_device_token_guard.py
+        run: python -m py_compile custom_components/kellies_voice/pairing_device_token_guard.py custom_components/kellies_voice/pairing_token_lease_journal.py
       - name: Reject owner/admin/system token transfer and test ID-based revocation
-        run: python -m unittest discover -s tests -p 'test_pairing_device_token_guard.py' -v
+        run: |
+          python -m unittest discover -s tests -p 'test_pairing_device_token_guard.py' -v
+          python -m unittest discover -s tests -p 'test_pairing_token_lease_journal.py' -v
       - name: Ensure no live authorization/provisioning endpoint was added
         run: |
           python - <<'PY'
@@ -36,5 +40,10 @@ jobs:
           assert 'session.post(' not in source
           assert 'access_token: str' in source
           assert 'refresh_token: str' in source
-          print('PASS: offline-only token identity and revocation by ID')
+          journal = Path('custom_components/kellies_voice/pairing_token_lease_journal.py').read_text()
+          assert '_write_atomic' in journal and 'os.fsync' in journal
+          assert 'async_remove_refresh_token(' in journal
+          assert '/auth/token' not in journal and 'session.post(' not in journal
+          assert 'async_create_refresh_token(' not in journal
+          print('PASS: offline-only token identity, fsynced intent and orphan recovery')
           PY

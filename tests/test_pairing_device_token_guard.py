@@ -18,8 +18,9 @@ guard = importlib.util.module_from_spec(SPEC)
 sys.modules[SPEC.name] = guard
 SPEC.loader.exec_module(guard)
 TV = "123e4567-e89b-42d3-a456-426614174000"
+NONCE = "0123456789abcdef0123456789abcdef"
 OTHER_TV = "223e4567-e89b-42d3-a456-426614174000"
-CID = "https://ha.example/kellies-voice/tv/" + TV
+CID = "https://ha.example/kellies-voice/tv/" + TV + "/attempt/" + NONCE
 ACCESS = "fake.access.value.not-a-real-token"
 REFRESH = "fake.refresh.value.not-a-real-token"
 
@@ -110,15 +111,15 @@ class CandidateTest(unittest.TestCase):
                     fixture.verify(**change)
 
     def test_proposed_client_id_is_per_tv_not_shared_owner_client(self):
-        self.assertEqual(CID, guard.proposed_tv_client_id("https://ha.example/", TV))
-        other = guard.proposed_tv_client_id("https://ha.example/", OTHER_TV)
+        self.assertEqual(CID, guard.proposed_tv_client_id("https://ha.example/", TV, NONCE))
+        other = guard.proposed_tv_client_id("https://ha.example/", OTHER_TV, NONCE)
         self.assertNotEqual(CID, other)
         for url in ("ftp://ha.example", "https://ha.example/path",
                     "http://user:password@ha.example",
                     "https://ha.example/?token=secret",
                     "https://ha.example/#fragment"):
             with self.subTest(url=url), self.assertRaises(guard.TvCredentialRejected):
-                guard.proposed_tv_client_id(url, TV)
+                guard.proposed_tv_client_id(url, TV, NONCE)
 
 
 class RevocationTest(unittest.TestCase):
