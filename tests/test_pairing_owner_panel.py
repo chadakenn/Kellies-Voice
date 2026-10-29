@@ -57,6 +57,8 @@ class OwnerPanelTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("kellies_voice/pair/claim_verified_owner", js)
         self.assertIn("sendMessagePromise", js)
         self.assertIn("textContent", js)
+        self.assertIn("pair.comparison_code", js)
+        self.assertIn("/^[0-9]{8}$/", js)
         for forbidden in (
             "localStorage", "sessionStorage", '"/auth/token"',
             "refresh_token:", "access_token:", "document.cookie",
