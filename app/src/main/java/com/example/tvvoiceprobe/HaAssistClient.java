@@ -257,6 +257,8 @@ public final class HaAssistClient {
             connecting = false;
             layoutSubscribed = false;
             layoutStatesId = -1;
+            homeShortcutListId = -1;
+            homeShortcutPresses.clear();
             layoutEntities.clear();
             layoutWrites.clear(); // Results from a lost socket can never arrive.
             layoutFeedback.reset();
@@ -279,6 +281,8 @@ public final class HaAssistClient {
             connecting = false;
             layoutSubscribed = false;
             layoutStatesId = -1;
+            homeShortcutListId = -1;
+            homeShortcutPresses.clear();
             layoutEntities.clear();
             layoutWrites.clear(); // Do not retain unacknowledged old-transport writes.
             layoutFeedback.reset();
@@ -1135,6 +1139,8 @@ public final class HaAssistClient {
         layoutFeedback.reset();
         layoutSubscribed = false;
         layoutStatesId = -1;
+        homeShortcutListId = -1;
+        homeShortcutPresses.clear();
         layoutEntities.clear();
         stopForRunEnd();
         WebSocket ws = socket;
