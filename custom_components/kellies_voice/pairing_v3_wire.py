@@ -91,15 +91,14 @@ class HaV3WireAttempt:
             self._barrier.receive_peer_commit(
                 _decode(response["tv_commit"], length=32))
             ha_key, ha_nonce = self._barrier.reveal()
-            _response(
+            acknowledged = _response(
                 await transport.post("/v3/pair/reveal-ha", {
                     "protocol": 3, "session": sid,
                     "ha_key": _encode(ha_key), "ha_nonce": _encode(ha_nonce),
                 }), {"protocol", "session", "ha_verified"}, sid,
             )
-            # Do not allow a truthy string or integer to masquerade as ack.
-            # Above response is repeated below via a separate boolean check
-            # in the latest transport result, not by trusting its existence.
+            if acknowledged["ha_verified"] is not True:
+                raise ValueError("TV did not verify HA commitment")
             response = _response(
                 await transport.get("/v3/pair/reveal-tv", {
                     "protocol": 3, "session": sid,
