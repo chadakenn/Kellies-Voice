@@ -108,3 +108,32 @@ def calculate(
     prk = hmac.new(salt, shared, hashlib.sha256).digest()  # HKDF extract
     code_bytes = hmac.new(prk, _INFO + b"\x01", hashlib.sha256).digest()  # expand
     return f"{int.from_bytes(code_bytes[:4], 'big') % 100_000_000:08d}"
+
+
+def approved_proof(
+    own_private: "EllipticCurvePrivateKey", *,
+    local_is_tv: bool, session: str, tv_key: bytes, ha_key: bytes,
+) -> str:
+    """Proof of ECDH key possession for a *separately confirmed* TV OK event.
+
+    Only the TV approval gate may emit this proof over LAN; HA recomputes it
+    locally. This is NOT permission to provision credentials by itself.
+    """
+    from cryptography.hazmat.primitives.asymmetric import ec
+    if not isinstance(own_private, ec.EllipticCurvePrivateKey) or not isinstance(
+        own_private.curve, ec.SECP256R1
+    ) or type(local_is_tv) is not bool:
+        raise ValueError("Invalid ephemeral pairing role or key")
+    sid = _session_bytes(session)
+    tv, ha = _load_p256(tv_key), _load_p256(ha_key)
+    if hmac.compare_digest(tv_key, ha_key) or not hmac.compare_digest(
+        public_der(own_private), tv_key if local_is_tv else ha_key
+    ):
+        raise ValueError("Peer identity mismatch")
+    shared = own_private.exchange(ec.ECDH(), ha if local_is_tv else tv)
+    transcript = _DOMAIN + _part(sid) + _part(tv_key) + _part(ha_key)
+    prk = hmac.new(hashlib.sha256(transcript).digest(), shared, hashlib.sha256).digest()
+    proof = hmac.new(
+        prk, b"KelliesVoice/v1/tv-approved" + b"\x01", hashlib.sha256
+    ).digest()[:16]
+    return base64.urlsafe_b64encode(proof).rstrip(b"=").decode("ascii")
