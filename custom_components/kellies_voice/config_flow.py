@@ -199,6 +199,16 @@ class KellieVoiceConfigFlow(ConfigFlow, domain=DOMAIN):
             if user_input.get("numbers_match") is not True:
                 self._preview_attempt = None
                 return self.async_abort(reason="preview_cancelled")
+            # Home Assistant may cache custom integration translations. An
+            # untranslated description cannot be treated as proof that the
+            # human saw the visual comparison code. Render the server-side
+            # code in the form itself as a prefilled required field, and
+            # fail CLOSED if it was missing/modified in the submitted form.
+            # Never trust a client-supplied alternative code.
+            if user_input.get("ha_code") != attempt.code:
+                self._preview_attempt = None
+                self._preview_candidate = None
+                return self.async_abort(reason="preview_code_missing")
             try:
                 verified = await confirm_tv_ok(attempt)
             except Exception:
@@ -218,6 +228,12 @@ class KellieVoiceConfigFlow(ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="pairing_code",
             description_placeholders={"code": attempt.code},
-            data_schema=vol.Schema({vol.Required("numbers_match"): bool}),
+            # Unlike a translated description, this default value is carried
+            # by Home Assistant's backend data_schema and stays visible
+            # even when the frontend shows raw untranslated field keys.
+            data_schema=vol.Schema({
+                vol.Required("ha_code", default=attempt.code): str,
+                vol.Required("numbers_match"): bool,
+            }),
             errors=errors,
         )
