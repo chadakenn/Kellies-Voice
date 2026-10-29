@@ -369,7 +369,7 @@ public final class HaAssistClient {
             Integer pressed = homeShortcutPresses.remove(id);
             if (pressed != null) {
                 events.status(msg.optBoolean("success", false)
-                        ? "Home Assistant shortcut completed."
+                        ? "Shortcut accepted by Home Assistant."
                         : "That shortcut failed or is not permitted in Home Assistant.");
                 return;
             }
