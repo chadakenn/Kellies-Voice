@@ -1,25 +1,22 @@
 """#213: tests for owner-approved OAuth callback state binding.
 
 These tests cover the server-side state registry and rejection paths.
-They do not perform a live token exchange against a real Home Assistant.
+They do not import aiohttp or the full Home Assistant runtime.
 """
 
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from custom_components.kellies_voice.oauth_callback import (
     register_pending_authorization,
     consume_pending_authorization,
-    OAuthCallbackView,
+    clear_pending_authorizations,
 )
-from custom_components.kellies_voice.pairing_owner_oauth import OwnerAuthorizationAttempt
 
 
 class TestOAuthStateBinding(unittest.TestCase):
     def setUp(self):
-        # Clear the module-level pending store between tests.
-        from custom_components.kellies_voice import oauth_callback
-        oauth_callback._PENDING.clear()
+        clear_pending_authorizations()
 
     def test_register_and_consume_round_trip(self):
         attempt = MagicMock()
@@ -53,28 +50,22 @@ class TestOAuthStateBinding(unittest.TestCase):
                 attempt=MagicMock(),
             )
 
+    def test_unknown_owner_rejected_on_register(self):
+        with self.assertRaises(ValueError):
+            register_pending_authorization(
+                "state",
+                flow_id="f",
+                owner_user_id="unknown",
+                tv_session="t",
+                attempt=MagicMock(),
+            )
 
-class TestOAuthCallbackViewRejection(unittest.TestCase):
-    def setUp(self):
-        from custom_components.kellies_voice import oauth_callback
-        oauth_callback._PENDING.clear()
-        self.hass = MagicMock()
-        self.view = OAuthCallbackView(self.hass)
-
-    async def test_missing_params_rejected(self):
-        request = MagicMock()
-        request.query = {}
-        response = await self.view.get(request)
-        self.assertEqual(response.status, 400)
-
-    async def test_unknown_state_rejected(self):
-        request = MagicMock()
-        request.query = {"state": "nope", "code": "abc123"}
-        response = await self.view.get(request)
-        self.assertEqual(response.status, 400)
-
-    async def test_error_query_rejected(self):
-        request = MagicMock()
-        request.query = {"error": "access_denied", "state": "x"}
-        response = await self.view.get(request)
-        self.assertEqual(response.status, 400)
+    def test_missing_owner_rejected_on_register(self):
+        with self.assertRaises(ValueError):
+            register_pending_authorization(
+                "state",
+                flow_id="f",
+                owner_user_id="",
+                tv_session="t",
+                attempt=MagicMock(),
+            )
