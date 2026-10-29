@@ -52,7 +52,9 @@ public final class PairingDiscoveryWindow implements AutoCloseable {
         registration = new NsdManager.RegistrationListener() {
             @Override public void onServiceRegistered(NsdServiceInfo info) { }
             @Override public void onRegistrationFailed(NsdServiceInfo info, int errorCode) {
+                if (closed.get()) return;
                 main.post(() -> {
+                    if (closed.get()) return;
                     close();
                     expiredCallback.run();
                 });
