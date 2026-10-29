@@ -1,6 +1,6 @@
 # Compose TV Settings: draft PR #192 hardware QA
 
-**Status:** in-device QA, **not a stable release**. The public `SETTINGS` menu remains the safe fallback. Debug-only `COMPOSE` is separate from production, and auto-pairing is planned independently in [#193](https://github.com/chadakenn/Kellies-Voice/issues/193).
+**Status:** in-device QA, **not a stable release**. Production `SETTINGS` remains the safe legacy hub. Updated development debug and signed QA builds have **one `SETTINGS` button opening Compose** (with legacy recovery routes available). Older `0.16.14-test` debug builds showed both `SETTINGS` and `COMPOSE`; those historical test notes refer to that older APK. Auto-pairing is planned independently in [#193](https://github.com/chadakenn/Kellies-Voice/issues/193).
 
 ## Confirmed on maintainer's onn 4K Pro (October 28, 2026)
 
@@ -22,6 +22,23 @@
 - [ ] **Stale HA style error found:** style rejection remained visible after later successful theme/position writes. Source fix now clears outdated feedback upon a later successful write and guards out-of-order acknowledgments; **must retest on updated APK**
 - [ ] **Neon/HACS compatibility:** selecting Neon was rejected by the *installed four-style* HACS integration. This is not proof of a broken fifth-style implementation; update the HA integration separately under controlled testing
 - [ ] **Camera playback safety:** automated agent observed Hardware (advanced) already selected. It did **not** enable/change that mode or launch camera playback. Owner approval is needed before hardware-decoder playback experiments
+
+## October 29: signed QA APK and single-Settings transition (source changes pending next build)
+
+The owner installed the **persistently signed** QA APK `com.example.tvvoiceprobe.qa` (`0.16.14-qa`, versionCode 54); the dedicated [manual signing workflow](https://github.com/chadakenn/Kellies-Voice/actions/runs/40786436228) verified signature, package and JNI/model contents. The actual APK's exact commit was not attested by the device report.
+
+[Latest direct onn ADB results](https://github.com/chadakenn/Kellies-Voice/pull/192#issuecomment-6492488935):
+- [x] Three clean launches: initial OK→Down advanced to Voice & microphone; all six categories, Back, supported theme persistence and local Neon-styled announcement sample passed
+- [x] The old HA rejection notice cleared after a later successful sync; this test involved supported styles, not an installed HACS Neon option
+- [ ] **Post-editor focus failure:** after an unsaved URL/keyboard edit and re-entry, selected Home Assistant appeared highlighted but actual focus was missing; subsequent OK→Down initially selected Home Assistant instead of advancing. This is **not fixed on the installed build**
+- [ ] **Aurora edit field contrast:** entered URL text appeared hard to read. Formal contrast testing was not performed
+
+**Changes committed after that test (not yet device-verified):**
+- QA main toolbar now exposes exactly **one SETTINGS** button and opens Compose. Original Java sections are accessible from **specific advanced/recovery entries inside Compose** so HA connection/recovery, microphone diagnostics, TV-alert diagnostics, screensaver and verified update/install/Forget remain reachable. The original stable release is not changed and keeps legacy SETTINGS; ordinary debug keeps its original controls while the QA design is validated.
+- Android window-focus epoch + editor state + LazyColumn scroll ensure the actual selected category is focusable after keyboard dismissal or Activity re-entry; selected/not-focused is no longer shown with the same strong highlight.
+- Both editable URL and camera fields use readable theme text/cursor/outline/container colors. Overlay auto-listen and launcher shortcut fallback controls were added to Compose.
+- [ ] Install a **newer signed QA APK** and retest the post-editor focus, Save/Cancel/Back with on-screen keyboard, selected-vs-focused appearance, color contrast, and advanced/recovery routes before declaring a single Settings UI done.
+- [ ] Confirm update check/install and Forget confirmation still require deliberate owner actions; this is not yet fully native Compose parity.
 
 ## Must still verify before release / merging behavior into production
 

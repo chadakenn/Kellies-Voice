@@ -288,20 +288,16 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         toolbar.setOrientation(LinearLayout.HORIZONTAL);
         addButton(toolbar, "TALK", v -> startTalk());
         addButton(toolbar, "STOP", v -> assist.finishTalking());
+        // One Settings entry in test builds. Production stays on the proven
+        // legacy hub until Compose passes TV hardware release gates.
         addButton(toolbar, "SETTINGS", v -> {
-            if (BuildConfig.IS_QA) {
+            if (BuildConfig.DEBUG || BuildConfig.IS_QA) {
                 startActivity(new Intent(this,
                         com.example.tvvoiceprobe.ui.settings.ComposeSettingsActivity.class));
             } else {
                 showSettingsDashboard();
             }
         });
-        // Old debug builds keep both controls during migration. The persistent
-        // QA package has only SETTINGS; it opens the new Compose interface.
-        if (BuildConfig.DEBUG && !BuildConfig.IS_QA) {
-            addButton(toolbar, "COMPOSE", v -> startActivity(new Intent(this,
-                    com.example.tvvoiceprobe.ui.settings.ComposeSettingsActivity.class)));
-        }
         root.addView(toolbar, new LinearLayout.LayoutParams(-1, -2));
 
         // A short, focus-safe welcome view on ordinary full-screen launches.

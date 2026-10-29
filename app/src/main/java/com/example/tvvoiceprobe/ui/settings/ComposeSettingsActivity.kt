@@ -15,6 +15,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -118,14 +119,27 @@ fun SettingsScreen(
             .associateWith { FocusRequester() }
     }
     val latestSelected by rememberUpdatedState(selected)
+    val categoryListState = rememberLazyListState()
+    // Editor state belongs to Screensaver. Don't leave its focus guard active
+    // if the remote switches categories while an editor was open.
+    LaunchedEffect(selected) {
+        if (selected != "screensaver") editorOpen = false
+    }
 
     // A one-shot onCreate focus request misses some onn keyboard/IME teardown
     // paths. Retry once after the actual Android window regains focus, and when
     // an inline editor closes. Never steal focus while the user is typing.
     LaunchedEffect(windowFocusEpoch, editorOpen) {
         if (!editorOpen) {
+            val categoryOrder = listOf("home", "voice", "overlay", "alerts", "screensaver", "updates")
+            val targetIndex = categoryOrder.indexOf(latestSelected).coerceAtLeast(0)
+            // LazyColumn may not compose off-screen rows after a screen restore.
+            // Bring the category into composition before requesting remote focus.
+            if (categoryListState.layoutInfo.visibleItemsInfo.none { it.index == targetIndex }) {
+                categoryListState.scrollToItem(targetIndex)
+            }
             withFrameNanos { }
-            categoryFocus[latestSelected]?.requestFocus()
+            categoryFocus[categoryOrder[targetIndex]]?.requestFocus()
         }
     }
     BackHandler(onBack = onBack)
@@ -146,7 +160,8 @@ fun SettingsScreen(
             .padding(32.dp)
     ) {
         Text(
-            text = "Kellie's Voice  \u00b7  Compose Settings (preview)",
+            text = if (BuildConfig.IS_QA) "Kellie's Voice  \u00b7  Settings"
+                else "Kellie's Voice  \u00b7  Compose Settings (preview)",
             color = skin.colors.accent,
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold
@@ -161,6 +176,7 @@ fun SettingsScreen(
 
         Row(modifier = Modifier.weight(1f)) {
             LazyColumn(
+                state = categoryListState,
                 modifier = Modifier
                     .weight(1.05f)
                     .padding(end = 16.dp),
@@ -275,7 +291,7 @@ fun CategoryContent(
             "overlay" -> {
                 Text("Current skin: ${skin.displayName}", color = skin.colors.text, fontSize = 16.sp)
                 Spacer(modifier = Modifier.height(8.dp))
-                Text("Select theme (saved to OverlayPreferences, shared with overlay and legacy Settings):", color = skin.colors.textMuted, fontSize = 13.sp)
+                Text("Select theme (shared with the voice overlay and Home Assistant):", color = skin.colors.textMuted, fontSize = 13.sp)
                 Spacer(modifier = Modifier.height(8.dp))
                 KellieSkins.ALL.forEach { s ->
                     var focused by remember { mutableStateOf(false) }
@@ -394,6 +410,34 @@ fun CategoryContent(
                         Toast.makeText(context, "Weather duration: ${s}s", Toast.LENGTH_SHORT).show()
                     })
                 }
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Voice overlay launch", color = skin.colors.accent, fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                var autoListen by remember { mutableStateOf(prefs.autoListen()) }
+                SettingSwitch(
+                    title = "Automatically listen when I open the voice overlay",
+                    subtitle = if (autoListen) "ON · intentional overlay launch starts listening" else "OFF · press TALK",
+                    checked = autoListen,
+                    onCheckedChange = { on ->
+                        prefs.setAutoListen(on)
+                        autoListen = prefs.autoListen()
+                        ComposeSettingsInterop.queueLayoutUpdate(HaLayout.AUTO_LISTEN)
+                    }
+                )
+                var starFallback by remember { mutableStateOf(prefs.mainLauncherOpensOverlay()) }
+                SettingSwitch(
+                    title = "Use main launcher for TV remote shortcut",
+                    subtitle = if (starFallback) "ON · launcher opens the voice overlay" else "OFF · normal app launcher",
+                    checked = starFallback,
+                    onCheckedChange = { on ->
+                        prefs.setMainLauncherOpensOverlay(on)
+                        starFallback = prefs.mainLauncherOpensOverlay()
+                    }
+                )
+                SettingsChoice(
+                    title = "Open overlay & additional controls",
+                    selected = false,
+                    onSelect = { onLegacySection("OVERLAY") }
+                )
                 Text("Changes save locally. Returning to the voice screen attempts HA layout sync using the existing connection when HA-managed layout is enabled. Reopen the overlay to see visual changes.", color = skin.colors.textMuted, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
             }
             "voice" -> {
@@ -494,7 +538,12 @@ fun CategoryContent(
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 Text("Mic disabled: ${prefs.microphoneDisabled()}", color = skin.colors.textMuted, fontSize = 13.sp)
-                Text("Use original SETTINGS for mic routing, compatibility checks, and full wake-word diagnostics.",
+                SettingsChoice(
+                    title = "Advanced microphone routing & diagnostics",
+                    selected = false,
+                    onSelect = { onLegacySection("VOICE") }
+                )
+                Text("Advanced diagnostics use the existing tested controls until fully migrated.",
                     color = skin.colors.textMuted, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
             }
             "alerts" -> {
@@ -658,8 +707,13 @@ fun CategoryContent(
                 )
                 Text("Changes to popup position and size are saved locally. " +
                     "If HA layout management is enabled, returning to the main screen attempts to sync them. " +
-                    "Use legacy SETTINGS for recovery diagnostics and any missing service options.",
+                    "The TV alert service uses the same settings in this app.",
                     color = skin.colors.textMuted, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
+                SettingsChoice(
+                    title = "TV alert receiver status & recovery",
+                    selected = false,
+                    onSelect = { onLegacySection("ALERTS") }
+                )
             }
             "screensaver" -> {
                 var ss by remember { mutableStateOf(prefs.screensaverDashboard()) }
@@ -994,6 +1048,11 @@ fun CategoryContent(
                 Text("URL and camera changes are validated, saved locally, and refresh the active screensaver. " +
                     "Returning to the main screen attempts HA sync. No microphone is started.",
                     color = skin.colors.textMuted, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
+                SettingsChoice(
+                    title = "Screensaver status & recovery",
+                    selected = false,
+                    onSelect = { onLegacySection("SCREEN") }
+                )
             }
             "home" -> {
                 // Remember only presentation-safe text, never decrypted
@@ -1007,7 +1066,7 @@ fun CategoryContent(
                         ComposeHomeStatus.configuredLabel(saved != null) +
                             if (safeAddress.isNotEmpty()) "  ·  $safeAddress" else ""
                     } catch (e: Exception) {
-                        "Saved login unavailable; check original SETTINGS"
+                        "Saved login unavailable; use Home Assistant recovery below"
                     }
                 }
                 Text("Home Assistant login", color = skin.colors.accent, fontSize = 18.sp, fontWeight = FontWeight.Medium)
@@ -1017,11 +1076,16 @@ fun CategoryContent(
                     fontSize = 16.sp
                 )
                 Text(
-                    "Token and full credentials stay encrypted. This screen never shows the token. " +
-                        "Enter or replace the login in original SETTINGS.",
+                    "Your token stays encrypted and is never shown here. " +
+                        "Use the existing authenticated setup dialog for connection changes.",
                     color = skin.colors.textMuted,
                     fontSize = 12.sp,
                     modifier = Modifier.padding(top = 4.dp)
+                )
+                SettingsChoice(
+                    title = "Connect, edit login or start a new conversation",
+                    selected = false,
+                    onSelect = { onLegacySection("HOME") }
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -1091,8 +1155,8 @@ fun CategoryContent(
                 Text(
                     "Return to Kellie's Voice's main screen and leave it open while checking " +
                         "Home Assistant's Discovered devices. Automatic discovery is advertised " +
-                        "only while the main app is active. The debug APK uses its own TV pairing " +
-                        "ID and saved login, separate from the installed release app. " +
+                        "only while the main app is active. Each installed package uses its own TV pairing " +
+                        "ID and saved login, separate from other installed copies. " +
                         "The layout watcher does not start the microphone.",
                     color = skin.colors.textMuted,
                     fontSize = 12.sp,
@@ -1100,8 +1164,8 @@ fun CategoryContent(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    "Connect / reconnect and login entry remain in original SETTINGS. " +
-                        "Those actions use the existing Assist client and must not open another connection.",
+                    "Connection recovery reuses the authenticated client. " +
+                        "Automatic HA-first onboarding is tracked separately.",
                     color = skin.colors.textMuted,
                     fontSize = 12.sp
                 )
@@ -1143,11 +1207,21 @@ fun CategoryContent(
                     }
                 )
                 Spacer(modifier = Modifier.height(12.dp))
-                Text("Update checking and installation remain in original SETTINGS. " +
-                    "All downloads require release verification and your explicit action. " +
-                    "An older stable version cannot be installed over a newer development version.",
+                Text("Updates require signature verification and your approval. " +
+                    "An older stable version cannot replace a newer build.",
                     color = skin.colors.textMuted, fontSize = 12.sp)
-                Text("Use original SETTINGS to Check now, Install verified update, or Forget login.",
+                SettingsChoice(
+                    title = "Check, download or install updates",
+                    selected = false,
+                    onSelect = { onLegacySection("SYSTEM") }
+                )
+                SettingsChoice(
+                    title = "Forget saved Home Assistant login (confirm first)",
+                    selected = false,
+                    onSelect = { onLegacySection("SYSTEM") }
+                )
+                Text("These safety-critical controls temporarily use the existing verified menus " +
+                    "within the new Settings flow; nothing is silently installed or deleted.",
                     color = skin.colors.textMuted, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
             }
             else -> {
