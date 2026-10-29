@@ -248,6 +248,10 @@ jobs:
         with:
           name: kellies-voice-qa-signed
           path: qa-files
+      - name: Install Android build tools for APK verification
+        uses: android-actions/setup-android@v4
+      - name: Install Android SDK build tools 35
+        run: sdkmanager 'build-tools;35.0.0'
       - name: Validate signed QA APK manifest, tag and checksum
         id: qa
         shell: bash
@@ -260,8 +264,8 @@ jobs:
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$apk"
           badging="$("$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$apk")"
           [[ "$badging" == *"package: name='com.example.tvvoiceprobe.qa'"* ]] || exit 1
-          name="$(sed -nE "s/^package: name='[^']+' versionCode='[0-9]+' versionName='([^']+)'.*/\\1/p" <<< "$badging" | head -1)"
-          code="$(sed -nE "s/^package: name='[^']+' versionCode='([0-9]+)' versionName='[^']+'.*/\\1/p" <<< "$badging" | head -1)"
+          name="$(sed -nE "s/^package: name='[^']+' versionCode='[0-9]+' versionName='([^']+)'.*/\1/p" <<< "$badging" | head -1)"
+          code="$(sed -nE "s/^package: name='[^']+' versionCode='([0-9]+)' versionName='[^']+'.*/\1/p" <<< "$badging" | head -1)"
           [[ "$name" =~ ^[0-9]+\\.[0-9]+\\.[0-9]+-qa\\.[1-9][0-9]*$ ]] || exit 1
           [[ "$code" =~ ^[1-9][0-9]*$ ]] || exit 1
           tag="v$name"
@@ -280,7 +284,7 @@ jobs:
               'versionCode': int(os.environ['code']),
               'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
           }
-          Path('qa-files/update.json').write_text(json.dumps(data, indent=2) + '\\n')
+          Path('qa-files/update.json').write_text(json.dumps(data, indent=2) + '\n')
           PY
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
       - name: Publish explicitly approved QA prerelease (never latest)
@@ -289,7 +293,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           QA_TAG: ${{ steps.qa.outputs.tag }}
         run: |
-          gh release create "$QA_TAG" qa-files/app-qa.apk qa-files/update.json \\
-            --target "$GITHUB_SHA" --prerelease --latest=false \\
-            --title "Kellie's Voice QA $QA_TAG" \\
+          gh release create "$QA_TAG" qa-files/app-qa.apk qa-files/update.json \
+            --target "$GITHUB_SHA" --prerelease --latest=false \
+            --title "Kellie's Voice QA $QA_TAG" \
             --notes "Signed QA-only update for testers. Not a production release. Install only over the separately signed Kellie's Voice QA app; Android asks for confirmation."
