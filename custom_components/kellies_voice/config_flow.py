@@ -13,6 +13,7 @@ from .pairing_probe import candidate_from_discovery
 from .pairing_exchange import begin_preview, confirm_tv_ok
 from .pairing_owner_oauth import OwnerAuthorizationAttempt
 from .oauth_callback import register_pending_authorization, consume_pending_authorization
+from .pairing_oauth_pending import PendingOAuthTransaction
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -63,6 +64,7 @@ class KellieVoiceConfigFlow(ConfigFlow, domain=DOMAIN):
         self._preview_attempt = None
         self._oauth_attempt = None
         self._oauth_state = None
+        self._oauth_pending = None
 
     async def async_step_user(self, user_input=None):
         """Manual fallback when the TV cannot advertise across mDNS/VLANs."""
@@ -233,7 +235,6 @@ class KellieVoiceConfigFlow(ConfigFlow, domain=DOMAIN):
             return self.async_abort(reason="oauth_unavailable")
 
         self._oauth_attempt = attempt
-        # Extract the state parameter we just generated.
         auth_url = attempt.authorization_url()
         self._oauth_state = auth_url.split("state=")[-1].split("&")[0]
 
@@ -251,8 +252,10 @@ class KellieVoiceConfigFlow(ConfigFlow, domain=DOMAIN):
         )
 
     async def async_step_oauth_resume(self, user_input=None):
-        """Resume after callback. Validates the one-time attempt, then marks
-        the external step done. Token exchange remains a later gated step.
+        """Resume after callback. Single consume, then hand to pending txn.
+
+        Token exchange is prepared but the flow still aborts without creating
+        a config entry or sending credentials to the TV.
         """
         if not user_input:
             return self.async_abort(reason="oauth_incomplete")
@@ -276,7 +279,7 @@ class KellieVoiceConfigFlow(ConfigFlow, domain=DOMAIN):
             return self.async_abort(reason="oauth_owner_mismatch")
 
         try:
-            attempt.consume_callback(
+            consumed = attempt.consume_callback(
                 received_state=user_input.get("oauth_state"),
                 code=user_input.get("oauth_code"),
                 tv_session=bound_tv,
@@ -285,14 +288,31 @@ class KellieVoiceConfigFlow(ConfigFlow, domain=DOMAIN):
         except Exception:
             return self.async_abort(reason="oauth_callback_rejected")
 
-        # External step is complete. Do not create an entry or send tokens yet.
+        # Single consume done. Hold in a pending transaction that will be
+        # aborted (and any future refresh revoked) until AEAD provisioning
+        # is ready. Do not create an entry or mark Connected.
+        try:
+            self._oauth_pending = PendingOAuthTransaction(
+                owner_user_id=actual_owner,
+                tv_session=bound_tv,
+                consumed=consumed,
+                started=time.time(),
+            )
+        except Exception:
+            return self.async_abort(reason="oauth_pending_failed")
+
         return self.async_external_step_done(next_step_id="oauth_exchange_pending")
 
     async def async_step_oauth_exchange_pending(self, user_input=None):
-        """Placeholder until token exchange + Assist proof are wired.
+        """Placeholder until AEAD provisioning + Assist proof are wired.
 
         Aborts cleanly so no incomplete credential or config entry is created.
+        Any pending transaction is cleared.
         """
+        if self._oauth_pending is not None:
+            # No exchanger available in this abort path; secrets are dropped.
+            await self._oauth_pending.abort_and_revoke(None)
+            self._oauth_pending = None
         return self.async_abort(reason="oauth_exchange_pending")
 
     async def async_step_confirm(self, user_input=None):
