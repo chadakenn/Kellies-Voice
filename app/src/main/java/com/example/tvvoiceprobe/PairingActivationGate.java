@@ -62,6 +62,7 @@ public final class PairingActivationGate {
     public synchronized boolean capabilitiesVerified(
             String expectedSession, String expectedTvId, long nowElapsedMillis,
             boolean assistAndAlertsAuthorized) {
+        if (stage == Stage.COMMITTED || stage == Stage.ABORTED) return false;
         if (stage != Stage.WAIT_CAPABILITIES
                 || !validContext(expectedSession, expectedTvId, nowElapsedMillis)
                 || !assistAndAlertsAuthorized) {
@@ -80,6 +81,7 @@ public final class PairingActivationGate {
     public synchronized boolean authenticatedHaAck(
             String expectedSession, String expectedTvId, long nowElapsedMillis,
             boolean verifiedSealedAcknowledgement) {
+        if (stage == Stage.COMMITTED || stage == Stage.ABORTED) return false;
         if (stage != Stage.WAIT_HA_ACK
                 || !validContext(expectedSession, expectedTvId, nowElapsedMillis)
                 || !verifiedSealedAcknowledgement) {
@@ -93,6 +95,7 @@ public final class PairingActivationGate {
     /** Recheck the pair's identity and monotonic TTL at persistence time. */
     public synchronized boolean canCommit(
             String expectedSession, String expectedTvId, long nowElapsedMillis) {
+        if (stage == Stage.COMMITTED || stage == Stage.ABORTED) return false;
         if (stage != Stage.READY_TO_COMMIT
                 || !validContext(expectedSession, expectedTvId, nowElapsedMillis)) {
             stage = Stage.ABORTED;
