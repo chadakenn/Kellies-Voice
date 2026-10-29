@@ -7,7 +7,7 @@
   "config_flow": true,
   "documentation": "https://github.com/chadakenn/Kellies-Voice/blob/main/custom_components/kellies_voice/README.md",
   "iot_class": "local_push",
-  "version": "0.16.14",
+  "version": "0.16.15",
   "dependencies": [
     "zeroconf",
     "websocket_api"
