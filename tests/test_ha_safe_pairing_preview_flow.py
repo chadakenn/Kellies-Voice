@@ -27,10 +27,14 @@ tree = ast.parse(source)
 flow_cls = next(x for x in tree.body if isinstance(x, ast.ClassDef)
                 and x.name == "KellieVoiceConfigFlow")
 method_names = ("async_step_zeroconf", "async_step_pairing_preview",
-                "async_step_pairing_code")
+                "async_step_pairing_code", "async_step_owner_browser_consent",
+                "async_step_owner_browser_open", "async_step_owner_browser_done")
 methods = [x for x in flow_cls.body
            if isinstance(x, ast.AsyncFunctionDef) and x.name in method_names]
-assert len(methods) == 3
+assert len(methods) == 6
+methods.append(next(x for x in flow_cls.body
+                    if isinstance(x, ast.FunctionDef)
+                    and x.name == "_owner_proof_live"))
 
 class FakeVol:
     defaults = {}
@@ -95,12 +99,19 @@ class FakeFlow:
     async_step_zeroconf = namespace["async_step_zeroconf"]
     async_step_pairing_preview = namespace["async_step_pairing_preview"]
     async_step_pairing_code = namespace["async_step_pairing_code"]
+    async_step_owner_browser_consent = namespace["async_step_owner_browser_consent"]
+    async_step_owner_browser_open = namespace["async_step_owner_browser_open"]
+    async_step_owner_browser_done = namespace["async_step_owner_browser_done"]
+    _owner_proof_live = namespace["_owner_proof_live"]
 
     def __init__(self):
         self.context = {}
         self._preview_candidate = None
         self._preview_attempt = None
         self._preview_deadline = 0
+        self._owner_verified_tv = None
+        self._owner_proof_expires = 0.0
+        self._browser_probe_succeeded = False
         self._name = "Normal TV"
         self._device_id = ""
         self.created = []
@@ -173,10 +184,36 @@ class PreviewFlowTests(unittest.IsolatedAsyncioTestCase):
         verified = await self.flow.async_step_pairing_code({
             "numbers_match": True, "ha_code": "12345678"
         })
-        self.assertEqual({"type": "abort", "reason": "preview_verified"}, verified)
+        self.assertEqual("owner_browser_consent", verified["step_id"])
+        self.assertEqual("TEST ONLY: this opens Home Assistant's own browser login page. It will discard the authorization code and NEVER install a TV login.",
+                         FakeVol.defaults["test_only_notice"])
         self.assertEqual([], self.flow.created)
         self.assertIsNone(self.flow._preview_candidate)
         self.assertIsNone(self.flow._preview_attempt)
+        self.assertIsNotNone(self.flow._owner_verified_tv)
+        stopped = await self.flow.async_step_owner_browser_consent({
+            "allow_browser_login": False,
+            "test_only_notice": FakeVol.defaults["test_only_notice"],
+        })
+        self.assertEqual("owner_probe_cancelled", stopped["reason"])
+        self.assertEqual([], self.flow.created)
+
+    async def test_unbound_owner_cannot_start_browser_authorization(self):
+        await self.discover()
+        await self.flow.async_step_pairing_preview({"start": True})
+        backend.remote_ok = True
+        result = await self.flow.async_step_pairing_code({
+            "numbers_match": True, "ha_code": "12345678"
+        })
+        self.assertEqual("owner_browser_consent", result["step_id"])
+        notice = FakeVol.defaults["test_only_notice"]
+        invalid = await self.flow.async_step_owner_browser_consent({
+            "allow_browser_login": True, "test_only_notice": notice
+        })
+        self.assertEqual("owner_probe_owner_required", invalid["reason"])
+        self.assertEqual([], self.flow.created)
+        self.assertEqual("owner_probe_rejected",
+                         (await self.flow.async_step_owner_browser_done())["reason"])
 
     async def test_start_false_cancels_without_contacting_tv(self):
         await self.discover()
@@ -260,7 +297,11 @@ class PreviewFlowTests(unittest.IsolatedAsyncioTestCase):
                        and x.name == "async_step_pairing_code")
         self.assertNotIn("async_create_entry", ast.unparse(preview))
         self.assertNotIn("async_step_oauth", source)
-        self.assertNotIn("from .pairing_owner_oauth", source)
+        self.assertNotIn("HomeAssistantTokenExchange", source)
+        self.assertNotIn("exchange_from_consumed", source)
+        self.assertNotIn("async_create_entry", ast.unparse(
+            next(x for x in flow_cls.body if isinstance(x, ast.AsyncFunctionDef)
+                 and x.name == "async_step_owner_browser_open")))
         self.assertNotIn("PendingOAuthTransaction", source)
 
 if __name__ == "__main__":
