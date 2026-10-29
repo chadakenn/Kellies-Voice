@@ -60,15 +60,18 @@ public final class PairingSetupActivity extends Activity {
         confirmButton = new Button(this);
         confirmButton.setText("THE EIGHT DIGITS MATCH • PRESS OK");
         confirmButton.setEnabled(false);
+        confirmButton.setFocusable(false);
         confirmButton.setOnClickListener(v -> {
             if (window != null && window.approveFromTv()) {
                 state.setText("TV remote OK recorded. "
                         + "Go back to Home Assistant to finish checking the code. "
-                        + "This test does NOT sign in or change your existing login.");
+                        + "This preview does NOT sign in or change your existing login.");
                 confirmButton.setEnabled(false);
+                confirmButton.setFocusable(false);
             } else {
                 state.setText("No active verification. Start a new discovery preview.");
                 confirmButton.setEnabled(false);
+                confirmButton.setFocusable(false);
             }
         });
         root.addView(confirmButton);
@@ -93,32 +96,53 @@ public final class PairingSetupActivity extends Activity {
     }
 
     private void begin() {
+        if (startButton != null && !startButton.isEnabled()) {
+            return; // Ignore a second press while starting or already running.
+        }
         stopWindow();
-        confirmButton.setEnabled(false);
+        if (confirmButton != null) {
+            confirmButton.setEnabled(false);
+            confirmButton.setFocusable(false);
+        }
+        if (startButton != null) startButton.setEnabled(false);
         try {
             window = PairingDiscoveryWindow.start(this, () -> {
                 window = null;
-                codeDisplay.setVisibility(View.GONE);
-                state.setText("Discovery ended. The listener is closed.");
-                confirmButton.setEnabled(false);
-                startButton.setEnabled(true);
+                if (codeDisplay != null) {
+                    codeDisplay.setText("");
+                    codeDisplay.setVisibility(View.GONE);
+                }
+                if (state != null) state.setText("Discovery ended. The listener is closed.");
+                if (confirmButton != null) {
+                    confirmButton.setEnabled(false);
+                    confirmButton.setFocusable(false);
+                }
+                if (startButton != null) startButton.setEnabled(true);
             }, code -> {
                 // Large digits remain readable across a living room.
-                codeDisplay.setText(code);
-                codeDisplay.setVisibility(View.VISIBLE);
-                state.setText("Compare all eight digits with Home Assistant. "
-                        + "Press OK only if they match. "
-                        + "Never approve a pairing request you did not start.");
-                confirmButton.setEnabled(true);
-                confirmButton.requestFocus();
+                if (codeDisplay != null) {
+                    codeDisplay.setText(code);
+                    codeDisplay.setVisibility(View.VISIBLE);
+                }
+                if (state != null) {
+                    state.setText("Compare all eight digits with Home Assistant. "
+                            + "Press OK only if they match. "
+                            + "Never approve a pairing request you did not start.");
+                }
+                if (confirmButton != null) {
+                    confirmButton.setEnabled(true);
+                    confirmButton.setFocusable(true);
+                    confirmButton.requestFocus();
+                }
             });
-            startButton.setEnabled(false);
-            state.setText("Waiting for Home Assistant for up to two minutes. "
-                    + "On your phone or PC, open Home Assistant → Settings → Devices & services, then choose the discovered Kellie's Voice TV.");
+            if (state != null) {
+                state.setText("Waiting for Home Assistant for up to two minutes. "
+                        + "On your phone or PC, open Home Assistant → Settings → Devices & services, then choose the discovered Kellie's Voice TV.");
+            }
         } catch (Exception ignored) {
             stopWindow();
-            state.setText("Could not start LAN discovery. Check local networking.");
-            startButton.setEnabled(true);
+            if (state != null) state.setText("Could not start LAN discovery. Check local networking.");
+            if (startButton != null) startButton.setEnabled(true);
         }
     }
 
@@ -127,8 +151,14 @@ public final class PairingSetupActivity extends Activity {
             window.close();
             window = null;
         }
-        if (confirmButton != null) confirmButton.setEnabled(false);
-        if (codeDisplay != null) codeDisplay.setVisibility(View.GONE);
+        if (confirmButton != null) {
+            confirmButton.setEnabled(false);
+            confirmButton.setFocusable(false);
+        }
+        if (codeDisplay != null) {
+            codeDisplay.setText("");
+            codeDisplay.setVisibility(View.GONE);
+        }
     }
 
     private TextView message(String value, int sp, int color) {
@@ -153,5 +183,10 @@ public final class PairingSetupActivity extends Activity {
     @Override protected void onDestroy() {
         stopWindow();
         super.onDestroy();
+    }
+
+    @Override public void onBackPressed() {
+        stopWindow();
+        super.onBackPressed();
     }
 }
