@@ -11,6 +11,24 @@ public final class ComposeSettingsInterop {
     private static final LinkedHashSet<String> PENDING_LAYOUT_UPDATES = new LinkedHashSet<>();
 
     private static boolean updateChannelChanged;
+    // Only one pending fallback navigation at a time, with an explicit
+    // allowlist. No secrets or settings values cross this bridge.
+    private static String pendingLegacySection;
+
+    public static synchronized void requestLegacySection(String section) {
+        if ("HOME".equals(section) || "VOICE".equals(section)
+                || "OVERLAY".equals(section) || "ALERTS".equals(section)
+                || "SCREEN".equals(section) || "SYSTEM".equals(section)) {
+            pendingLegacySection = section;
+        }
+    }
+
+    public static synchronized String takeLegacySection() {
+        String section = pendingLegacySection;
+        pendingLegacySection = null;
+        return section;
+    }
+
 
     /** Clear the owning Activity's stale updater offer after channel selection. */
     public static synchronized void notifyUpdateChannelChanged() {
