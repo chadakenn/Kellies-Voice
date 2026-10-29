@@ -1,6 +1,7 @@
 """Discovery flow. Home Assistant does not connect to the TV."""
 
 import time
+from urllib.parse import parse_qs, urlsplit
 
 import voluptuous as vol
 from homeassistant.config_entries import ConfigFlow, OptionsFlow
@@ -10,6 +11,8 @@ from .const import DOMAIN
 from .validation import clean_tv_device_id
 from .pairing_probe import candidate_from_discovery
 from .pairing_exchange import begin_preview, confirm_tv_ok
+from .pairing_owner_oauth import OwnerAuthorizationAttempt
+from .pairing_browser_probe import register_probe
 
 
 def _text(properties: dict, key: str) -> str:
@@ -57,6 +60,11 @@ class KellieVoiceConfigFlow(ConfigFlow, domain=DOMAIN):
         self._preview_candidate = None
         self._preview_attempt = None
         self._preview_deadline = 0.0
+        self._owner_verified_tv = None
+        self._owner_proof_expires = 0.0
+        self._browser_attempt = None
+        self._browser_state = None
+        self._browser_owner = None
 
     async def async_step_user(self, user_input=None):
         """Manual fallback when the TV cannot advertise across mDNS/VLANs."""
@@ -224,7 +232,13 @@ class KellieVoiceConfigFlow(ConfigFlow, domain=DOMAIN):
                     # OAuth callback, real token, saved identity, or service.
                     self._preview_attempt = None
                     self._preview_candidate = None
-                    return self.async_abort(reason="preview_verified")
+                    self._owner_verified_tv = verified
+                    self._owner_proof_expires = min(
+                        self._preview_deadline, time.monotonic() + 90
+                    )
+                    # The former preview success is now an explicit owner
+                    # opt-in gate. It does NOT authorize OAuth automatically.
+                    return await self.async_step_owner_browser_consent()
         return self.async_show_form(
             step_id="pairing_code",
             description_placeholders={"code": attempt.code},
@@ -237,3 +251,107 @@ class KellieVoiceConfigFlow(ConfigFlow, domain=DOMAIN):
             }),
             errors=errors,
         )
+
+    def _owner_proof_live(self) -> bool:
+        """Owner consent is scoped to the verified physical TV and TTL."""
+        return (self._owner_verified_tv is not None
+                and bool(getattr(self._owner_verified_tv, "tv_uuid", None))
+                and bool(getattr(self._owner_verified_tv, "session", None))
+                and 0 < time.monotonic() < self._owner_proof_expires)
+
+    async def async_step_owner_browser_consent(self, user_input=None):
+        """After real ECDH TV OK, ask the authenticated HA owner explicitly.
+
+        This is only a browser callback probe. The authorization code is
+        intentionally discarded after callback, NOT exchanged for tokens.
+        """
+        if not self._owner_proof_live():
+            return self.async_abort(reason="owner_probe_expired")
+        if user_input is None:
+            return self.async_show_form(
+                step_id="owner_browser_consent",
+                data_schema=vol.Schema({vol.Required("allow_browser_login"): bool}),
+            )
+        if user_input.get("allow_browser_login") is not True:
+            self._owner_verified_tv = None
+            return self.async_abort(reason="owner_probe_cancelled")
+
+        user_id = self.context.get("user_id")
+        if not isinstance(user_id, str) or not user_id:
+            return self.async_abort(reason="owner_probe_owner_required")
+        try:
+            user = await self.hass.auth.async_get_user(user_id)
+        except Exception:
+            return self.async_abort(reason="owner_probe_owner_required")
+        if (user is None or getattr(user, "is_owner", False) is not True
+                or getattr(user, "is_active", False) is not True):
+            return self.async_abort(reason="owner_probe_owner_required")
+
+        try:
+            from homeassistant.helpers.network import get_url
+            # No public/plain-LAN OAuth credential transport. This branch
+            # does not exchange a token at all. The local URL still must
+            # pass the exact Home Assistant OAuth origin rules.
+            origin = get_url(self.hass, prefer_external=False, allow_cloud=False)
+            attempt = OwnerAuthorizationAttempt.begin(
+                origin,
+                self._owner_verified_tv.session,
+                time.time(),
+                owner_requested=True,
+                tv_ok_verified=True,
+            )
+            url = attempt.authorization_url()
+            values = parse_qs(urlsplit(url).query)
+            state = values["state"][0]
+            register_probe(
+                state=state, flow_id=self.flow_id, owner_id=user_id,
+                tv_session=self._owner_verified_tv.session,
+            )
+        except Exception:
+            # No authorization URL should ever be displayed if binding or
+            # origin validation fails. Never log secrets or query strings.
+            return self.async_abort(reason="owner_probe_unavailable")
+        self._browser_attempt = attempt
+        self._browser_state = state
+        self._browser_owner = user_id
+        return self.async_external_step(
+            step_id="owner_browser_open", url=url
+        )
+
+    async def async_step_owner_browser_open(self, user_input=None):
+        """Receive only the exact callback routed via single-use state."""
+        if not isinstance(user_input, dict):
+            return self.async_abort(reason="owner_probe_cancelled")
+        attempt = self._browser_attempt
+        if (attempt is None or self._browser_state is None
+                or not self._owner_proof_live()
+                or user_input.get("probe_state") != self._browser_state
+                or user_input.get("probe_owner_id") != self._browser_owner
+                or user_input.get("probe_tv_session")
+                != getattr(self._owner_verified_tv, "session", None)
+                or self.context.get("user_id") != self._browser_owner):
+            if attempt is not None:
+                attempt.cancel()
+            return self.async_abort(reason="owner_probe_rejected")
+        try:
+            consumed = attempt.consume_callback(
+                received_state=user_input["probe_state"],
+                code=user_input.get("probe_code"),
+                tv_session=self._owner_verified_tv.session,
+                now=time.time(),
+            )
+        except (ValueError, TypeError, KeyError):
+            return self.async_abort(reason="owner_probe_rejected")
+        # The test is intentionally NOT allowed to call /auth/token;
+        # discard PKCE verifier, client ID and authorization code now.
+        consumed.clear()
+        self._browser_attempt = None
+        self._browser_state = None
+        self._owner_verified_tv = None
+        return self.async_external_step_done(
+            next_step_id="owner_browser_done"
+        )
+
+    async def async_step_owner_browser_done(self, user_input=None):
+        """Owner browser approval verified; tokens deliberately never created."""
+        return self.async_abort(reason="owner_browser_probe_complete")
