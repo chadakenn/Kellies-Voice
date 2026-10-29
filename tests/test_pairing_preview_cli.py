@@ -10,6 +10,7 @@ from io import StringIO
 import importlib.util
 from pathlib import Path
 import struct
+import types
 from unittest import mock
 import unittest
 from uuid import UUID
@@ -41,6 +42,55 @@ class PreviewCliTests(unittest.TestCase):
         self.assertEqual(expected, cli.candidate(
             "192.168.1.25", 43456,
             {"protocol": "1", "mode": "discovery-only", "session": SESSION}))
+
+    def test_real_zeroconf_keyword_callback_works(self):
+        # Reproduce Windows Python 3.13 report: ServiceBrowser invokes handler
+        # with keyword 'zeroconf' and 'state_change', not 'zc' / 'state'.
+        service_type = cli.TYPE
+        module = types.ModuleType("zeroconf")
+
+        class FakeStates:
+            Added = object()
+            Updated = object()
+
+        class FakeZeroconf:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+            def get_service_info(self, svc_type, name, timeout):
+                self_test.assertEqual(service_type, svc_type)
+                self_test.assertEqual("Kellies Voice setup." + service_type, name)
+                self_test.assertEqual(1000, timeout)
+                return types.SimpleNamespace(
+                    parsed_addresses=lambda: ["192.168.1.25"],
+                    port=43456, properties=DATA,
+                )
+
+        class FakeBrowser:
+            def __init__(self, zeroconf, svc_type, handlers):
+                self_test.assertEqual(service_type, svc_type)
+                handlers[0](
+                    zeroconf=zeroconf, service_type=svc_type,
+                    name="Kellies Voice setup." + svc_type,
+                    state_change=FakeStates.Added,
+                )
+
+            def cancel(self):
+                pass
+
+        self_test = self
+        module.ServiceBrowser = FakeBrowser
+        module.ServiceStateChange = FakeStates
+        module.Zeroconf = FakeZeroconf
+        with mock.patch.dict(sys.modules, {"zeroconf": module}):
+            with mock.patch.object(cli.time, "sleep", return_value=None):
+                found = cli.discover(2)
+        self.assertEqual(
+            [cli.Candidate("192.168.1.25", 43456, SESSION)], found
+        )
 
     def test_reject_untrusted_address_port_metadata(self):
         for ip in ("8.8.8.8", "127.0.0.1", "::1", "evil.example", "172.32.0.1"):
