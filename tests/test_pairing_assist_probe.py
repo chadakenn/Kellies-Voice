@@ -46,7 +46,13 @@ class PairingAssistProbeSafetyTests(unittest.TestCase):
         self.assertIn('unsubscribe.put("subscription"', SOURCE)
         self.assertIn("pipelines.length() > 0", SOURCE)
         self.assertIn('"auth_invalid".equals(type)', SOURCE)
-        self.assertIn("credentials.matches(expectedSession, expectedTvId", SOURCE)
+        # #224 refactored both check() and checkBound() through
+        # approvedOrigin() so the line is intentionally wrapped. Ensure
+        # both routes still enforce the same exact credential binding.
+        self.assertIn("approvedOrigin(credentials, expectedSession, expectedTvId)", SOURCE)
+        self.assertIn("credentials.matches(", SOURCE)
+        self.assertIn("expectedSession, expectedTvId, System.currentTimeMillis()", SOURCE)
+        self.assertIn("PairingCredentialCandidateCodec.fingerprint(credentials)", SOURCE)
         self.assertIn("TIMEOUT_MS = 15_000L", SOURCE)
         self.assertIn("old.cancel()", SOURCE)
 
