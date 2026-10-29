@@ -7,6 +7,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 
 from .const import DOMAIN, PLATFORMS
+from .oauth_callback import async_setup_oauth_callback
 from .services import async_register_services
 from .timer_handler import TimerBridge, TimerHandlerRegistry
 from .websocket import async_register_alert_subscription
@@ -18,6 +19,9 @@ _TIMER_KEY = "native_timer_registries"
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     async_register_services(hass)
     async_register_alert_subscription(hass)
+    # Same-origin OAuth callback for owner-approved pairing (#213).
+    # Safe to register even when no pairing is in progress.
+    await async_setup_oauth_callback(hass)
     return True
 
 
