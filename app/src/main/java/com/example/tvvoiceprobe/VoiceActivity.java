@@ -273,9 +273,25 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         KellieSplashView splash = new KellieSplashView(this);
         page.addView(splash, new FrameLayout.LayoutParams(-1, -1));
         setContentView(page);
+        // A missing login gets the visible, no-keyboard local pairing
+        // preview. Existing users, assistant key invocations, and the
+        // launcher overlay shortcut stay on their original paths.
+        boolean savedLoginUnreadable = false;
         try { settings = store.load(); }
-        catch (Exception e) { status("Saved connection couldn't be decrypted. Configure it again."); }
+        catch (Exception e) {
+            savedLoginUnreadable = true;
+            status("Saved connection couldn't be decrypted. Configure it again.");
+        }
         updateConnectionLabel();
+        if (!savedLoginUnreadable && PairingOnboardingPolicy.showOnLaunch(
+                settings != null, shouldLaunchOverlayFromLauncher(getIntent()),
+                getIntent() != null && Intent.ACTION_ASSIST.equals(getIntent().getAction()))) {
+            root.post(() -> {
+                if (!isFinishing() && !isDestroyed()) {
+                    startActivity(new Intent(this, PairingSetupActivity.class));
+                }
+            });
+        }
         if (!buttons.isEmpty()) buttons.get(0).post(() -> focus(0));
         // Some onn firmware shows only one entry per package in the ⭐ picker.
         // Launchers may strip CATEGORY_LAUNCHER/LEANBACK_LAUNCHER on the actual
@@ -712,6 +728,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         switch (section) {
             case HOME:
                 entries = new String[] {
+                        "Pair with Home Assistant (two-screen code preview)",
                         "Connect / reconnect Home Assistant",
                         "Edit Home Assistant address & token",
                         "Start new conversation",
@@ -767,10 +784,11 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                     switch (section) {
                         case HOME:
                             switch (which) {
-                                case 0: connect(); break;
-                                case 1: configure(); break;
-                                case 2: newConversation(); break;
-                                case 3: chooseHaLayout(); break;
+                                case 0: startActivity(new Intent(this, PairingSetupActivity.class)); break;
+                                case 1: connect(); break;
+                                case 2: configure(); break;
+                                case 3: newConversation(); break;
+                                case 4: chooseHaLayout(); break;
                                 default: break;
                             }
                             break;
