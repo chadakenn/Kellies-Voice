@@ -20,7 +20,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     async_register_services(hass)
     async_register_alert_subscription(hass)
     # Same-origin OAuth callback for owner-approved pairing (#213).
-    # Safe to register even when no pairing is in progress.
+    # async_setup_oauth_callback is now a real coroutine.
     await async_setup_oauth_callback(hass)
     return True
 
