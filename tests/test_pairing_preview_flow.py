@@ -57,6 +57,7 @@ def _text(data, key):
 
 namespace = {
     "vol": Vol,
+    "ZeroconfServiceInfo": object,
     "_text": _text,
     "candidate_from_discovery": probes.candidate_from_discovery,
     "begin_preview": backend.begin,
