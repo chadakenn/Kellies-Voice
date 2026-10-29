@@ -10,6 +10,7 @@ from .const import DOMAIN, PLATFORMS
 from .services import async_register_services
 from .timer_handler import TimerBridge, TimerHandlerRegistry
 from .websocket import async_register_alert_subscription
+from .home_shortcuts_ws import async_register_home_shortcuts
 
 _LOGGER = logging.getLogger(__name__)
 _TIMER_KEY = "native_timer_registries"
@@ -18,6 +19,7 @@ _TIMER_KEY = "native_timer_registries"
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     async_register_services(hass)
     async_register_alert_subscription(hass)
+    async_register_home_shortcuts(hass)
     return True
 
 
@@ -70,6 +72,7 @@ async def _options_updated(hass: HomeAssistant, entry: ConfigEntry) -> None:
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     async_register_services(hass)
     async_register_alert_subscription(hass)
+    async_register_home_shortcuts(hass)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(_options_updated))
     if entry.options.get("native_timer_intents", False) is True:
