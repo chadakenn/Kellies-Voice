@@ -692,6 +692,7 @@ fun CategoryContent(
                             urlDraft = savedUrl
                             urlError = null
                             editingUrl = true
+                            onEditorStateChanged(true)
                         }
                     )
                     if (savedUrl.isNotEmpty()) {
@@ -717,6 +718,19 @@ fun CategoryContent(
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
                         isError = urlError != null,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = skin.colors.text,
+                            unfocusedTextColor = skin.colors.text,
+                            focusedContainerColor = skin.colors.card,
+                            unfocusedContainerColor = skin.colors.card,
+                            focusedBorderColor = skin.colors.focus,
+                            unfocusedBorderColor = skin.colors.stroke,
+                            focusedLabelColor = skin.colors.accent,
+                            unfocusedLabelColor = skin.colors.textMuted,
+                            cursorColor = skin.colors.accent,
+                            errorTextColor = skin.colors.text,
+                            errorBorderColor = skin.colors.warning
+                        ),
                         modifier = Modifier.fillMaxWidth()
                     )
                     urlError?.let {
@@ -741,6 +755,7 @@ fun CategoryContent(
                             prefs.setScreensaverUrl(safe)
                             savedUrl = safe
                             editingUrl = false
+                            onEditorStateChanged(false)
                             urlError = null
                             ComposeSettingsInterop.applyScreensaverSetting(context, HaLayout.SCREENSAVER_URL)
                             Toast.makeText(
@@ -757,6 +772,7 @@ fun CategoryContent(
                             urlDraft = savedUrl
                             urlError = null
                             editingUrl = false
+                            onEditorStateChanged(false)
                         }
                     )
                 }
@@ -778,6 +794,7 @@ fun CategoryContent(
                         urlError = null
                         editingUrl = false
                     }
+                    onEditorStateChanged(false)
                 }
                 Text("Home Assistant cameras", color = skin.colors.accent, fontSize = 18.sp, fontWeight = FontWeight.Medium)
                 if (!editingCameras) {
@@ -794,6 +811,7 @@ fun CategoryContent(
                             cameraDraft = savedCameras
                             cameraError = null
                             editingCameras = true
+                            onEditorStateChanged(true)
                         }
                     )
                     if (count > 0) {
@@ -818,6 +836,19 @@ fun CategoryContent(
                         label = { Text("camera.driveway, camera.doorbell") },
                         singleLine = true,
                         isError = cameraError != null,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = skin.colors.text,
+                            unfocusedTextColor = skin.colors.text,
+                            focusedContainerColor = skin.colors.card,
+                            unfocusedContainerColor = skin.colors.card,
+                            focusedBorderColor = skin.colors.focus,
+                            unfocusedBorderColor = skin.colors.stroke,
+                            focusedLabelColor = skin.colors.accent,
+                            unfocusedLabelColor = skin.colors.textMuted,
+                            cursorColor = skin.colors.accent,
+                            errorTextColor = skin.colors.text,
+                            errorBorderColor = skin.colors.warning
+                        ),
                         modifier = Modifier.fillMaxWidth()
                     )
                     cameraError?.let {
@@ -841,6 +872,7 @@ fun CategoryContent(
                             prefs.setScreensaverCameras(stored)
                             savedCameras = stored
                             editingCameras = false
+                            onEditorStateChanged(false)
                             cameraError = null
                             ComposeSettingsInterop.applyScreensaverSetting(context, HaLayout.SCREENSAVER_CAMERAS)
                             Toast.makeText(
@@ -857,6 +889,7 @@ fun CategoryContent(
                             cameraDraft = savedCameras
                             cameraError = null
                             editingCameras = false
+                            onEditorStateChanged(false)
                         }
                     )
                 }
