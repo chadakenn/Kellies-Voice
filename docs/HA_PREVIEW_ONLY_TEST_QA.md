@@ -9,7 +9,7 @@ and **did not render the eight-digit comparison code at all**. That is
 a critical **human verification UX failure** even though ECDH proof
 succeeded. Do not claim a complete visual code match based on this UI.
 
-The preview-only **v0.16.15 QA build** now adds a required, prefilled
+The updated preview-only QA build now adds a required, prefilled
 `ha_code` field to the HA `pairing_code` form. Home Assistant's form
 schema carries the exact server-generated eight-digit code even when
 stale/missing custom integration translations suppress the description.
@@ -18,8 +18,8 @@ rejects an absent or altered value with `preview_code_missing` and
 never checks TV confirmation in that case. The existing
 `numbers_match` checkbox remains; do not check unless the TV shows
 the **same** digits. Translations/en.json now also has a friendly label
-for `ha_code`, and the QA manifest version was incremented from
-0.16.14 to 0.16.15 to help distinguish a stale installed package.
+for `ha_code`, The manifest remains at v0.16.14 to satisfy the repository release-policy
+checks; the visible code field is independent of the translation cache.
 
 **Test validation after replacing the QA folder and restarting HA:**
 1. On the fresh HA preview flow, the step displays an input box
