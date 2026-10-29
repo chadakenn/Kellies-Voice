@@ -57,32 +57,19 @@ class PendingOAuthTransaction:
             and tv_session == self.tv_session
         )
 
-    async def exchange(
-        self,
-        exchanger: HomeAssistantTokenExchange,
-        *,
-        state: str,
-        code: str,
-        now: float,
-    ) -> None:
-        """Perform the one-use code exchange. Credentials stay in memory."""
+    async def exchange(self, exchanger: HomeAssistantTokenExchange) -> None:
+        """Perform the one-use code exchange using the already-consumed result.
+
+        Credentials stay in memory. The verifier is discarded after the call.
+        """
         if self._aborted or self._credentials is not None:
             raise OAuthTokenError("Pending transaction already finished")
         if self.expired:
             raise OAuthTokenError("Pending transaction expired")
-        # The caller must have already consumed the attempt exactly once.
-        # We use the verifier returned by that single consume.
-        creds = await exchanger.exchange_approved_callback(
-            # exchange_approved_callback still expects an attempt; for the
-            # already-consumed path we supply a thin adapter that returns
-            # the previously obtained verifier without consuming again.
-            _AlreadyConsumed(self._consumed),
-            state=state,
-            code=code,
-            tv_session=self.tv_session,
-            now=now,
-        )
+        creds = await exchanger.exchange_from_consumed(self._consumed)
         self._credentials = creds
+        # Drop the verifier immediately.
+        self._consumed = {}
 
     async def abort_and_revoke(self, exchanger: HomeAssistantTokenExchange | None = None) -> None:
         """Revoke any refresh token and clear secrets."""
@@ -110,31 +97,3 @@ class PendingOAuthTransaction:
         self._credentials = None
         self._aborted = True
         return creds
-
-
-class _AlreadyConsumed:
-    """Adapter so HomeAssistantTokenExchange can use a pre-consumed result
-    without calling consume_callback a second time.
-    """
-
-    def __init__(self, consumed: dict[str, str]) -> None:
-        self._consumed = consumed
-        self.client_id = consumed.get("client_id", "")
-
-    def consume_callback(self, *, received_state, code, tv_session, now):
-        # Already consumed; just return the stored values if they match.
-        if (
-            received_state != self._consumed.get("state")
-            or code != self._consumed.get("code")
-            or tv_session != self._consumed.get("tv_session")
-        ):
-            raise ValueError("Already-consumed mismatch")
-        return {
-            "code": self._consumed["code"],
-            "code_verifier": self._consumed["code_verifier"],
-            "client_id": self.client_id,
-            "redirect_uri": self._consumed["redirect_uri"],
-        }
-
-    def cancel(self) -> None:
-        self._consumed = {}
