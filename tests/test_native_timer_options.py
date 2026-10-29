@@ -1,6 +1,7 @@
 """Test the real HA OptionsFlow methods without requiring Home Assistant."""
 
 import ast
+import importlib.util
 from pathlib import Path
 from types import SimpleNamespace
 import unittest
@@ -19,6 +20,9 @@ class FakeVol:
     @staticmethod
     def Schema(fields):
         return fields
+    @staticmethod
+    def In(values):
+        return str
 
 
 class FakeOptionsFlow:
@@ -30,7 +34,17 @@ class FakeOptionsFlow:
         return {"type": "create", **kwargs}
 
 
-runtime = {"OptionsFlow": FakeOptionsFlow, "vol": FakeVol}
+_SHORTCUTS = Path(__file__).resolve().parents[1] / "custom_components/kellies_voice/home_shortcuts.py"
+_spec = importlib.util.spec_from_file_location("timer_shortcuts", _SHORTCUTS)
+_module = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_module)
+runtime = {
+    "OptionsFlow": FakeOptionsFlow,
+    "vol": FakeVol,
+    "COUNT": _module.COUNT,
+    "ACTIONS": _module.ACTIONS,
+    "validate_slot": _module.validate_slot,
+}
 exec(compile(ast.Module(body=[OPTIONS], type_ignores=[]),
              "timer_options_from_config_flow.py", "exec"), runtime)
 OptionFlowUnderTest = runtime["KellieVoiceOptionsFlow"]
