@@ -22,6 +22,8 @@ public final class PairingSetupActivity extends Activity {
     private TextView codeDisplay;
     private Button startButton;
     private Button confirmButton;
+    /** Generation of the active window; stale callbacks must not match. */
+    private int activeGeneration;
 
     @Override public void onCreate(Bundle stateBundle) {
         super.onCreate(stateBundle);
@@ -79,8 +81,6 @@ public final class PairingSetupActivity extends Activity {
         Button closeButton = new Button(this);
         closeButton.setText("USE EXISTING MANUAL LOGIN");
         closeButton.setOnClickListener(v -> {
-            // Return to the already-running app. The parent Activity opens
-            // its existing manual login form; this screen never handles a token.
             setResult(RESULT_OK);
             finish();
         });
@@ -97,7 +97,7 @@ public final class PairingSetupActivity extends Activity {
 
     private void begin() {
         if (startButton != null && !startButton.isEnabled()) {
-            return; // Ignore a second press while starting or already running.
+            return;
         }
         stopWindow();
         if (confirmButton != null) {
@@ -105,8 +105,10 @@ public final class PairingSetupActivity extends Activity {
             confirmButton.setFocusable(false);
         }
         if (startButton != null) startButton.setEnabled(false);
+        final int generation = ++activeGeneration;
         try {
             window = PairingDiscoveryWindow.start(this, () -> {
+                if (generation != activeGeneration) return; // Stale expiry.
                 window = null;
                 if (codeDisplay != null) {
                     codeDisplay.setText("");
@@ -119,7 +121,7 @@ public final class PairingSetupActivity extends Activity {
                 }
                 if (startButton != null) startButton.setEnabled(true);
             }, code -> {
-                // Large digits remain readable across a living room.
+                if (generation != activeGeneration) return; // Stale code.
                 if (codeDisplay != null) {
                     codeDisplay.setText(code);
                     codeDisplay.setVisibility(View.VISIBLE);
@@ -147,6 +149,7 @@ public final class PairingSetupActivity extends Activity {
     }
 
     private void stopWindow() {
+        activeGeneration++; // Invalidate any in-flight callbacks.
         if (window != null) {
             window.close();
             window = null;
