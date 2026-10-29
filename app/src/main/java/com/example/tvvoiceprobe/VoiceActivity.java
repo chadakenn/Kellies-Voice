@@ -715,7 +715,8 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                         "Connect / reconnect Home Assistant",
                         "Edit Home Assistant address & token",
                         "Start new conversation",
-                        "Manage TV layout from Home Assistant: " + (prefs.haManage() ? "ON" : "OFF")
+                        "Manage TV layout from Home Assistant: " + (prefs.haManage() ? "ON" : "OFF"),
+                        "Preview no-typing pairing discovery (development only)"
                 };
                 break;
             case VOICE:
@@ -771,6 +772,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                                 case 1: configure(); break;
                                 case 2: newConversation(); break;
                                 case 3: chooseHaLayout(); break;
+                                case 4: startActivity(new Intent(this, PairingSetupActivity.class)); break;
                                 default: break;
                             }
                             break;
