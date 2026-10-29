@@ -1,0 +1,40 @@
+name: Isolated v3 QA HA ZIP (no credentials)
+on:
+  push:
+    branches:
+      - feature/ha-v3-isolated-qa-integration
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'custom_components/kellies_voice_v3qa/**'
+      - 'scripts/package_ha_v3qa.py'
+      - '.github/workflows/ha-v3qa-package.yml'
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile and create isolated HA-only ZIP
+        run: |
+          python -m compileall -q custom_components/kellies_voice_v3qa
+          python scripts/package_ha_v3qa.py
+      - name: Verify ZIP is isolated
+        run: |
+          python - <<'PY'
+          from zipfile import ZipFile
+          with ZipFile('dist/kellies_voice_v3qa_ha.zip') as z:
+              names = z.namelist()
+              assert names and all(n.startswith('custom_components/kellies_voice_v3qa/') for n in names)
+              assert not any('/__pycache__/' in n for n in names)
+              print("PASS", len(names), "files; no stable integration files")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kellies-voice-v3qa-ha-integration
+          path: dist/kellies_voice_v3qa_ha.zip
+          retention-days: 7
