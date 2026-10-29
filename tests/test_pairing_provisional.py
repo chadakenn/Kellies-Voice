@@ -3,9 +3,11 @@
 Uses a fake hass so no full Home Assistant runtime is required.
 """
 
+import sys
 import time
+import types
 import unittest
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from custom_components.kellies_voice.pairing_provisional import (
     create_provisional_entry,
@@ -17,6 +19,23 @@ from custom_components.kellies_voice.pairing_provisional import (
 
 class TestProvisionalEntry(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
+        # The fast unit-test runner deliberately does not install HA Core.
+        # Fake only the constructor import; this does NOT validate the
+        # real Home Assistant ConfigEntry signature or persistence API.
+        class FakeConfigEntry:
+            def __init__(self, **kwargs):
+                self.entry_id = "prov-1"
+                self.data = kwargs["data"]
+
+        fake_ha = types.ModuleType("homeassistant")
+        fake_cfg = types.ModuleType("homeassistant.config_entries")
+        fake_cfg.ConfigEntry = FakeConfigEntry
+        mocked = patch.dict(sys.modules, {
+            "homeassistant": fake_ha,
+            "homeassistant.config_entries": fake_cfg,
+        })
+        mocked.start()
+        self.addCleanup(mocked.stop)
         self.hass = MagicMock()
         self.hass.config_entries = MagicMock()
         self.hass.config_entries.async_entries.return_value = []
