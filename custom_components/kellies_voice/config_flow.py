@@ -304,13 +304,22 @@ class KellieVoiceConfigFlow(ConfigFlow, domain=DOMAIN):
 
         try:
             from homeassistant.helpers.network import get_url
-            # No public/plain-LAN OAuth credential transport. This branch
-            # does not exchange a token at all. The local URL still must
-            # pass the exact Home Assistant OAuth origin rules.
-            origin = get_url(self.hass, prefer_external=True, allow_cloud=False)
-            # This is a browser *authorization code*, not an inert URL.
-            # Refuse private-LAN HTTP even with PKCE. Do not transmit codes
-            # in plaintext between the owner's browser and Home Assistant.
+            # Home Assistant Cloud is an HTTPS external URL. The earlier
+            # draft accidentally disabled it using allow_cloud=False, which
+            # made valid Nabu Casa remote access fail. Select through HA's
+            # network helper rather than trusting user input or discovery.
+            # Require SSL, forbid plaintext internal fallback, and prefer
+            # the managed cloud URL when configured.
+            origin = get_url(
+                self.hass,
+                require_ssl=True,
+                allow_internal=False,
+                allow_external=True,
+                allow_cloud=True,
+                prefer_cloud=True,
+            )
+            # Defensive check in addition to get_url(require_ssl=True).
+            # Never send an authorization code to an HTTP callback.
             if urlsplit(origin).scheme != "https":
                 return self.async_abort(reason="owner_probe_https_required")
             attempt = OwnerAuthorizationAttempt.begin(
