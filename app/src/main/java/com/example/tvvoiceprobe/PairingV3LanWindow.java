@@ -41,7 +41,9 @@ public final class PairingV3LanWindow implements AutoCloseable {
     private static final int BODY_LIMIT = 512;
     private static final int HEADER_LIMIT = 1024;
     private static final int DEADLINE_MS = 1500;
-    private static final String SERVICE = "_kellies-pair._tcp.local.";
+    // Android NSD expects the registration type, not the full mDNS FQDN.
+    // Home Assistant still discovers _kellies-pair._tcp.local.
+    private static final String SERVICE = "_kellies-pair._tcp.";
 
     private final Handler main = new Handler(Looper.getMainLooper());
     private final AtomicBoolean closed = new AtomicBoolean();
@@ -51,7 +53,8 @@ public final class PairingV3LanWindow implements AutoCloseable {
     private final NsdManager.RegistrationListener registration;
     private final PairingV3TvWireState state;
     private final Consumer<String> codeListener;
-    private final Runnable expiredCallback;
+    private final Consumer<String> statusListener;
+    private final Consumer<String> expiredCallback;
     private final String session;
     private final long startedAt;
     private Thread worker;
@@ -60,19 +63,32 @@ public final class PairingV3LanWindow implements AutoCloseable {
     private PairingV3LanWindow(Context context, ServerSocket socket, String session,
                                PairingV3TvWireState state,
                                Consumer<String> codeListener,
-                               Runnable expiredCallback) {
+                               Consumer<String> statusListener,
+                               Consumer<String> expiredCallback) {
         this.listener = socket;
         this.session = session;
         this.state = state;
         this.codeListener = codeListener;
+        this.statusListener = statusListener;
         this.expiredCallback = expiredCallback;
         this.startedAt = SystemClock.elapsedRealtime();
         this.nsd = (NsdManager) context.getApplicationContext()
                 .getSystemService(Context.NSD_SERVICE);
         this.registration = new NsdManager.RegistrationListener() {
-            @Override public void onServiceRegistered(NsdServiceInfo info) { }
+            @Override public void onServiceRegistered(NsdServiceInfo info) {
+                main.post(() -> {
+                    if (!closed.get()) {
+                        statusListener.accept(
+                                "V3 network discovery READY. Open Home Assistant > "
+                                + "Settings > Devices & services and select "
+                                + "Kellie's Voice v3 SAFE TEST.");
+                    }
+                });
+            }
             @Override public void onRegistrationFailed(NsdServiceInfo info, int code) {
-                main.post(() -> expire());
+                main.post(() -> expire(
+                        "Android NSD registration FAILED (code " + code
+                        + "). The TV never became discoverable. Try START again."));
             }
             @Override public void onServiceUnregistered(NsdServiceInfo info) { }
             @Override public void onUnregistrationFailed(NsdServiceInfo info, int code) { }
@@ -85,9 +101,10 @@ public final class PairingV3LanWindow implements AutoCloseable {
      */
     public static PairingV3LanWindow start(Context context,
             Consumer<String> verifiedCodeOnMainThread,
-            Runnable expiredOnMainThread) throws IOException {
+            Consumer<String> statusOnMainThread,
+            Consumer<String> expiredOnMainThread) throws IOException {
         if (context == null || verifiedCodeOnMainThread == null
-                || expiredOnMainThread == null) {
+                || statusOnMainThread == null || expiredOnMainThread == null) {
             throw new IllegalArgumentException("A visible TV setup screen is required");
         }
         byte[] sid = new byte[16];
@@ -109,7 +126,7 @@ public final class PairingV3LanWindow implements AutoCloseable {
         server.setSoTimeout(600);
         PairingV3LanWindow window = new PairingV3LanWindow(
             context, server, session, state,
-            verifiedCodeOnMainThread, expiredOnMainThread);
+            verifiedCodeOnMainThread, statusOnMainThread, expiredOnMainThread);
         if (window.nsd == null) {
             window.close();
             throw new IOException("Local network discovery unavailable");
@@ -127,7 +144,9 @@ public final class PairingV3LanWindow implements AutoCloseable {
             window.worker = new Thread(window::serve, "KellieV3PairingLAN");
             window.worker.setDaemon(true);
             window.worker.start();
-            window.main.postDelayed(window::expire, PairingV3TvWireState.TIMEOUT_MS);
+            window.main.postDelayed(
+                    () -> window.expire("The full 2-minute window expired. Press START to retry."),
+                    PairingV3TvWireState.TIMEOUT_MS);
             return window;
         } catch (RuntimeException error) {
             window.close();
@@ -150,25 +169,28 @@ public final class PairingV3LanWindow implements AutoCloseable {
         }
     }
 
-    private void expire() {
+    private void expire(String reason) {
         if (!closed.compareAndSet(false, true)) return;
         closeResources();
-        expiredCallback.run();
+        expiredCallback.accept(reason);
     }
 
     private void serve() {
         while (!closed.get()) {
             if (SystemClock.elapsedRealtime() - startedAt
-                    >= PairingV3TvWireState.TIMEOUT_MS
-                    || requests.get() >= MAX_REQUESTS) {
-                main.post(this::expire);
+                    >= PairingV3TvWireState.TIMEOUT_MS) {
+                main.post(() -> expire("V3 test expired after 2 minutes."));
+                return;
+            }
+            if (requests.get() >= MAX_REQUESTS) {
+                main.post(() -> expire("V3 test request limit reached. Press START to retry."));
                 return;
             }
             try (Socket socket = listener.accept()) {
                 activeSocket = socket;
                 socket.setSoTimeout(650);
                 if (requests.incrementAndGet() > MAX_REQUESTS) {
-                    main.post(this::expire);
+                    main.post(() -> expire("V3 test request limit reached. Press START to retry."));
                     return;
                 }
                 handle(socket);
