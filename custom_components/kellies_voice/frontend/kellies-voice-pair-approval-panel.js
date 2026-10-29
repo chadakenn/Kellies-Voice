@@ -14,10 +14,13 @@ class KelliesVoicePairApprovalPanel extends HTMLElement {
   }
 
   set hass(value) {
+    const firstAuthenticatedState = !this._hass && !!value?.connection;
     this._hass = value;
-    if (this.isConnected && !this._built) {
-      this._render();
-      this._refresh();
+    if (this.isConnected) {
+      if (!this._built) this._render();
+      // HA can attach the custom element before supplying the hass prop.
+      // Fetch once when the authenticated connection first arrives.
+      if (firstAuthenticatedState) this._refresh();
     }
   }
 
