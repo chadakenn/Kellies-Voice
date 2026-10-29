@@ -2,7 +2,7 @@
 
 **Issue:** #213  
 **Coordinates with:** #217 (HA pending lease), #218 (TV activation gate), #212 (sealed payload), #203 (AES-GCM)  
-**Status:** Protocol design only. No live token exchange, no public endpoints, no credentials on mDNS/offer/status.
+**Status:** Conceptual protocol with HA-only in-memory state machine staged in draft #221. No live token exchange, public endpoints, or credentials on mDNS/offer/status.
 
 ## Goal
 
@@ -14,6 +14,40 @@ Deliver a one-use OAuth credential set from HA to a physically verified TV, then
 2. The TV session, ECDH transcript, and matching-code/TV-OK proof are bound to the same flow.
 3. The TV has a non-expired provisional HA config entry so the scoped alert subscription can succeed.
 4. Transport is HTTPS (or loopback). Bare private-LAN HTTP is a blocker; do not send tokens over it.
+
+## Exact in-memory draft #221 frame (not a live network protocol)
+
+The current `PairingSealedChannel` already authenticates a 22-byte outer
+header: version byte `0x01`, direction byte (0=HA→TV, 1=TV→HA),
+8-byte big-endian sequence, and 12-byte random AES-GCM nonce. The 16-byte
+authentication tag follows ciphertext. AEAD associated data is the existing
+`KelliesVoice/v1/channel-aad` label, the public ECDH transcript SHA-256
+and the full outer header. Sequence and direction enforcement are mandatory.
+
+Within that encrypted authenticated payload, #221 uses exact JSON fields:
+
+| Field | Type | Current #221 name |
+| --- | --- | --- |
+| Protocol version | integer 1 | `v` |
+| Authenticated message type | string | `type` |
+| Canonical TV application UUID | string | `tv_uuid` |
+| 16-byte base64url session | string | `session` |
+| Public ECDH transcript SHA-256 | 64-digit lowercase hex | `transcript` |
+| Fixed session expiry | integer Unix seconds | `expires_at` |
+| Encrypted candidate (offer only) | base64url without padding | `candidate_b64` |
+| Required receipts | exact typed keys and true booleans | `ack_for`, `assist_ok`, `alerts_ok`, `authorize_commit`, `verified_store_committed` |
+
+Unknown fields and mismatches abort. The **message type is authenticated
+inside AES-GCM ciphertext**, not yet in a separate per-type AAD label.
+The type-specific AAD labels discussed below remain proposed future
+hardening and must not be described as implemented. No actual OAuth
+credentials, TV endpoint, or token transfer have been connected.
+
+The following table is the *design-level* packet description. It is not a
+second, compatible wire encoding. Any TV implementation must match the
+precise #221 frame and its existing P-256/AES-GCM v1 outer header; changes
+to fields, labels or key derivation require coordinated revisions, fresh
+interoperability vectors and security review.
 
 ## Packet fields (authenticated)
 
@@ -92,7 +126,7 @@ All AEAD packets use AES-256-GCM with a key derived from the ECDH shared secret 
 - `kellies_voice/pair/ha_commit_authorization/v1`
 - `kellies_voice/pair/tv_persisted_receipt/v1`
 
-These labels are included in the AAD so a packet of one type cannot be replayed as another.
+These per-type labels are **proposed**, not presently wired into the v1 sealed-channel AAD. The in-memory #221 implementation instead authenticates and checks the exact message type inside the encrypted JSON payload and enforces strict message order. A future per-type AAD revision must change both peers consistently and carry new cross-language vectors.
 
 ## Rejected cases (fail closed)
 
