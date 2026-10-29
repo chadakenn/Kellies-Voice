@@ -8,6 +8,7 @@ skip the live-curve cases; installed Home Assistant supplies cryptography.
 import base64
 import importlib.util
 import pathlib
+import os
 import sys
 import unittest
 
@@ -26,6 +27,10 @@ try:
     from cryptography.hazmat.primitives.asymmetric import ec
 except ImportError:
     ec = None
+
+# CI must exercise the real cross-language key agreement, not pass on skips.
+if os.getenv('PAIRING_CRYPTO_REQUIRED') == '1' and ec is None:
+    raise RuntimeError('Pairing cryptography tests require the cryptography package')
 
 
 @unittest.skipUnless(ec is not None, "cryptography dependency unavailable")
