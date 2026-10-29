@@ -602,7 +602,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         if (hasFocus && !buttons.isEmpty()) {
             View now = getCurrentFocus();
             if (!(now instanceof Button) || (!buttons.contains(now) && !homeShortcutButtons.contains(now))) {
-                buttons.get(selected).post(() -> focus(selected));
+                buttons.get(0).post(() -> focus(selected));
             }
         }
     }
