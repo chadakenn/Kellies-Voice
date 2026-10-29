@@ -40,6 +40,7 @@ public final class PairingDiscoveryWindow implements AutoCloseable {
     private final String session;
     private final Runnable expiredCallback;
     private Thread worker;
+    private volatile Socket activeSocket;
 
     private PairingDiscoveryWindow(Context context, ServerSocket server, String session,
                                    Runnable expiredCallback) {
@@ -118,13 +119,14 @@ public final class PairingDiscoveryWindow implements AutoCloseable {
                 return;
             }
             try (Socket socket = server.accept()) {
+                activeSocket = socket;
                 socket.setSoTimeout(700);
                 socket.setTcpNoDelay(true);
                 if (served.incrementAndGet() > PairingWindowPolicy.MAX_PROBES) {
                     main.post(this::expire);
                     return;
                 }
-                String firstLine = firstLine(socket.getInputStream());
+                String firstLine = firstLine(socket);
                 if (PairingWindowPolicy.permittedRequest(firstLine)) {
                     String document = "{\"protocol\":1,\"mode\":\"discovery-only\","
                             + "\"authorized\":false,\"session\":\"" + session + "\"}";
@@ -137,14 +139,21 @@ public final class PairingDiscoveryWindow implements AutoCloseable {
                 // Short read/accept timeout bounds untrusted LAN clients.
             } catch (IOException ignored) {
                 if (closed.get()) return;
+            } finally {
+                activeSocket = null;
             }
         }
     }
 
-    /** Parse at most 256 bytes, no headers/body or attacker-controlled URL routing. */
-    private static String firstLine(InputStream input) throws IOException {
+    /** Parse at most 256 bytes within one second, even under a slow client. */
+    private static String firstLine(Socket socket) throws IOException {
+        InputStream input = socket.getInputStream();
         ByteArrayOutputStream line = new ByteArrayOutputStream();
+        long deadline = android.os.SystemClock.elapsedRealtime() + 1000L;
         for (int i = 0; i < 256; i++) {
+            long remaining = deadline - android.os.SystemClock.elapsedRealtime();
+            if (remaining <= 0) return "";
+            socket.setSoTimeout((int) Math.min(remaining, 700L));
             int value = input.read();
             if (value < 0) return "";
             if (value == '\n') return line.toString("US-ASCII").replace("\r", "");
@@ -171,6 +180,10 @@ public final class PairingDiscoveryWindow implements AutoCloseable {
         if (!closed.compareAndSet(false, true)) return;
         main.removeCallbacksAndMessages(null);
         try { server.close(); } catch (IOException ignored) { }
+        Socket client = activeSocket;
+        if (client != null) {
+            try { client.close(); } catch (IOException ignored) { }
+        }
         if (nsd != null) {
             try { nsd.unregisterService(registration); }
             catch (RuntimeException ignored) { }
