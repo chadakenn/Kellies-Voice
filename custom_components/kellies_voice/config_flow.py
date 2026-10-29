@@ -33,9 +33,12 @@ class KellieVoiceOptionsFlow(OptionsFlow):
             updated = dict(current)
             updated["native_timer_intents"] = bool(user_input["native_timer_intents"])
             for slot in range(1, COUNT + 1):
-                label = user_input[f"shortcut_{slot}_label"]
-                entity = user_input[f"shortcut_{slot}_entity"]
-                action = user_input[f"shortcut_{slot}_action"]
+                label = user_input.get(f"shortcut_{slot}_label",
+                                       current.get(f"shortcut_{slot}_label", ""))
+                entity = user_input.get(f"shortcut_{slot}_entity",
+                                        current.get(f"shortcut_{slot}_entity", ""))
+                action = user_input.get(f"shortcut_{slot}_action",
+                                        current.get(f"shortcut_{slot}_action", "Turn on"))
                 try:
                     validate_slot(label, entity, action)
                 except ValueError:
