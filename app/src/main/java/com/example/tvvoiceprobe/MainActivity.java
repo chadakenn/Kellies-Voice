@@ -276,6 +276,7 @@ public class MainActivity extends Activity {
                 String previousRoute = deviceName(rec.getRoutedDevice());
                 log("Actual capture route: " + previousRoute);
                 short[] samples = new short[2048];
+                MicSignalHealth signalHealth = new MicSignalHealth();
                 long until = SystemClock.elapsedRealtime() + 10000;
                 long lastLog = 0;
                 while (probing && SystemClock.elapsedRealtime() < until) {
@@ -287,6 +288,13 @@ public class MainActivity extends Activity {
                         int x = samples[i];
                         peak = Math.max(peak, Math.abs(x));
                         squareSum += (long)x * x;
+                    }
+                    if (signalHealth.observe(samples, read, rate)) {
+                        log("WARNING: Microphone test returned at least three seconds "
+                                + "of digital silence. The input may be phantom, muted, "
+                                + "or simply a quiet/suppressed source. Speak near the "
+                                + "device and repeat with a known USB mic; this does "
+                                + "NOT prove a microphone is absent.");
                     }
                     if (SystemClock.elapsedRealtime() - lastLog > 400) {
                         lastLog = SystemClock.elapsedRealtime();
