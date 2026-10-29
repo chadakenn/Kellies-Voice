@@ -79,7 +79,6 @@ class FakeAttempt:
         self.closed = True
 
 
-@unittest.skipIf(False, "placeholder")
 class HaV3PreviewTests(unittest.IsolatedAsyncioTestCase):
     @classmethod
     def setUpClass(cls):
