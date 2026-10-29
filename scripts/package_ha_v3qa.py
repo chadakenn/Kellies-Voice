@@ -3,6 +3,7 @@
 from pathlib import Path
 from zipfile import ZipFile, ZIP_DEFLATED
 import json
+import ast
 
 ROOT = Path(__file__).resolve().parents[1]
 PART = Path("custom_components/kellies_voice_v3qa")
@@ -22,7 +23,9 @@ found = {str(p.relative_to(SOURCE)).replace("\\", "/")
          for p in SOURCE.rglob("*")
          if p.is_file() and "__pycache__" not in p.parts}
 assert found == expected, f"Unexpected QA package files: {found ^ expected}"
-assert "async_create_entry" not in (SOURCE / "config_flow.py").read_text()
+flow_tree = ast.parse((SOURCE / "config_flow.py").read_text())
+assert not any(isinstance(n, ast.Attribute) and n.attr == "async_create_entry"
+               for n in ast.walk(flow_tree)), "QA flow must never create HA entries"
 assert "async_register_services" not in (SOURCE / "__init__.py").read_text()
 OUT.parent.mkdir(exist_ok=True)
 with ZipFile(OUT, "w", ZIP_DEFLATED) as archive:
