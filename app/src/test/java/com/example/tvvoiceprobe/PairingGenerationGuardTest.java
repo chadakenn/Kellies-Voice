@@ -4,30 +4,58 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 /**
- * Pure generation check used by PairingSetupActivity callbacks.
- * A closed window must never mutate a newer session's UI.
+ * Regression tests exercise the SAME guard called by PairingSetupActivity.
+ * Unlike a duplicate helper in test code, these fail if the actual
+ * production ownership policy is changed or removed.
  */
 public class PairingGenerationGuardTest {
-    @Test public void staleGenerationIsIgnored() {
-        int active = 2;
-        int stale = 1;
-        assertTrue(stale != active);
-        assertFalse(shouldApply(stale, active));
+    @Test public void codeFromCancelledWindowCannotChangeUiAfterRestart() {
+        PairingGenerationGuard guard = new PairingGenerationGuard();
+        long first = guard.advance();       // first START
+        assertTrue(guard.isCurrent(first));
+        guard.advance();                   // Back, timeout or manual fallback
+        long second = guard.advance();     // second START
+        assertFalse(guard.isCurrent(first));
+        assertTrue(guard.isCurrent(second));
     }
 
-    @Test public void matchingGenerationIsApplied() {
-        int active = 3;
-        assertTrue(shouldApply(3, active));
+    @Test public void oldExpiryCannotDisableNewStartOrClearNewCode() {
+        PairingGenerationGuard guard = new PairingGenerationGuard();
+        long expired = guard.advance();
+        guard.advance();
+        long current = guard.advance();
+        assertFalse(guard.isCurrent(expired));
+        assertTrue(guard.isCurrent(current));
     }
 
-    @Test public void stopIncrementsAndInvalidates() {
-        int active = 1;
-        active++; // stopWindow
-        int captured = 1;
-        assertFalse(shouldApply(captured, active));
+    @Test public void backgroundAndDestroyInvalidateInFlightCallback() {
+        PairingGenerationGuard guard = new PairingGenerationGuard();
+        long captured = guard.advance();
+        guard.advance();    // onStop
+        assertFalse(guard.isCurrent(captured));
+        guard.advance();    // onDestroy
+        assertFalse(guard.isCurrent(captured));
     }
 
-    private static boolean shouldApply(int captured, int active) {
-        return captured == active;
+    @Test public void noSessionOrPreviousSessionIsCurrent() {
+        PairingGenerationGuard guard = new PairingGenerationGuard();
+        assertFalse(guard.isCurrent(0));
+        assertFalse(guard.isCurrent(1));
+        long current = guard.advance();
+        assertTrue(guard.isCurrent(current));
+        assertFalse(guard.isCurrent(0));
+        guard.advance();
+        assertFalse(guard.isCurrent(current));
+    }
+
+    @Test public void repeatedRestartNeverRevalidatesOldGeneration() {
+        PairingGenerationGuard guard = new PairingGenerationGuard();
+        long oldest = guard.advance();
+        for (int i = 0; i < 50; i++) {
+            guard.advance(); // cancel
+            long latest = guard.advance(); // start
+            assertTrue(guard.isCurrent(latest));
+            assertFalse(guard.isCurrent(oldest));
+        }
     }
 }
