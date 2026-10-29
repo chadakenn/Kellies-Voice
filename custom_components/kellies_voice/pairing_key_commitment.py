@@ -49,7 +49,7 @@ def commitment(role: str, session: str, public_der: bytes, nonce: bytes) -> byte
     authenticated key-agreement layer. This primitive binds its raw bytes,
     without interpreting peer key material.
     """
-    if role not in _ROLES or type(role) is not str:
+    if type(role) is not str or role not in _ROLES:
         raise ValueError("Invalid v3 peer role")
     sid = _session_bytes(session)
     if type(public_der) is not bytes or not 70 <= len(public_der) <= 150:
