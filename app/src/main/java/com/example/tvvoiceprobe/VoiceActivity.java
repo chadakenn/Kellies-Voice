@@ -708,15 +708,24 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
 
     private void showSettingsSection(SettingsSection section) {
         OverlayPreferences prefs = new OverlayPreferences(this);
+        // This deliberately incomplete preview is never exposed by stable APKs.
+        boolean pairingPreview = BuildConfig.DEBUG
+                || BuildConfig.VERSION_NAME.contains("-dev")
+                || BuildConfig.VERSION_NAME.contains("-qa");
         String[] entries;
         switch (section) {
             case HOME:
-                entries = new String[] {
+                entries = pairingPreview ? new String[] {
                         "Connect / reconnect Home Assistant",
                         "Edit Home Assistant address & token",
                         "Start new conversation",
                         "Manage TV layout from Home Assistant: " + (prefs.haManage() ? "ON" : "OFF"),
                         "Preview no-typing pairing discovery (development only)"
+                } : new String[] {
+                        "Connect / reconnect Home Assistant",
+                        "Edit Home Assistant address & token",
+                        "Start new conversation",
+                        "Manage TV layout from Home Assistant: " + (prefs.haManage() ? "ON" : "OFF")
                 };
                 break;
             case VOICE:
@@ -772,7 +781,11 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                                 case 1: configure(); break;
                                 case 2: newConversation(); break;
                                 case 3: chooseHaLayout(); break;
-                                case 4: startActivity(new Intent(this, PairingSetupActivity.class)); break;
+                                case 4:
+                                    if (pairingPreview) {
+                                        startActivity(new Intent(this, PairingSetupActivity.class));
+                                    }
+                                    break;
                                 default: break;
                             }
                             break;
