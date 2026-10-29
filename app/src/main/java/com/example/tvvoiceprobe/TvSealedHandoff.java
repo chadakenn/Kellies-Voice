@@ -128,13 +128,15 @@ public final class TvSealedHandoff implements AutoCloseable {
             // sequence and ECDH transcript before exposing JSON.
             byte[] clear = channel.open(packet);
             JSONObject frame = new JSONObject(new String(clear, StandardCharsets.UTF_8));
-            if (!(frame.get("v") instanceof Number)
+            Object version = frame.get("v");
+            Object expiryValue = frame.get("expires_at");
+            if (!(version instanceof Integer)
                     || frame.getInt("v") != 1
                     || !kind.equals(frame.get("type"))
                     || !tvUuid.equals(frame.get("tv_uuid"))
                     || !session.equals(frame.get("session"))
                     || !transcript.equals(frame.get("transcript"))
-                    || !(frame.get("expires_at") instanceof Number)) {
+                    || !(expiryValue instanceof Integer || expiryValue instanceof Long)) {
                 throw new IllegalArgumentException("Mismatched authenticated context");
             }
             long expiry = frame.getLong("expires_at");
@@ -176,6 +178,8 @@ public final class TvSealedHandoff implements AutoCloseable {
                     "transcript", "expires_at", "candidate_b64")) {
                 throw new IllegalArgumentException("Unexpected offer fields");
             }
+            if (!(offer.get("candidate_b64") instanceof String))
+                throw new IllegalArgumentException("Candidate must be a string");
             String encoded = offer.getString("candidate_b64");
             if (!encoded.matches("[A-Za-z0-9_-]{1,1366}"))
                 throw new IllegalArgumentException("Invalid test payload");
