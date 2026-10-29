@@ -258,7 +258,18 @@ class PreviewFlowTests(unittest.IsolatedAsyncioTestCase):
             )
         )
         net = types.ModuleType("homeassistant.helpers.network")
-        net.get_url = lambda *_args, **_kw: "https://ha.example/"
+        def select_https_cloud(_hass, **kwargs):
+            # Source of truth is HA Core's URL helper, not an input from
+            # mDNS, a hardcoded URL, or an unrestricted localhost fallback.
+            self.assertEqual({
+                "require_ssl": True,
+                "allow_internal": False,
+                "allow_external": True,
+                "allow_cloud": True,
+                "prefer_cloud": True,
+            }, kwargs)
+            return "https://test-cloud-id.ui.nabu.casa/"
+        net.get_url = select_https_cloud
         with patch.dict(sys.modules, {
             "homeassistant": types.ModuleType("homeassistant"),
             "homeassistant.helpers": types.ModuleType("homeassistant.helpers"),
@@ -268,7 +279,14 @@ class PreviewFlowTests(unittest.IsolatedAsyncioTestCase):
                 "allow_browser_login": True, "test_only_notice": notice
             })
         self.assertEqual("external_step", start["type"])
+        self.assertEqual("https://test-cloud-id.ui.nabu.casa", urlsplit(start["url"]).scheme + "://" + urlsplit(start["url"]).netloc)
+        self.assertEqual("/auth/authorize", urlsplit(start["url"]).path)
         args = parse_qs(urlsplit(start["url"]).query)
+        self.assertEqual(
+            ["https://test-cloud-id.ui.nabu.casa/"], args["client_id"])
+        self.assertEqual(
+            ["https://test-cloud-id.ui.nabu.casa/api/kellies_voice/pair/oauth_callback"],
+            args["redirect_uri"])
         self.assertEqual(["S256"], args["code_challenge_method"])
         self.assertNotIn("code_verifier", start["url"])
         self.assertIn("client_id", args)
