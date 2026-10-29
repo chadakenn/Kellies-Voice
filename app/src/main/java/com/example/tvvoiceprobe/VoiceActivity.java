@@ -58,6 +58,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
     private TextView response;
     private TextView connection;
     private TextView homeSubtitle;
+    private TextView homePrivacyLabel;
     private LinearLayout homeAnswerCard;
     private LinearLayout homeTranscriptCard;
     private LinearLayout homeStatusCard;
@@ -274,11 +275,11 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         homeSubtitle.setPadding(0, menuDp(1), 0, menuDp(3));
         brand.addView(homeSubtitle);
         masthead.addView(brand, new LinearLayout.LayoutParams(0, -2, 1f));
-        TextView privacy = label("LOCAL FIRST  •  MIC BY CHOICE", 12, palette.muted);
-        privacy.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
-        privacy.setPadding(menuDp(12), 0, 0, 0);
-        // Static, non-focusable footer text: no misleading mic-on indicator.
-        masthead.addView(privacy);
+        homePrivacyLabel = label("LOCAL FIRST  •  MIC BY CHOICE", 12, palette.muted);
+        homePrivacyLabel.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
+        homePrivacyLabel.setPadding(menuDp(12), 0, 0, 0);
+        // Informational, non-focusable: no misleading mic-on indicator.
+        masthead.addView(homePrivacyLabel);
         root.addView(masthead);
 
         homeConnectionCard = new LinearLayout(this);
@@ -485,6 +486,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         mainRoot.setBackgroundColor(colors.screen);
         if (mainTitle != null) mainTitle.setTextColor(colors.accent);
         if (homeSubtitle != null) homeSubtitle.setTextColor(colors.muted);
+        if (homePrivacyLabel != null) homePrivacyLabel.setTextColor(colors.muted);
         if (connection != null) connection.setTextColor(colors.text);
         if (status != null) status.setTextColor(colors.accent);
         if (answerHeading != null) answerHeading.setTextColor(colors.accent);
