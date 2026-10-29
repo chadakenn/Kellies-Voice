@@ -46,6 +46,7 @@ def _origin(value: str) -> str:
         raise ValueError("Invalid Home Assistant instance URL") from error
     if (
         url.scheme not in ("http", "https") or not url.hostname or
+        (port is not None and port < 1) or
         url.username is not None or url.password is not None or
         url.path not in ("", "/") or url.query or url.fragment or
         any(ch.isspace() for ch in value)
