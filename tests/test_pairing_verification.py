@@ -60,6 +60,29 @@ class PairingVisualCodeTests(unittest.TestCase):
             ha, local_is_tv=False, session=SESSION,
             tv_key=self.public(TV), ha_key=self.public(HA)))
 
+    def test_v2_tv_uuid_proof_matches_android_and_rejects_tampering(self):
+        # Same fixed Java reference keypair. A changed response UUID must not
+        # validate against the proof made for the actual physical TV.
+        tv, ha = self.keys()
+        tv_uuid = "123e4567-e89b-42d3-a456-426614174000"
+        other_uuid = "223e4567-e89b-42d3-a456-426614174000"
+        proof = verify.approved_proof(
+            tv, local_is_tv=True, session=SESSION,
+            tv_key=self.public(TV), ha_key=self.public(HA),
+            tv_uuid=tv_uuid)
+        self.assertEqual("IQTCP6AIBcrvhq11xt54HA", proof)
+        self.assertEqual(proof, verify.approved_proof(
+            ha, local_is_tv=False, session=SESSION,
+            tv_key=self.public(TV), ha_key=self.public(HA),
+            tv_uuid=tv_uuid))
+        self.assertNotEqual(proof, verify.approved_proof(
+            ha, local_is_tv=False, session=SESSION,
+            tv_key=self.public(TV), ha_key=self.public(HA),
+            tv_uuid=other_uuid))
+        self.assertNotEqual(proof, verify.approved_proof(
+            ha, local_is_tv=False, session=SESSION,
+            tv_key=self.public(TV), ha_key=self.public(HA)))
+
     def test_new_peer_new_session_change_code(self):
         tv, _ha = self.keys()
         old = verify.calculate(tv, local_is_tv=True, session=SESSION,
