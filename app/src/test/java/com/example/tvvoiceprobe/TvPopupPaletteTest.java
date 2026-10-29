@@ -43,7 +43,8 @@ public class TvPopupPaletteTest {
                 OverlayPreferences.SKIN_CLASSIC,
                 OverlayPreferences.SKIN_SIGNAL,
                 OverlayPreferences.SKIN_AURORA,
-                OverlayPreferences.SKIN_OBSIDIAN
+                OverlayPreferences.SKIN_OBSIDIAN,
+                OverlayPreferences.SKIN_TERMINAL
         };
         for (String skin : skins) {
             TvPopupPalette p = TvPopupPalette.forSkin(skin);
@@ -60,6 +61,20 @@ public class TvPopupPaletteTest {
         assertEquals(0xffedf3ff, p.forecastTitle);
         assertEquals(0xfff2f5ff, p.forecastText);
         assertEquals(AppPalette.forSkin(OverlayPreferences.SKIN_AURORA).accent, p.title);
+    }
+
+    @Test public void jadeTerminalUsesPhosphorColorsAndSquareEdges() {
+        AppPalette shared = AppPalette.forSkin(OverlayPreferences.SKIN_TERMINAL);
+        TvPopupPalette p = TvPopupPalette.forSkin(OverlayPreferences.SKIN_TERMINAL);
+        assertEquals(0xff39ff88, shared.accent);
+        assertEquals(shared.accent, p.title);
+        assertEquals(shared.accent, p.border);
+        assertEquals(shared.text, p.body);
+        assertEquals(shared.screen, p.letterbox);
+        assertEquals(shared.accent, p.forecastTitle);
+        assertEquals(3, p.cornerRadiusDp);
+        assertEquals(3, p.forecastRadiusDp);
+        assertNotEquals(TvPopupPalette.forSkin(OverlayPreferences.SKIN_GLASS).title, p.title);
     }
 
     @Test public void invalidSkinFallsBackToCopperSafely() {

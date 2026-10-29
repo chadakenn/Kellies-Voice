@@ -59,6 +59,13 @@ public final class AppPalette {
                     0xff0E1018, 0xff8B5CFF, 0xff0E1018, 0xff06070C,
                     0xff131520, 0xff1A1D2E, 0xff292A3C);
         }
+        if (OverlayPreferences.SKIN_TERMINAL.equals(skin)) {
+            // Jade Terminal: green-black screen, phosphor green accent, mint text.
+            return new AppPalette(
+                    0xff030A07, 0xff39FF88, 0xffD6FFE6, 0xff5E8F73,
+                    0xff0B1A12, 0xff1F9E5A, 0xff08140D, 0xff030A07,
+                    0xff0F2418, 0xff17703F, 0xff2BB673);
+        }
         // Current copper palette remains the default for existing installs.
         return new AppPalette(
                 0xff1B1412, 0xffE9B390, 0xffF7E8DB, 0xffC59A80,

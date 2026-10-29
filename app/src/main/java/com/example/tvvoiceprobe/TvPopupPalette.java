@@ -83,6 +83,17 @@ public final class TvPopupPalette {
                     palette.accent, palette.accent, palette.muted,
                     palette.text, palette.muted, 18);
         }
+        if (OverlayPreferences.SKIN_TERMINAL.equals(skin)) {
+            // Jade Terminal: sharp 3dp corners, phosphor green rule and border.
+            return new TvPopupPalette(
+                    translucent(palette.menuStart), translucent(palette.menuEnd),
+                    palette.accent, palette.accent, palette.accent,
+                    palette.text, palette.muted, palette.screen,
+                    palette.button, palette.menuFocus, palette.text, 3, false,
+                    translucent(palette.menuStart), translucent(palette.menuEnd),
+                    palette.accent, palette.accent, palette.muted,
+                    palette.text, palette.muted, 3);
+        }
         if (OverlayPreferences.SKIN_CLASSIC.equals(skin)
                 || OverlayPreferences.SKIN_SIGNAL.equals(skin)) {
             int radius = OverlayPreferences.SKIN_SIGNAL.equals(skin) ? 6 : 9;

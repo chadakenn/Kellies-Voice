@@ -272,6 +272,9 @@ public final class HaLayout {
             case "Neon Obsidian":
             case OverlayPreferences.SKIN_OBSIDIAN:
                 return OverlayPreferences.SKIN_OBSIDIAN;
+            case "Jade Terminal":
+            case OverlayPreferences.SKIN_TERMINAL:
+                return OverlayPreferences.SKIN_TERMINAL;
             default:
                 return null;
         }
