@@ -33,6 +33,10 @@ public final class PairingAssistConnectionProbe implements AutoCloseable {
     private final PairingAssistProofState gate = new PairingAssistProofState();
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final OkHttpClient client = new OkHttpClient.Builder()
+            // Never follow redirects from the HA server when negotiating a
+            // sensitive temporary authentication socket.
+            .followRedirects(false)
+            .followSslRedirects(false)
             .connectTimeout(8, TimeUnit.SECONDS)
             .readTimeout(15, TimeUnit.SECONDS)
             .build();
