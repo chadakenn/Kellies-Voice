@@ -48,7 +48,37 @@ class TvSettingsRoutingTest(unittest.TestCase):
             "final String title;", 1)[0]
         names = re.findall(r"^        ([A-Z]+)[(]", enum, re.MULTILINE)
         self.assertEqual(list(EXPECTED_CATEGORIES), names)
-        self.assertIn("addButton(toolbar, \"SETTINGS\", v -> showSettingsDashboard());", ACTIVITY)
+        # QA now uses one top-level Settings entry routed into Compose.
+        # Stable still enters the proven Java settings until migration is approved.
+        toolbar = ACTIVITY.split('addButton(toolbar, "SETTINGS", v -> {', 1)[1].split(
+            'root.addView(toolbar', 1
+        )[0]
+        self.assertIn("if (BuildConfig.IS_QA)", toolbar)
+        self.assertIn("ComposeSettingsActivity.class", toolbar)
+        self.assertIn("showSettingsDashboard();", toolbar)
+        self.assertIn("BuildConfig.DEBUG && !BuildConfig.IS_QA", toolbar)
+        self.assertIn('addButton(toolbar, "COMPOSE"', toolbar)
+
+    def test_compose_keyboard_focus_and_recovery_remain_accessible(self):
+        compose = (
+            Path(__file__).resolve().parents[1]
+            / "app/src/main/java/com/example/tvvoiceprobe/ui/settings/ComposeSettingsActivity.kt"
+        ).read_text(encoding="utf-8")
+        bridge = (
+            Path(__file__).resolve().parents[1]
+            / "app/src/main/java/com/example/tvvoiceprobe/ComposeSettingsInterop.java"
+        ).read_text(encoding="utf-8")
+        for required in ("onWindowFocusChanged", "LaunchedEffect(windowFocusEpoch, editorOpen)",
+                         "rememberLazyListState", "categoryListState.scrollToItem",
+                         "onEditorStateChanged(true)", "onEditorStateChanged(false)",
+                         "OutlinedTextFieldDefaults.colors", "focusedTextColor"):
+            with self.subTest(required=required):
+                self.assertIn(required, compose)
+        for section in ("HOME", "VOICE", "OVERLAY", "ALERTS", "SCREEN", "SYSTEM"):
+            with self.subTest(section=section):
+                self.assertIn(f'onLegacySection("{section}")', compose)
+                self.assertIn(f'"{section}".equals(section)', bridge)
+        self.assertIn("ComposeSettingsInterop.takeLegacySection()", ACTIVITY)
 
     def test_each_original_settings_action_has_a_destination(self):
         category = ACTIVITY.split("private void showSettingsSection(SettingsSection section) {", 1)[1].split(
