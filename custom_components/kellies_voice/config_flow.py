@@ -1,5 +1,8 @@
 """Discovery flow. Home Assistant does not connect to the TV."""
 
+import logging
+import time
+
 import voluptuous as vol
 from homeassistant.config_entries import ConfigFlow, OptionsFlow
 from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
@@ -8,6 +11,10 @@ from .const import DOMAIN
 from .validation import clean_tv_device_id
 from .pairing_probe import candidate_from_discovery
 from .pairing_exchange import begin_preview, confirm_tv_ok
+from .pairing_owner_oauth import OwnerAuthorizationAttempt
+from .oauth_callback import register_pending_authorization, consume_pending_authorization
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def _text(properties: dict, key: str) -> str:
@@ -54,6 +61,8 @@ class KellieVoiceConfigFlow(ConfigFlow, domain=DOMAIN):
         self._manual_name = ""
         self._preview_candidate = None
         self._preview_attempt = None
+        self._oauth_attempt = None
+        self._oauth_state = None
 
     async def async_step_user(self, user_input=None):
         """Manual fallback when the TV cannot advertise across mDNS/VLANs."""
@@ -68,9 +77,6 @@ class KellieVoiceConfigFlow(ConfigFlow, domain=DOMAIN):
                 if not name or len(name) > 64:
                     errors["name"] = "invalid_name"
                 else:
-                    # Manual pairing cannot verify that a TV exists.
-                    # Display the full ID and verify a freshly typed TV suffix.
-                    # This is a typo guard, not authentication of the TV.
                     self._manual_device_id = device_id
                     self._manual_name = name
                     return await self.async_step_manual_confirm()
@@ -86,19 +92,10 @@ class KellieVoiceConfigFlow(ConfigFlow, domain=DOMAIN):
         )
 
     async def async_step_manual_confirm(self, user_input=None):
-        """Warn when a typed pairing ID cannot be verified by discovery.
-
-        Offline/VLAN users may still confirm. A live socket cannot be required
-        because the TV might not be registered in Home Assistant yet.
-        """
         if not self._manual_device_id:
             return await self.async_step_user()
         errors = {}
         if user_input is not None:
-            # Copy this suffix from the pairing ID shown *on the TV*, not
-            # from the previously submitted HA text field. It catches the
-            # common accidental confirmation click without claiming that HA
-            # has authenticated or contacted an offline/VLAN-isolated TV.
             suffix = str(user_input.get("confirmation_suffix") or "").strip().lower()
             if suffix != self._manual_device_id[-4:]:
                 errors["confirmation_suffix"] = "pairing_suffix_mismatch"
@@ -120,9 +117,6 @@ class KellieVoiceConfigFlow(ConfigFlow, domain=DOMAIN):
         )
 
     async def async_step_zeroconf(self, discovery_info: ZeroconfServiceInfo):
-        # Separate ephemeral onboarding advertisement, never an authenticated TV
-        # or a new config entry. We do not contact it until the HA user selects
-        # Start on the discovery card.
         if _text(discovery_info.properties, "preview") == "2":
             try:
                 self._preview_candidate = candidate_from_discovery(
@@ -150,7 +144,6 @@ class KellieVoiceConfigFlow(ConfigFlow, domain=DOMAIN):
         return await self.async_step_confirm()
 
     async def async_step_pairing_preview(self, user_input=None):
-        """Owner starts an uncredentialed two-screen preview from HA."""
         if self._preview_candidate is None:
             return self.async_abort(reason="invalid_pairing_preview")
         errors = {}
@@ -159,8 +152,6 @@ class KellieVoiceConfigFlow(ConfigFlow, domain=DOMAIN):
                 try:
                     self._preview_attempt = await begin_preview(self._preview_candidate)
                 except Exception:
-                    # Fail closed. No URL, key material or HTTP exception is
-                    # displayed/logged where it could expose private state.
                     errors["base"] = "preview_unavailable"
                 else:
                     return await self.async_step_pairing_code()
@@ -171,7 +162,6 @@ class KellieVoiceConfigFlow(ConfigFlow, domain=DOMAIN):
         )
 
     async def async_step_pairing_code(self, user_input=None):
-        """Show the number on HA; require BOTH owner comparison and TV OK."""
         attempt = self._preview_attempt
         if attempt is None:
             return self.async_abort(reason="invalid_pairing_preview")
@@ -185,9 +175,8 @@ class KellieVoiceConfigFlow(ConfigFlow, domain=DOMAIN):
                 errors["base"] = "preview_unavailable"
             else:
                 if approved:
-                    # This preview never creates a device or installs secrets.
                     self._preview_attempt = None
-                    return self.async_abort(reason="verification_preview_complete")
+                    return await self.async_step_oauth_authorize()
                 errors["base"] = "waiting_for_tv"
         return self.async_show_form(
             step_id="pairing_code",
@@ -195,6 +184,116 @@ class KellieVoiceConfigFlow(ConfigFlow, domain=DOMAIN):
             data_schema=vol.Schema({vol.Required("numbers_match"): bool}),
             errors=errors,
         )
+
+    async def async_step_oauth_authorize(self, user_input=None):
+        """Start owner-approved OAuth after TV OK proof (#213).
+
+        First call shows the consent form. Second call (from the form) creates
+        the CSPRNG state and returns an external step. The callback later
+        resumes via async_step_oauth_resume.
+        """
+        if user_input is None:
+            return self.async_show_form(
+                step_id="oauth_authorize",
+                data_schema=vol.Schema({
+                    vol.Required("confirm_authorize"): bool,
+                }),
+                description_placeholders={
+                    "name": self._name or "Kellie's Voice",
+                },
+            )
+
+        # Callback resume arrives with oauth_state / oauth_code keys.
+        if "oauth_state" in user_input or "oauth_code" in user_input:
+            return await self.async_step_oauth_resume(user_input)
+
+        if user_input.get("confirm_authorize") is not True:
+            return self.async_abort(reason="oauth_cancelled")
+
+        owner_user_id = self.context.get("user_id")
+        if not isinstance(owner_user_id, str) or not owner_user_id:
+            return self.async_abort(reason="oauth_owner_required")
+
+        try:
+            base_url = getattr(self.hass.config.api, "base_url", None)
+            if not isinstance(base_url, str) or not base_url:
+                return self.async_abort(reason="oauth_origin_unavailable")
+            tv_session = getattr(self._preview_candidate, "session", None)
+            if not isinstance(tv_session, str) or not tv_session:
+                return self.async_abort(reason="oauth_tv_session_required")
+            attempt = OwnerAuthorizationAttempt.begin(
+                base_url,
+                tv_session,
+                time.time(),
+                owner_requested=True,
+                tv_ok_verified=True,
+            )
+        except Exception:
+            _LOGGER.debug("Failed to begin owner authorization", exc_info=False)
+            return self.async_abort(reason="oauth_unavailable")
+
+        self._oauth_attempt = attempt
+        # Extract the state parameter we just generated.
+        auth_url = attempt.authorization_url()
+        self._oauth_state = auth_url.split("state=")[-1].split("&")[0]
+
+        register_pending_authorization(
+            self._oauth_state,
+            flow_id=self.flow_id,
+            owner_user_id=owner_user_id,
+            tv_session=tv_session,
+            attempt=attempt,
+        )
+
+        return self.async_external_step(
+            step_id="oauth_authorize",
+            url=auth_url,
+        )
+
+    async def async_step_oauth_resume(self, user_input=None):
+        """Resume after callback. Validates the one-time attempt, then marks
+        the external step done. Token exchange remains a later gated step.
+        """
+        if not user_input:
+            return self.async_abort(reason="oauth_incomplete")
+
+        attempt = user_input.get("attempt") or self._oauth_attempt
+        if attempt is None:
+            return self.async_abort(reason="oauth_incomplete")
+
+        bound_owner = user_input.get("bound_owner")
+        bound_tv = user_input.get("bound_tv")
+        actual_owner = self.context.get("user_id")
+        actual_tv = getattr(self._preview_candidate, "session", None)
+
+        if (
+            not isinstance(actual_owner, str) or not actual_owner
+            or bound_owner != actual_owner
+            or bound_tv != actual_tv
+        ):
+            if hasattr(attempt, "cancel"):
+                attempt.cancel()
+            return self.async_abort(reason="oauth_owner_mismatch")
+
+        try:
+            attempt.consume_callback(
+                received_state=user_input.get("oauth_state"),
+                code=user_input.get("oauth_code"),
+                tv_session=bound_tv,
+                now=time.time(),
+            )
+        except Exception:
+            return self.async_abort(reason="oauth_callback_rejected")
+
+        # External step is complete. Do not create an entry or send tokens yet.
+        return self.async_external_step_done(next_step_id="oauth_exchange_pending")
+
+    async def async_step_oauth_exchange_pending(self, user_input=None):
+        """Placeholder until token exchange + Assist proof are wired.
+
+        Aborts cleanly so no incomplete credential or config entry is created.
+        """
+        return self.async_abort(reason="oauth_exchange_pending")
 
     async def async_step_confirm(self, user_input=None):
         if user_input is not None:
