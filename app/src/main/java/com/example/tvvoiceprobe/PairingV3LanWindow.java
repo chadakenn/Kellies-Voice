@@ -220,11 +220,21 @@ public final class PairingV3LanWindow implements AutoCloseable {
                 answer(socket, 200, payload);
             } else {
                 // No v2 route, no redirect to v2, no credential handler.
-                answer(socket, 404, new JSONObject().put("error", "not_available"));
+                answer(socket, 404, errorJson("not_available"));
             }
         } catch (Exception error) {
-            answer(socket, 400, new JSONObject().put("error", "v3_pairing_rejected"));
+            answer(socket, 400, errorJson("v3_pairing_rejected"));
         }
+    }
+
+    private static JSONObject errorJson(String value) {
+        JSONObject result = new JSONObject();
+        try {
+            result.put("error", value);
+        } catch (org.json.JSONException impossible) {
+            throw new IllegalStateException("Cannot format v3 error");
+        }
+        return result;
     }
 
     private JSONObject base() throws Exception {
