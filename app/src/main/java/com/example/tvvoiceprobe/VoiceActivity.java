@@ -359,6 +359,14 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                     && now - checks.getLong("last_checked", 0) >= 24L * 60 * 60 * 1000) {
                 root.post(() -> updater.check());
             }
+            // First ordinary launch of isolated beta: one guided wizard.
+            // Never intercept the dedicated ⭐ overlay shortcut or boot.
+            if (state == null && FirstRunSetupActivity.needsSetup(this)) {
+                root.post(() -> {
+                    if (!isFinishing() && !isDestroyed())
+                        startActivity(new Intent(this, FirstRunSetupActivity.class));
+                });
+            }
         }
     }
 
@@ -783,7 +791,8 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                         "Start new conversation",
                         "Manage TV layout from Home Assistant: " + (prefs.haManage() ? "ON" : "OFF"),
                         "Secure pairing v3 (DEBUG TEST ONLY, no login)",
-                        "Full app beta test center (DEBUG)"
+                        "Full app beta test center (DEBUG)",
+                        "First-time setup wizard (DEBUG)"
                 } : new String[] {
                         "Connect / reconnect Home Assistant",
                         "Edit Home Assistant address & token",
@@ -858,6 +867,11 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                                     break;
                                 case 5:
                                     showFullAppBetaTestCenter();
+                                    break;
+                                case 6:
+                                    if ((getApplicationInfo().flags
+                                            & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0)
+                                        startActivity(new Intent(this, FirstRunSetupActivity.class));
                                     break;
                                 default: break;
                             }
