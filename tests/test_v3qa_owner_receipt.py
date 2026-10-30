@@ -10,7 +10,11 @@ import sys
 import types
 import unittest
 from unittest.mock import AsyncMock
-from cryptography.hazmat.primitives.asymmetric import ec
+try:
+    from cryptography.hazmat.primitives.asymmetric import ec
+except ImportError:
+    # General HA runner skips optional crypto; dedicated receipt CI installs it.
+    ec = None
 
 ROOT = Path(__file__).resolve().parents[1] / "custom_components/kellies_voice_v3qa"
 PKG = "kv_v3qa_owner_receipt_tests"
@@ -45,9 +49,11 @@ keys = importlib.import_module(PKG + ".pairing_key_commitment")
 crypto = importlib.import_module(PKG + ".pairing_v3_verified")
 wire = importlib.import_module(PKG + ".pairing_v3_wire")
 claims_mod = importlib.import_module(PKG + ".owner_claim")
-receipt = importlib.import_module(PKG + ".owner_receipt")
+receipt = (importlib.import_module(PKG + ".owner_receipt")
+           if ec is not None else None)
 
 
+@unittest.skipUnless(ec is not None, "v3 cryptography dependency not installed")
 class OwnerReceiptTests(unittest.IsolatedAsyncioTestCase):
     def make(self, *, tv_uuid=TV_ID, sid=SID, claim=True, owner_active=True):
         tv_priv, ha_priv, tv_session, ha_session = pair(sid)
