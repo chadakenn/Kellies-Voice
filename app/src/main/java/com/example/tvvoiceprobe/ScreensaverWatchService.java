@@ -22,7 +22,7 @@ import android.view.WindowManager;
  */
 public final class ScreensaverWatchService extends Service {
     static final String ACTION_START = "com.example.tvvoiceprobe.SCREENSAVER_START";
-    static final String ACTION_STOP = "com.example.tvvoiceprobe.SCREENSAVER_STOP";
+    public static final String ACTION_STOP = "com.example.tvvoiceprobe.SCREENSAVER_STOP";
     static final String ACTION_TEST_OVERLAY = "com.example.tvvoiceprobe.SCREENSAVER_TEST_OVERLAY";
     static final String ACTION_REFRESH_HA = "com.example.tvvoiceprobe.SCREENSAVER_REFRESH_HA";
     private static final String CHANNEL = "kellie_screensaver";
@@ -61,7 +61,7 @@ public final class ScreensaverWatchService extends Service {
         }
     };
 
-    static void startIfEnabled(Context context) {
+    public static void startIfEnabled(Context context) {
         if (context == null) return;
         OverlayPreferences prefs = new OverlayPreferences(context);
         if (!prefs.screensaverDashboard() && !prefs.haManage()) return;

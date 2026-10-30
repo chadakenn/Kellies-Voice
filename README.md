@@ -75,6 +75,24 @@ The muted live doorbell card opening on top of the voice overlay. The voice card
 
 The older [illustrative concept previews](docs/screenshots/conversation-preview.svg) are still in the repo as design references only. See [docs/screenshots](docs/screenshots/README.md).
 
+### Compose TV Settings — development preview (PR #192)
+
+These direct ADB captures are from the existing **0.16.14-test debug app on an onn 4K Pro**, captured October 28, 2026. **COMPOSE is a development-only preview, not the released SETTINGS experience.** This installed APK predates the latest popup/theme fixes in PR #192; these images do not verify those fixes or five-theme Home Assistant synchronization.
+
+![Actual onn 4K Pro Compose development preview with Aurora Glass selected](docs/screenshots/compose-aurora-preview.png)
+
+Aurora Glass selected in the two-column Compose preview. The filled category and choice outlines show the captured UI state; screenshots alone do not establish complete D-pad or persistence coverage.
+
+![Actual onn 4K Pro Compose development preview with Neon Obsidian selected](docs/screenshots/compose-neon-preview.png)
+
+Neon Obsidian in the installed Compose preview. The installed Home Assistant theme catalog did not include Neon during this session; this is a local appearance capture, not a claim that Neon is released or synchronizes with that integration.
+
+![Actual local announcement preview over Compose settings on onn 4K Pro](docs/screenshots/announcement-preview.png)
+
+The built-in **Preview announcement popup** with neutral sample text, over app settings. This captures the local popup renderer, not a new Home Assistant delivery or spoken-audio test.
+
+See the [full capture gallery and privacy notes](docs/screenshots/PR-192-CAPTURES.md) for all six categories, five selected themes, the heavily redacted idle voice overlay, and the camera-redacted screensaver preview. Addresses, pairing identifiers, camera entity names, private footage and background artwork are masked. No listening command was issued for these screenshots.
+
 ## How it works
 
 ```text

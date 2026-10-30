@@ -68,24 +68,75 @@ jobs:
           python3 -m unittest discover -s tests -p 'test_*.py' -v
 
       - name: Build signed release APK
+        if: github.event_name != 'workflow_dispatch' || inputs.publish_release == true
         env:
           TV_SIGNING_PASSWORD: ${{ secrets.TV_SIGNING_PASSWORD }}
         run: ./gradlew --no-daemon :app:assembleRelease
 
       - name: Verify APK contains both wake-word JNI libraries and model
+        if: github.event_name != 'workflow_dispatch' || inputs.publish_release == true
         shell: bash
         run: bash .github/scripts/verify-wake-apk.sh app/build/outputs/apk/release/app-release.apk
 
       - name: Verify APK signature
+        if: github.event_name != 'workflow_dispatch' || inputs.publish_release == true
         run: |
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose app/build/outputs/apk/release/app-release.apk
 
       - name: Upload installable signed APK
+        if: github.event_name != 'workflow_dispatch' || inputs.publish_release == true
         uses: actions/upload-artifact@v4
         with:
           name: kellies-voice-signed
           path: app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
+
+      # Manual, non-publishing builds also produce the persistent QA app.
+      # The workflow already restores the trusted signing keystore above.
+      # Never use a disposable PR debug certificate for tester updates.
+      - name: Build signed separately installable QA APK
+        if: github.event_name == 'workflow_dispatch' && inputs.publish_release != true
+        env:
+          TV_SIGNING_PASSWORD: ${{ secrets.TV_SIGNING_PASSWORD }}
+        run: ./gradlew --no-daemon :app:assembleQa
+
+      - name: Verify QA package, signature and native wake assets
+        if: github.event_name == 'workflow_dispatch' && inputs.publish_release != true
+        env:
+          TV_SIGNING_PASSWORD: ${{ secrets.TV_SIGNING_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk=app/build/outputs/apk/qa/app-qa.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$apk"
+          bash .github/scripts/verify-wake-apk.sh "$apk"
+          badging="$("$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$apk")"
+          grep -F "package: name='com.example.tvvoiceprobe.qa'" <<< "$badging"
+          if grep -q 'application-debuggable' <<< "$badging"; then
+            echo '::error::QA package must not be debuggable'
+            exit 1
+          fi
+          # In a QA-only run no production APK is built. Instead compare the
+          # APK certificate directly with the trusted, restored private keystore.
+          qa_cert="$("$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$apk" \
+            | sed -nE 's/^Signer #1 certificate SHA-256 digest: ([[:xdigit:]]+).*/\1/p' | head -n 1)"
+          key_cert="$(keytool -list -v -storetype PKCS12 \
+            -keystore "$TV_SIGNING_KEYSTORE_PATH" -storepass "$TV_SIGNING_PASSWORD" \
+            -alias tvvoice | sed -nE 's/.*SHA256: ([[:xdigit:]:]+).*/\1/p' \
+            | head -n 1 | tr -d ':' | tr '[:upper:]' '[:lower:]')"
+          if [[ -z "$qa_cert" || -z "$key_cert" || "$qa_cert" != "$key_cert" ]]; then
+            echo '::error::QA APK signing certificate does not match the trusted keystore'
+            exit 1
+          fi
+
+      - name: Upload persistently signed QA APK
+        if: github.event_name == 'workflow_dispatch' && inputs.publish_release != true
+        uses: actions/upload-artifact@v4
+        with:
+          name: kellies-voice-qa-signed
+          path: app/build/outputs/apk/qa/app-qa.apk
+          if-no-files-found: error
+          retention-days: 14
 
   publish-release:
     # Publishing requires a deliberate manual workflow-dispatch approval.

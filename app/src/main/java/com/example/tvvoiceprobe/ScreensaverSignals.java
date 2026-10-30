@@ -26,7 +26,7 @@ final class ScreensaverSignals {
     static void unlisten(Runnable refresh) { REFRESHERS.remove(refresh); }
 
     /** Home Assistant changed the camera list or size. Open dashboards rebuild. */
-    static void settingsChanged() {
+    public static void settingsChanged() {
         for (Runnable refresh : REFRESHERS) refresh.run();
     }
 
