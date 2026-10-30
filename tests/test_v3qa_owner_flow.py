@@ -59,7 +59,8 @@ class V3QaOwnerFlowTests(unittest.IsolatedAsyncioTestCase):
     def setUpClass(cls):
         pkg = types.ModuleType(PKG)
         pkg.__path__ = [str(ROOT)]
-        pkg.async_register_qa_owner_controls = AsyncMock()
+        pkg.owner_controls_ready = lambda hass: hass.data.get(
+            "kellies_voice_v3qa", {}).get("owner_controls_ready") is True
         cls.pkg = pkg
         modules = {
             PKG: pkg,
@@ -95,10 +96,11 @@ class V3QaOwnerFlowTests(unittest.IsolatedAsyncioTestCase):
         flow.flow_id = "flow-verified-1"
         flow.context = {}
         flow.hass = types.SimpleNamespace(
-            data={}, auth=types.SimpleNamespace(async_get_user=AsyncMock(
+            data={"kellies_voice_v3qa": {"owner_controls_ready": True}},
+            auth=types.SimpleNamespace(async_get_user=AsyncMock(
                 return_value=types.SimpleNamespace(
                     id="actual-owner", is_owner=True, is_active=True))))
-        self.pkg.async_register_qa_owner_controls.reset_mock()
+        
         return flow
 
     async def verified(self, flow):
@@ -114,11 +116,18 @@ class V3QaOwnerFlowTests(unittest.IsolatedAsyncioTestCase):
             return await flow.async_step_v3_code(
                 {"ha_code": "87654321", "numbers_match": True})
 
+    async def test_no_startup_owner_ui_fails_closed_after_tv_proof(self):
+        flow = self.make()
+        flow.hass.data["kellies_voice_v3qa"]["owner_controls_ready"] = False
+        result = await self.verified(flow)
+        self.assertEqual(result["reason"], "owner_setup_missing")
+        self.assertIsNone(flow._owner_tv)
+
     async def test_tv_then_owner_then_success_no_config_entry(self):
         flow = self.make()
         result = await self.verified(flow)
         self.assertEqual(result["step_id"], "owner_approval")
-        self.pkg.async_register_qa_owner_controls.assert_awaited_once()
+        self.assertTrue(self.pkg.owner_controls_ready(flow.hass))
         registry = self.claims.owner_claims(flow.hass)
         person = types.SimpleNamespace(id="actual-owner", is_owner=True, is_active=True)
         # Premature Continue cannot burn the owner consent.
@@ -145,7 +154,7 @@ class V3QaOwnerFlowTests(unittest.IsolatedAsyncioTestCase):
             result = await flow.async_step_v3_code({
                 "ha_code": "87654321", "numbers_match": True})
         self.assertEqual(result["reason"], "expired")
-        self.pkg.async_register_qa_owner_controls.assert_not_awaited()
+        self.assertIsNone(flow._owner_tv)
 
     async def test_nonowner_and_expired_attempt_denied(self):
         flow = self.make()

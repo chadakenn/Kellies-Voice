@@ -1,4 +1,5 @@
 """Isolated two-screen verification only. Never creates a HA config entry."""
+import logging
 import time
 import voluptuous as vol
 from homeassistant.config_entries import ConfigFlow
@@ -7,9 +8,10 @@ from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 from .pairing_key_commitment import _session_bytes
 from .pairing_v3_wire import HaV3WireAttempt, AiohttpV3LanTransport
 from .owner_claim import owner_claims
-from . import async_register_qa_owner_controls
+from . import owner_controls_ready
 
 DOMAIN = "kellies_voice_v3qa"
+_LOGGER = logging.getLogger(__name__)
 _OWNER_QA_NOTICE = (
     "V3 OWNER TEST ONLY. Keep this pairing dialog open. In a SECOND "
     "Home Assistant browser tab (signed in as the HA owner), open "
@@ -119,12 +121,24 @@ class KelliesVoiceV3QaConfigFlow(ConfigFlow, domain=DOMAIN):
                 verified_code = self._code
                 self._attempt = None
                 self._code = None
+                # Never attempt registration of a static HTTP route or
+                # frontend panel after Home Assistant has started serving.
+                # The QA owner UI must be registered during YAML startup.
+                if not owner_controls_ready(self.hass):
+                    _LOGGER.warning(
+                        "V3 QA owner controls were not initialized at HA startup"
+                    )
+                    return self.async_abort(reason="owner_setup_missing")
                 try:
-                    await async_register_qa_owner_controls(self.hass)
                     owner_claims(self.hass).begin(
                         flow_id=self.flow_id, session=result.session,
                         tv_uuid=result.tv_uuid, comparison_code=verified_code)
+                except ValueError:
+                    _LOGGER.exception("V3 QA verified owner claim rejected")
+                    owner_claims(self.hass).cancel(self.flow_id)
+                    return self.async_abort(reason="owner_binding_rejected")
                 except Exception:
+                    _LOGGER.exception("V3 QA verified owner claim failed unexpectedly")
                     owner_claims(self.hass).cancel(self.flow_id)
                     return self.async_abort(reason="owner_unavailable")
                 self._owner_tv = result
