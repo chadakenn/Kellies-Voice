@@ -163,7 +163,8 @@ class HaV3WireAttempt:
             self.close()
             raise
 
-    async def finish_owner_receipt(self, transport, *, hass, claims, flow_id):
+    async def finish_owner_receipt(self, transport, *, hass, claims, flow_id,
+                                   retain_for_login=False):
         """Issue only after real owner consent; demand a v3 AEAD TV ack.
 
         The TV receives only 'owner-approved'. Never any HA credential.
@@ -190,9 +191,11 @@ class HaV3WireAttempt:
                     verified_tv=tv, private_key=self._private,
                     verified=self._barrier)
                 response = _response(await transport.post(
-                    "/v3/pair/owner-receipt", {
+                    "/v3/pair/owner-receipt",
+            "/v3/pair/token-stage", "/v3/pair/token-commit", {
                         "protocol": 3, "session": self.session,
                         "sequence": number, "receipt": _encode(encrypted),
+                        "login_next": retain_for_login is True,
                     }), {"protocol", "session", "ack_seq", "ack"}, self.session)
                 if type(response["ack_seq"]) is not int:
                     raise ValueError("Invalid TV owner receipt ack sequence")
@@ -204,6 +207,61 @@ class HaV3WireAttempt:
             finally:
                 channel.close()
         finally:
+            if not retain_for_login or not self._confirmed:
+                self.close()
+
+    async def finish_renewable_login(self, transport, *,
+                                    hass, journal, owner_id, ha_origin):
+        """After signed receipt ACK, transfer one renewable dedicated-TV grant.
+
+        Only the authenticated HA owner consent may supply owner_id.
+        No owner, no preexisting TV receipt, no account creation.
+        """
+        from .paired_tv_login import provision_dedicated_tv_login
+        from .scoped_token_handoff import HaTokenHandoff
+        if (not self._receipt_used or not self._confirmed
+                or self._verified_tv is None
+                or time.monotonic() >= self._expires_at
+                or type(owner_id) is not str or not owner_id):
+            self.close()
+            raise ValueError("TV owner consent missing")
+        tv = self._verified_tv
+        user = None
+        try:
+            issued, recorded, user = await provision_dedicated_tv_login(
+                hass, journal, owner_id=owner_id, tv_uuid=tv.tv_uuid,
+                ha_origin=ha_origin)
+            handoff = HaTokenHandoff(
+                private_key=self._private, verified=self._barrier, tv=tv,
+                ttl_seconds=30)
+            try:
+                seq, packet = handoff.seal_recorded_provisional(
+                    issued, recorded)
+                response = _response(await transport.post(
+                    "/v3/pair/token-stage", {
+                        "protocol": 3, "session": self.session,
+                        "sequence": seq, "encrypted": _encode(packet),
+                        "ha_origin": ha_origin,
+                    }), {"protocol", "session", "ack_seq", "ack"},
+                    self.session)
+                handoff.accept_stage_ack(
+                    response["ack_seq"], _decode(response["ack"]))
+                seq, ready = handoff.seal_commit_ready()
+                response = _response(await transport.post(
+                    "/v3/pair/token-commit", {
+                        "protocol": 3, "session": self.session,
+                        "sequence": seq, "encrypted": _encode(ready),
+                    }), {"protocol", "session", "ack_seq", "ack"},
+                    self.session)
+                handoff.accept_activation_ack(
+                    response["ack_seq"], _decode(response["ack"]))
+                await journal.commit(recorded.nonce)
+                return True
+            finally:
+                handoff.close()
+        finally:
+            # If HA fails before commit, journal recovery revokes the token.
+            # The dedicated user can be removed separately by the HA owner.
             self.close()
 
     def close(self) -> None:
