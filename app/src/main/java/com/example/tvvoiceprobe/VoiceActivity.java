@@ -982,17 +982,16 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         switch (section) {
             case HOME:
                 // Never expose unfinished pairing in production releases.
-                // QA uses the separately installed .debug app variant only.
-                boolean debugBuild = (getApplicationInfo().flags
-                        & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0;
-                entries = debugBuild ? new String[] {
+                // QA and debug use distinct package IDs; never enable on public release.
+                boolean testBuild = BuildConfig.DEBUG || BuildConfig.IS_QA;
+                entries = testBuild ? new String[] {
                         "Connect / reconnect Home Assistant",
                         "Edit Home Assistant address & token",
                         "Start new conversation",
                         "Manage TV layout from Home Assistant: " + (prefs.haManage() ? "ON" : "OFF"),
-                        "Secure pairing v3 (DEBUG TEST ONLY, no login)",
-                        "Full app beta test center (DEBUG)",
-                        "First-time setup wizard (DEBUG)"
+                        "Secure TV pairing (QA owner-approved login)",
+                        "Full app beta test center (QA)",
+                        "First-time setup wizard (QA)"
                 } : new String[] {
                         "Connect / reconnect Home Assistant",
                         "Edit Home Assistant address & token",
@@ -1060,8 +1059,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                                 case 2: newConversation(); break;
                                 case 3: chooseHaLayout(); break;
                                 case 4:
-                                    if ((getApplicationInfo().flags
-                                            & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
+                                    if ((BuildConfig.DEBUG || BuildConfig.IS_QA)) {
                                         startActivity(new Intent(this, PairingV3QaActivity.class));
                                     }
                                     break;
@@ -1069,8 +1067,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                                     showFullAppBetaTestCenter();
                                     break;
                                 case 6:
-                                    if ((getApplicationInfo().flags
-                                            & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0)
+                                    if ((BuildConfig.DEBUG || BuildConfig.IS_QA))
                                         startActivity(new Intent(this, FirstRunSetupActivity.class));
                                     break;
                                 default: break;
@@ -1132,8 +1129,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
      * Debug builds get an independent app ID. Never touch stable credentials.
      */
     private void showFullAppBetaTestCenter() {
-        if ((getApplicationInfo().flags
-                & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) == 0) {
+        if (!BuildConfig.DEBUG && !BuildConfig.IS_QA) {
             return;
         }
         OverlayPreferences prefs = new OverlayPreferences(this);
@@ -1153,7 +1149,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                 new String[] {
                     "Refresh live status",
                     "Configure / connect Home Assistant (manual login)",
-                    "Test secure v3 owner approval (NO LOGIN)",
+                    "Test secure owner-approved TV login",
                     "Test floating voice overlay",
                     "Inspect TV alert / camera receiver",
                     "Test local spoken announcement",
