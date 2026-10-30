@@ -18,15 +18,21 @@ class BetaInstallSafetyTests(unittest.TestCase):
         self.assertIn('android:label="' + chr(36) + '{appDisplayName}"', MANIFEST)
         self.assertIn("versionNameSuffix '-test'", GRADLE)
 
-    def test_beta_menu_is_debug_only_not_a_public_new_login(self):
-        self.assertIn("Full app beta test center (DEBUG)", VOICE)
-        self.assertIn("FLAG_DEBUGGABLE", VOICE)
+    def test_beta_menu_is_qa_or_debug_only_not_a_public_new_login(self):
+        self.assertIn("Full app beta test center (QA)", VOICE)
+        self.assertIn("BuildConfig.DEBUG || BuildConfig.IS_QA", VOICE)
         self.assertIn("showFullAppBetaTestCenter", VOICE)
         self.assertIn("PairingV3QaActivity.class", VOICE)
         self.assertIn("optional owner-approved dedicated TV login", READINESS)
         self.assertIn("owner receipt alone does NOT", READINESS)
         self.assertNotIn("setHaToken(", READINESS)
         self.assertNotIn("async_create_refresh_token", READINESS)
+
+    def test_non_debug_qa_is_separate_from_public_release(self):
+        self.assertIn("applicationIdSuffix '.qa'", GRADLE)
+        self.assertIn("buildConfigField 'boolean', 'IS_QA', 'false'", GRADLE)
+        self.assertIn("buildConfigField 'boolean', 'IS_QA', 'true'", GRADLE)
+        self.assertIn("if (!BuildConfig.DEBUG && !BuildConfig.IS_QA)", VOICE)
 
     def test_beta_status_checks_separate_assist_and_tv_alerts(self):
         self.assertIn("assist != null && assist.isConnected()", VOICE)
