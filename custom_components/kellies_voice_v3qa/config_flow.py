@@ -224,13 +224,14 @@ class KelliesVoiceV3QaConfigFlow(ConfigFlow, domain=DOMAIN):
                     flow_id=self.flow_id, session=tv.session,
                     tv_uuid=tv.tv_uuid)
                 origin = None
+                remote_login = False
                 if owner_id is not None:
-                    from .scoped_login_issuer import _trusted_origin
+                    from .ha_https import resolve_tv_login_origin
                     try:
-                        candidate = (self.hass.config.external_url
-                                     or self.hass.config.internal_url)
-                        origin = _trusted_origin(candidate)
+                        origin, remote_login = resolve_tv_login_origin(
+                            self.hass)
                     except Exception:
+                        # No usable HTTPS origin means no renewable token.
                         registry.cancel(self.flow_id)
                         attempt.close()
                         return self.async_abort(reason="https_required")
@@ -243,7 +244,8 @@ class KelliesVoiceV3QaConfigFlow(ConfigFlow, domain=DOMAIN):
                         journal = self.hass.data[DOMAIN]["token_journal"]
                         await attempt.finish_renewable_login(
                             self._transport, hass=self.hass, journal=journal,
-                            owner_id=owner_id, ha_origin=origin)
+                            owner_id=owner_id, ha_origin=origin,
+                            remote_login=remote_login)
                 except Exception:
                     registry.cancel(self.flow_id)
                     attempt.close()
