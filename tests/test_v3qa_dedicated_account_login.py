@@ -177,6 +177,38 @@ class DedicatedLoginTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(Exception):
             await self.journal.revoke_unfinished_attempt(lease2.nonce)
 
+    async def test_retry_for_existing_tv_never_creates_an_orphan_account(self):
+        first, lease, account = await self.module.provision_dedicated_tv_login(
+            self.hass, self.journal, owner_id="owner",
+            tv_uuid=TV, ha_origin=ORIGIN)
+        await self.journal.commit(lease.nonce)
+        with self.assertLogs(
+                self.module.__name__, level="WARNING") as events:
+            with self.assertRaisesRegex(
+                    self.module.DedicatedTvLoginDenied,
+                    "Existing TV enrollment must be resolved"):
+                await self.module.provision_dedicated_tv_login(
+                    self.hass, self.journal, owner_id="owner",
+                    tv_uuid=TV, ha_origin=ORIGIN)
+        self.assertEqual(len(self.auth.created), 1)
+        self.assertEqual(len(self.auth.tokens), 1)
+        self.assertEqual(self.journal.snapshot()[0].state, "committed")
+        self.assertIn("existing_tv_lease", events.output[0])
+        self.assertNotIn(account.id, events.output[0])
+
+    async def test_issuer_logs_only_secret_free_failure_phase(self):
+        self.auth.fail_after_refresh = True
+        with self.assertLogs(self.module.__name__, level="WARNING") as events:
+            with self.assertRaises(self.module.DedicatedTvLoginDenied):
+                await self.module.provision_dedicated_tv_login(
+                    self.hass, self.journal, owner_id="owner",
+                    tv_uuid=TV, ha_origin=ORIGIN)
+        self.assertIn("access_issuance (ValueError)", events.output[0])
+        self.assertNotIn("SECRET-", str(events.output))
+        self.assertNotIn("simulated backend token error", str(events.output))
+        self.assertNotIn(TV, str(events.output))
+        self.assertEqual(self.auth.tokens, {})
+
     async def test_issuer_error_removes_new_token_and_preserves_intent(self):
         self.auth.fail_after_refresh = True
         with self.assertRaises(self.module.DedicatedTvLoginDenied):
