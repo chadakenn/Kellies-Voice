@@ -27,7 +27,7 @@ import org.json.JSONObject;
  * may be installed before cryptographic TV+owner+commit proof and a server
  * scope check. It never reads the existing stable/manual CredentialStore.
  */
-final class TvRenewableLoginVault {
+final class TvRenewableLoginVault implements PairingV3ScopedTokenHandoff.Vault {
     private static final String PREFS = "kellies_v3_scoped_login_v1";
     private static final String ALIAS = "kellies_v3_scoped_token_v1";
     private static final String KEY = "encrypted_tv_login";
@@ -142,7 +142,7 @@ final class TvRenewableLoginVault {
     }
 
     /** Internal v3 handoff hook ONLY. Provisional token cannot authenticate. */
-    synchronized void stage(TvRenewableLoginPolicy.Grant grant,
+    @Override public synchronized void stage(TvRenewableLoginPolicy.Grant grant,
             String refresh, String access, long lifetime) throws Exception {
         if (read() != null)
             throw new IllegalStateException("Existing TV credential must be revoked first");
@@ -159,7 +159,7 @@ final class TvRenewableLoginVault {
     /** Not wired. Caller must prove server committed exact lease after TV ACK.
      * Any missing ack/cancel/restart MUST leave record inactive.
      */
-    synchronized void activateAfterVerifiedServerCommit(
+    @Override public synchronized void activateAfterVerifiedServerCommit(
             String tvUuid, String tokenId) throws Exception {
         Record r = read();
         if (r == null || r.active || !r.grant.tvUuid.equals(tvUuid)
