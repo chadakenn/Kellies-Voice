@@ -42,6 +42,11 @@ public final class ComposeSettingsInterop {
         return pending;
     }
 
+    /** Presentation-only: never expose or copy the renewable access/refresh token. */
+    public static boolean hasOwnerApprovedLogin(Context context) {
+        return new TvRenewableLoginVault(context).hasActiveLogin();
+    }
+
     private ComposeSettingsInterop() { }
 
     /**
