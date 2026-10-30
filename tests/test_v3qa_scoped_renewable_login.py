@@ -73,7 +73,7 @@ class FakeAuth:
     async def async_get_user(self, uid):
         return {"owner": self.owner, self.user.id: self.user}.get(uid)
 
-    async def async_create_refresh_token(self, user, client_id, token_type):
+    async def async_create_refresh_token(self, user, client_id, token_type="normal"):
         self.issue_calls += 1
         assert user is self.user and token_type == "normal"
         token_id = "tv-token-identifier-" + str(self.issue_calls)
