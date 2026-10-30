@@ -178,6 +178,13 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         // Reuse saved credentials without asking for a manual Reconnect click.
         // No microphone is activated here, just the authenticated socket.
         if (transparentShortcut || assist == null) return;
+        // A completed owner-approved TV account supersedes the beta's old
+        // manual token, with NO fallback if renewable authorization fails.
+        if (new TvRenewableLoginVault(this).hasActiveLogin()) {
+            settings = null;
+            connectRenewableTvLogin();
+            return;
+        }
         if (settings == null) {
             connectRenewableTvLogin();
             return;
