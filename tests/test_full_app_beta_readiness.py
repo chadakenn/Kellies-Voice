@@ -34,6 +34,22 @@ class BetaInstallSafetyTests(unittest.TestCase):
         self.assertIn("prefs.microphoneDisabled()", VOICE)
         self.assertIn("Settings.canDrawOverlays(this)", VOICE)
 
+    def test_first_run_microphone_consent_is_explicit_and_never_auto_captures(self):
+        self.assertIn("Android microphone permission:", VOICE)
+        self.assertIn("requestMicrophoneSetupPermission()", VOICE)
+        self.assertIn("SETUP_MIC_PERMISSION_REQUEST", VOICE)
+        self.assertIn("requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}", VOICE)
+        self.assertIn("No recording has started", VOICE)
+
+    def test_alert_overlay_grant_completes_only_requested_enable(self):
+        self.assertIn("TV_ALERT_OVERLAY_SETTINGS_REQUEST", VOICE)
+        self.assertIn("pendingTvAlertsPermission = enableAlertsWhenGranted", VOICE)
+        self.assertIn("if (pendingTvAlertsPermission && Settings.canDrawOverlays(this))", VOICE)
+        self.assertIn("if (requestedEnable) enableTvAlertsFromUser()", VOICE)
+        self.assertIn("case 7: chooseHaLayout(); break;", VOICE)
+        self.assertIn("The separate v3 QA pairing does not register the alert device", VOICE)
+
+
 
 if __name__ == "__main__":
     unittest.main()
