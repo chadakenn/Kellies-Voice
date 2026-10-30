@@ -3,6 +3,28 @@
 **This is a draft hardware test, not a public release. Do not deploy it until
 the PR's Android, Home Assistant, pairing and combined-kit builds all pass.**
 
+## Owner approval panel shortcut (QA)
+
+When the two-screen physical TV proof succeeds, Home Assistant's final
+**Verified TV: confirm the signed-in HA owner** form now includes a
+clickable **[OPEN OWNER APPROVAL PANEL](/kellies-voice-v3qa-approval)**
+link in its description. Open the link **in another browser tab** (for
+example, right-click → Open link in new tab or Ctrl+click), because
+navigating away from the active config flow can discard the current
+120-second pairing attempt. The link is relative to the HA instance
+currently displaying the flow, so it also works with HA Cloud or a custom
+local address. No TV ID, code, token or owner information is embedded in
+the URL. The approval page is restricted to authenticated admins and its
+WebSocket backend independently requires the actual HA owner.
+
+The old redundant editable `qa_instructions` text field has been removed.
+The *actual* checks are unchanged: matching eight-digit code, physical
+TV proof, same session/TV identifier, explicit action in the signed-in HA
+owner panel and cryptographic receipt acknowledgement. The owner may
+opt into ongoing login only after reviewing the broad standard HA Users
+permissions. Do not select Submit before approval; the form continues
+to display `owner_pending` until the backend confirms it.
+
 ## Local discovery versus Home Assistant login transport
 
 **Local HTTP discovery and short-lived pairing already work.** They are
