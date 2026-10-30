@@ -31,6 +31,10 @@ jobs:
         run: python -m unittest discover -s tests -p 'test_v3qa_credential_scope.py' -v
       - name: Per-TV capability default-deny and replay tests
         run: python -m unittest discover -s tests -p 'test_v3qa_scoped_tv_gate.py' -v
+      - name: Match Python AES-GCM transcript test vectors
+        run: |
+          python -m pip install --disable-pip-version-check cryptography==46.0.4
+          python -m unittest discover -s tests -p 'test_v3qa_aead.py' -v
       - name: Verify ZIP is isolated
         run: |
           python - <<'PY'
