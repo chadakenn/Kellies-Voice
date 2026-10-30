@@ -47,6 +47,9 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
     private static final int OVERLAY_MIC_PERMISSION_REQUEST = 18;
     private static final int OVERLAY_SETTINGS_REQUEST = 19;
     private static final int WAKE_WORD_MIC_REQUEST = 20;
+    private static final int SETUP_MIC_PERMISSION_REQUEST = 21;
+    private static final int TV_ALERT_OVERLAY_SETTINGS_REQUEST = 22;
+    private boolean pendingTvAlertsPermission;
     private final List<Button> buttons = new ArrayList<>();
     private int selected = 0;
     private TextView status;
@@ -783,13 +786,16 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                 break;
             case VOICE:
                 entries = new String[] {
+                        "Android microphone permission: " + (checkSelfPermission(Manifest.permission.RECORD_AUDIO)
+                                == PackageManager.PERMISSION_GRANTED ? "GRANTED" : "GRANT NOW"),
                         "Microphone sensitivity: " + OverlayPreferences.noiseLabel(prefs.noise()),
                         "Follow-up listening: " + followUpLabel(),
                         "Microphone input checks: " + (prefs.microphoneDisabled()
                                 ? "DISABLED" : prefs.allowUnverifiedMic() ? "Override ON" : "Safe"),
                         "Test microphone hardware",
                         "Wake word: " + (!prefs.wakeWord() ? "OFF"
-                                : WakeWordService.isListening() ? "LISTENING" : "STOPPED")
+                                : WakeWordService.isListening() ? "LISTENING" : "STOPPED"),
+                        "Open Android app permissions"
                 };
                 break;
             case OVERLAY:
@@ -801,6 +807,8 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
             case ALERTS:
                 entries = new String[] {
                         "TV notifications & camera popups: " + (prefs.tvEvents() ? "ON" : "OFF"),
+                        "Android overlay permission: " + (Settings.canDrawOverlays(this)
+                                ? "GRANTED" : "GRANT NOW"),
                         "Spoken announcements: " + (prefs.spokenAnnouncements() ? "ON" : "OFF"),
                         "Announcement voice volume: " + prefs.spokenAnnouncementVolume() + "%",
                         "Test a spoken announcement",
@@ -848,11 +856,13 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                             break;
                         case VOICE:
                             switch (which) {
-                                case 0: chooseMicSensitivity(); break;
-                                case 1: chooseFollowUp(); break;
-                                case 2: chooseMicrophoneDetection(); break;
-                                case 3: startActivity(new Intent(this, MainActivity.class)); break;
-                                case 4: chooseWakeWord(); break;
+                                case 0: requestMicrophoneSetupPermission(); break;
+                                case 1: chooseMicSensitivity(); break;
+                                case 2: chooseFollowUp(); break;
+                                case 3: chooseMicrophoneDetection(); break;
+                                case 4: startActivity(new Intent(this, MainActivity.class)); break;
+                                case 5: chooseWakeWord(); break;
+                                case 6: openAndroidAppPermissions(); break;
                                 default: break;
                             }
                             break;
@@ -866,11 +876,12 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                         case ALERTS:
                             switch (which) {
                                 case 0: chooseTvNotifications(); break;
-                                case 1: toggleSpokenAnnouncements(); break;
-                                case 2: chooseAnnouncementVolume(); break;
-                                case 3: testSpokenAnnouncements(); break;
-                                case 4: showTvAlertStatus(); break;
-                                case 5: chooseCameraMode(); break;
+                                case 1: openAndroidOverlayPermission(false); break;
+                                case 2: toggleSpokenAnnouncements(); break;
+                                case 3: chooseAnnouncementVolume(); break;
+                                case 4: testSpokenAnnouncements(); break;
+                                case 5: showTvAlertStatus(); break;
+                                case 6: chooseCameraMode(); break;
                                 default: break;
                             }
                             break;
@@ -1031,6 +1042,84 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                 });
     }
 
+
+    /** Explicit first-run permission action. Never starts capture or the wake word. */
+    private void requestMicrophoneSetupPermission() {
+        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO)
+                == PackageManager.PERMISSION_GRANTED) {
+            new AlertDialog.Builder(this)
+                    .setTitle("Microphone permission granted")
+                    .setMessage("Android allows this beta app to use the microphone. "
+                            + "Press TALK when you want to test listening.")
+                    .setPositiveButton("Back to Voice settings",
+                            (d, w) -> showSettingsSection(SettingsSection.VOICE))
+                    .show();
+            return;
+        }
+        requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO},
+                SETUP_MIC_PERMISSION_REQUEST);
+    }
+
+    /** Android TV firmware may hide the standard overlay permission screen. */
+    private void openAndroidAppPermissions() {
+        try {
+            startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    Uri.parse("package:" + getPackageName())));
+        } catch (Exception ignored) {
+            status("Android could not open app settings. Use TV Settings > Apps > Kellie's Voice Beta.");
+        }
+    }
+
+    private void openAndroidOverlayPermission(boolean enableAlertsWhenGranted) {
+        if (Settings.canDrawOverlays(this)) {
+            if (enableAlertsWhenGranted) enableTvAlertsFromUser();
+            else showSettingsSection(SettingsSection.ALERTS);
+            return;
+        }
+        pendingTvAlertsPermission = enableAlertsWhenGranted;
+        new AlertDialog.Builder(this)
+                .setTitle("Allow TV camera and announcement popups")
+                .setMessage("Grant Display over other apps for Kellie's Voice Beta in Android "
+                        + "settings. This is separate from your stable app. "
+                        + "If Android doesn't open the permission screen, use TV Settings "
+                        + "> Apps > Special app access > Display over other apps.")
+                .setNegativeButton("Later", (d, w) -> pendingTvAlertsPermission = false)
+                .setPositiveButton("Open Android permission", (d, w) -> {
+                    try {
+                        startActivityForResult(new Intent(
+                                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                Uri.parse("package:" + getPackageName())),
+                                TV_ALERT_OVERLAY_SETTINGS_REQUEST);
+                    } catch (Exception ignored) {
+                        pendingTvAlertsPermission = false;
+                        openAndroidAppPermissions();
+                    }
+                }).show();
+    }
+
+    /** Only a direct user ON selection or their completed permission trip enables alerts. */
+    private void enableTvAlertsFromUser() {
+        if (settings == null) {
+            status("Home Assistant is still connecting. Reopen TV alerts after login.");
+            return;
+        }
+        if (!Settings.canDrawOverlays(this)) {
+            status("Android overlay permission is required for TV alerts.");
+            return;
+        }
+        OverlayPreferences prefs = new OverlayPreferences(this);
+        prefs.setTvEvents(true);
+        try {
+            startForegroundService(new Intent(this, TvEventsService.class)
+                    .setAction(TvEventsService.ACTION_RESUME));
+            status("TV alerts enabled. Check TV alert status for Home Assistant pairing.");
+        } catch (RuntimeException ignored) {
+            prefs.setTvEvents(false);
+            TvEventsRecovery.note(TvEventsRecovery.STOPPED);
+            status("Android could not start the TV alert receiver.");
+        }
+    }
+
     private void chooseTvNotifications() {
         OverlayPreferences prefs = new OverlayPreferences(this);
         boolean enabled = prefs.tvEvents();
@@ -1051,30 +1140,9 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                         } else if (settings == null) {
                             status("Configure Home Assistant before enabling TV notifications.");
                         } else if (!Settings.canDrawOverlays(this)) {
-                            status("Grant 'Display over other apps' before enabling TV alerts.");
-                            new AlertDialog.Builder(this)
-                                    .setTitle("Allow TV announcement popups")
-                                    .setMessage("Android must allow Kellie's Voice to display overlays over video. "
-                                            + "Return here to enable alerts afterward.")
-                                    .setNegativeButton("Later", null)
-                                    .setPositiveButton("Open permission", (d, w) -> {
-                                        try {
-                                            startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                                                    Uri.parse("package:" + getPackageName())));
-                                        } catch (Exception ignored) {
-                                            status("Could not open Android's overlay permission screen.");
-                                        }
-                                    }).show();
+                            openAndroidOverlayPermission(true);
                         } else {
-                            prefs.setTvEvents(true);
-                            try {
-                                startForegroundService(new Intent(this, TvEventsService.class)
-                                        .setAction(TvEventsService.ACTION_START));
-                                status("TV alerts enabled. Listening for Home Assistant events.");
-                            } catch (RuntimeException ignored) {
-                                prefs.setTvEvents(false);
-                                status("Android couldn't start the TV alert receiver.");
-                            }
+                            enableTvAlertsFromUser();
                         }
                     } else if (which == 1) {
                         if (prefs.tvEvents()) {
@@ -1536,6 +1604,18 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
 
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == TV_ALERT_OVERLAY_SETTINGS_REQUEST) {
+            boolean requestedEnable = pendingTvAlertsPermission;
+            pendingTvAlertsPermission = false;
+            if (Settings.canDrawOverlays(this)) {
+                if (requestedEnable) enableTvAlertsFromUser();
+                else status("Android overlay permission granted for Kellie's Voice Beta.");
+            } else {
+                status("Display over other apps is still disabled for Kellie's Voice Beta.");
+            }
+            showSettingsSection(SettingsSection.ALERTS);
+            return;
+        }
         if (requestCode == OVERLAY_SETTINGS_REQUEST) {
             if (Settings.canDrawOverlays(this)) {
                 status("Overlay allowed! Open SETTINGS and choose floating overlay again.");
@@ -1670,7 +1750,21 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
 
     @Override public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grants) {
         super.onRequestPermissionsResult(requestCode, permissions, grants);
-        if (requestCode == MIC_PERMISSION_REQUEST) {
+        if (requestCode == SETUP_MIC_PERMISSION_REQUEST) {
+            boolean granted = grants.length > 0 && grants[0] == PackageManager.PERMISSION_GRANTED;
+            new AlertDialog.Builder(this)
+                    .setTitle(granted ? "Microphone permission granted" : "Microphone permission not granted")
+                    .setMessage(granted
+                            ? "Permission is ready. No recording has started. Press TALK to test."
+                            : "Use Open Android app permissions if Android no longer offers the prompt.")
+                    .setNegativeButton("Back to Voice settings",
+                            (d, w) -> showSettingsSection(SettingsSection.VOICE))
+                    .setPositiveButton(granted ? "OK" : "Open app permissions",
+                            (d, w) -> {
+                                if (!granted) openAndroidAppPermissions();
+                                else showSettingsSection(SettingsSection.VOICE);
+                            }).show();
+        } else if (requestCode == MIC_PERMISSION_REQUEST) {
             if (grants.length > 0 && grants[0] == PackageManager.PERMISSION_GRANTED) startTalk();
             else status("Microphone permission denied.");
         } else if (requestCode == OVERLAY_MIC_PERMISSION_REQUEST) {
