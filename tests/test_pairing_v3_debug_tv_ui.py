@@ -1,4 +1,4 @@
-"""Only the separately installed Android DEBUG APK exposes v3 pairing QA.
+"""Only separately installed DEBUG and signed QA APKs expose v3 pairing.
 
 The stock launcher, currently connected TV credentials, normal HA settings,
 mic, wake word and public release menu must stay unchanged.
@@ -19,10 +19,10 @@ class V3DebugTvOnboardingContract(unittest.TestCase):
         cls.voice = VOICE.read_text()
         cls.manifest = MANIFEST.read_text()
 
-    def test_debug_only_entry_nonexported_and_never_launcher(self):
-        self.assertIn("FLAG_DEBUGGABLE", self.activity)
-        self.assertIn("FLAG_DEBUGGABLE", self.voice)
-        self.assertIn("Secure pairing v3 (DEBUG TEST ONLY, no login)", self.voice)
+    def test_qa_or_debug_entry_nonexported_and_never_launcher(self):
+        self.assertIn("if (!BuildConfig.DEBUG && !BuildConfig.IS_QA)", self.activity)
+        self.assertIn("BuildConfig.DEBUG || BuildConfig.IS_QA", self.voice)
+        self.assertIn("Secure TV pairing (QA owner-approved login)", self.voice)
         self.assertIn('android:name=".PairingV3QaActivity"', self.manifest)
         # Isolated activity is registered without Android launcher intent filters.
         self.assertRegex(self.manifest,
