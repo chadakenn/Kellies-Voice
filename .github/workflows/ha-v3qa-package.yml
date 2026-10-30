@@ -39,6 +39,8 @@ jobs:
           python -m unittest discover -s tests -p 'test_v3qa_receipt_wire_end_to_end.py' -v
       - name: Prove HA owner approval encrypts only a bound one-use receipt
         run: python -m unittest discover -s tests -p 'test_v3qa_owner_receipt.py' -v
+      - name: Prove restricted renewable login and crash reaper before hardware
+        run: python -m unittest discover -s tests -p 'test_v3qa_scoped_renewable_login.py' -v
       - name: Verify ZIP is isolated
         run: |
           python - <<'PY'
