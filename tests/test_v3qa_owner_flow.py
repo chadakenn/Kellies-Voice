@@ -209,7 +209,7 @@ class V3QaOwnerFlowTests(unittest.IsolatedAsyncioTestCase):
             {"qa_instructions": self.flow_module._OWNER_QA_NOTICE,
              "ha_code": "87654321", "owner_approved": True})
         self.assertEqual(result["reason"], "https_required")
-        self.assertTrue(flow._attempt.closed)
+        self.assertIsNone(flow._attempt)
 
     async def test_no_success_without_authenticated_tv_ack(self):
         flow = self.make()
