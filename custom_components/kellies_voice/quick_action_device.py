@@ -48,7 +48,16 @@ class QuickActionDeviceSetting:
             f"shortcut_{self._slot}_{self._field}", default
         )
 
-    def _set(self, value: str) -> None:
+    async def _set(self, value: str) -> None:
+        # Native entity services are callable beyond the integration's admin
+        # options flow. Match that flow's owner-only edit authority here.
+        context = getattr(self, "_context", None)
+        user_id = getattr(context, "user_id", None)
+        user = await self.hass.auth.async_get_user(user_id) if user_id else None
+        if user is None or not user.is_admin:
+            raise HomeAssistantError(
+                "Only a Home Assistant administrator can edit TV Quick Actions."
+            )
         try:
             proposed = updated_device_option(
                 self._entry.options, self._slot, self._field, value
@@ -76,7 +85,7 @@ class QuickActionLabel(QuickActionDeviceSetting, TextEntity):
         self._attr_native_value = self._saved()
 
     async def async_set_value(self, value: str) -> None:
-        self._set(value)
+        await self._set(value)
 
 
 class QuickActionTarget(QuickActionDeviceSetting, SelectEntity):
@@ -129,7 +138,7 @@ class QuickActionTarget(QuickActionDeviceSetting, SelectEntity):
         self._refresh()
         if option not in self._selection_to_entity:
             raise HomeAssistantError("Select an available light, scene or script.")
-        self._set(self._selection_to_entity[option])
+        await self._set(self._selection_to_entity[option])
 
 
 class QuickActionVerb(QuickActionDeviceSetting, SelectEntity):
@@ -144,7 +153,7 @@ class QuickActionVerb(QuickActionDeviceSetting, SelectEntity):
     async def async_select_option(self, option: str) -> None:
         if option not in ACTIONS:
             raise HomeAssistantError("Choose Turn on, Turn off or Toggle.")
-        self._set(option)
+        await self._set(option)
 
 
 def quick_action_labels(entry: ConfigEntry) -> list[QuickActionLabel]:
