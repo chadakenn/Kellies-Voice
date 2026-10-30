@@ -19,7 +19,7 @@ _COMMAND = "kellies_voice_v3qa/pair/claim_verified_owner"
     probatio.Required("type"): _COMMAND,
     probatio.Required("flow_id"): str,
     probatio.Required("tv_session"): str,
-    probatio.Optional("standard_user_login", default=False): bool,
+    probatio.Required("standard_user_login"): bool,
 })
 @callback
 def websocket_claim_verified_owner(hass: HomeAssistant,
