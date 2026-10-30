@@ -14,6 +14,7 @@ from .home_shortcuts_ws import async_register_home_shortcuts
 
 _LOGGER = logging.getLogger(__name__)
 _TIMER_KEY = "native_timer_registries"
+_TIMER_OPTIONS_AT_SETUP = "native_timer_options_at_setup"
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
@@ -65,8 +66,18 @@ def _enable_native_timers(hass: HomeAssistant, entry: ConfigEntry) -> None:
 
 
 async def _options_updated(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Re-register only after an explicit options change, not on every event."""
-    await hass.config_entries.async_reload(entry.entry_id)
+    """Quick Action edits must NOT unload/reload in-flight device controls.
+
+    Shortcut fetch/press reads entry.options directly on every WebSocket call,
+    so changing a label/target/action does not need a platform restart. Reload
+    only if native timer registration actually changes.
+    """
+    previous = hass.data.setdefault(DOMAIN, {}).setdefault(
+        _TIMER_OPTIONS_AT_SETUP, {}
+    ).get(entry.entry_id, False)
+    current = entry.options.get("native_timer_intents", False) is True
+    if previous != current:
+        await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -74,6 +85,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     async_register_alert_subscription(hass)
     async_register_home_shortcuts(hass)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    hass.data.setdefault(DOMAIN, {}).setdefault(
+        _TIMER_OPTIONS_AT_SETUP, {}
+    )[entry.entry_id] = entry.options.get("native_timer_intents", False) is True
     entry.async_on_unload(entry.add_update_listener(_options_updated))
     if entry.options.get("native_timer_intents", False) is True:
         _enable_native_timers(hass, entry)
