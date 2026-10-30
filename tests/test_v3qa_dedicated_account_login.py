@@ -43,11 +43,11 @@ class FakeAuth:
         return next((x for x in self.created if x.id == uid), None)
 
     async def async_create_user(self, name, group_ids, local_only):
-        assert group_ids == ["system-users"] and local_only is True
+        assert group_ids == ["system-users"] and type(local_only) is bool
         result = types.SimpleNamespace(
             id="dedicated-user-" + str(len(self.created) + 1),
             name=name, is_active=True, is_owner=False, is_admin=False,
-            system_generated=False, local_only=True,
+            system_generated=False, local_only=local_only,
             groups=[types.SimpleNamespace(id="system-users")],
             refresh_tokens={},
         )
@@ -120,6 +120,24 @@ class DedicatedLoginTests(unittest.IsolatedAsyncioTestCase):
         on_disk = (Path(self.tmp.name) / "lease.json").read_text()
         self.assertIn("created-refresh-id-1", on_disk)
         self.assertNotIn("SECRET-", on_disk)
+
+    async def test_nabu_cloud_uses_dedicated_remote_capable_user(self):
+        issued, recorded, account = await self.module.provision_dedicated_tv_login(
+            self.hass, self.journal, owner_id="owner", tv_uuid=TV,
+            ha_origin="https://example.ui.nabu.casa", remote_login=True)
+        self.assertFalse(account.is_owner)
+        self.assertFalse(account.is_admin)
+        self.assertFalse(account.local_only)
+        self.assertEqual({g.id for g in account.groups}, {"system-users"})
+        self.assertEqual(recorded.state, "issued")
+        self.assertEqual(issued.lease.tv_user_id, account.id)
+
+    async def test_invalid_remote_flag_refused_before_creating_user(self):
+        with self.assertRaises(self.module.DedicatedTvLoginDenied):
+            await self.module.provision_dedicated_tv_login(
+                self.hass, self.journal, owner_id="owner", tv_uuid=TV,
+                ha_origin=ORIGIN, remote_login="true")
+        self.assertEqual(self.auth.created, [])
 
     async def test_plain_http_does_not_even_create_a_user(self):
         with self.assertRaises(Exception):
