@@ -61,3 +61,36 @@ def selection(options, slot):
         return None
     return next((item for item in entries_from_options(options)
                  if item["slot"] == slot), None)
+
+
+def updated_device_option(options, slot, field, raw_value):
+    """Update ONE HA-owned control from the TV's device Configuration card.
+
+    Partially filled slots are allowed while editing, but entries_from_options()
+    refuses to expose them to the TV until the full label/entity/action trio is
+    valid. No user-supplied service, domain or arbitrary target ever goes to TV.
+    """
+    if type(slot) is not int or not 1 <= slot <= COUNT:
+        raise ValueError("Invalid Quick Action slot")
+    if field not in ("label", "entity", "action") or not isinstance(raw_value, str):
+        raise ValueError("Invalid Quick Action setting")
+    value = raw_value.strip()
+    if field == "label":
+        if len(value) > 26 or any(ord(c) < 32 or ord(c) == 127 for c in value):
+            raise ValueError("Quick Action labels must be 1-26 printable characters")
+    elif field == "entity":
+        if value and not _ENTITY.fullmatch(value):
+            raise ValueError("Choose a light, scene or script Home Assistant entity")
+    elif value not in ACTIONS:
+        raise ValueError("Choose Turn on, Turn off or Toggle")
+
+    proposed = dict(options) if isinstance(options, dict) else {}
+    proposed[f"shortcut_{slot}_{field}"] = value
+    label = proposed.get(f"shortcut_{slot}_label", "")
+    entity = proposed.get(f"shortcut_{slot}_entity", "")
+    action = proposed.get(f"shortcut_{slot}_action", "Turn on")
+    if label and entity:
+        # Enforce cross-field compatibility before saving a complete button.
+        # If changing a light to a scene, choose Turn on first.
+        validate_slot(label, entity, action)
+    return proposed
