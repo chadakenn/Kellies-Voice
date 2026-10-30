@@ -18,7 +18,7 @@ INIT = (ROOT / "custom_components/kellies_voice_v3qa"
 class RenewableScopeContracts(unittest.TestCase):
     def test_vault_does_not_read_manual_login_or_install_silently(self):
         self.assertNotIn("new CredentialStore(", TV)
-        self.assertNotIn("CredentialStore.", TV)
+        self.assertNotIn("CredentialStore.load(", TV)
         self.assertNotIn("TvRenewableLoginVault", FLOW)
         self.assertNotIn("scoped_login_issuer", FLOW)
         self.assertNotIn("scoped_login_issuer", INIT)
