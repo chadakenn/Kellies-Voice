@@ -13,9 +13,12 @@ the PR's Android, Home Assistant, pairing and combined-kit builds all pass.**
    Never overwrite the stable `custom_components/kellies_voice/`.
    Keep the existing one-line `kellies_voice_v3qa:` in
    `configuration.yaml`; check HA configuration and restart HA.
-3. **Prerequisite:** HA must have an HTTPS internal or external URL
-   configured at **Settings → System → Network**. This beta will NOT send
-   a reusable refresh token to a plaintext HTTP endpoint.
+3. **Prerequisite:** Use the existing **Home Assistant Cloud** HTTPS URL
+   under **Settings → System → Network** (Internet: Use Home Assistant Cloud).
+   This beta now automatically resolves it through HA's native network API;
+   no manual external URL is required. Local network can stay automatic HTTP.
+   The TV must be able to reach the Cloud HTTPS address with trusted TLS.
+   For Cloud access the dedicated TV account is remote-capable.
    The TV needs to reach that HTTPS address, with a trusted certificate.
 4. On the TV, open Kellie's Voice Beta → Settings → Home Assistant →
    **Secure pairing v3** and press **START 2-MINUTE V3 TEST**.
@@ -46,8 +49,9 @@ Keystore. The HA owner token is never copied or exposed.
 
 **Important permission disclosure:** Home Assistant's normal Users group is
 NOT entity-limited. This TV account can read and control **all HA entities**,
-including sensitive devices, via supported APIs. This is not a harmless
-voice-only or read-only account. Only select the option for your own trusted
+including sensitive devices, via supported APIs. Through Cloud HTTPS the
+dedicated TV account is also remotely accessible (not local-only). This is
+not a harmless voice-only or read-only account. Only select the option for your own trusted
 TV, and do not expose its login secret. To remove access, remove its refresh
 token or delete its dedicated user in HA's Users settings.
 
@@ -59,9 +63,11 @@ instead of storing a ten-year owner bearer token.
 
 ## Failure / rollback
 
-- `https_required`: configure a reachable HTTPS HA address and retry.
-  Ordinary local `http://192.168.x.x:8123` is not accepted for renewable
-  enrollment.
+- `https_required`: HA couldn't obtain a valid HTTPS address from Cloud or
+  its configured network URLs. Check Cloud remote connection status. Do not
+  paste a Cloud address into `configuration.yaml` as a workaround.
+  Ordinary local `http://192.168.x.x:8123` is still permitted for browser
+  access, but not for renewal tokens.
 - `owner_login_failed`: physical remote, owner approval, token staging or
   activation did not finish. Restart the whole two-minute TV window. On
   the next HA startup unfinished token leases are revoked.
