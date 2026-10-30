@@ -84,6 +84,15 @@ class OwnerClaimRegistry:
         entry.owner_id = owner_id
         return True
 
+    def approved_for(self, *, flow_id: str, session: str, tv_uuid: str,
+                     now: float | None = None) -> bool:
+        """Read-only exact claim status, never an authority to issue tokens."""
+        instant = time.monotonic() if now is None else now
+        self._prune(instant)
+        candidate = self._pending.get(flow_id)
+        return (candidate is not None and candidate.owner_id is not None
+                and candidate.session == session and candidate.tv_uuid == tv_uuid)
+
     def consume(self, *, flow_id: str, session: str, tv_uuid: str,
                 now: float | None = None) -> str | None:
         """One shot: caller must verify the bound owner still exists/active."""
