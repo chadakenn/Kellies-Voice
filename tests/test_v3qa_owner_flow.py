@@ -123,12 +123,12 @@ class V3QaOwnerFlowTests(unittest.IsolatedAsyncioTestCase):
         person = types.SimpleNamespace(id="actual-owner", is_owner=True, is_active=True)
         # Premature Continue cannot burn the owner consent.
         too_early = await flow.async_step_owner_approval(
-            {"ha_code": "87654321", "owner_approved": True})
+            {"qa_instructions": self.flow_module._OWNER_QA_NOTICE, "ha_code": "87654321", "owner_approved": True})
         self.assertEqual(too_early["errors"]["base"], "owner_pending")
         self.assertEqual(len(registry.pending(user=person)), 1)
         self.assertTrue(registry.claim(flow_id=flow.flow_id, session=SID, user=person))
         success = await flow.async_step_owner_approval(
-            {"ha_code": "87654321", "owner_approved": True})
+            {"qa_instructions": self.flow_module._OWNER_QA_NOTICE, "ha_code": "87654321", "owner_approved": True})
         self.assertEqual(success["reason"], "owner_verified_no_login")
         self.assertIsNone(flow._owner_tv)
         self.assertEqual([], registry.pending(user=person))
@@ -155,7 +155,7 @@ class V3QaOwnerFlowTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(registry.claim(flow_id=flow.flow_id, session=SID, user=admin))
         flow._owner_deadline = 0
         result = await flow.async_step_owner_approval(
-            {"ha_code": "87654321", "owner_approved": True})
+            {"qa_instructions": self.flow_module._OWNER_QA_NOTICE, "ha_code": "87654321", "owner_approved": True})
         self.assertEqual(result["reason"], "owner_expired")
 
     async def test_different_owner_id_rejected_even_if_other_owner_active(self):
@@ -167,7 +167,7 @@ class V3QaOwnerFlowTests(unittest.IsolatedAsyncioTestCase):
         flow.hass.auth.async_get_user.return_value = types.SimpleNamespace(
             id="another-owner", is_owner=True, is_active=True)
         result = await flow.async_step_owner_approval(
-            {"ha_code": "87654321", "owner_approved": True})
+            {"qa_instructions": self.flow_module._OWNER_QA_NOTICE, "ha_code": "87654321", "owner_approved": True})
         self.assertEqual(result["reason"], "owner_denied")
 
     async def test_owner_privileges_are_rechecked_at_end(self):
@@ -179,7 +179,7 @@ class V3QaOwnerFlowTests(unittest.IsolatedAsyncioTestCase):
         flow.hass.auth.async_get_user.return_value = types.SimpleNamespace(
             id="owner", is_owner=False, is_active=True)
         result = await flow.async_step_owner_approval(
-            {"ha_code": "87654321", "owner_approved": True})
+            {"qa_instructions": self.flow_module._OWNER_QA_NOTICE, "ha_code": "87654321", "owner_approved": True})
         self.assertEqual(result["reason"], "owner_denied")
 
 
