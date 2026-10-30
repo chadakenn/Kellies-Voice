@@ -137,7 +137,7 @@ final class TvRenewableLoginVault {
         r.expiresSeconds = data.getLong("expires");
         r.active = data.getBoolean("active");
         TvRenewableLoginPolicy.checkCredential(
-                r.refresh, r.access, r.expiresSeconds);
+                r.refresh, "keystore-refresh-only", r.expiresSeconds);
         return r;
     }
 
