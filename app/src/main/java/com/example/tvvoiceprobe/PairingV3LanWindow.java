@@ -312,7 +312,7 @@ public final class PairingV3LanWindow implements AutoCloseable {
                         + "to connect with its dedicated renewable HA account.");
                 });
             } else {
-                // No v2 route, no downgrade, no generic control endpoint.
+                // No v2 route, no redirect to v2, no generic control endpoint.
                 answer(socket, 404, errorJson("not_available"));
             }
         } catch (Exception error) {
