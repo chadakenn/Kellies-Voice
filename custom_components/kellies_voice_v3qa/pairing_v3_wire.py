@@ -305,11 +305,17 @@ class AiohttpV3LanTransport:
         self._base = f"http://{ip.compressed}:{port}"
 
     async def _call(self, method: str, path: str, data: dict) -> dict:
-        if path not in {
+        # Explicit path + method allowlist. The owner-approved credential
+        # handoff uses two additional bounded POST-only TV endpoints; without
+        # these, the verified pairing succeeds but login aborts before stage.
+        post_routes = {
             "/v3/pair/commit", "/v3/pair/reveal-ha",
-            "/v3/pair/reveal-tv", "/v3/pair/status",
             "/v3/pair/owner-receipt",
-        }:
+            "/v3/pair/token-stage", "/v3/pair/token-commit",
+        }
+        get_routes = {"/v3/pair/reveal-tv", "/v3/pair/status"}
+        if not ((method == "POST" and path in post_routes)
+                or (method == "GET" and path in get_routes)):
             raise ValueError("Unrecognized v3 route")
         import aiohttp
         timeout = aiohttp.ClientTimeout(total=3)
