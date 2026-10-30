@@ -12,6 +12,7 @@ from .camera_picker import NONE, SLOTS, get_camera_picker
 
 from .const import ALERT_SELECTS, DOMAIN, FOLLOW_SELECTS, FRIGATE_SELECTS, NOISE_SELECTS, SELECTS, WEATHER_SELECTS
 from .layout_attrs import layout_attributes
+from .quick_action_device import quick_action_selects
 
 
 async def async_setup_entry(
@@ -43,6 +44,7 @@ async def async_setup_entry(
                     for setting, name, options, icon, initial in FRIGATE_SELECTS)
     entities.append(WeatherSourceSelect(entry))
     entities.extend(FrigateCameraSelect(entry, slot) for slot in range(SLOTS))
+    entities.extend(quick_action_selects(entry))
     async_add_entities(entities)
 
 
