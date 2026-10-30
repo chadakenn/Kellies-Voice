@@ -33,7 +33,11 @@ class QuickActionDeviceSetting:
         self._field = field
         tv_id = entry.data["device_id"]
         self._attr_unique_id = f"{tv_id}_quick_action_{slot}_{field}"
-        self._attr_name = f"Quick Action {slot} · {name}"
+        # HA sorts device Configuration entities by display name, not by
+        # platform creation order. Numerically prefix the fields so each TV
+        # button reads Label -> Target -> Action in one contiguous group.
+        order = {"label": "1", "entity": "2", "action": "3"}[field]
+        self._attr_name = f"Quick Action {slot} · {order}. {name}"
         self._attr_icon = icon
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, tv_id)},
