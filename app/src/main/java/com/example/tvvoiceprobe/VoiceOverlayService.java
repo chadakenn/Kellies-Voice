@@ -65,6 +65,7 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
     private VoiceWaveView wave;
     private HaAssistClient assist;
     private CredentialStore.Connection connection;
+    private boolean renewableSession;
     private OverlayPreferences preferences;
     private MediaPlayer player;
     private SpeechFocus speechFocus;
@@ -173,40 +174,49 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
                 return START_NOT_STICKY;
             }
 
-            connection = new CredentialStore(this).load();
-            if (connection == null) {
-                notifyLauncher(ACTION_OVERLAY_FAILED);
-                stopSelf();
-                return START_NOT_STICKY;
-            }
-            showPanel();
-            markOpen();
-            if (wakeTriggered) {
-                // The wake listener is still recording the start of the question.
-                // Stopping it here would drop those words. Capture claims them later.
-                attachAssist(true);
+            // Owner-approved v3 login is deliberately not copied into the
+            // older manual CredentialStore. A renewable-only QA TV must use its
+            // own active Keystore grant, renewed on a worker thread.
+            TvRenewableLoginVault vault = new TvRenewableLoginVault(this);
+            renewableSession = vault.hasActiveLogin();
+            if (!TvOverlayLoginPolicy.mayUseManual(renewableSession)) {
+                showPanel();
+                markOpen();
+                status("Authorizing Home Assistant TV login...");
+                // The window is already present. Background the launcher now
+                // rather than timing out while HA answers the token request.
+                notifyLauncher(ACTION_OVERLAY_READY);
+                new Thread(() -> {
+                    CredentialStore.Connection renewed = null;
+                    try {
+                        renewed = vault.connectionOnWorker();
+                    } catch (Exception ignored) {
+                        // No owner token or legacy login fallback on renew error.
+                        // Do not log refresh tokens or Home Assistant URLs.
+                    }
+                    final CredentialStore.Connection ready = renewed;
+                    main.post(() -> {
+                        if (closing || panel == null) return;
+                        if (ready == null) {
+                            firstAutoListenPending = false;
+                            pendingWakeCapture = false;
+                            status("TV login unavailable. Open SETTINGS to reconnect.");
+                            return;
+                        }
+                        connection = ready;
+                        beginOverlayAssist(wakeTriggered);
+                    });
+                }, "KelliesOverlayRenewableLogin").start();
             } else {
-                status("Waiting for the microphone...");
-                micHandoff = WakeWordService.requestHandoff(MicLease.OVERLAY, new WakeWordService.Handoff() {
-                    @Override public void accepted(WakeWordService.Cancellation cancellation) {
-                        main.post(() -> {
-                            if (closing || cancellation.isCancelled()) {
-                                MicLease.release(MicLease.OVERLAY);
-                                if (!closing) stopSelf();
-                                return;
-                            }
-                            attachAssist(false);
-                        });
-                    }
-
-                    @Override public void denied() {
-                        main.post(() -> {
-                            status("The microphone is in use. Leave diagnostics or stop TALK first.");
-                            notifyLauncher(ACTION_OVERLAY_FAILED);
-                            stopSelf();
-                        });
-                    }
-                });
+                connection = new CredentialStore(this).load();
+                if (connection == null) {
+                    notifyLauncher(ACTION_OVERLAY_FAILED);
+                    stopSelf();
+                    return START_NOT_STICKY;
+                }
+                showPanel();
+                markOpen();
+                beginOverlayAssist(wakeTriggered);
             }
         } catch (Exception ignored) {
             // Do not print private tokens or HA URL into logs.
@@ -216,12 +226,48 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
         return START_NOT_STICKY;
     }
 
+    /** Called on main after a working login has been selected. No microphone
+     * or Assist socket is opened while a renewable grant is being refreshed.
+     */
+    private void beginOverlayAssist(boolean wakeTriggered) {
+        if (closing || panel == null || connection == null) return;
+        if (wakeTriggered) {
+            // Preserve wake-capture routing while authenticating independently.
+            attachAssist(true);
+        } else {
+            status("Waiting for the microphone...");
+            micHandoff = WakeWordService.requestHandoff(
+                    MicLease.OVERLAY, new WakeWordService.Handoff() {
+                @Override public void accepted(WakeWordService.Cancellation cancellation) {
+                    main.post(() -> {
+                        if (closing || cancellation.isCancelled()) {
+                            MicLease.release(MicLease.OVERLAY);
+                            if (!closing) stopSelf();
+                            return;
+                        }
+                        attachAssist(false);
+                    });
+                }
+
+                @Override public void denied() {
+                    main.post(() -> {
+                        status("The microphone is in use. Leave diagnostics or stop TALK first.");
+                        notifyLauncher(ACTION_OVERLAY_FAILED);
+                        stopSelf();
+                    });
+                }
+            });
+        }
+    }
+
     private void attachAssist(boolean fromWake) {
         try {
-            // Only an explicit wake detection may claim this pre-authenticated
-            // socket. Ordinary TALK keeps its existing connection behavior.
+            // The warm wake socket uses only legacy manual login. Never claim
+            // it when a renewable TV login is active, even if a stale standby
+            // is still present from an older session.
+            if (renewableSession) WakeAssistConnection.stop();
             WakeAssistConnection.Claimed warmed =
-                    fromWake ? WakeAssistConnection.take(this) : null;
+                    fromWake && !renewableSession ? WakeAssistConnection.take(this) : null;
             assist = warmed == null ? new HaAssistClient(this, this) : warmed.client;
             assist.setLayoutSync(preferences.haManage());
             HaDiscovery.setWanted(this, preferences.haManage());
