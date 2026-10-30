@@ -208,7 +208,11 @@ public final class TvEventsService extends Service {
         CredentialStore.Connection saved;
         try { saved = new CredentialStore(this).load(); }
         catch (Exception ignored) { saved = null; }
-        if (saved == null) saved = renewableCredentials;
+        if (new TvRenewableLoginVault(this).hasActiveLogin()) {
+            // Prefer the dedicated TV login; never fall back to a previously
+            // stored broad manual bearer token after pairing.
+            saved = renewableCredentials;
+        } else if (saved == null) saved = renewableCredentials;
         if (saved == null) {
             // No manual login: this beta may have a dedicated HA TV grant.
             // Foreground notification first, because network refresh happens
