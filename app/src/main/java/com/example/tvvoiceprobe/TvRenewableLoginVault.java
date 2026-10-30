@@ -45,7 +45,6 @@ final class TvRenewableLoginVault {
     private static final class Record {
         TvRenewableLoginPolicy.Grant grant;
         String refresh;
-        String access;
         long expiresSeconds;
         boolean active;
     }
@@ -75,7 +74,7 @@ final class TvRenewableLoginVault {
 
     private void write(Record r) throws Exception {
         TvRenewableLoginPolicy.checkCredential(
-                r.refresh, r.access, r.expiresSeconds);
+                r.refresh, "keystore-refresh-only", r.expiresSeconds);
         JSONObject data = new JSONObject();
         data.put("v", 1);
         data.put("origin", r.grant.haOrigin);
@@ -83,7 +82,6 @@ final class TvRenewableLoginVault {
         data.put("client", r.grant.clientId);
         data.put("token_id", r.grant.tokenId);
         data.put("refresh", r.refresh);
-        data.put("access", r.access);
         data.put("expires", r.expiresSeconds);
         data.put("active", r.active);
 
@@ -136,7 +134,6 @@ final class TvRenewableLoginVault {
                 data.getString("origin"), data.getString("tv"),
                 data.getString("client"), data.getString("token_id"));
         r.refresh = data.getString("refresh");
-        r.access = data.getString("access");
         r.expiresSeconds = data.getLong("expires");
         r.active = data.getBoolean("active");
         TvRenewableLoginPolicy.checkCredential(
@@ -152,8 +149,8 @@ final class TvRenewableLoginVault {
         Record r = new Record();
         r.grant = TvRenewableLoginPolicy.check(
                 grant.haOrigin, grant.tvUuid, grant.clientId, grant.tokenId);
+        TvRenewableLoginPolicy.checkCredential(refresh, access, lifetime);
         r.refresh = refresh;
-        r.access = access;
         r.expiresSeconds = lifetime;
         r.active = false;
         write(r);
