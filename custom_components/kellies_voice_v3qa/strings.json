@@ -4,7 +4,7 @@
     "step": {
       "v3_preview": {
         "title": "Temporary TV proof (QA only, NO login)",
-        "description": "Start the 2-minute v3 test on the TV DEBUG app first. Then choose Start here. This exchanges public ephemeral keys and produces an eight-digit code. No HA login or bearer token is shared.",
+        "description": "Start the 2-minute pairing window in the separate Kellie's Voice QA or Beta TV app, then select Start here. The code comparison proves the physical TV first; owner approval and ongoing login are separate.",
         "data": {
           "start_test": "Start the secure code comparison test"
         }
@@ -19,10 +19,10 @@
       },
       "owner_approval": {
         "title": "Verified TV: confirm the signed-in HA owner (QA only)",
-        "description": "Physical TV proof passed. In the signed-in HA owner approval panel, optionally select dedicated ongoing login, then Approve this TV. A standard non-admin HA Users account can control ALL entities, and through Home Assistant Cloud it can authenticate remotely. Return here and Submit before the TV pairing expires. Without opt-in no credentials are issued. Code: {code}",
+        "description": "**TV identity verified.** Leave this dialog open. In a **second browser tab**, open [**OPEN OWNER APPROVAL PANEL**](/kellies-voice-v3qa-approval). Sign in as the actual Home Assistant owner, compare all eight digits, optionally choose dedicated ongoing TV login, and click **Approve this TV**. Return to this dialog, check the approval box and select Submit before the TV's 2-minute window closes. A dedicated standard non-admin Users account can control **all HA entities** and may access HA remotely through Home Assistant Cloud. No credentials are issued unless the owner opts in. **Code: {code}**",
         "data": {
           "ha_code": "HA eight-digit verification code",
-          "owner_approved": "I clicked Approve this TV in the signed-in HA owner panel"
+          "owner_approved": "I approved this verified TV in the separate signed-in HA owner panel"
         }
       }
     },
@@ -41,14 +41,14 @@
       "owner_binding_rejected": "The verified TV owner-claim record was rejected. Check the Home Assistant system logs for v3 QA owner binding. No credential was created.",
       "owner_receipt_verified_no_login": "SUCCESS: The authenticated HA owner approved this exact TV, the TV decrypted the encrypted v3 receipt, and HA verified its cryptographic acknowledgement. NO login or token was created; original Kellie's Voice remains unchanged.",
       "owner_receipt_failed": "The authenticated owner receipt did not complete or the TV did not cryptographically acknowledge it within the original two-minute window. Restart v3 QA. No credentials or normal TV connections were changed.",
-      "owner_login_connected": "Dedicated Kellie's Voice TV login activated. Reopen Kellie's Voice Beta to connect to Home Assistant. The TV has a separate non-admin account and renewable credentials.",
+      "owner_login_connected": "Dedicated Kellie's Voice TV login activated. Return to Kellie's Voice QA on the TV to connect to Home Assistant using its separate non-admin account and renewable credentials.",
       "owner_login_failed": "TV owner-approved login could not be completed. The unfinished credential will be revoked on recovery. Restart TV setup. The existing stable Kellie's Voice is untouched.",
       "https_required": "Ongoing TV login requires a working HTTPS Home Assistant URL. The beta now detects Home Assistant Cloud automatically. Check Settings > System > Network and confirm Cloud remote access is connected. Local HTTP can remain automatic. No token was issued."
     },
     "error": {
       "unavailable": "Could not contact the temporary v3 TV test. Start again on the TV.",
       "waiting_for_tv": "Waiting for the physical TV remote approval. Verify all digits and press OK on the TV.",
-      "owner_pending": "An HA owner has not approved this TV yet. Open the v3 Owner QA panel in another browser tab and click Approve this TV, then retry."
+      "owner_pending": "Owner approval is still pending. In a second tab select [Open Owner Approval Panel](/kellies-voice-v3qa-approval), approve the matching TV code, then retry Submit."
     }
   }
 }
