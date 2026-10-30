@@ -44,7 +44,7 @@ public final class PairingV3TvWireState implements AutoCloseable {
     }
 
     private enum State {
-        FRESH, COMMITTED, HA_VERIFIED, REVEALED, APPROVED, CLOSED
+        FRESH, COMMITTED, HA_VERIFIED, REVEALED, APPROVED, RECEIPT_VERIFIED, CLOSED
     }
 
     private final KeyPair localKeys;
@@ -165,6 +165,39 @@ public final class PairingV3TvWireState implements AutoCloseable {
             throw new IllegalStateException("Unexpected TV session");
         }
         return state == State.APPROVED ? new Approval(tvUuid, physicalProof) : null;
+    }
+
+    /** Only an actual owner-approved HA peer can prove this fixed message.
+     * Never accepts OAuth, HA login credentials, arbitrary commands or URL.
+     * The two live ECDH keys are destroyed after this single attempt.
+     */
+    public synchronized PairingV3QaPingChannel.Packet consumeOwnerReceipt(
+            String session, long sequence, byte[] encrypted) {
+        require(State.APPROVED, session);
+        try (PairingV3OwnerReceiptVerifier proof =
+                new PairingV3OwnerReceiptVerifier(
+                    localKeys.getPrivate(), commitment, tvUuid,
+                    TIMEOUT_MS, clock.getAsLong());
+             PairingV3QaPingChannel ack =
+                new PairingV3QaPingChannel(
+                    localKeys.getPrivate(), commitment, tvUuid,
+                    TIMEOUT_MS, clock.getAsLong())) {
+            if (!proof.accept(sequence, encrypted, clock.getAsLong())) {
+                throw new IllegalArgumentException("Owner proof rejected");
+            }
+            // A one-shot, independently authenticated HA<-TV response.
+            PairingV3QaPingChannel.Packet response =
+                    ack.seal("qa-pong".getBytes(
+                        java.nio.charset.StandardCharsets.US_ASCII),
+                        clock.getAsLong());
+            state = State.RECEIPT_VERIFIED;
+            return response;
+        } catch (RuntimeException error) {
+            throw new IllegalArgumentException("Invalid owner receipt");
+        } finally {
+            // Success AND failure tear down the one-use P-256 transcript.
+            close();
+        }
     }
 
     public synchronized boolean isClosed() { return state == State.CLOSED; }
