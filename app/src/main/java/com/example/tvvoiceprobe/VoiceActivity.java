@@ -59,6 +59,18 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
     private LinearLayout homeShortcutRow;
     private TextView homeShortcutHint;
     private TextView homeShortcutHeading;
+    private FrameLayout centerArea;
+    private FrameLayout captionOverlay;
+    private TextView captionText;
+    private final Runnable hideCaption = new Runnable() {
+        @Override public void run() {
+            if (captionOverlay == null || captionOverlay.getVisibility() != View.VISIBLE) return;
+            captionOverlay.animate().alpha(0f).setDuration(350).withEndAction(() -> {
+                captionOverlay.setVisibility(View.GONE);
+                captionOverlay.setAlpha(1f);
+            });
+        }
+    };
     private int selected = 0;
     private TextView status;
     private LinearLayout mainRoot;
@@ -393,71 +405,56 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         promptSpace.topMargin = menuDp(9);
         root.addView(homeStatusCard, promptSpace);
 
-        // Optional remote-only tiles. HA owns the labels and actions; the TV
-        // sends only the slot ID over its existing authenticated Assist socket.
-        // The floating voice overlay deliberately has no shortcut tiles.
+        // Quick Actions occupy the center of the idle home screen.
+        // Transcript / response text appears only as a temporary caption overlay.
+        centerArea = new FrameLayout(this);
+        LinearLayout.LayoutParams centerSpace = new LinearLayout.LayoutParams(-1, 0, 1f);
+        centerSpace.topMargin = menuDp(5);
+        root.addView(centerArea, centerSpace);
+
+        LinearLayout quickHost = new LinearLayout(this);
+        quickHost.setOrientation(LinearLayout.VERTICAL);
+        quickHost.setPadding(0, menuDp(8), 0, menuDp(8));
         homeShortcutHeading = label("QUICK ACTIONS  /  NO MICROPHONE NEEDED", 13, palette.accent);
         homeShortcutHeading.setLetterSpacing(0.07f);
         homeShortcutHeading.setTypeface(null, android.graphics.Typeface.BOLD);
         LinearLayout.LayoutParams shortcutHeadingSpace = new LinearLayout.LayoutParams(-1, -2);
-        shortcutHeadingSpace.topMargin = menuDp(13);
-        root.addView(homeShortcutHeading, shortcutHeadingSpace);
+        shortcutHeadingSpace.bottomMargin = menuDp(8);
+        quickHost.addView(homeShortcutHeading, shortcutHeadingSpace);
+
         homeShortcutRow = new LinearLayout(this);
-        homeShortcutRow.setOrientation(LinearLayout.HORIZONTAL);
-        homeShortcutRow.setGravity(Gravity.CENTER_VERTICAL);
+        homeShortcutRow.setOrientation(LinearLayout.VERTICAL);
+        homeShortcutRow.setGravity(Gravity.CENTER);
         homeShortcutHint = label(
-                "Add up to four shortcuts in Home Assistant → Devices & services → "
-                        + "Kellie's Voice → Configure.", 14, palette.muted);
-        homeShortcutHint.setPadding(menuDp(13), menuDp(11), menuDp(13), menuDp(11));
-        homeShortcutRow.addView(homeShortcutHint,
-                new LinearLayout.LayoutParams(-1, -2));
-        LinearLayout.LayoutParams shortcutSpace = new LinearLayout.LayoutParams(-1, -2);
-        shortcutSpace.topMargin = menuDp(5);
-        root.addView(homeShortcutRow, shortcutSpace);
+                "Configure quick actions on this TV’s Home Assistant integration to use it without a microphone.", 15, palette.muted);
+        homeShortcutHint.setPadding(menuDp(16), menuDp(14), menuDp(16), menuDp(14));
+        homeShortcutHint.setGravity(Gravity.CENTER);
+        homeShortcutRow.addView(homeShortcutHint, new LinearLayout.LayoutParams(-1, -2));
+        quickHost.addView(homeShortcutRow, new LinearLayout.LayoutParams(-1, 0, 1f));
+        centerArea.addView(quickHost, new FrameLayout.LayoutParams(-1, -1));
 
-        // Scrollable answer first, then recognized speech. Large responses
-        // remain readable on 720p TVs rather than disappearing below controls.
-        ScrollView scroller = new ScrollView(this);
-        scroller.setFocusable(false);
-        scroller.setFillViewport(false);
-        scroller.setVerticalScrollBarEnabled(true);
-        LinearLayout history = new LinearLayout(this);
-        history.setOrientation(LinearLayout.VERTICAL);
-        history.setPadding(0, menuDp(7), 0, menuDp(7));
-
-        homeAnswerCard = new LinearLayout(this);
-        homeAnswerCard.setOrientation(LinearLayout.VERTICAL);
-        homeAnswerCard.setPadding(menuDp(22), menuDp(15), menuDp(22), menuDp(17));
-        homeAnswerCard.setMinimumHeight(menuDp(148));
-        answerHeading = label("KELLIE'S RESPONSE", 13, palette.accent);
-        answerHeading.setLetterSpacing(0.10f);
-        answerHeading.setTypeface(null, android.graphics.Typeface.BOLD);
-        homeAnswerCard.addView(answerHeading);
-        response = label("Your answer will appear here.", 27, palette.text);
-        response.setLineSpacing(menuDp(3), 1.03f);
-        response.setTextIsSelectable(false);
-        homeAnswerCard.addView(response);
-        history.addView(homeAnswerCard);
-
-        homeTranscriptCard = new LinearLayout(this);
-        homeTranscriptCard.setOrientation(LinearLayout.VERTICAL);
-        homeTranscriptCard.setPadding(menuDp(22), menuDp(12), menuDp(22), menuDp(13));
-        homeTranscriptCard.setMinimumHeight(menuDp(80));
-        transcriptHeading = label("YOU SAID", 13, palette.muted);
-        transcriptHeading.setTypeface(null, android.graphics.Typeface.BOLD);
-        transcriptHeading.setLetterSpacing(0.10f);
-        homeTranscriptCard.addView(transcriptHeading);
-        recognized = label("Nothing yet", 19, palette.text);
-        recognized.setLineSpacing(menuDp(2), 1f);
-        homeTranscriptCard.addView(recognized);
-        LinearLayout.LayoutParams saidSpace = new LinearLayout.LayoutParams(-1, -2);
-        saidSpace.topMargin = menuDp(10);
-        history.addView(homeTranscriptCard, saidSpace);
-
-        scroller.addView(history);
-        LinearLayout.LayoutParams conversationSpace = new LinearLayout.LayoutParams(-1, 0, 1f);
-        conversationSpace.topMargin = menuDp(5);
-        root.addView(scroller, conversationSpace);
+        // Temporary TV-style caption overlay (listening / you said / response)
+        captionOverlay = new FrameLayout(this);
+        captionOverlay.setVisibility(View.GONE);
+        captionOverlay.setFocusable(false);
+        captionOverlay.setClickable(false);
+        GradientDrawable captionBg = new GradientDrawable();
+        captionBg.setColor(0xCC000000);
+        captionBg.setCornerRadius(menuDp(14));
+        captionOverlay.setBackground(captionBg);
+        captionOverlay.setPadding(menuDp(18), menuDp(12), menuDp(18), menuDp(12));
+        captionText = new TextView(this);
+        captionText.setTextSize(22);
+        captionText.setTextColor(0xFFFFFFFF);
+        captionText.setGravity(Gravity.CENTER);
+        captionText.setMaxLines(3);
+        captionText.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        captionText.setFocusable(false);
+        captionOverlay.addView(captionText, new FrameLayout.LayoutParams(-1, -2, Gravity.CENTER));
+        FrameLayout.LayoutParams overlayParams = new FrameLayout.LayoutParams(-1, -2, Gravity.CENTER);
+        overlayParams.leftMargin = menuDp(20);
+        overlayParams.rightMargin = menuDp(20);
+        centerArea.addView(captionOverlay, overlayParams);
 
         // Exactly the original three actions and callbacks. This toolbar is
         // intentionally a single D-pad row: TALK, STOP, SETTINGS.
@@ -620,6 +617,13 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         if (homeTranscriptCard != null) homeTranscriptCard.setBackground(homeCardBackground(colors, false));
         if (homeStatusCard != null) homeStatusCard.setBackground(homeCardBackground(colors, true));
         if (homeConnectionCard != null) homeConnectionCard.setBackground(homeCardBackground(colors, false));
+        if (captionText != null) captionText.setTextColor(0xFFFFFFFF);
+        if (captionOverlay != null) {
+            GradientDrawable captionBg = new GradientDrawable();
+            captionBg.setColor(0xCC000000);
+            captionBg.setCornerRadius(menuDp(14));
+            captionOverlay.setBackground(captionBg);
+        }
         for (Button b : homeShortcutButtons) {
             b.setTextColor(colors.text);
             b.setBackground(homeActionBackground(colors, false, b.hasFocus()));
@@ -1949,8 +1953,9 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, MIC_PERMISSION_REQUEST);
         } else {
-            recognized.setText("Checking microphone...");
-            response.setText("Waiting for Home Assistant...");
+            showCaption("Checking microphone…", false);
+            // Keep a short note in status as well
+            status("Waiting for Home Assistant…");
             if (player != null) { player.release(); player = null; }
             if (speechFocus != null) speechFocus.release();
             assist.setRoomNoise(new OverlayPreferences(this).noise());
@@ -2013,8 +2018,9 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         if (speechFocus != null) speechFocus.release();
         assist.clearConversation();
         if (!assist.pipelineIdle()) assist.finishTalking();
-        recognized.setText("Nothing yet");
-        response.setText("Ready for a fresh conversation.");
+        // Clear any lingering caption
+        mainHandler.removeCallbacks(hideCaption);
+        if (captionOverlay != null) captionOverlay.setVisibility(View.GONE);
         status(settings == null
                 ? "Conversation cleared. Configure Home Assistant to continue."
                 : "Started a new conversation.");
@@ -2176,8 +2182,9 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
             int previousSelection = selected;
             homeShortcutRow.removeAllViews();
             homeShortcutButtons.clear();
+            List<Button> newButtons = new ArrayList<>();
             if (configured != null) {
-                for (int i = 0; i < configured.length() && homeShortcutButtons.size() < 4; i++) {
+                for (int i = 0; i < configured.length() && newButtons.size() < 4; i++) {
                     JSONObject item = configured.optJSONObject(i);
                     if (item == null) continue;
                     int slot = item.optInt("slot", -1);
@@ -2186,11 +2193,11 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                     Button button = new Button(this);
                     button.setAllCaps(false);
                     button.setText(label);
-                    button.setTextSize(17);
+                    button.setTextSize(18);
                     button.setContentDescription("Home Assistant shortcut: " + label);
                     button.setFocusable(true);
                     button.setFocusableInTouchMode(true);
-                    button.setMinimumHeight(menuDp(58));
+                    button.setMinimumHeight(menuDp(72));
                     button.setTextColor(currentPalette().text);
                     button.setBackground(homeActionBackground(currentPalette(), false, false));
                     button.setOnClickListener(v -> {
@@ -2201,18 +2208,50 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                         button.setBackground(homeActionBackground(
                                 currentPalette(), false, focused));
                     });
-                    LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, -2, 1f);
-                    if (!homeShortcutButtons.isEmpty()) params.leftMargin = menuDp(10);
-                    homeShortcutButtons.add(button);
-                    homeShortcutRow.addView(button, params);
+                    newButtons.add(button);
                 }
             }
+            homeShortcutButtons.addAll(newButtons);
             if (homeShortcutButtons.isEmpty()) {
                 if (homeShortcutHint != null) {
-                    homeShortcutHint.setText("Configure quick actions on this TV's "
-                            + "Home Assistant integration to use it without a microphone.");
-                    homeShortcutRow.addView(homeShortcutHint,
-                            new LinearLayout.LayoutParams(-1, -2));
+                    homeShortcutHint.setText("Configure quick actions on this TV’s Home Assistant integration to use it without a microphone.");
+                    homeShortcutRow.addView(homeShortcutHint, new LinearLayout.LayoutParams(-1, -2));
+                }
+            } else {
+                // 2x2 style TV-friendly layout for 1–4 actions
+                int count = homeShortcutButtons.size();
+                if (count <= 2) {
+                    LinearLayout row = new LinearLayout(this);
+                    row.setOrientation(LinearLayout.HORIZONTAL);
+                    row.setGravity(Gravity.CENTER);
+                    for (int i = 0; i < count; i++) {
+                        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, -2, 1f);
+                        if (i > 0) params.leftMargin = menuDp(12);
+                        row.addView(homeShortcutButtons.get(i), params);
+                    }
+                    homeShortcutRow.addView(row, new LinearLayout.LayoutParams(-1, -2));
+                } else {
+                    // First row of 2, second row of remaining
+                    LinearLayout row1 = new LinearLayout(this);
+                    row1.setOrientation(LinearLayout.HORIZONTAL);
+                    row1.setGravity(Gravity.CENTER);
+                    for (int i = 0; i < 2; i++) {
+                        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, -2, 1f);
+                        if (i > 0) params.leftMargin = menuDp(12);
+                        row1.addView(homeShortcutButtons.get(i), params);
+                    }
+                    homeShortcutRow.addView(row1, new LinearLayout.LayoutParams(-1, -2));
+                    LinearLayout.LayoutParams rowSpace = new LinearLayout.LayoutParams(-1, -2);
+                    rowSpace.topMargin = menuDp(10);
+                    LinearLayout row2 = new LinearLayout(this);
+                    row2.setOrientation(LinearLayout.HORIZONTAL);
+                    row2.setGravity(Gravity.CENTER);
+                    for (int i = 2; i < count; i++) {
+                        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, -2, 1f);
+                        if (i > 2) params.leftMargin = menuDp(12);
+                        row2.addView(homeShortcutButtons.get(i), params);
+                    }
+                    homeShortcutRow.addView(row2, rowSpace);
                 }
             }
             if (selected >= buttons.size() + homeShortcutButtons.size()) {
@@ -2228,17 +2267,35 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
     }
 
     @Override public void listening() {
-        runOnUiThread(() -> {
-            if (recognized != null) recognized.setText("Listening...");
-        });
+        runOnUiThread(() -> showCaption("Listening…", false));
     }
 
     @Override public void transcript(String value) {
-        runOnUiThread(() -> { if (recognized != null) recognized.setText(value); });
+        runOnUiThread(() -> showCaption("You said: " + (value == null ? "" : value), false));
     }
 
     @Override public void answer(String value) {
-        runOnUiThread(() -> { if (response != null) response.setText(value); });
+        runOnUiThread(() -> {
+            String text = value == null ? "" : value.trim();
+            if (text.isEmpty()) text = "…";
+            boolean large = text.length() > 120 || text.split("\\s+").length > 18;
+            showCaption(text, large);
+            // Auto-dismiss after a short time once the response is shown.
+            // TTS completion can extend visibility via status updates if needed.
+            mainHandler.removeCallbacks(hideCaption);
+            mainHandler.postDelayed(hideCaption, large ? 12000L : 7000L);
+        });
+    }
+
+    private void showCaption(String text, boolean large) {
+        if (captionOverlay == null || captionText == null || isFinishing()) return;
+        mainHandler.removeCallbacks(hideCaption);
+        captionText.setText(text);
+        captionText.setTextSize(large ? 20 : 22);
+        captionText.setMaxLines(large ? 4 : 2);
+        captionOverlay.setAlpha(0f);
+        captionOverlay.setVisibility(View.VISIBLE);
+        captionOverlay.animate().alpha(1f).setDuration(200).start();
     }
 
     @Override public void ttsUrl(String url) { runOnUiThread(() -> playTts(url)); }
@@ -2262,28 +2319,31 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
             player.setOnCompletionListener(p -> {
                 if (speechFocus != null) speechFocus.release();
                 status("Finished. Select TALK for another question.");
+                mainHandler.postDelayed(hideCaption, 1500L);
             });
             player.setOnErrorListener((p, what, extra) -> {
                 if (speechFocus != null) speechFocus.release();
-                status("TTS playback failed. The text answer is still above.");
+                status("TTS playback failed.");
                 return true;
             });
             player.prepareAsync();
         } catch (Exception e) {
             if (speechFocus != null) speechFocus.release();
-            status("Could not play TTS. The text answer is still above.");
+            status("Could not play TTS.");
         }
     }
 
     @Override protected void onStop() {
         mainHandler.removeCallbacks(connectionLabelRefresh);
         mainHandler.removeCallbacks(shortcutsRefresh);
+        mainHandler.removeCallbacks(hideCaption);
         HaDiscovery.release(this);
         super.onStop();
     }
 
     @Override protected void onDestroy() {
         talkGeneration++;
+        mainHandler.removeCallbacks(hideCaption);
         if (talkHandoff != null) talkHandoff.cancel();
         stopListeningForOverlay();
         if (player != null) { player.release(); player = null; }
