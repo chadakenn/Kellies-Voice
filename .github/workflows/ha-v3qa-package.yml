@@ -45,6 +45,8 @@ jobs:
         run: python -m unittest discover -s tests -p 'test_v3qa_scoped_renewable_login.py' -v
       - name: Enforce renewable-login inactive staging and HTTP safety
         run: python -m unittest discover -s tests -p 'test_v3qa_renewable_login_contract.py' -v
+      - name: Prove dedicated nonadmin TV login with explicit HA-owner approval
+        run: python -m unittest discover -s tests -p 'test_v3qa_dedicated_account_login.py' -v
       - name: Verify ZIP is isolated
         run: |
           python - <<'PY'
