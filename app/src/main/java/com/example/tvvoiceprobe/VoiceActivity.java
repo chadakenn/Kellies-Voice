@@ -900,7 +900,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         boolean alertsConnected = TvEventsRecovery.CONNECTED.equals(
                 TvEventsRecovery.runtime());
         String readiness = FullAppBetaReadiness.describe(
-                settings != null,
+                settings != null || new TvRenewableLoginVault(this).hasActiveLogin(),
                 assist != null && assist.isConnected(),
                 overlaysAllowed,
                 prefs.microphoneDisabled(),
