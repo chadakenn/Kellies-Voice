@@ -193,6 +193,56 @@ class SafeRenewalTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(issuer.TvLoginDenied):
             issuer.revoke_by_saved_lease(self.hass, dict(token_id="x"))
 
+    async def test_commit_only_after_cryptographic_activation_ack_and_final_scope_check(self):
+        from cryptography.hazmat.primitives.asymmetric import ec
+        keys = importlib.import_module(PKG + ".pairing_key_commitment")
+        v3 = importlib.import_module(PKG + ".pairing_v3_verified")
+        wire = importlib.import_module(PKG + ".pairing_v3_wire")
+        handoff = importlib.import_module(PKG + ".scoped_token_handoff")
+        issued = await issuer.issue_provisional(
+            self.hass, self.journal, **self.args)
+        lease = next(iter(self.journal.snapshot()))
+        tv_priv = ec.derive_private_key(1, ec.SECP256R1())
+        ha_priv = ec.derive_private_key(2, ec.SECP256R1())
+        sid = "AQIDBAUGBwgJCgsMDQ4PEA"
+        tv = keys.CommitmentSession(
+            "tv", sid, v3.public_der(tv_priv), bytes(range(32)))
+        ha = keys.CommitmentSession(
+            "ha", sid, v3.public_der(ha_priv), bytes(range(32, 64)))
+        tv.receive_peer_commit(ha.public_commit)
+        ha.receive_peer_commit(tv.public_commit)
+        tv_pub, tv_nonce = tv.reveal()
+        ha_pub, ha_nonce = ha.reveal()
+        tv.receive_peer_reveal(ha_pub, ha_nonce)
+        ha.receive_peer_reveal(tv_pub, tv_nonce)
+        identity = wire.VerifiedTv(tv_uuid=TV, session=sid)
+        server = handoff.HaTokenHandoff(
+            private_key=ha_priv, verified=ha, tv=identity, now=100)
+        client = handoff.TvTokenHandoff(
+            private_key=tv_priv, verified=tv, tv=identity,
+            expected_ha_origin=CLIENT, now=100)
+        with self.assertRaises(issuer.TvLoginDenied):
+            await issuer.finalize_after_authenticated_activation(
+                self.hass, self.journal, lease=lease, handoff=server,
+                alert_entity_id=ALERT, assist_entity_ids=(LIGHT, CAM))
+        n, sealed = server.seal_recorded_provisional(issued, lease, now=101)
+        grant = client.open_provisional(n, sealed, now=101)
+        self.assertEqual(grant.token_id, lease.token_id)
+        n, ack = client.stage_ack(now=102)
+        server.accept_stage_ack(n, ack, now=102)
+        n, ready = server.seal_commit_ready(now=103)
+        client.accept_commit_ready(n, ready, now=103)
+        n, final_ack = client.activation_ack(now=104)
+        self.assertTrue(server.accept_activation_ack(n, final_ack, now=104))
+        await issuer.finalize_after_authenticated_activation(
+            self.hass, self.journal, lease=lease, handoff=server,
+            alert_entity_id=ALERT, assist_entity_ids=(LIGHT, CAM))
+        self.assertEqual(next(iter(self.journal.snapshot())).state, "committed")
+        restored = journal_module.TokenLeaseJournal(
+            self.hass, Path(self.tmp.name) / "private-lease-journal.json")
+        self.assertEqual(await restored.recover_unfinished(), {})
+        self.assertEqual(len(self.auth.tokens), 1)
+
     async def test_restart_recovers_uncommitted_credential(self):
         await issuer.issue_provisional(
             self.hass, self.journal, **self.args)
