@@ -29,6 +29,8 @@ jobs:
           node --check custom_components/kellies_voice_v3qa/frontend/kellies-voice-v3qa-owner-panel.js
       - name: Restricted TV account permission preflight tests
         run: python -m unittest discover -s tests -p 'test_v3qa_credential_scope.py' -v
+      - name: Per-TV capability default-deny and replay tests
+        run: python -m unittest discover -s tests -p 'test_v3qa_scoped_tv_gate.py' -v
       - name: Verify ZIP is isolated
         run: |
           python - <<'PY'
