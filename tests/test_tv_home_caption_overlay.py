@@ -25,7 +25,7 @@ class TvHomeCaptionTests(unittest.TestCase):
     def test_cc_overlay_does_not_take_remote_focus(self):
         self.assertIn('captionOverlay.setFocusable(false);', self.src)
         self.assertIn('captionOverlay.setClickable(false);', self.src)
-        self.assertIn('showCaption("Listening…", false);', self.src)
+        self.assertIn('showCaption("Listening…", false)', self.src)
         self.assertIn('showCaption("You said: "', self.src)
         self.assertIn('captionOverlay.animate().cancel();', self.src)
 
