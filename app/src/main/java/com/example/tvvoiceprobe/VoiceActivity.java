@@ -107,6 +107,47 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         else status("Overlay start timed out. Try again.");
     };
 
+    private boolean renewableLoginFetching;
+    private final Runnable renewableLoginRefresh = () -> connectRenewableTvLogin();
+
+    /** After an owner-approved pairing, use a short-lived access token in RAM.
+     * Never save it into the stable/manual CredentialStore.
+     */
+    private void connectRenewableTvLogin() {
+        if (renewableLoginFetching || assist == null || isFinishing()) return;
+        renewableLoginFetching = true;
+        new Thread(() -> {
+            CredentialStore.Connection live = null;
+            try {
+                live = new TvRenewableLoginVault(this).connectionOnWorker();
+            } catch (Exception ignored) {
+                // Offline/revoked TV sessions may be re-enrolled by the owner.
+            }
+            final CredentialStore.Connection result = live;
+            runOnUiThread(() -> {
+                renewableLoginFetching = false;
+                if (isFinishing() || isDestroyed()) return;
+                if (result != null) {
+                    settings = result;
+                    initialConnectionRequested = true;
+                    assist.connect(result.url, result.token);
+                    updateConnectionLabel();
+                    mainHandler.removeCallbacks(renewableLoginRefresh);
+                    // Refresh official HA 30-minute access tokens in RAM,
+                    // retaining the encrypted refresh grant in AndroidKeyStore.
+                    mainHandler.postDelayed(renewableLoginRefresh, 24 * 60_000L);
+                    if (new OverlayPreferences(this).tvEvents()
+                            && android.provider.Settings.canDrawOverlays(this)) {
+                        startForegroundService(new Intent(this, TvEventsService.class)
+                                .setAction(TvEventsService.ACTION_START));
+                    }
+                } else if (settings == null) {
+                    status("No active TV login. Use the HA owner pairing screen.");
+                }
+            });
+        }, "KelliesV3RenewableLogin").start();
+    }
+
     @Override protected void onStart() {
         super.onStart();
         // Recover an interrupted duck from a killed debug process, but never
@@ -136,7 +177,11 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         }
         // Reuse saved credentials without asking for a manual Reconnect click.
         // No microphone is activated here, just the authenticated socket.
-        if (transparentShortcut || assist == null || settings == null) return;
+        if (transparentShortcut || assist == null) return;
+        if (settings == null) {
+            connectRenewableTvLogin();
+            return;
+        }
         if (!initialConnectionRequested) {
             initialConnectionRequested = true;
             assist.connect(settings.url, settings.token);
