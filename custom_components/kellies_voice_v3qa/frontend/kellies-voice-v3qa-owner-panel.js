@@ -123,6 +123,15 @@ class KelliesVoiceV3QAOwnerPanel extends HTMLElement {
     const ttl = document.createElement("p");
     ttl.className = "small sub";
     ttl.textContent = "Approval window: " + Math.max(0, Number(pair.seconds_remaining) || 0) + " seconds left";
+    const choice = document.createElement("label");
+    choice.className = "card warning";
+    choice.style.display = "block";
+    const loginOptIn = document.createElement("input");
+    loginOptIn.type = "checkbox";
+    loginOptIn.style.marginRight = "10px";
+    const warning = document.createElement("span");
+    warning.textContent = "Also set up ongoing TV login with a dedicated non-admin Home Assistant Users account. WARNING: a standard HA Users account can control ALL entities, not just exposed voice devices. Choose this only for a TV you trust. This does NOT give away your owner login.";
+    choice.append(loginOptIn, warning);
     const button = document.createElement("button");
     button.type = "button";
     button.textContent = "Approve this TV";
@@ -133,7 +142,8 @@ class KelliesVoiceV3QAOwnerPanel extends HTMLElement {
         const reply = await this._hass.connection.sendMessagePromise({
           type: "kellies_voice_v3qa/pair/claim_verified_owner",
           flow_id: pair.flow_id,
-          tv_session: pair.tv_session
+          tv_session: pair.tv_session,
+          standard_user_login: loginOptIn.checked
         });
         if (reply?.owner_verified !== true) throw Error("Approval rejected");
         this._approved = true;
@@ -147,7 +157,7 @@ class KelliesVoiceV3QAOwnerPanel extends HTMLElement {
         button.textContent = "Approve this TV";
       }
     });
-    box.append(heading, detail, code, instruction, ttl, button);
+    box.append(heading, detail, code, instruction, ttl, choice, button);
     list.append(box);
   }
 }
