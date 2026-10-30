@@ -42,7 +42,7 @@ jobs:
         run: python -m unittest discover -s tests -p test_pairing_v3_wire.py -v
       - name: Check bounded Android v3-only LAN listener and absence of credential routes
         run: python -m unittest discover -s tests -p test_pairing_v3_android_listener_contract.py -v
-      - name: Check debug-only Android v3 on-screen remote QA and lifecycle cleanup
+      - name: Check QA-only Android v3 on-screen remote flow and lifecycle cleanup
         run: python -m unittest discover -s tests -p test_pairing_v3_debug_tv_ui.py -v
       - name: Test actual Home Assistant config-flow discovery and human code form
         run: python -m unittest discover -s tests -p test_pairing_v3_ha_config_flow.py -v
@@ -68,7 +68,8 @@ jobs:
           assert 'PairingKeyCommitment' not in (app / 'VoiceActivity.java').read_text()
           assert 'PairingV3TvWireState' not in (app / 'VoiceActivity.java').read_text()
           assert 'PairingV3LanWindow' not in (app / 'VoiceActivity.java').read_text()
-          assert 'FLAG_DEBUGGABLE' in (app / 'VoiceActivity.java').read_text()
+          assert 'BuildConfig.DEBUG || BuildConfig.IS_QA' in (app / 'VoiceActivity.java').read_text()
+          assert 'if (!BuildConfig.DEBUG && !BuildConfig.IS_QA)' in tv_ui
           flow = (ha / 'config_flow.py').read_text()
           assert 'pairing_v3_wire' in flow
           v3_section = flow.split('async def async_step_v3_preview(', 1)[1]
