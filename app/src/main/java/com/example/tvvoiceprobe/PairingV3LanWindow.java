@@ -38,7 +38,7 @@ import org.json.JSONObject;
  */
 public final class PairingV3LanWindow implements AutoCloseable {
     private static final int MAX_REQUESTS = 80;
-    private static final int BODY_LIMIT = 512;
+    private static final int BODY_LIMIT = 8192;
     private static final int HEADER_LIMIT = 1024;
     private static final int DEADLINE_MS = 1500;
     // Android NSD expects the registration type, not the full mDNS FQDN.
@@ -52,6 +52,7 @@ public final class PairingV3LanWindow implements AutoCloseable {
     private final NsdManager nsd;
     private final NsdManager.RegistrationListener registration;
     private final PairingV3TvWireState state;
+    private final TvRenewableLoginVault loginVault;
     private final Consumer<String> codeListener;
     private final Consumer<String> statusListener;
     private final Consumer<String> expiredCallback;
@@ -68,6 +69,7 @@ public final class PairingV3LanWindow implements AutoCloseable {
         this.listener = socket;
         this.session = session;
         this.state = state;
+        this.loginVault = new TvRenewableLoginVault(context);
         this.codeListener = codeListener;
         this.statusListener = statusListener;
         this.expiredCallback = expiredCallback;
@@ -244,7 +246,9 @@ public final class PairingV3LanWindow implements AutoCloseable {
                 // Accept only an authenticated, owner-approved and session-bound
                 // *encrypted* receipt. No tokens, credentials or generic API.
                 JSONObject payload = readJson(socket);
-                if (payload.length() != 4
+                if ((payload.length() != 4 && payload.length() != 5)
+                        || (payload.length() == 5
+                            && !(payload.opt("login_next") instanceof Boolean))
                         || !(payload.opt("protocol") instanceof Integer)
                         || payload.getInt("protocol") != 3
                         || !session.equals(payload.optString("session", ""))
@@ -254,19 +258,61 @@ public final class PairingV3LanWindow implements AutoCloseable {
                 }
                 int seq = payload.getInt("sequence");
                 byte[] encrypted = b64(payload.getString("receipt"), 30);
+                boolean loginNext = payload.optBoolean("login_next", false);
                 PairingV3QaPingChannel.Packet ack =
-                        state.consumeOwnerReceipt(session, seq, encrypted);
+                        state.consumeOwnerReceipt(session, seq, encrypted, loginNext);
                 answer(socket, 200, base()
                         .put("ack_seq", ack.sequence)
                         .put("ack", encode(ack.ciphertext)));
                 main.post(() -> {
+                    if (!closed.get()) statusListener.accept(loginNext
+                        ? "OWNER APPROVED. Completing renewable TV login..."
+                        : "SECURE OWNER APPROVAL VERIFIED on this TV. "
+                          + "No login was requested.");
+                });
+            } else if ("POST /v3/pair/token-stage HTTP/1.1".equals(firstLine)) {
+                JSONObject payload = readJson(socket);
+                if (payload.length() != 5
+                        || !(payload.opt("protocol") instanceof Integer)
+                        || payload.getInt("protocol") != 3
+                        || !session.equals(payload.optString("session", ""))
+                        || !(payload.opt("sequence") instanceof Integer)
+                        || !(payload.opt("ha_origin") instanceof String)
+                        || !(payload.opt("encrypted") instanceof String)) {
+                    throw new IOException("Invalid TV login stage message");
+                }
+                byte[] sealed = b64Large(payload.getString("encrypted"), 8192);
+                PairingV3ScopedTokenHandoff.Packet reply = state.stageTvLogin(
+                    session, payload.getInt("sequence"), sealed,
+                    payload.getString("ha_origin"), loginVault);
+                answer(socket, 200, base().put("ack_seq", reply.sequence)
+                        .put("ack", encode(reply.sealed)));
+                main.post(() -> {
                     if (!closed.get()) statusListener.accept(
-                        "SECURE OWNER APPROVAL VERIFIED on this TV. "
-                        + "Encrypted TV acknowledgement sent to Home Assistant. "
-                        + "NO HOME ASSISTANT LOGIN OR TOKEN WAS CREATED.");
+                        "TV LOGIN SECURELY STAGED. Waiting for HA confirmation...");
+                });
+            } else if ("POST /v3/pair/token-commit HTTP/1.1".equals(firstLine)) {
+                JSONObject payload = readJson(socket);
+                if (payload.length() != 4
+                        || !(payload.opt("protocol") instanceof Integer)
+                        || payload.getInt("protocol") != 3
+                        || !session.equals(payload.optString("session", ""))
+                        || !(payload.opt("sequence") instanceof Integer)
+                        || !(payload.opt("encrypted") instanceof String)) {
+                    throw new IOException("Invalid TV login commit message");
+                }
+                PairingV3ScopedTokenHandoff.Packet reply = state.activateTvLogin(
+                    session, payload.getInt("sequence"),
+                    b64Large(payload.getString("encrypted"), 128), loginVault);
+                answer(socket, 200, base().put("ack_seq", reply.sequence)
+                        .put("ack", encode(reply.sealed)));
+                main.post(() -> {
+                    if (!closed.get()) statusListener.accept(
+                        "TV LOGIN ACTIVATED. Reopen Kellie's Voice Beta "
+                        + "to connect with its dedicated renewable HA account.");
                 });
             } else {
-                // No v2 route, no redirect to v2, no credential handler.
+                // No v2 route, no redirect to v2, no generic control endpoint.
                 answer(socket, 404, errorJson("not_available"));
             }
         } catch (Exception error) {
@@ -321,7 +367,7 @@ public final class PairingV3LanWindow implements AutoCloseable {
             if (lower.startsWith("content-length:")) {
                 if (length >= 0) throw new IOException("Duplicate length");
                 String raw = h.substring(h.indexOf(':') + 1).trim();
-                if (!raw.matches("[0-9]{1,3}")) throw new IOException("Length invalid");
+                if (!raw.matches("[0-9]{1,5}")) throw new IOException("Length invalid");
                 length = Integer.parseInt(raw);
             }
         }
@@ -395,6 +441,22 @@ public final class PairingV3LanWindow implements AutoCloseable {
         }
     }
 
+    private static byte[] b64Large(String value, int maxBytes) throws IOException {
+        if (value == null || value.length() > maxBytes * 2
+                || !value.matches("[A-Za-z0-9_-]+")) {
+            throw new IOException("TV encrypted token packet invalid");
+        }
+        try {
+            byte[] decoded = Base64.getUrlDecoder().decode(value);
+            if (decoded.length > maxBytes || decoded.length < 16
+                    || !encode(decoded).equals(value))
+                throw new IOException("TV encrypted packet invalid");
+            return decoded;
+        } catch (IllegalArgumentException e) {
+            throw new IOException("TV encrypted packet invalid");
+        }
+    }
+
     private static String encode(byte[] raw) {
         return Base64.getUrlEncoder().withoutPadding().encodeToString(raw);
     }
@@ -424,6 +486,7 @@ public final class PairingV3LanWindow implements AutoCloseable {
     private void closeResources() {
         main.removeCallbacksAndMessages(null);
         state.close();
+        loginVault.clearIfIncomplete();
         try { listener.close(); } catch (IOException ignored) { }
         Socket socket = activeSocket;
         if (socket != null) {

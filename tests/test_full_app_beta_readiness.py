@@ -23,8 +23,8 @@ class BetaInstallSafetyTests(unittest.TestCase):
         self.assertIn("FLAG_DEBUGGABLE", VOICE)
         self.assertIn("showFullAppBetaTestCenter", VOICE)
         self.assertIn("PairingV3QaActivity.class", VOICE)
-        self.assertIn("TEST-ONLY OWNER RECEIPT", READINESS)
-        self.assertIn("does NOT log in", READINESS)
+        self.assertIn("optional owner-approved dedicated TV login", READINESS)
+        self.assertIn("owner receipt alone does NOT", READINESS)
         self.assertNotIn("setHaToken(", READINESS)
         self.assertNotIn("async_create_refresh_token", READINESS)
 
@@ -33,6 +33,22 @@ class BetaInstallSafetyTests(unittest.TestCase):
         self.assertIn("TvEventsRecovery.CONNECTED.equals", VOICE)
         self.assertIn("prefs.microphoneDisabled()", VOICE)
         self.assertIn("Settings.canDrawOverlays(this)", VOICE)
+
+    def test_first_run_microphone_consent_is_explicit_and_never_auto_captures(self):
+        self.assertIn("Android microphone permission:", VOICE)
+        self.assertIn("requestMicrophoneSetupPermission()", VOICE)
+        self.assertIn("SETUP_MIC_PERMISSION_REQUEST", VOICE)
+        self.assertIn("requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}", VOICE)
+        self.assertIn("No recording has started", VOICE)
+
+    def test_alert_overlay_grant_completes_only_requested_enable(self):
+        self.assertIn("TV_ALERT_OVERLAY_SETTINGS_REQUEST", VOICE)
+        self.assertIn("pendingTvAlertsPermission = enableAlertsWhenGranted", VOICE)
+        self.assertIn("if (pendingTvAlertsPermission && Settings.canDrawOverlays(this))", VOICE)
+        self.assertIn("if (requestedEnable) enableTvAlertsFromUser()", VOICE)
+        self.assertIn("case 7: chooseHaLayout(); break;", VOICE)
+        self.assertIn("The separate v3 QA pairing does not register the alert device", VOICE)
+
 
 
 if __name__ == "__main__":

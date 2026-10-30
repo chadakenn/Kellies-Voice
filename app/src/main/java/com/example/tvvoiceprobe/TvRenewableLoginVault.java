@@ -213,6 +213,35 @@ final class TvRenewableLoginVault implements PairingV3ScopedTokenHandoff.Vault {
         }
     }
 
+    /** Used after pairing listener closes. Never discard an active login. */
+    synchronized void clearIfIncomplete() {
+        try {
+            Record r = read();
+            if (r != null && !r.active) clear();
+        } catch (Exception ignored) {
+            // A corrupted local token envelope must not become authorized.
+            clear();
+        }
+    }
+
+    /** Existing manual CredentialStore remains separate and unchanged. */
+    synchronized CredentialStore.Connection connectionOnWorker() throws Exception {
+        Record record = read();
+        if (record == null || !record.active)
+            return null;
+        String token = renewOnWorker();
+        return new CredentialStore.Connection(record.grant.haOrigin, token);
+    }
+
+    synchronized boolean hasActiveLogin() {
+        try {
+            Record record = read();
+            return record != null && record.active;
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
     synchronized void clear() {
         cachedAccess = null;
         accessExpiresElapsed = 0;

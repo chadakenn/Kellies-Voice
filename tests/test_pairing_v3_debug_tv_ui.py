@@ -49,7 +49,7 @@ class V3DebugTvOnboardingContract(unittest.TestCase):
             with self.subTest(forbidden=forbidden):
                 self.assertNotIn(forbidden, self.activity)
         self.assertIn("V3 TEST MODE", self.activity)
-        self.assertIn("does not sign in", self.activity)
+        self.assertIn("Login is optional", self.activity)
 
 
 if __name__ == "__main__":

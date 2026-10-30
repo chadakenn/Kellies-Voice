@@ -72,10 +72,11 @@ class FakeTvTransport:
             self.state = "ha-verified"
             return {"protocol": 3, "session": SESSION, "ha_verified": True}
         if route == "/v3/pair/owner-receipt" and self.state == "approved":
-            self._require(doc, ("protocol", "session", "sequence", "receipt"))
+            self._require(doc, ("protocol", "session", "sequence", "receipt", "login_next"))
+            assert doc["login_next"] is False
             assert type(doc["sequence"]) is int
             assert type(doc["receipt"]) is str
-            assert set(doc) == {"protocol", "session", "sequence", "receipt"}
+            assert set(doc) == {"protocol", "session", "sequence", "receipt", "login_next"}
             try:
                 tv = wire.VerifiedTv(TV, SESSION)
                 with_ack = channel.V3QaPingChannel(
@@ -153,7 +154,7 @@ class FullOwnerReceiptWireTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(ha._barrier.ready)
         self.assertEqual(
             set(tv.http_payloads[-1][1]),
-            {"protocol", "session", "sequence", "receipt"})
+            {"protocol", "session", "sequence", "receipt", "login_next"})
         self.assertNotIn("token", repr(tv.http_payloads).lower())
         with self.assertRaises(ValueError):
             await ha.finish_owner_receipt(

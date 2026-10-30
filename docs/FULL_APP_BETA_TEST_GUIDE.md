@@ -5,6 +5,20 @@ with the full Assist/camera/announcement/overlay/screensaver feature set and an
 additional **Full app beta test center** in
 **Settings → Home Assistant**, next to the debug-only v3 secure owner test.
 
+## PR #260: Owner-approved automatic login beta
+
+This kit now has a second, opt-in way to connect: verify the eight-digit
+TV code, approve in the signed-in HA owner panel, and explicitly check
+**dedicated ongoing TV login**. When Home Assistant Cloud HTTPS is enabled, the
+TV uses that existing URL to receive its own renewable account and should
+reconnect without a copied token. Cloud sign-ins require a remote-capable
+dedicated account. **The standard non-admin Users role can control all
+Home Assistant entities**, so approve only for a trusted TV.
+
+Read `OWNER_APPROVED_LOGIN_TEST.md` in the kit before trying this path.
+The manual token setup instructions below still apply if you skip that
+option or are testing the older beta behavior.
+
 ## Read this before installing
 
 - The beta APK uses a **separate Android application ID**
@@ -12,16 +26,16 @@ additional **Full app beta test center** in
   Your existing signed stable app `com.example.tvvoiceprobe` remains installed
   with its settings/login intact. Do **not** uninstall or clear data for the
   stable app.
-- Beta storage is **separate**. You must configure the beta's regular HA
-  address and access token independently to exercise Assist, alerts and camera
-  functions. Copy credentials only through a private, trusted method.
-  **Never share a token in screenshots, GitHub, or chat.** A local HTTP token
-  connection is not encrypted; use HTTPS when possible.
-- The v3 pairing test exchanges ephemeral P-256 keys and records real signed-in
-  HA-owner approval with a one-use authenticated receipt. **It does not
-  provision a TV login**, create an HA user, activate Assist/camera permissions,
-  or save credentials. A successful v3 pairing does not change the full-app
-  connection. This limitation is explicit in the TV beta center.
+- Beta storage is **separate**. On PR #260, owner-approved v3 pairing can
+  provision a dedicated renewable TV login automatically when the HA owner
+  explicitly selects the standard-user login opt-in. Manual login is a
+  fallback for testers who deliberately do not use that beta path.
+  **Never share a token in screenshots, GitHub, or chat.**
+- An eight-digit matching code or owner receipt **alone** does not prove
+  successful login. Verify the completed activation and actual Assist
+  `CONNECTED AND AUTHENTICATED` status separately. The dedicated ordinary
+  HA Users account is not entity-scoped and can control all HA entities.
+  The stable app and its settings remain independent.
 - Only use the draft-PR beta artifact with the matching isolated QA Home
   Assistant integration. **Do not install this package into public HACS or
   merge to main.**
@@ -48,16 +62,37 @@ stable HACS integration. Ensure the existing single top-level
 Configuration then restart HA. Check the owner panel:
 `/kellies-voice-v3qa-approval`. If it is missing, stop and inspect HA logs.
 
+## First-run TV setup wizard (beta)
+
+On the first **ordinary launch** of a fresh debug beta installation,
+a four-screen remote/D-pad wizard opens automatically:
+
+1. Welcome: what Kellie's Voice does, start or skip.
+2. Secure Home Assistant: open owner-approved v3 pairing, then return.
+   Never paste an owner token or manually create a shared login.
+3. Microphone: explicitly request Android's RECORD_AUDIO permission.
+   Granting it **does not start recording** or enable the wake word.
+4. Optional TV camera/announcement alerts: grant Android's
+   **Display over other apps**, explicitly opt in, and follow separate
+   **normal** Kellie's Voice HACS integration TV-device pairing steps.
+
+The wizard never starts microphone capture, background listening, TV
+notifications or camera popups simply because it was opened. Permissions
+can be skipped; **Finish** or **Skip setup for now** closes the first-run
+screen without showing it on every launch. Rerun any time under
+**Settings → Home Assistant → First-time setup wizard (DEBUG)**.
+The temporary v3 QA component only provisions login, not the regular
+alerts device. Nothing is copied from the separately installed stable app.
+
 ## Full app smoke test
 
 1. Sideload the **debug** APK as a *separate app*, launch
    **Kellie's Voice Beta**, and open
    **Settings → Home Assistant → Full app beta test center (DEBUG)**.
-2. Review the live readiness report. For the **actual full app** tests,
-   configure the beta's regular HA URL and a token under
-   **Edit Home Assistant address & token**. Verify
-   **HOME ASSISTANT: CONNECTED AND AUTHENTICATED**. A successful v3 owner
-   approval is not a substitute for this login.
+2. Review live readiness. After successful owner-approved v3 login, reopen
+   the beta and verify **HOME ASSISTANT: CONNECTED AND AUTHENTICATED**
+   without pasting any credentials. If you intentionally skipped ongoing TV
+   login, the separately stored manual URL/token flow remains available.
 3. Press TALK, ask one ordinary Assist question, confirm recognition, voice
    reply, and correct TV output. Repeat to test conversation continuity.
    **For targeted alerts and camera popups**, open the beta TV's
@@ -71,9 +106,18 @@ Configuration then restart HA. Check the owner panel:
    integration deliberately creates no usable devices.
 4. Open the floating voice overlay. Confirm close/Back and that the mic stops
    when the overlay is dismissed. Check manually disabled mic remains blocked.
-5. Enable **TV notifications & camera popups** (user opt-in). Grant Android's
-   **Display over other apps** permission. Open **TV alert status & connection**,
-   choose Resume if needed. Confirm it says connected.
+5. In **Settings → Voice & microphone**, choose **Android microphone
+   permission: GRANT NOW**, then approve Android's prompt. This step does
+   **not** begin recording. If Android stops showing the permission request,
+   choose **Open Android app permissions**. In **Alerts & cameras**, switch
+   **TV notifications & camera popups ON**, grant **Display over other apps**
+   when prompted, and return to the app. The beta resumes the explicit
+   alert-enable action after the system permission succeeds. If Android
+   doesn't expose the special-access panel, use TV Settings → Apps →
+   Special app access → Display over other apps for **Kellie's Voice Beta**.
+   Then open **TV alert status & connection**, choose Resume if needed.
+   A separate beta-TV device must exist in the **normal** Kellie's Voice
+   HACS integration. The standalone v3 QA integration only approves login.
 6. From HA send a **new** test announcement and a voice-open camera request,
    confirm a moving image where supported, close it, and verify TV remote
    controls. A connected receiver does not prove a popup was delivered.
@@ -110,12 +154,14 @@ folder and the stable Kellie's Voice app intact.
 
 ## Release blockers beyond this beta
 
-- No-typing, permanent login via a dedicated, least-privilege HA identity
-- Secure enrollment that survives TV/HA restart, with revocation and recovery
+- Independent review of the new dedicated non-admin Users-account permissions
+  (not least-privilege, because ordinary Users can control all HA entities)
+- End-to-end restart, renewable token refresh, revocation, and recovery tests
 - Whole-Assist and alert authorization enforcement, not only a QA permission
   checker
 - Independent security review (#214), 2-TV isolation, malicious LAN peer QA
 - Production signing, migration and actual release verification
 
-This kit is a **full-feature manual-login beta plus safe v3 onboarding QA**,
-not a claim that the permanent automatic pairing feature is complete.
+This kit is an **isolated full-app automatic-login beta** with an optional
+manual-login path. Successful code/owner approval does not establish complete
+reconnect, revocation, or alert-delivery readiness; keep PR #260 in draft.

@@ -169,7 +169,8 @@ class OwnerClaimWebSocketTests(unittest.TestCase):
     def test_uses_connection_identity_never_body_user_id(self):
         self.call(user(id="owner", owner=False)).send_result.assert_not_called()
         connection = self.call(user(id="authenticated-owner"))
-        connection.send_result.assert_called_once_with(42, {"owner_verified": True})
+        connection.send_result.assert_called_once_with(
+            42, {"owner_verified": True, "standard_user_login": False})
         self.assertEqual("authenticated-owner",
                          claims.owner_claims(self.hass).consume(
                              flow_id="flow-verified-1", session=SESSION,

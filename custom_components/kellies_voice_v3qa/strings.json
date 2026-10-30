@@ -19,7 +19,7 @@
       },
       "owner_approval": {
         "title": "Verified TV: confirm the signed-in HA owner (QA only)",
-        "description": "TV P-256 key exchange and physical remote proof passed. Keep the TV QA screen visible. In a SECOND HA owner browser tab open /kellies-voice-v3qa-approval, compare code {code}, click Approve this TV, return here and Submit BEFORE the original TV two-minute window expires. HA will send only a one-use encrypted approval and must receive an encrypted TV acknowledgement. NO login or tokens.",
+        "description": "Physical TV proof passed. In the signed-in HA owner approval panel, optionally select dedicated ongoing login, then Approve this TV. A standard non-admin HA Users account can control ALL entities, and through Home Assistant Cloud it can authenticate remotely. Return here and Submit before the TV pairing expires. Without opt-in no credentials are issued. Code: {code}",
         "data": {
           "ha_code": "HA eight-digit verification code",
           "owner_approved": "I clicked Approve this TV in the signed-in HA owner panel"
@@ -40,7 +40,10 @@
       "owner_setup_missing": "The Home Assistant v3 QA approval panel was not initialized at startup. Add kellies_voice_v3qa: to configuration.yaml and restart HA. No login was changed.",
       "owner_binding_rejected": "The verified TV owner-claim record was rejected. Check the Home Assistant system logs for v3 QA owner binding. No credential was created.",
       "owner_receipt_verified_no_login": "SUCCESS: The authenticated HA owner approved this exact TV, the TV decrypted the encrypted v3 receipt, and HA verified its cryptographic acknowledgement. NO login or token was created; original Kellie's Voice remains unchanged.",
-      "owner_receipt_failed": "The authenticated owner receipt did not complete or the TV did not cryptographically acknowledge it within the original two-minute window. Restart v3 QA. No credentials or normal TV connections were changed."
+      "owner_receipt_failed": "The authenticated owner receipt did not complete or the TV did not cryptographically acknowledge it within the original two-minute window. Restart v3 QA. No credentials or normal TV connections were changed.",
+      "owner_login_connected": "Dedicated Kellie's Voice TV login activated. Reopen Kellie's Voice Beta to connect to Home Assistant. The TV has a separate non-admin account and renewable credentials.",
+      "owner_login_failed": "TV owner-approved login could not be completed. The unfinished credential will be revoked on recovery. Restart TV setup. The existing stable Kellie's Voice is untouched.",
+      "https_required": "Ongoing TV login requires a working HTTPS Home Assistant URL. The beta now detects Home Assistant Cloud automatically. Check Settings > System > Network and confirm Cloud remote access is connected. Local HTTP can remain automatic. No token was issued."
     },
     "error": {
       "unavailable": "Could not contact the temporary v3 TV test. Start again on the TV.",

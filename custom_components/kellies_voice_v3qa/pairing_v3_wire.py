@@ -163,7 +163,8 @@ class HaV3WireAttempt:
             self.close()
             raise
 
-    async def finish_owner_receipt(self, transport, *, hass, claims, flow_id):
+    async def finish_owner_receipt(self, transport, *, hass, claims, flow_id,
+                                   retain_for_login=False):
         """Issue only after real owner consent; demand a v3 AEAD TV ack.
 
         The TV receives only 'owner-approved'. Never any HA credential.
@@ -193,6 +194,7 @@ class HaV3WireAttempt:
                     "/v3/pair/owner-receipt", {
                         "protocol": 3, "session": self.session,
                         "sequence": number, "receipt": _encode(encrypted),
+                        "login_next": retain_for_login is True,
                     }), {"protocol", "session", "ack_seq", "ack"}, self.session)
                 if type(response["ack_seq"]) is not int:
                     raise ValueError("Invalid TV owner receipt ack sequence")
@@ -204,6 +206,77 @@ class HaV3WireAttempt:
             finally:
                 channel.close()
         finally:
+            if not retain_for_login or not self._confirmed:
+                self.close()
+
+    async def finish_renewable_login(self, transport, *,
+                                    hass, journal, owner_id, ha_origin,
+                                    remote_login=False):
+        """After signed receipt ACK, transfer one renewable dedicated-TV grant.
+
+        Only the authenticated HA owner consent may supply owner_id.
+        No owner, no preexisting TV receipt, no account creation.
+        """
+        from .paired_tv_login import provision_dedicated_tv_login
+        from .scoped_token_handoff import HaTokenHandoff
+        if (not self._receipt_used or not self._confirmed
+                or self._verified_tv is None
+                or time.monotonic() >= self._expires_at
+                or type(owner_id) is not str or not owner_id):
+            self.close()
+            raise ValueError("TV owner consent missing")
+        tv = self._verified_tv
+        user = None
+        committed = False
+        try:
+            issued, recorded, user = await provision_dedicated_tv_login(
+                hass, journal, owner_id=owner_id, tv_uuid=tv.tv_uuid,
+                ha_origin=ha_origin, remote_login=remote_login)
+            handoff = HaTokenHandoff(
+                private_key=self._private, verified=self._barrier, tv=tv,
+                ttl_seconds=30)
+            try:
+                seq, packet = handoff.seal_recorded_provisional(
+                    issued, recorded)
+                response = _response(await transport.post(
+                    "/v3/pair/token-stage", {
+                        "protocol": 3, "session": self.session,
+                        "sequence": seq, "encrypted": _encode(packet),
+                        "ha_origin": ha_origin,
+                    }), {"protocol", "session", "ack_seq", "ack"},
+                    self.session)
+                handoff.accept_stage_ack(
+                    response["ack_seq"], _decode(response["ack"]))
+                seq, ready = handoff.seal_commit_ready()
+                response = _response(await transport.post(
+                    "/v3/pair/token-commit", {
+                        "protocol": 3, "session": self.session,
+                        "sequence": seq, "encrypted": _encode(ready),
+                    }), {"protocol", "session", "ack_seq", "ack"},
+                    self.session)
+                handoff.accept_activation_ack(
+                    response["ack_seq"], _decode(response["ack"]))
+                await journal.commit(recorded.nonce)
+                committed = True
+                return True
+            finally:
+                handoff.close()
+        finally:
+            if not committed and user is not None:
+                try:
+                    # Revoke only this TV's failed enrollment. Never revoke
+                    # another TV's concurrent, still-pending authorization.
+                    pending = [x for x in journal.snapshot()
+                               if x.tv_user_id == user.id
+                               and x.tv_uuid == tv.tv_uuid
+                               and x.state != "committed"]
+                    if len(pending) == 1 and await journal.revoke_unfinished_attempt(
+                            pending[0].nonce) and not user.refresh_tokens:
+                        await hass.auth.async_remove_user(user)
+                except Exception:
+                    # Journal remains durable for next HA restart. Do not
+                    # falsely claim cleanup if disk/revocation failed.
+                    pass
             self.close()
 
     def close(self) -> None:
@@ -232,11 +305,17 @@ class AiohttpV3LanTransport:
         self._base = f"http://{ip.compressed}:{port}"
 
     async def _call(self, method: str, path: str, data: dict) -> dict:
-        if path not in {
+        # Explicit path + method allowlist. The owner-approved credential
+        # handoff uses two additional bounded POST-only TV endpoints; without
+        # these, the verified pairing succeeds but login aborts before stage.
+        post_routes = {
             "/v3/pair/commit", "/v3/pair/reveal-ha",
-            "/v3/pair/reveal-tv", "/v3/pair/status",
             "/v3/pair/owner-receipt",
-        }:
+            "/v3/pair/token-stage", "/v3/pair/token-commit",
+        }
+        get_routes = {"/v3/pair/reveal-tv", "/v3/pair/status"}
+        if not ((method == "POST" and path in post_routes)
+                or (method == "GET" and path in get_routes)):
             raise ValueError("Unrecognized v3 route")
         import aiohttp
         timeout = aiohttp.ClientTimeout(total=3)

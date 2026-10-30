@@ -6,6 +6,8 @@ To opt into this developer QA integration, set `kellies_voice_v3qa:`
 in configuration.yaml and restart HA. Stable Kellie's Voice is untouched.
 """
 import logging
+from pathlib import Path
+from .token_lease_journal import TokenLeaseJournal
 
 from .owner_ws import async_register_owner_claim
 from .owner_panel import async_register_pairing_approval_panel
@@ -20,6 +22,14 @@ async def async_setup(hass, config):
     try:
         async_register_owner_claim(hass)
         await async_register_pairing_approval_panel(hass)
+        journal = TokenLeaseJournal(
+            hass, Path(hass.config.path(".storage",
+                                      "kellies_voice_v3qa_tv_leases.json")))
+        await journal.load()
+        recovery = await journal.recover_unfinished()
+        if any(v == "retry_required" for v in recovery.values()):
+            raise RuntimeError("TV token recovery must be resolved before pairing")
+        hass.data.setdefault(DOMAIN, {})["token_journal"] = journal
     except Exception:
         # This was previously silently discarded as owner_unavailable.
         # Do not include pairing session, UUID, codes or secrets in log text.

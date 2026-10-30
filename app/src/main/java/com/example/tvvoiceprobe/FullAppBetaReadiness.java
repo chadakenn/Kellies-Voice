@@ -12,7 +12,7 @@ final class FullAppBetaReadiness {
             boolean overlayAllowed, boolean micDisabled, boolean tvEventsOptIn,
             boolean tvEventsConnected, boolean screensaverOptIn) {
         String assist;
-        if (!savedLogin) assist = "NOT CONFIGURED (manual HA login required)";
+        if (!savedLogin) assist = "NOT CONFIGURED (pair the TV or configure HA manually)";
         else if (!assistAuthenticated) assist = "NOT CONNECTED (check HA login/network)";
         else assist = "CONNECTED AND AUTHENTICATED";
 
@@ -28,9 +28,9 @@ final class FullAppBetaReadiness {
                 + "\nOverlay permission: " + (overlayAllowed ? "GRANTED" : "NOT GRANTED")
                 + "\nTV microphone: " + (micDisabled ? "MANUALLY DISABLED" : "AVAILABLE TO CHECK")
                 + "\nFrigate screensaver: " + (screensaverOptIn ? "ENABLED" : "OFF")
-                + "\n\nSecure v3 pairing: TEST-ONLY OWNER RECEIPT."
-                + "\nThis does NOT log in or grant Assist/camera permissions."
-                + "\nA real, separate HA login is required for full app tests."
+                + "\n\nSecure v3 pairing: optional owner-approved dedicated TV login."
+                + "\nAn owner receipt alone does NOT prove an active Assist session."
+                + "\nThe actual HA connection above determines login readiness."
                 + "\n\nTest TALK, spoken reply, overlay, camera popup, "
                 + "alerts, wake opt-in, screensaver, and reconnect separately."
                 + "\nNo token or network credentials are displayed here.";

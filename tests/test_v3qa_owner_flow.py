@@ -55,7 +55,8 @@ class FakeAttempt:
             return None
         return types.SimpleNamespace(session=self.session, tv_uuid=TV)
 
-    async def finish_owner_receipt(self, transport, *, hass, claims, flow_id):
+    async def finish_owner_receipt(self, transport, *, hass, claims, flow_id,
+                                   retain_for_login=False):
         if self.fail_ack or not self.retained:
             self.close()
             raise ValueError("TV owner receipt not acknowledged")
@@ -68,7 +69,19 @@ class FakeAttempt:
                 or user.is_active is not True or user.is_owner is not True):
             self.close()
             raise ValueError("Owner no longer valid")
+        if not retain_for_login:
+            self.close()
+        return True
+
+    async def finish_renewable_login(self, transport, *, hass,
+                                     journal, owner_id, ha_origin,
+                                     remote_login=False):
+        assert self.retained and not self.closed
+        assert owner_id == "actual-owner"
+        assert ha_origin == "https://ha.example.test"
+        assert remote_login is True
         self.close()
+        self.did_login = True
         return True
 
     def close(self):
@@ -91,12 +104,31 @@ class V3QaOwnerFlowTests(unittest.IsolatedAsyncioTestCase):
             "homeassistant.helpers.service_info": types.ModuleType("homeassistant.helpers.service_info"),
             "homeassistant.helpers.service_info.zeroconf": types.ModuleType("homeassistant.helpers.service_info.zeroconf"),
             "voluptuous": types.ModuleType("voluptuous"),
+            "homeassistant.helpers.network":
+                types.ModuleType("homeassistant.helpers.network"),
         }
         modules["homeassistant"].__path__ = []
         modules["homeassistant.config_entries"].ConfigFlow = FakeConfigFlow
         modules["homeassistant.helpers"].__path__ = []
         modules["homeassistant.helpers.service_info"].__path__ = []
         modules["homeassistant.helpers.service_info.zeroconf"].ZeroconfServiceInfo = object
+        network = modules["homeassistant.helpers.network"]
+        class NoURLAvailableError(ValueError):
+            pass
+        network.NoURLAvailableError = NoURLAvailableError
+
+        def fake_get_url(hass, *, require_ssl=False, prefer_external=False,
+                         prefer_cloud=False, allow_internal=True,
+                         allow_external=True, allow_cloud=True, **unused):
+            assert require_ssl and prefer_external and prefer_cloud
+            if allow_external and allow_cloud and hass.config.cloud_url:
+                return hass.config.cloud_url
+            if allow_external and hass.config.external_url and hass.config.external_url.startswith("https://"):
+                return hass.config.external_url
+            if allow_internal and hass.config.internal_url and hass.config.internal_url.startswith("https://"):
+                return hass.config.internal_url
+            raise NoURLAvailableError("No SSL endpoint available")
+        network.get_url = fake_get_url
         vol = modules["voluptuous"]
         vol.Required = lambda key, default=None: key
         vol.Schema = lambda schema: schema
@@ -117,7 +149,11 @@ class V3QaOwnerFlowTests(unittest.IsolatedAsyncioTestCase):
         flow.flow_id = "flow-verified-1"
         flow.context = {}
         flow.hass = types.SimpleNamespace(
-            data={"kellies_voice_v3qa": {"owner_controls_ready": True}},
+            data={"kellies_voice_v3qa": {"owner_controls_ready": True,
+                                              "token_journal": object()}},
+            config=types.SimpleNamespace(
+                cloud_url="https://ha.example.test",
+                external_url=None, internal_url="http://192.168.1.82:8123"),
             auth=types.SimpleNamespace(async_get_user=AsyncMock(
                 return_value=types.SimpleNamespace(
                     id="actual-owner", is_owner=True, is_active=True))))
@@ -162,6 +198,41 @@ class V3QaOwnerFlowTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(success["reason"], "owner_receipt_verified_no_login")
         self.assertIsNone(flow._owner_tv)
         self.assertEqual([], registry.pending(user=person))
+
+    async def test_explicit_owner_opt_in_connects_dedicated_tv_login(self):
+        flow = self.make()
+        await self.verified(flow)
+        owner = types.SimpleNamespace(
+            id="actual-owner", is_owner=True, is_active=True)
+        registry = self.claims.owner_claims(flow.hass)
+        self.assertTrue(registry.claim(
+            flow_id=flow.flow_id, session=SID, user=owner,
+            standard_user_login=True))
+        self.assertEqual(registry.approved_owner_login(
+            flow_id=flow.flow_id, session=SID, tv_uuid=TV), "actual-owner")
+        result = await flow.async_step_owner_approval(
+            {"qa_instructions": self.flow_module._OWNER_QA_NOTICE,
+             "ha_code": "87654321", "owner_approved": True})
+        self.assertEqual(result["reason"], "owner_login_connected")
+        self.assertIsNone(flow._attempt)
+
+    async def test_opt_in_refuses_plain_http_credentials(self):
+        flow = self.make()
+        await self.verified(flow)
+        flow.hass.config.external_url = None
+        flow.hass.config.cloud_url = None
+        flow.hass.config.internal_url = "http://192.168.1.82:8123"
+        owner = types.SimpleNamespace(
+            id="actual-owner", is_owner=True, is_active=True)
+        registry = self.claims.owner_claims(flow.hass)
+        self.assertTrue(registry.claim(
+            flow_id=flow.flow_id, session=SID, user=owner,
+            standard_user_login=True))
+        result = await flow.async_step_owner_approval(
+            {"qa_instructions": self.flow_module._OWNER_QA_NOTICE,
+             "ha_code": "87654321", "owner_approved": True})
+        self.assertEqual(result["reason"], "https_required")
+        self.assertIsNone(flow._attempt)
 
     async def test_no_success_without_authenticated_tv_ack(self):
         flow = self.make()

@@ -59,6 +59,8 @@
                 android:resource="@xml/file_paths" />
         </provider>
         <activity android:name=".MainActivity" android:exported="false"/>
+        <!-- Beta-only TV remote onboarding. No permissions until explicit OK. -->
+        <activity android:name=".FirstRunSetupActivity" android:exported="false" />
         <!-- Debug-only v3 crypto QA. Not exported; does not authorize login. -->
         <activity android:name=".PairingV3QaActivity"
             android:exported="false" />

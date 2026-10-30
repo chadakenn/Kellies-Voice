@@ -33,6 +33,7 @@ class _Pairing:
     comparison_code: str
     started: float
     owner_id: str | None = None
+    standard_user_login: bool = False
 
 
 class OwnerClaimRegistry:
@@ -68,6 +69,7 @@ class OwnerClaimRegistry:
             session, normalized, comparison_code, instant)
 
     def claim(self, *, flow_id: str, session: str, user: Any,
+              standard_user_login: bool = False,
               now: float | None = None) -> bool:
         """Only the actual authenticated active HA owner may claim the flow."""
         instant = time.monotonic() if now is None else now
@@ -79,9 +81,11 @@ class OwnerClaimRegistry:
                 or entry.owner_id is not None
                 or type(owner_id) is not str or not owner_id or owner_id == "unknown"
                 or getattr(user, "is_owner", False) is not True
-                or getattr(user, "is_active", False) is not True):
+                or getattr(user, "is_active", False) is not True
+                or type(standard_user_login) is not bool):
             return False
         entry.owner_id = owner_id
+        entry.standard_user_login = standard_user_login
         return True
 
     def approved_for(self, *, flow_id: str, session: str, tv_uuid: str,
@@ -92,6 +96,22 @@ class OwnerClaimRegistry:
         candidate = self._pending.get(flow_id)
         return (candidate is not None and candidate.owner_id is not None
                 and candidate.session == session and candidate.tv_uuid == tv_uuid)
+
+    def approved_owner_login(self, *, flow_id: str, session: str,
+                             tv_uuid: str, now: float | None = None
+                             ) -> str | None:
+        """Owner identity ONLY when the signed-in owner explicitly opted in.
+
+        A standard Users HA role can control ALL entities. Never silently
+        treat a basic owner receipt approval as consent for account creation.
+        """
+        instant = time.monotonic() if now is None else now
+        self._prune(instant)
+        entry = self._pending.get(flow_id)
+        if (entry is None or not entry.standard_user_login
+                or entry.session != session or entry.tv_uuid != tv_uuid):
+            return None
+        return entry.owner_id
 
     def consume(self, *, flow_id: str, session: str, tv_uuid: str,
                 now: float | None = None) -> str | None:

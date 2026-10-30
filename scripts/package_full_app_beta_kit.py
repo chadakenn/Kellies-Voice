@@ -14,10 +14,11 @@ ROOT = Path(__file__).resolve().parents[1]
 APK = ROOT / "app/build/outputs/apk/debug/app-debug.apk"
 HA = ROOT / "dist/kellies_voice_v3qa_ha.zip"
 GUIDE = ROOT / "docs/FULL_APP_BETA_TEST_GUIDE.md"
+OWNER_GUIDE = ROOT / "docs/HA_V3_OWNER_APPROVED_LOGIN_BETA_QA.md"
 OUT = ROOT / "dist/Kellies-Voice-Full-App-Beta-Kit.zip"
 
 for name, path in (("debug Android APK", APK), ("isolated HA ZIP", HA),
-                   ("test guide", GUIDE)):
+                   ("test guide", GUIDE), ("owner-approved login guide", OWNER_GUIDE)):
     if not path.is_file() or path.stat().st_size < 100:
         raise SystemExit(f"Missing {name}; do not publish an incomplete beta kit")
 
@@ -42,6 +43,7 @@ items = (
     ("app-debug.apk", APK),
     ("kellies_voice_v3qa_ha.zip", HA),
     ("FULL_APP_BETA_TEST_GUIDE.md", GUIDE),
+    ("OWNER_APPROVED_LOGIN_TEST.md", OWNER_GUIDE),
 )
 checksums = "".join(f"{hashlib.sha256(p.read_bytes()).hexdigest()}  {name}\n"
                     for name, p in items)

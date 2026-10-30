@@ -20,7 +20,8 @@ class RenewableScopeContracts(unittest.TestCase):
         self.assertNotIn("new CredentialStore(", TV)
         self.assertNotIn("CredentialStore.load(", TV)
         self.assertNotIn("TvRenewableLoginVault", FLOW)
-        self.assertNotIn("scoped_login_issuer", FLOW)
+        self.assertIn("approved_owner_login(", FLOW)
+        self.assertIn("retain_for_login", FLOW)
         self.assertNotIn("scoped_login_issuer", INIT)
         self.assertNotIn("async_create_refresh_token", INIT)
 
