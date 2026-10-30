@@ -217,18 +217,41 @@ class KelliesVoiceV3QaConfigFlow(ConfigFlow, domain=DOMAIN):
                 if attempt is None:
                     registry.cancel(self.flow_id)
                     return self.async_abort(reason="owner_receipt_failed")
+                # Explicit HA-owner opt-in only. No blanket TV account for
+                # users who approved the existing token-free test.
+                owner_id = registry.approved_owner_login(
+                    flow_id=self.flow_id, session=tv.session,
+                    tv_uuid=tv.tv_uuid)
+                origin = None
+                if owner_id is not None:
+                    from .scoped_login_issuer import _trusted_origin
+                    try:
+                        candidate = (self.hass.config.external_url
+                                     or self.hass.config.internal_url)
+                        origin = _trusted_origin(candidate)
+                    except Exception:
+                        registry.cancel(self.flow_id)
+                        attempt.close()
+                        return self.async_abort(reason="https_required")
                 try:
                     await attempt.finish_owner_receipt(
                         self._transport, hass=self.hass,
-                        claims=registry, flow_id=self.flow_id)
+                        claims=registry, flow_id=self.flow_id,
+                        **({"retain_for_login": True} if owner_id else {}))
+                    if owner_id:
+                        journal = self.hass.data[DOMAIN]["token_journal"]
+                        await attempt.finish_renewable_login(
+                            self._transport, hass=self.hass, journal=journal,
+                            owner_id=owner_id, ha_origin=origin)
                 except Exception:
                     registry.cancel(self.flow_id)
-                    # Never log owner claim, ECDH keys, codes or packets.
-                    _LOGGER.warning(
-                        "V3 QA encrypted owner receipt was not acknowledged")
-                    return self.async_abort(reason="owner_receipt_failed")
+                    attempt.close()
+                    _LOGGER.warning("V3 owner approval or TV login not acknowledged")
+                    return self.async_abort(reason="owner_login_failed"
+                                            if owner_id else "owner_receipt_failed")
                 return self.async_abort(
-                    reason="owner_receipt_verified_no_login")
+                    reason="owner_login_connected" if owner_id
+                    else "owner_receipt_verified_no_login")
         return self.async_show_form(
             step_id="owner_approval",
             description_placeholders={"code": self._owner_code},
