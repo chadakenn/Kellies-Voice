@@ -127,6 +127,8 @@ class KelliesVoiceV3QaConfigFlow(ConfigFlow, domain=DOMAIN):
                 # frontend panel after Home Assistant has started serving.
                 # The QA owner UI must be registered during YAML startup.
                 if not owner_controls_ready(self.hass):
+                    self._attempt.close()
+                    self._attempt = None
                     _LOGGER.warning(
                         "V3 QA owner controls were not initialized at HA startup"
                     )
@@ -138,10 +140,14 @@ class KelliesVoiceV3QaConfigFlow(ConfigFlow, domain=DOMAIN):
                 except ValueError:
                     _LOGGER.exception("V3 QA verified owner claim rejected")
                     owner_claims(self.hass).cancel(self.flow_id)
+                    self._attempt.close()
+                    self._attempt = None
                     return self.async_abort(reason="owner_binding_rejected")
                 except Exception:
                     _LOGGER.exception("V3 QA verified owner claim failed unexpectedly")
                     owner_claims(self.hass).cancel(self.flow_id)
+                    self._attempt.close()
+                    self._attempt = None
                     return self.async_abort(reason="owner_unavailable")
                 self._owner_tv = result
                 self._owner_code = verified_code
