@@ -24,13 +24,15 @@ async def async_register_pairing_approval_panel(hass) -> None:
         return
 
     file_path = Path(__file__).parent / "frontend" / "kellies-voice-v3qa-owner-panel.js"
-    if not file_path.is_file():
+    if not await hass.async_add_executor_job(file_path.is_file):
         raise RuntimeError("Kellie's Voice approval panel asset is missing")
 
     # HA's frontend can cache ES modules across ordinary panel navigation.
     # Use a new module URL whenever the on-disk script changes.
     # Static path registration stays fixed; HTTP handles the query string.
-    panel_version = sha256(file_path.read_bytes()).hexdigest()[:12]
+    panel_version = await hass.async_add_executor_job(
+        lambda: sha256(file_path.read_bytes()).hexdigest()[:12]
+    )
 
     await hass.http.async_register_static_paths([
         StaticPathConfig(_ASSET_PATH, str(file_path), cache_headers=False)
