@@ -66,7 +66,8 @@ class HaV3WireAttempt:
     get(path, params), returning decoded strict JSON objects.
     """
 
-    def __init__(self, session: str, *, private=None, nonce=None):
+    def __init__(self, session: str, *, private=None, nonce=None,
+                 retain_owner_receipt: bool = False):
         _session_bytes(session)
         from cryptography.hazmat.primitives.asymmetric import ec
         self._private = private or ec.generate_private_key(ec.SECP256R1())
@@ -76,6 +77,9 @@ class HaV3WireAttempt:
         self._expires_at = time.monotonic() + 120
         self._used = False
         self._confirmed = False
+        self._retain_owner_receipt = retain_owner_receipt is True
+        self._verified_tv: VerifiedTv | None = None
+        self._receipt_used = False
         self.code: str | None = None
 
     async def start(self, transport) -> str:
@@ -147,14 +151,64 @@ class HaV3WireAttempt:
                 raise ValueError("Invalid physical TV approval proof")
             self._confirmed = True
             result = VerifiedTv(tv_uuid=tv_uuid, session=self.session)
-            self.close()
+            if self._retain_owner_receipt:
+                # Only for the isolated owner-approval hardware QA. Retain
+                # bounded ECDH state until a real HA-owner claim is consumed.
+                self._verified_tv = result
+                self.code = None
+            else:
+                self.close()
             return result
         except Exception:
             self.close()
             raise
 
+    async def finish_owner_receipt(self, transport, *, hass, claims, flow_id):
+        """Issue only after real owner consent; demand a v3 AEAD TV ack.
+
+        The TV receives only 'owner-approved'. Never any HA credential.
+        Every attempt, including failed network ACK, burns the key state.
+        """
+        from .owner_receipt import issue_after_owner_claim
+        from .pairing_v3_qa_channel import V3QaPingChannel
+        if (not self._retain_owner_receipt or self._receipt_used
+                or not self._confirmed or self._verified_tv is None
+                or time.monotonic() >= self._expires_at):
+            self.close()
+            raise ValueError("Owner receipt attempt unavailable")
+        self._receipt_used = True
+        tv = self._verified_tv
+        try:
+            # Instantiate acknowledgement verifier before releasing owner's
+            # one-shot claim. Key stays in memory only while this call runs.
+            channel = V3QaPingChannel(
+                private_key=self._private, verified=self._barrier,
+                tv_uuid=tv.tv_uuid, ttl_seconds=30.0)
+            try:
+                number, encrypted = await issue_after_owner_claim(
+                    hass=hass, claims=claims, flow_id=flow_id,
+                    verified_tv=tv, private_key=self._private,
+                    verified=self._barrier)
+                response = _response(await transport.post(
+                    "/v3/pair/owner-receipt", {
+                        "protocol": 3, "session": self.session,
+                        "sequence": number, "receipt": _encode(encrypted),
+                    }), {"protocol", "session", "ack_seq", "ack"}, self.session)
+                if type(response["ack_seq"]) is not int:
+                    raise ValueError("Invalid TV owner receipt ack sequence")
+                ack = channel.open(
+                    response["ack_seq"], _decode(response["ack"], length=23))
+                if ack != b"qa-pong":
+                    raise ValueError("Unexpected owner receipt acknowledgement")
+                return True
+            finally:
+                channel.close()
+        finally:
+            self.close()
+
     def close(self) -> None:
         self._barrier.close()
+        self._verified_tv = None
         self.code = None
 
 
@@ -181,6 +235,7 @@ class AiohttpV3LanTransport:
         if path not in {
             "/v3/pair/commit", "/v3/pair/reveal-ha",
             "/v3/pair/reveal-tv", "/v3/pair/status",
+            "/v3/pair/owner-receipt",
         }:
             raise ValueError("Unrecognized v3 route")
         import aiohttp
