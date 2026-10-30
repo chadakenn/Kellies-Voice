@@ -19,7 +19,7 @@
       },
       "owner_approval": {
         "title": "Verified TV: confirm the signed-in HA owner (QA only)",
-        "description": "Physical TV proof passed. In the signed-in HA owner approval panel, optionally select dedicated ongoing login (the HA Users role can control ALL entities), then Approve this TV. Return here and Submit while the TV's pairing window is active. Without the option the test issues no account or token. Code: {code}",
+        "description": "Physical TV proof passed. In the signed-in HA owner approval panel, optionally select dedicated ongoing login, then Approve this TV. A standard non-admin HA Users account can control ALL entities, and through Home Assistant Cloud it can authenticate remotely. Return here and Submit before the TV pairing expires. Without opt-in no credentials are issued. Code: {code}",
         "data": {
           "ha_code": "HA eight-digit verification code",
           "owner_approved": "I clicked Approve this TV in the signed-in HA owner panel"
@@ -43,7 +43,7 @@
       "owner_receipt_failed": "The authenticated owner receipt did not complete or the TV did not cryptographically acknowledge it within the original two-minute window. Restart v3 QA. No credentials or normal TV connections were changed.",
       "owner_login_connected": "Dedicated Kellie's Voice TV login activated. Reopen Kellie's Voice Beta to connect to Home Assistant. The TV has a separate non-admin account and renewable credentials.",
       "owner_login_failed": "TV owner-approved login could not be completed. The unfinished credential will be revoked on recovery. Restart TV setup. The existing stable Kellie's Voice is untouched.",
-      "https_required": "Ongoing TV login needs an HTTPS Home Assistant internal or external URL configured under Settings > System > Network. The encrypted owner-approval test still works without one."
+      "https_required": "Ongoing TV login requires a working HTTPS Home Assistant URL. The beta now detects Home Assistant Cloud automatically. Check Settings > System > Network and confirm Cloud remote access is connected. Local HTTP can remain automatic. No token was issued."
     },
     "error": {
       "unavailable": "Could not contact the temporary v3 TV test. Start again on the TV.",
