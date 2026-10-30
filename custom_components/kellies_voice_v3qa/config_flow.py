@@ -10,6 +10,13 @@ from .owner_claim import owner_claims
 from . import async_register_qa_owner_controls
 
 DOMAIN = "kellies_voice_v3qa"
+_OWNER_QA_NOTICE = (
+    "V3 OWNER TEST ONLY. Keep this pairing dialog open. In a SECOND "
+    "Home Assistant browser tab (signed in as the HA owner), open "
+    "/kellies-voice-v3qa-approval. Compare the exact eight-digit TV "
+    "code, click Approve this TV, then return here and check "
+    "owner_approved. This does NOT sign the TV in or issue any token."
+)
 
 
 def _text(properties: dict, key: str) -> str:
@@ -154,6 +161,11 @@ class KelliesVoiceV3QaConfigFlow(ConfigFlow, domain=DOMAIN):
                 self._owner_tv = None
                 self._owner_code = None
                 return self.async_abort(reason="cancelled")
+            if user_input.get("qa_instructions") != _OWNER_QA_NOTICE:
+                owner_claims(self.hass).cancel(self.flow_id)
+                self._owner_tv = None
+                self._owner_code = None
+                return self.async_abort(reason="owner_denied")
             if user_input.get("ha_code") != self._owner_code:
                 owner_claims(self.hass).cancel(self.flow_id)
                 self._owner_tv = None
@@ -182,6 +194,7 @@ class KelliesVoiceV3QaConfigFlow(ConfigFlow, domain=DOMAIN):
             step_id="owner_approval",
             description_placeholders={"code": self._owner_code},
             data_schema=vol.Schema({
+                vol.Required("qa_instructions", default=_OWNER_QA_NOTICE): str,
                 vol.Required("ha_code", default=self._owner_code): str,
                 vol.Required("owner_approved"): bool,
             }),
