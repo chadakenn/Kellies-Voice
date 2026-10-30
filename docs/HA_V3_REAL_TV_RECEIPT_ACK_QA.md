@@ -13,13 +13,17 @@ or publish this protocol in a production release.
 - Home Assistant configuration is backed up. The existing top-level
   `kellies_voice_v3qa:` YAML line is present and validates.
 - Download the **isolated v3 QA HA ZIP** from this PR's passing
-  `Isolated v3 QA HA ZIP (no credentials)` GitHub Actions run. It must
-  contain the nested file
-  `custom_components/kellies_voice_v3qa/frontend/kellies-voice-v3qa-owner-panel.js`.
-  Extract to `/config/` preserving the full directory tree.
+  `Isolated v3 QA HA ZIP (no credentials)` GitHub Actions run. GitHub
+  downloads an **outer artifact ZIP**. Unzip that first to obtain
+  `kellies_voice_v3qa_ha.zip`. Then unzip that **inner integration ZIP**
+  into `/config/`, preserving `custom_components/kellies_voice_v3qa/`
+  and its nested `frontend/` folder. Confirm this file exists before
+  restarting HA:
+  `/config/custom_components/kellies_voice_v3qa/frontend/kellies-voice-v3qa-owner-panel.js`.
 - Download the **debug APK** from this PR's passing `Unit tests`
-  Actions artifact only after the build is green. This APK is for test
-  devices; do not update the stable Kellie's Voice production release.
+  Actions artifact only after the build is green. Its outer artifact ZIP
+  contains `app-debug.apk`. This APK is for test devices; do not update
+  the stable Kellie's Voice production release.
 - Restart Home Assistant after installing the isolated ZIP and verify the
   **Kellie's Voice v3 Owner Approval** owner-authenticated panel loads at
   `/kellies-voice-v3qa-approval`. Existing normal Kellie's Voice must still
