@@ -178,12 +178,27 @@
   "options": {
     "step": {
       "init": {
-        "title": "Experimental native Assist timers",
-        "description": "OFF by default. Enable only for this paired TV when its Home Assistant Assist pipeline supplies the TV's HA registry device ID and routes phrases to native intents. TV countdowns and Home Assistant keep separate clocks; verify on hardware before relying on timers. Existing manual timer actions remain available. This does not enable the microphone.",
+        "title": "TV settings and home-screen shortcuts",
+        "description": "Optional shortcuts appear only on the FULL-SCREEN Kellie's Voice TV home, never the floating voice overlay. Each numbered row has a label, a Home Assistant light.*, scene.* or script.* entity, and an action. Leave label and entity blank to hide a slot. A TV user must have permission to control the configured entity. Do not use these for locks, garages or security controls.",
         "data": {
-          "native_timer_intents": "Enable experimental native timers for this TV"
+          "native_timer_intents": "Enable experimental native timers for this TV",
+          "shortcut_1_label": "Shortcut 1: button label (e.g. Movie Time)",
+          "shortcut_1_entity": "Shortcut 1: Home Assistant entity ID (light.*, scene.*, script.*)",
+          "shortcut_1_action": "Shortcut 1: action (Turn on, Turn off, Toggle)",
+          "shortcut_2_label": "Shortcut 2: button label (e.g. Movie Time)",
+          "shortcut_2_entity": "Shortcut 2: Home Assistant entity ID (light.*, scene.*, script.*)",
+          "shortcut_2_action": "Shortcut 2: action (Turn on, Turn off, Toggle)",
+          "shortcut_3_label": "Shortcut 3: button label (e.g. Movie Time)",
+          "shortcut_3_entity": "Shortcut 3: Home Assistant entity ID (light.*, scene.*, script.*)",
+          "shortcut_3_action": "Shortcut 3: action (Turn on, Turn off, Toggle)",
+          "shortcut_4_label": "Shortcut 4: button label (e.g. Movie Time)",
+          "shortcut_4_entity": "Shortcut 4: Home Assistant entity ID (light.*, scene.*, script.*)",
+          "shortcut_4_action": "Shortcut 4: action (Turn on, Turn off, Toggle)"
         }
       }
+    },
+    "error": {
+      "invalid_shortcut": "Each shortcut needs a short label and a light.*, scene.* or script.* entity. Scenes and scripts only support Turn on; lights support Turn on, Turn off and Toggle. Leave both fields empty to remove a shortcut."
     }
   }
 }
