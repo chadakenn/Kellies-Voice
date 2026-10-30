@@ -202,6 +202,13 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
 
     @Override protected void onResume() {
         super.onResume();
+        // Some Android TV overlay settings return to onResume without
+        // delivering an Activity result. Complete only a user-requested
+        // enable, and only after Android has actually granted the permission.
+        if (pendingTvAlertsPermission && Settings.canDrawOverlays(this)) {
+            pendingTvAlertsPermission = false;
+            enableTvAlertsFromUser();
+        }
         // Android 14+ permits foreground mic-service creation from a visible
         // Activity, but not from BOOT_COMPLETED. Restore a prior user opt-in
         // automatically when the app becomes visible after a reboot/update.
@@ -813,7 +820,8 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                         "Announcement voice volume: " + prefs.spokenAnnouncementVolume() + "%",
                         "Test a spoken announcement",
                         "TV alert status & connection",
-                        "Live camera decoder: " + LiveCameraMode.label(prefs.cameraMode())
+                        "Live camera decoder: " + LiveCameraMode.label(prefs.cameraMode()),
+                        "Pair this Beta TV in Home Assistant (alerts device)"
                 };
                 break;
             case SCREEN:
@@ -882,6 +890,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                                 case 4: testSpokenAnnouncements(); break;
                                 case 5: showTvAlertStatus(); break;
                                 case 6: chooseCameraMode(); break;
+                                case 7: chooseHaLayout(); break;
                                 default: break;
                             }
                             break;
@@ -1204,6 +1213,11 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         String diagnostic = TvEventsRecovery.diagnostics();
         if (!diagnostic.isEmpty()) message += "\n\nLast receiver activity: " + diagnostic;
         message += "\n\nLast spoken alert: " + TvSpeechStatus.latest();
+        message += "\n\nBeta TV setup: This app has a NEW TV identity. If alerts "
+                + "are denied or waiting for TV controls, enable Manage TV layout from "
+                + "Home Assistant in this Beta, then add the Beta device to the NORMAL "
+                + "Kellie's Voice integration in HA Devices & services. "
+                + "The separate v3 QA pairing does not register the alert device.";
         AlertDialog.Builder dialog = new AlertDialog.Builder(this)
                 .setTitle("TV alert status")
                 .setMessage(message + "\n\nThis does not start the microphone. "
