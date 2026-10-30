@@ -62,6 +62,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
     private FrameLayout centerArea;
     private FrameLayout captionOverlay;
     private TextView captionText;
+    private boolean captionSpeechActive;
     private final Runnable hideCaption = new Runnable() {
         @Override public void run() {
             if (captionOverlay == null || captionOverlay.getVisibility() != View.VISIBLE) return;
@@ -2020,6 +2021,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         if (!assist.pipelineIdle()) assist.finishTalking();
         // Clear any lingering caption
         mainHandler.removeCallbacks(hideCaption);
+        captionSpeechActive = false;
         if (captionOverlay != null) captionOverlay.setVisibility(View.GONE);
         status(settings == null
                 ? "Conversation cleared. Configure Home Assistant to continue."
@@ -2280,10 +2282,10 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
             if (text.isEmpty()) text = "…";
             boolean large = text.length() > 120 || text.split("\\s+").length > 18;
             showCaption(text, large);
-            // Auto-dismiss after a short time once the response is shown.
-            // TTS completion can extend visibility via status updates if needed.
-            mainHandler.removeCallbacks(hideCaption);
-            mainHandler.postDelayed(hideCaption, large ? 12000L : 7000L);
+            // Text-only replies disappear normally. Spoken captions stay until
+            // the actual TTS playback finishes, even on long answers.
+            if (!captionSpeechActive)
+                mainHandler.postDelayed(hideCaption, large ? 12000L : 7000L);
         });
     }
 
@@ -2293,6 +2295,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         captionText.setText(text);
         captionText.setTextSize(large ? 20 : 22);
         captionText.setMaxLines(large ? 4 : 2);
+        captionOverlay.animate().cancel();
         captionOverlay.setAlpha(0f);
         captionOverlay.setVisibility(View.VISIBLE);
         captionOverlay.animate().alpha(1f).setDuration(200).start();
@@ -2302,6 +2305,8 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
 
     private void playTts(String address) {
         if (settings == null) return;
+        mainHandler.removeCallbacks(hideCaption);
+        captionSpeechActive = true;
         try {
             HttpUrl playback = TtsUrls.allowedPlaybackUrl(settings.url, address);
             if (player != null) { player.release(); player = null; }
@@ -2317,19 +2322,25 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
             player.setDataSource(this, Uri.parse(playback.toString()), headers);
             player.setOnPreparedListener(p -> { status("Speaking..."); p.start(); });
             player.setOnCompletionListener(p -> {
+                captionSpeechActive = false;
                 if (speechFocus != null) speechFocus.release();
                 status("Finished. Select TALK for another question.");
+                mainHandler.removeCallbacks(hideCaption);
                 mainHandler.postDelayed(hideCaption, 1500L);
             });
             player.setOnErrorListener((p, what, extra) -> {
+                captionSpeechActive = false;
                 if (speechFocus != null) speechFocus.release();
                 status("TTS playback failed.");
+                mainHandler.postDelayed(hideCaption, 7000L);
                 return true;
             });
             player.prepareAsync();
         } catch (Exception e) {
+            captionSpeechActive = false;
             if (speechFocus != null) speechFocus.release();
             status("Could not play TTS.");
+            mainHandler.postDelayed(hideCaption, 7000L);
         }
     }
 
