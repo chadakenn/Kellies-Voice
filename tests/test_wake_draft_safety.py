@@ -49,7 +49,10 @@ class WakeDraftSafetyTests(unittest.TestCase):
         self.assertIn("WakeAssistConnection.preconnect(this);", wake)
         self.assertIn("WakeAssistConnection.stop();", wake)
         self.assertIn("WakeAssistConnection.take(this)", overlay)
-        self.assertIn("fromWake ? WakeAssistConnection.take(this) : null", overlay)
+        # A renewable-only TV must not claim a warmed legacy manual-login
+        # socket, even when the optional wake listener is enabled.
+        self.assertIn("fromWake && !renewableSession ? WakeAssistConnection.take(this) : null", overlay)
+        self.assertIn("if (renewableSession) WakeAssistConnection.stop();", overlay)
         self.assertIn("assist.isConnected()", overlay)
         self.assertIn("created.useAsStandby()", warm)
         self.assertIn("client.attachEvents(receiver)", warm)
