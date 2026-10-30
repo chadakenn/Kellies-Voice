@@ -17,7 +17,9 @@ expected = {
     "__init__.py", "config_flow.py", "manifest.json",
     "pairing_key_commitment.py", "pairing_v3_verified.py",
     "pairing_v3_wire.py", "validation.py", "const.py",
-    "strings.json", "translations/en.json", "README.md"
+    "strings.json", "translations/en.json", "README.md",
+    "owner_claim.py", "owner_ws.py", "owner_panel.py",
+    "frontend/kellies-voice-v3qa-owner-panel.js"
 }
 found = {str(p.relative_to(SOURCE)).replace("\\", "/")
          for p in SOURCE.rglob("*")
