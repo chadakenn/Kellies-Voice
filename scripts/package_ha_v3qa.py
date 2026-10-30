@@ -21,6 +21,7 @@ expected = {
     "owner_claim.py", "owner_ws.py", "owner_panel.py",
     "credential_scope.py", "scoped_tv_gate.py",
     "pairing_v3_qa_channel.py", "owner_receipt.py",
+    "token_lease_journal.py", "scoped_login_issuer.py",
     "frontend/kellies-voice-v3qa-owner-panel.js"
 }
 found = {str(p.relative_to(SOURCE)).replace("\\", "/")
