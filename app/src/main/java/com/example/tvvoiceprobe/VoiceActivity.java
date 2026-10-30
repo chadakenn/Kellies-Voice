@@ -720,7 +720,8 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                         "Edit Home Assistant address & token",
                         "Start new conversation",
                         "Manage TV layout from Home Assistant: " + (prefs.haManage() ? "ON" : "OFF"),
-                        "Secure pairing v3 (DEBUG TEST ONLY, no login)"
+                        "Secure pairing v3 (DEBUG TEST ONLY, no login)",
+                        "Full app beta test center (DEBUG)"
                 } : new String[] {
                         "Connect / reconnect Home Assistant",
                         "Edit Home Assistant address & token",
@@ -787,6 +788,9 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                                         startActivity(new Intent(this, PairingV3QaActivity.class));
                                     }
                                     break;
+                                case 5:
+                                    showFullAppBetaTestCenter();
+                                    break;
                                 default: break;
                             }
                             break;
@@ -836,6 +840,57 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                         default: break;
                     }
                 }, this::showSettingsDashboard);
+    }
+
+    /** A complete-app QA checklist, separate from v3's token-free proof.
+     * Debug builds get an independent app ID. Never touch stable credentials.
+     */
+    private void showFullAppBetaTestCenter() {
+        if ((getApplicationInfo().flags
+                & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) == 0) {
+            return;
+        }
+        OverlayPreferences prefs = new OverlayPreferences(this);
+        boolean overlaysAllowed = Settings.canDrawOverlays(this);
+        boolean alertsConnected = TvEventsRecovery.CONNECTED.equals(
+                TvEventsRecovery.runtime());
+        String readiness = FullAppBetaReadiness.describe(
+                settings != null,
+                assist != null && assist.isConnected(),
+                overlaysAllowed,
+                prefs.microphoneDisabled(),
+                prefs.tvEvents(),
+                alertsConnected,
+                prefs.screensaverDashboard());
+        showCopperMenu("KELLIE'S VOICE  /  FULL APP BETA TEST",
+                readiness,
+                new String[] {
+                    "Refresh live status",
+                    "Configure / connect Home Assistant (manual login)",
+                    "Test secure v3 owner approval (NO LOGIN)",
+                    "Test floating voice overlay",
+                    "Inspect TV alert / camera receiver",
+                    "Test local spoken announcement",
+                    "Preview Frigate screensaver",
+                    "Back to Home Assistant settings"
+                },
+                which -> {
+                    switch (which) {
+                        case 0: showFullAppBetaTestCenter(); break;
+                        case 1: configure(); break;
+                        case 2:
+                            startActivity(new Intent(this, PairingV3QaActivity.class));
+                            break;
+                        case 3: launchOverlay(); break;
+                        case 4: showTvAlertStatus(); break;
+                        case 5: testSpokenAnnouncements(); break;
+                        case 6:
+                            startActivity(new Intent(this, ScreensaverPreviewActivity.class));
+                            break;
+                        case 7: showSettingsSection(SettingsSection.HOME); break;
+                        default: break;
+                    }
+                }, () -> showSettingsSection(SettingsSection.HOME));
     }
 
     private void chooseAnnouncementVolume() {
