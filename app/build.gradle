@@ -40,8 +40,12 @@ android {
         debug {
             applicationIdSuffix '.debug'
             versionNameSuffix '-test'
+            // Separate install and launcher label. Never overwrite the
+            // stable signed Kellie's Voice app or share its saved login.
+            manifestPlaceholders = [appLabel: "Kellie's Voice Beta"]
         }
         release {
+            manifestPlaceholders = [appLabel: "Kellie's Voice"]
             minifyEnabled false
             signingConfig signingConfigs.release
         }

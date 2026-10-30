@@ -20,7 +20,7 @@
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
     <uses-feature android:name="android.software.leanback" android:required="false" />
-    <application android:label="Kellie's Voice"
+    <application android:label="${appLabel}"
         android:theme="@android:style/Theme.Material.NoActionBar"
         android:banner="@drawable/tv_banner"
         android:icon="@drawable/ic_kellie_voice"
