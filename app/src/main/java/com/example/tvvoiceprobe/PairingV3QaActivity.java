@@ -56,7 +56,7 @@ public final class PairingV3QaActivity extends Activity {
         TextView heading = text("KELLIE'S VOICE  |  SECURE TV PAIRING", 25, GOLD);
         heading.setTypeface(Typeface.DEFAULT_BOLD);
         root.addView(heading);
-        root.addView(text("V3 TEST MODE  •  NO ACCOUNT LOGIN", 16, MUTED));
+        root.addView(text("V3 BETA  •  OPTIONAL OWNER-APPROVED LOGIN", 16, MUTED));
         root.addView(text(
             "Start a short local pairing window, compare the same eight-digit "
             + "code in Home Assistant and on this TV, then press OK. "
