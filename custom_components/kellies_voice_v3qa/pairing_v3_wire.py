@@ -263,10 +263,14 @@ class HaV3WireAttempt:
         finally:
             if not committed and user is not None:
                 try:
-                    outcome = await journal.recover_unfinished()
-                    # Do not erase the account if a token could remain active.
-                    if (outcome and all(v == "revoked" for v in outcome.values())
-                            and not user.refresh_tokens):
+                    # Revoke only this TV's failed enrollment. Never revoke
+                    # another TV's concurrent, still-pending authorization.
+                    pending = [x for x in journal.snapshot()
+                               if x.tv_user_id == user.id
+                               and x.tv_uuid == tv.tv_uuid
+                               and x.state != "committed"]
+                    if len(pending) == 1 and await journal.revoke_unfinished_attempt(
+                            pending[0].nonce) and not user.refresh_tokens:
                         await hass.auth.async_remove_user(user)
                 except Exception:
                     # Journal remains durable for next HA restart. Do not
