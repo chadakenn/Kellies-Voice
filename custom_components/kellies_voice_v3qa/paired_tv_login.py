@@ -6,9 +6,13 @@ consent in the authenticated owner panel; the caller has confirmed TV remote
 and a v3 encrypted approval receipt. Never grant or reuse the owner's token.
 """
 from __future__ import annotations
+import logging
 from homeassistant.auth.const import GROUP_ID_USER
 from .scoped_login_issuer import IssuedTvCredential, _trusted_origin
 from .token_lease_journal import TokenLeaseJournal
+
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class DedicatedTvLoginDenied(ValueError):
@@ -38,6 +42,14 @@ async def provision_dedicated_tv_login(
             or owner.is_active is not True or owner.is_owner is not True):
         raise DedicatedTvLoginDenied("Authenticated owner unavailable")
     await journal.load()
+    # Do not create an orphan HA account when a previous enrollment
+    # already owns this TV identity. A committed login must never be
+    # overwritten automatically. Unfinished leases require the audited
+    # restart/revocation recovery path, not a silent retry.
+    if any(lease.tv_uuid == tv_uuid and lease.state != "revoked"
+           for lease in journal.snapshot()):
+        _LOGGER.warning("Dedicated TV enrollment blocked at phase existing_tv_lease")
+        raise DedicatedTvLoginDenied("Existing TV enrollment must be resolved")
     # Separate HA user, not owner. Owner was explicitly warned that
     # the *standard* Users role can still read/control all entities.
     user = await hass.auth.async_create_user(
@@ -50,10 +62,12 @@ async def provision_dedicated_tv_login(
             or {group.id for group in user.groups} != {GROUP_ID_USER}):
         raise DedicatedTvLoginDenied("Dedicated TV account rejected")
     refresh = None
+    phase = "lease_intent"
     try:
         lease = await journal.begin_intent(
             origin=origin, tv_uuid=tv_uuid,
             tv_user_id=user.id, owner_id=owner_id)
+        phase = "refresh_issuance"
         refresh = await hass.auth.async_create_refresh_token(
             user, client_id=lease.client_id)
         if (refresh is None or refresh.user is not user
@@ -62,16 +76,24 @@ async def provision_dedicated_tv_login(
                 or type(refresh.token) is not str or not refresh.token
                 or type(refresh.id) is not str or not refresh.id):
             raise DedicatedTvLoginDenied("Unexpected HA token identity")
+        phase = "record_token_handle"
         recorded = await journal.record_id(
             nonce=lease.nonce, token_id=refresh.id)
+        phase = "access_issuance"
         access = hass.auth.async_create_access_token(refresh)
         lifetime = int(refresh.access_token_expiration.total_seconds())
         if (type(access) is not str or not access or
                 not 30 <= lifetime <= 86400):
             raise DedicatedTvLoginDenied("HA access token invalid")
+        phase = "credential_ready"
         return (IssuedTvCredential(
             lease, access, refresh.token, lifetime), recorded, user)
-    except Exception:
+    except Exception as error:
+        # Intentionally log ONLY a fixed phase and exception *type*.
+        # Never log exception text, TV identifiers, account info, URLs,
+        # token IDs or token material (some HA errors can include them).
+        _LOGGER.warning("Dedicated TV login failed at phase %s (%s)",
+                        phase, type(error).__name__)
         if refresh is not None and refresh.user is user:
             try:
                 hass.auth.async_remove_refresh_token(refresh)
