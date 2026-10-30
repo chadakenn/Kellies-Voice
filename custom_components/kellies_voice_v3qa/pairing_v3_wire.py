@@ -191,8 +191,7 @@ class HaV3WireAttempt:
                     verified_tv=tv, private_key=self._private,
                     verified=self._barrier)
                 response = _response(await transport.post(
-                    "/v3/pair/owner-receipt",
-            "/v3/pair/token-stage", "/v3/pair/token-commit", {
+                    "/v3/pair/owner-receipt", {
                         "protocol": 3, "session": self.session,
                         "sequence": number, "receipt": _encode(encrypted),
                         "login_next": retain_for_login is True,
