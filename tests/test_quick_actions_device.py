@@ -83,6 +83,9 @@ class DeviceSettingsPolicyTests(unittest.TestCase):
         self.assertIn("quick_action_selects(entry)", select_code)
         self.assertIn("self.hass.config_entries.async_update_entry(", device_code)
         self.assertIn("updated_device_option(", device_code)
+        self.assertIn("self.hass.auth.async_get_user(user_id)", device_code)
+        self.assertIn("user is None or not user.is_admin", device_code)
+        self.assertIn("await self._set(value)", device_code)
         self.assertIn("TARGET_DOMAINS = (\"light\", \"scene\", \"script\")", device_code)
         self.assertNotIn("hass.services.async_call(", device_code)
 
