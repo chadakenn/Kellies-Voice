@@ -12,11 +12,12 @@ class BetaFirstRunSetupTests(unittest.TestCase):
     def test_separate_beta_only_activity_and_launch(self):
         self.assertIn('android:name=".FirstRunSetupActivity"', MANIFEST)
         self.assertIn('android:exported="false"', MANIFEST)
-        self.assertIn("FLAG_DEBUGGABLE", WIZARD)
+        self.assertIn("BuildConfig.DEBUG || BuildConfig.IS_QA", WIZARD)
+        self.assertIn("if (!BuildConfig.DEBUG && !BuildConfig.IS_QA)", WIZARD)
         self.assertIn("FirstRunSetupActivity.needsSetup(this)", VOICE)
         self.assertIn("state == null", VOICE)
         self.assertIn("startActivity(new Intent(this, FirstRunSetupActivity.class))", VOICE)
-        self.assertIn("First-time setup wizard (DEBUG)", VOICE)
+        self.assertIn("First-time setup wizard (QA)", VOICE)
         self.assertIn('getBoolean(COMPLETED, false)', WIZARD)
         self.assertIn('putBoolean(COMPLETED, true)', WIZARD)
 
