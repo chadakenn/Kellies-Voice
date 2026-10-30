@@ -23,7 +23,7 @@ import android.widget.TextView;
 /**
  * D-pad-first, explicitly consented first-run wizard for the isolated beta.
  * No microphone, wake listener, login or TV-alert service is started on entry.
- * Stable app is untouched; wizard state belongs to the .debug package.
+ * Stable app is untouched; wizard state belongs to the .debug or .qa package.
  */
 public final class FirstRunSetupActivity extends Activity {
     private static final String PREFS = "kv_first_run_setup";
@@ -37,7 +37,7 @@ public final class FirstRunSetupActivity extends Activity {
     private AppPalette palette;
 
     public static boolean needsSetup(Activity activity) {
-        return (activity.getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        return (BuildConfig.DEBUG || BuildConfig.IS_QA)
                 && !activity.getSharedPreferences(PREFS, MODE_PRIVATE)
                         .getBoolean(COMPLETED, false);
     }
@@ -45,7 +45,7 @@ public final class FirstRunSetupActivity extends Activity {
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         // This screen is test-only until first-run permission/alert hardware QA.
-        if ((getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) == 0) {
+        if (!BuildConfig.DEBUG && !BuildConfig.IS_QA) {
             finish();
             return;
         }
