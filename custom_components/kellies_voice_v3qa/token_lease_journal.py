@@ -216,6 +216,38 @@ class TokenLeaseJournal:
             records[nonce] = replace(old, state="committed")
             await self._persist(records)
 
+    async def revoke_unfinished_attempt(self, nonce: str) -> bool:
+        """Revoke exactly one failed enrollment, never other concurrent TVs."""
+        await self.load()
+        async with self._lock:
+            assert self._leases is not None
+            lease = self._leases.get(nonce)
+            if lease is None or lease.state == "committed":
+                raise LeaseRecoveryError("Cannot revoke an unrelated TV login")
+            if lease.state == "revoked":
+                return True
+            person = await self._hass.auth.async_get_user(lease.tv_user_id)
+            if person is None or person.id != lease.tv_user_id:
+                raise LeaseRecoveryError("Dedicated TV user not found")
+            candidates = [
+                token for token in person.refresh_tokens.values()
+                if token.client_id == lease.client_id
+                and token.user.id == lease.tv_user_id
+            ]
+            if len(candidates) > 1 or (lease.token_id is not None and any(
+                    token.id != lease.token_id for token in candidates)):
+                raise LeaseRecoveryError("TV lease identity ambiguous")
+            if candidates:
+                if lease.state != "revoking":
+                    update = dict(self._leases)
+                    update[nonce] = replace(lease, state="revoking")
+                    await self._persist(update)
+                self._hass.auth.async_remove_refresh_token(candidates[0])
+            update = dict(self._leases)
+            update[nonce] = replace(update[nonce], state="revoked")
+            await self._persist(update)
+            return True
+
     async def recover_unfinished(self) -> dict[str, str]:
         """Revoke orphan per-attempt tokens and retain failures for next boot.
 
