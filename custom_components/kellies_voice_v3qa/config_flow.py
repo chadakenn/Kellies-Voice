@@ -249,7 +249,11 @@ class KelliesVoiceV3QaConfigFlow(ConfigFlow, domain=DOMAIN):
                 except Exception:
                     registry.cancel(self.flow_id)
                     attempt.close()
-                    _LOGGER.warning("V3 owner approval or TV login not acknowledged")
+                    _LOGGER.exception(
+                        "V3 owner approval or TV login failed during %s",
+                        "renewable credential activation" if owner_id
+                        else "owner receipt acknowledgement",
+                    )
                     return self.async_abort(reason="owner_login_failed"
                                             if owner_id else "owner_receipt_failed")
                 return self.async_abort(
