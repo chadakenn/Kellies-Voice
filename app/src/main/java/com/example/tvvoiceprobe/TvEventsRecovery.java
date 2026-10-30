@@ -45,6 +45,14 @@ public final class TvEventsRecovery {
         return BOOT.equals(action) || REPLACED.equals(action);
     }
 
+    /** Existing manual login OR a completed owner-approved renewable grant.
+     * A staged-but-uncommitted TV grant must be reported as inactive by
+     * TvRenewableLoginVault.hasActiveLogin(), never by this policy.
+     */
+    public static boolean loginReady(boolean manualLogin, boolean renewableActive) {
+        return manualLogin || renewableActive;
+    }
+
     /**
      * @return START only when the owner already enabled alerts and the
      *         permission and saved login are still present.
