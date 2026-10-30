@@ -33,10 +33,12 @@
       "expired": "The temporary test expired. Start again using the TV physical remote.",
       "mismatch": "Codes did not match. No pairing or login was changed.",
       "verified_no_login": "SUCCESS: The physical TV and secure v3 session were verified. This is NOT a Home Assistant login. Your normal Kellie's Voice setup was not changed.",
-      "owner_unavailable": "The test could not offer secure owner verification. No login or entries were created.",
+      "owner_unavailable": "The v3 QA owner registry unexpectedly failed. Check Home Assistant system logs. No login or credentials were changed.",
       "owner_expired": "The two-minute owner approval window expired. Restart v3 pairing.",
       "owner_denied": "Owner approval was rejected or the Home Assistant account is inactive.",
-      "owner_verified_no_login": "SUCCESS: v3 TV proof and actual signed-in Home Assistant owner approval are BOTH verified. This test does not log in the TV, create a token, or change existing connections."
+      "owner_verified_no_login": "SUCCESS: v3 TV proof and actual signed-in Home Assistant owner approval are BOTH verified. This test does not log in the TV, create a token, or change existing connections.",
+      "owner_setup_missing": "The Home Assistant v3 QA approval panel was not initialized at startup. Add kellies_voice_v3qa: to configuration.yaml and restart HA. No login was changed.",
+      "owner_binding_rejected": "The verified TV owner-claim record was rejected. Check the Home Assistant system logs for v3 QA owner binding. No credential was created."
     },
     "error": {
       "unavailable": "Could not contact the temporary v3 TV test. Start again on the TV.",
