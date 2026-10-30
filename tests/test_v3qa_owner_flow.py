@@ -227,7 +227,7 @@ class V3QaOwnerFlowTests(unittest.IsolatedAsyncioTestCase):
             id="owner", is_owner=False, is_active=True)
         result = await flow.async_step_owner_approval(
             {"qa_instructions": self.flow_module._OWNER_QA_NOTICE, "ha_code": "87654321", "owner_approved": True})
-        self.assertEqual(result["reason"], "owner_denied")
+        self.assertEqual(result["reason"], "owner_receipt_failed")
 
 
 if __name__ == "__main__":
