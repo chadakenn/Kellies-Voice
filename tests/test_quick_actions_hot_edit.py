@@ -39,7 +39,7 @@ def compile_function(filename, name, cls=None, globals_=None):
 class FakeConfigEntries:
     def __init__(self):
         self.entry = types.SimpleNamespace(
-            entry_id="tv-qa", options={"native_timer_intents": False}
+            entry_id="tv-qa", options={"native_timer_intents": False, "shortcut_4_action": "Turn on"}
         )
         self.reloads = []
         self.writes = 0
