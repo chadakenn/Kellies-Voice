@@ -23,8 +23,8 @@ class BetaInstallSafetyTests(unittest.TestCase):
         self.assertIn("FLAG_DEBUGGABLE", VOICE)
         self.assertIn("showFullAppBetaTestCenter", VOICE)
         self.assertIn("PairingV3QaActivity.class", VOICE)
-        self.assertIn("TEST-ONLY OWNER RECEIPT", READINESS)
-        self.assertIn("does NOT log in", READINESS)
+        self.assertIn("optional owner-approved dedicated TV login", READINESS)
+        self.assertIn("owner receipt alone does NOT", READINESS)
         self.assertNotIn("setHaToken(", READINESS)
         self.assertNotIn("async_create_refresh_token", READINESS)
 
