@@ -39,6 +39,8 @@ class RenewableScopeContracts(unittest.TestCase):
         self.assertIn("AES/GCM/NoPadding", TV)
         self.assertIn("setRandomizedEncryptionRequired(true)", TV)
         self.assertIn("r.active = false", TV)
+        self.assertNotIn('data.put("access"', TV)
+        self.assertNotIn('data.getString("access"', TV)
         self.assertIn("activateAfterVerifiedServerCommit", TV)
         self.assertIn("!r.active", TV)
         self.assertIn("if (r == null || !r.active)", TV)
