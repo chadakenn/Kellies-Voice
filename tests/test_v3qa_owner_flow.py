@@ -34,10 +34,15 @@ class FakeConfigFlow:
 
 
 class FakeAttempt:
-    def __init__(self, session):
+    def __init__(self, session, *, retain_owner_receipt=False):
+        import time
         self.session = session
         self.waiting = False
         self.invalid = False
+        self.fail_ack = False
+        self.closed = False
+        self.retained = retain_owner_receipt
+        self._expires_at = time.monotonic() + 120
 
     async def start(self, transport):
         assert transport._base.startswith("http://192.168.1.100:")
@@ -50,8 +55,24 @@ class FakeAttempt:
             return None
         return types.SimpleNamespace(session=self.session, tv_uuid=TV)
 
+    async def finish_owner_receipt(self, transport, *, hass, claims, flow_id):
+        if self.fail_ack or not self.retained:
+            self.close()
+            raise ValueError("TV owner receipt not acknowledged")
+        owner_id = claims.consume(
+            flow_id=flow_id, session=self.session, tv_uuid=TV)
+        if owner_id is None:
+            raise ValueError("No claim")
+        user = await hass.auth.async_get_user(owner_id)
+        if (user is None or user.id != owner_id
+                or user.is_active is not True or user.is_owner is not True):
+            self.close()
+            raise ValueError("Owner no longer valid")
+        self.close()
+        return True
+
     def close(self):
-        pass
+        self.closed = True
 
 
 class V3QaOwnerFlowTests(unittest.IsolatedAsyncioTestCase):
@@ -138,9 +159,26 @@ class V3QaOwnerFlowTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(registry.claim(flow_id=flow.flow_id, session=SID, user=person))
         success = await flow.async_step_owner_approval(
             {"qa_instructions": self.flow_module._OWNER_QA_NOTICE, "ha_code": "87654321", "owner_approved": True})
-        self.assertEqual(success["reason"], "owner_verified_no_login")
+        self.assertEqual(success["reason"], "owner_receipt_verified_no_login")
         self.assertIsNone(flow._owner_tv)
         self.assertEqual([], registry.pending(user=person))
+
+    async def test_no_success_without_authenticated_tv_ack(self):
+        flow = self.make()
+        await self.verified(flow)
+        person = types.SimpleNamespace(
+            id="actual-owner", is_owner=True, is_active=True)
+        registry = self.claims.owner_claims(flow.hass)
+        self.assertTrue(registry.claim(
+            flow_id=flow.flow_id, session=SID, user=person))
+        flow._attempt.fail_ack = True
+        result = await flow.async_step_owner_approval(
+            {"qa_instructions": self.flow_module._OWNER_QA_NOTICE,
+             "ha_code": "87654321", "owner_approved": True})
+        self.assertEqual(result["reason"], "owner_receipt_failed")
+        self.assertFalse(registry.approved_for(
+            flow_id=flow.flow_id, session=SID, tv_uuid=TV))
+        self.assertIsNone(flow._attempt)
 
     async def test_bad_tv_proof_does_not_offer_owner_approval(self):
         flow = self.make()
@@ -177,7 +215,7 @@ class V3QaOwnerFlowTests(unittest.IsolatedAsyncioTestCase):
             id="another-owner", is_owner=True, is_active=True)
         result = await flow.async_step_owner_approval(
             {"qa_instructions": self.flow_module._OWNER_QA_NOTICE, "ha_code": "87654321", "owner_approved": True})
-        self.assertEqual(result["reason"], "owner_denied")
+        self.assertEqual(result["reason"], "owner_receipt_failed")
 
     async def test_owner_privileges_are_rechecked_at_end(self):
         flow = self.make()
