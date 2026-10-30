@@ -67,7 +67,7 @@ def _groups_restrict_to_exact_entities(groups, allowed: set[str]) -> None:
             if not operations or not set(operations) <= _OPERATIONS:
                 raise TvScopeRejected("Unknown entity permission")
             for action, grant in operations.items():
-                if grant not in (True, None) or type(grant) is bool and grant is False:
+                if grant is not True and grant is not None:
                     raise TvScopeRejected("Unknown permission value")
                 if action == "edit" and grant is True:
                     raise TvScopeRejected("TV may not edit entity configuration")
