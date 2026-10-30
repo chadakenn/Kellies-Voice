@@ -19,6 +19,7 @@ _COMMAND = "kellies_voice_v3qa/pair/claim_verified_owner"
     probatio.Required("type"): _COMMAND,
     probatio.Required("flow_id"): str,
     probatio.Required("tv_session"): str,
+    probatio.Optional("standard_user_login", default=False): bool,
 })
 @callback
 def websocket_claim_verified_owner(hass: HomeAssistant,
@@ -37,11 +38,13 @@ def websocket_claim_verified_owner(hass: HomeAssistant,
         return
     if not owner_claims(hass).claim(
         flow_id=msg["flow_id"], session=msg["tv_session"], user=user,
+        standard_user_login=msg.get("standard_user_login") is True,
     ):
         connection.send_error(msg["id"], websocket_api.ERR_UNAUTHORIZED,
                               "Pairing proof missing, claimed, or expired")
         return
-    connection.send_result(msg["id"], {"owner_verified": True})
+    connection.send_result(msg["id"], {"owner_verified": True, "standard_user_login":
+         msg.get("standard_user_login") is True})
 
 
 @websocket_api.websocket_command({
