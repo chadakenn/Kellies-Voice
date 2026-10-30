@@ -6,6 +6,7 @@ from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 
 from .const import DOMAIN
 from .validation import clean_tv_device_id
+from .home_shortcuts import COUNT, ACTIONS, validate_slot
 from .pairing_v3_wire import HaV3WireAttempt, AiohttpV3LanTransport
 from .pairing_key_commitment import _session_bytes
 
@@ -23,20 +24,53 @@ class KellieVoiceOptionsFlow(OptionsFlow):
     """Explicit per-TV opt-in; HA reloads the integration on change."""
 
     async def async_step_init(self, user_input=None):
+        """Configure this TV's opt-in main-screen shortcuts in HA.
+
+        Never accept client-supplied service calls. Empty slots show no tile.
+        An invalid slot rejects the whole save, preserving previous options.
+        """
+        current = dict(self.config_entry.options)
+        errors = {}
         if user_input is not None:
-            return self.async_create_entry(
-                title="", data={"native_timer_intents": bool(
-                    user_input["native_timer_intents"]
-                )}
-            )
+            updated = dict(current)
+            updated["native_timer_intents"] = bool(user_input["native_timer_intents"])
+            for slot in range(1, COUNT + 1):
+                label = user_input.get(f"shortcut_{slot}_label",
+                                       current.get(f"shortcut_{slot}_label", ""))
+                entity = user_input.get(f"shortcut_{slot}_entity",
+                                        current.get(f"shortcut_{slot}_entity", ""))
+                action = user_input.get(f"shortcut_{slot}_action",
+                                        current.get(f"shortcut_{slot}_action", "Turn on"))
+                try:
+                    validate_slot(label, entity, action)
+                except ValueError:
+                    errors["base"] = "invalid_shortcut"
+                    break
+                updated.update({
+                    f"shortcut_{slot}_label": label.strip(),
+                    f"shortcut_{slot}_entity": entity.strip(),
+                    f"shortcut_{slot}_action": action,
+                })
+            if not errors:
+                return self.async_create_entry(title="", data=updated)
+
+        fields = {
+            vol.Optional(
+                "native_timer_intents",
+                default=current.get("native_timer_intents", False)
+            ): bool,
+        }
+        for slot in range(1, COUNT + 1):
+            for field, default, value_type in (
+                ("label", "", str), ("entity", "", str),
+                ("action", "Turn on", vol.In(ACTIONS)),
+            ):
+                key = f"shortcut_{slot}_{field}"
+                fields[vol.Optional(
+                    key, default=current.get(key, default)
+                )] = value_type
         return self.async_show_form(
-            step_id="init",
-            data_schema=vol.Schema({
-                vol.Optional(
-                    "native_timer_intents",
-                    default=self.config_entry.options.get("native_timer_intents", False)
-                ): bool,
-            }),
+            step_id="init", data_schema=vol.Schema(fields), errors=errors,
         )
 
 
