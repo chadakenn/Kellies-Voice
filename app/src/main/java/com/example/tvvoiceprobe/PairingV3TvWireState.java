@@ -44,7 +44,7 @@ public final class PairingV3TvWireState implements AutoCloseable {
     }
 
     private enum State {
-        FRESH, COMMITTED, HA_VERIFIED, REVEALED, APPROVED, RECEIPT_VERIFIED, CLOSED
+        FRESH, COMMITTED, HA_VERIFIED, REVEALED, APPROVED, RECEIPT_VERIFIED, TOKEN_STAGED, CLOSED
     }
 
     private final KeyPair localKeys;
@@ -57,6 +57,7 @@ public final class PairingV3TvWireState implements AutoCloseable {
     private PairingKeyCommitment.Reveal heldReveal;
     private String visualCode;
     private String physicalProof;
+    private PairingV3ScopedTokenHandoff tokenHandoff;
 
     /** Production randomness belongs to SecureRandom; test injection is explicit. */
     public PairingV3TvWireState(KeyPair keys, String session, String tvUuid,
@@ -173,7 +174,14 @@ public final class PairingV3TvWireState implements AutoCloseable {
      */
     public synchronized PairingV3QaPingChannel.Packet consumeOwnerReceipt(
             String session, long sequence, byte[] encrypted) {
+        return consumeOwnerReceipt(session, sequence, encrypted, false);
+    }
+
+    public synchronized PairingV3QaPingChannel.Packet consumeOwnerReceipt(
+            String session, long sequence, byte[] encrypted,
+            boolean continueToLogin) {
         require(State.APPROVED, session);
+        boolean validated = false;
         try (PairingV3OwnerReceiptVerifier proof =
                 new PairingV3OwnerReceiptVerifier(
                     localKeys.getPrivate(), commitment, tvUuid,
@@ -191,11 +199,46 @@ public final class PairingV3TvWireState implements AutoCloseable {
                         java.nio.charset.StandardCharsets.US_ASCII),
                         clock.getAsLong());
             state = State.RECEIPT_VERIFIED;
+            validated = true;
             return response;
         } catch (RuntimeException error) {
             throw new IllegalArgumentException("Invalid owner receipt");
         } finally {
-            // Success AND failure tear down the one-use P-256 transcript.
+            // Only owner-opted login retains the original, bounded ECDH
+            // transcript. Failed decrypt always tears it down.
+            if (!validated || !continueToLogin) close();
+        }
+    }
+
+    /** Stage a grant into Android Keystore as INACTIVE. No access yet. */
+    public synchronized PairingV3ScopedTokenHandoff.Packet stageTvLogin(
+            String session, long sequence, byte[] encrypted, String origin,
+            PairingV3ScopedTokenHandoff.Vault vault) throws Exception {
+        require(State.RECEIPT_VERIFIED, session);
+        try {
+            tokenHandoff = new PairingV3ScopedTokenHandoff(
+                localKeys.getPrivate(), commitment, tvUuid,
+                origin, TIMEOUT_MS, clock.getAsLong());
+            PairingV3ScopedTokenHandoff.Packet reply =
+                    tokenHandoff.stageProvisional(
+                        sequence, encrypted, clock.getAsLong(), vault);
+            state = State.TOKEN_STAGED;
+            return reply;
+        } catch (Exception error) {
+            close();
+            throw error;
+        }
+    }
+
+    /** Accept only the ECDH-authenticated HA commit-ready message. */
+    public synchronized PairingV3ScopedTokenHandoff.Packet activateTvLogin(
+            String session, long sequence, byte[] encrypted,
+            PairingV3ScopedTokenHandoff.Vault vault) throws Exception {
+        require(State.TOKEN_STAGED, session);
+        try {
+            return tokenHandoff.activateAfterCommitReady(
+                sequence, encrypted, clock.getAsLong(), vault);
+        } finally {
             close();
         }
     }
@@ -206,6 +249,10 @@ public final class PairingV3TvWireState implements AutoCloseable {
         if (state == State.CLOSED) return;
         state = State.CLOSED;
         commitment.close();
+        if (tokenHandoff != null) {
+            tokenHandoff.close();
+            tokenHandoff = null;
+        }
         if (heldReveal != null) {
             Arrays.fill(heldReveal.nonce, (byte) 0);
             heldReveal = null;
