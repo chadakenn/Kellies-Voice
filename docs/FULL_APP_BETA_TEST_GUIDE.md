@@ -3,7 +3,36 @@
 **Development-only beta.** This builds the real Kellie's Voice Android TV app,
 with the full Assist/camera/announcement/overlay/screensaver feature set and an
 additional **Full app beta test center** in
-**Settings → Home Assistant**, next to the debug-only v3 secure owner test.
+**Settings → Home Assistant**, next to the debug/QA-only v3 secure owner test.
+
+## Combined v0.17.0 QA package choices
+
+**Two distinct testing APKs are possible. Neither updates the stable app.**
+
+- **Disposable debug** `com.example.tvvoiceprobe.debug`: produced by this
+  PR's Unit tests as `Kellies-Voice-full-app-beta-kit`. Every PR build can
+  have a different signing certificate, so Android may reject an update over
+  a previously installed debug app. Never uninstall stable to fix a debug
+  signature conflict. Uninstalling only the debug package deletes its debug
+  pairing, Keystore credential and settings and requires a fresh owner-approved
+  pairing.
+- **Persistently signed QA** `com.example.tvvoiceprobe.qa`: produced only
+  by an explicitly invoked **Build Kellie's Voice Signed APK** GitHub
+  workflow on this integration branch with **Publish release OFF**. It uses
+  the owner's private signing identity, has `BuildConfig.IS_QA=true`, is
+  **not debuggable**, and is separately installed from stable and debug.
+  The first-run setup wizard and secure pairing are enabled ONLY in this QA
+  variant and disposable debug variants; they remain disabled in the public
+  release build while security review is incomplete. Installing QA over an
+  older QA APK preserves login when signature matches and versionCode does
+  not decrease. Do not copy the signing key into PRs, docs, or logs.
+
+**Current QA gate:** Full app is not a public v0.17.0 prerelease. The
+Home Assistant owner still separately installs the isolated
+`kellies_voice_v3qa` QA integration ZIP. The normal stable HACS integration
+does not yet include production-ready one-click login. Quick Actions require
+a matching experimental *normal* Kellie's Voice HACS build on a disposable
+HA instance and cannot be proved merely by installing the isolated QA ZIP.
 
 ## PR #260: Owner-approved automatic login beta
 
@@ -64,7 +93,7 @@ Configuration then restart HA. Check the owner panel:
 
 ## First-run TV setup wizard (beta)
 
-On the first **ordinary launch** of a fresh debug beta installation,
+On the first **ordinary launch** of a fresh debug or signed QA test installation,
 a four-screen remote/D-pad wizard opens automatically:
 
 1. Welcome: what Kellie's Voice does, start or skip.
@@ -80,7 +109,7 @@ The wizard never starts microphone capture, background listening, TV
 notifications or camera popups simply because it was opened. Permissions
 can be skipped; **Finish** or **Skip setup for now** closes the first-run
 screen without showing it on every launch. Rerun any time under
-**Settings → Home Assistant → First-time setup wizard (DEBUG)**.
+**Settings → Home Assistant → First-time setup wizard (QA)**.
 The temporary v3 QA component only provisions login, not the regular
 alerts device. Nothing is copied from the separately installed stable app.
 
@@ -88,7 +117,7 @@ alerts device. Nothing is copied from the separately installed stable app.
 
 1. Sideload the **debug** APK as a *separate app*, launch
    **Kellie's Voice Beta**, and open
-   **Settings → Home Assistant → Full app beta test center (DEBUG)**.
+   **Settings → Home Assistant → Full app beta test center (QA)**.
 2. Review live readiness. After successful owner-approved v3 login, reopen
    the beta and verify **HOME ASSISTANT: CONNECTED AND AUTHENTICATED**
    without pasting any credentials. If you intentionally skipped ongoing TV
