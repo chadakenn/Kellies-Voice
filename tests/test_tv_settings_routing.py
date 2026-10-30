@@ -79,6 +79,13 @@ class TvSettingsRoutingTest(unittest.TestCase):
                 self.assertIn(f'onLegacySection("{section}")', compose)
                 self.assertIn(f'"{section}".equals(section)', bridge)
         self.assertIn("ComposeSettingsInterop.takeLegacySection()", ACTIVITY)
+        # Compose ON must directly open the existing explicit TV-alert
+        # consent/permission path rather than silently doing nothing.
+        self.assertIn('onLegacySection("TV_ALERTS_ENABLE")', compose)
+        self.assertIn('"TV_ALERTS_ENABLE".equals(section)', bridge)
+        self.assertIn('"TV_ALERTS_ENABLE".equals(recoverySection)', ACTIVITY)
+        self.assertIn('chooseTvNotifications();', ACTIVITY)
+
 
     def test_each_original_settings_action_has_a_destination(self):
         category = ACTIVITY.split("private void showSettingsSection(SettingsSection section) {", 1)[1].split(
