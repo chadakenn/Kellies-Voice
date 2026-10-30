@@ -16,6 +16,14 @@
           "ha_code": "Eight-digit Home Assistant code",
           "numbers_match": "All eight digits matched and I pressed OK on the actual TV remote"
         }
+      },
+      "owner_approval": {
+        "title": "Verified TV: confirm the signed-in HA owner (QA only)",
+        "description": "TV key exchange and physical remote OK passed. Open the Kellie's Voice v3 Owner QA panel in a SECOND Home Assistant browser tab; compare the eight-digit code {code} again and click Approve this TV. Return to this dialog and continue. This does NOT connect the TV or authorize credentials.",
+        "data": {
+          "ha_code": "HA eight-digit verification code",
+          "owner_approved": "I clicked Approve this TV in the signed-in HA owner panel"
+        }
       }
     },
     "abort": {
@@ -24,11 +32,16 @@
       "cancelled": "Cancelled: your current HA and TV login were not changed.",
       "expired": "The temporary test expired. Start again using the TV physical remote.",
       "mismatch": "Codes did not match. No pairing or login was changed.",
-      "verified_no_login": "SUCCESS: The physical TV and secure v3 session were verified. This is NOT a Home Assistant login. Your normal Kellie's Voice setup was not changed."
+      "verified_no_login": "SUCCESS: The physical TV and secure v3 session were verified. This is NOT a Home Assistant login. Your normal Kellie's Voice setup was not changed.",
+      "owner_unavailable": "The test could not offer secure owner verification. No login or entries were created.",
+      "owner_expired": "The two-minute owner approval window expired. Restart v3 pairing.",
+      "owner_denied": "Owner approval was rejected or the Home Assistant account is inactive.",
+      "owner_verified_no_login": "SUCCESS: v3 TV proof and actual signed-in Home Assistant owner approval are BOTH verified. This test does not log in the TV, create a token, or change existing connections."
     },
     "error": {
       "unavailable": "Could not contact the temporary v3 TV test. Start again on the TV.",
-      "waiting_for_tv": "Waiting for the physical TV remote approval. Verify all digits and press OK on the TV."
+      "waiting_for_tv": "Waiting for the physical TV remote approval. Verify all digits and press OK on the TV.",
+      "owner_pending": "An HA owner has not approved this TV yet. Open the v3 Owner QA panel in another browser tab and click Approve this TV, then retry."
     }
   }
 }

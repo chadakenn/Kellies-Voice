@@ -1,12 +1,22 @@
 """Isolated two-screen verification only. Never creates a HA config entry."""
+import time
 import voluptuous as vol
 from homeassistant.config_entries import ConfigFlow
 from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 
 from .pairing_key_commitment import _session_bytes
 from .pairing_v3_wire import HaV3WireAttempt, AiohttpV3LanTransport
+from .owner_claim import owner_claims
+from . import async_register_qa_owner_controls
 
 DOMAIN = "kellies_voice_v3qa"
+_OWNER_QA_NOTICE = (
+    "V3 OWNER TEST ONLY. Keep this pairing dialog open. In a SECOND "
+    "Home Assistant browser tab (signed in as the HA owner), open "
+    "/kellies-voice-v3qa-approval. Compare the exact eight-digit TV "
+    "code, click Approve this TV, then return here and check "
+    "owner_approved. This does NOT sign the TV in or issue any token."
+)
 
 
 def _text(properties: dict, key: str) -> str:
@@ -26,6 +36,9 @@ class KelliesVoiceV3QaConfigFlow(ConfigFlow, domain=DOMAIN):
         self._transport = None
         self._attempt = None
         self._code = None
+        self._owner_tv = None
+        self._owner_code = None
+        self._owner_deadline = 0
 
     async def async_step_user(self, user_input=None):
         # A manual Add Integration cannot establish a trusted ephemeral TV.
@@ -101,17 +114,89 @@ class KelliesVoiceV3QaConfigFlow(ConfigFlow, domain=DOMAIN):
             if result is None:
                 errors["base"] = "waiting_for_tv"
             else:
+                # The independent v3 ECDH+UUID-bound physical-TV MAC is
+                # verified BEFORE an HA owner claim can be registered.
+                verified_code = self._code
                 self._attempt = None
                 self._code = None
-                # Verified MAC proves remote OK, NOT Home Assistant login.
-                # Intentionally no async_create_entry, OAuth, storage or tokens.
-                return self.async_abort(reason="verified_no_login")
+                try:
+                    await async_register_qa_owner_controls(self.hass)
+                    owner_claims(self.hass).begin(
+                        flow_id=self.flow_id, session=result.session,
+                        tv_uuid=result.tv_uuid, comparison_code=verified_code)
+                except Exception:
+                    owner_claims(self.hass).cancel(self.flow_id)
+                    return self.async_abort(reason="owner_unavailable")
+                self._owner_tv = result
+                self._owner_code = verified_code
+                self._owner_deadline = time.monotonic() + 120
+                return await self.async_step_owner_approval()
         return self.async_show_form(
             step_id="v3_code",
             description_placeholders={"code": self._code},
             data_schema=vol.Schema({
                 vol.Required("ha_code", default=self._code): str,
                 vol.Required("numbers_match"): bool,
+            }),
+            errors=errors,
+        )
+
+    async def async_step_owner_approval(self, user_input=None):
+        """Require an independently authenticated HA owner after TV proof.
+
+        No owner ID is accepted from a config-flow form, TV, or mDNS.
+        This form NEVER creates a config entry or sends a token.
+        """
+        tv = self._owner_tv
+        if (tv is None or time.monotonic() >= self._owner_deadline):
+            if tv is not None:
+                owner_claims(self.hass).cancel(self.flow_id)
+            self._owner_tv = None
+            self._owner_code = None
+            return self.async_abort(reason="owner_expired")
+        errors = {}
+        if user_input is not None:
+            if user_input.get("owner_approved") is not True:
+                owner_claims(self.hass).cancel(self.flow_id)
+                self._owner_tv = None
+                self._owner_code = None
+                return self.async_abort(reason="cancelled")
+            if user_input.get("qa_instructions") != _OWNER_QA_NOTICE:
+                owner_claims(self.hass).cancel(self.flow_id)
+                self._owner_tv = None
+                self._owner_code = None
+                return self.async_abort(reason="owner_denied")
+            if user_input.get("ha_code") != self._owner_code:
+                owner_claims(self.hass).cancel(self.flow_id)
+                self._owner_tv = None
+                self._owner_code = None
+                return self.async_abort(reason="mismatch")
+            owner_id = owner_claims(self.hass).consume(
+                flow_id=self.flow_id, session=tv.session, tv_uuid=tv.tv_uuid)
+            if owner_id is None:
+                errors["base"] = "owner_pending"
+            else:
+                try:
+                    person = await self.hass.auth.async_get_user(owner_id)
+                except Exception:
+                    person = None
+                if (person is None
+                        or getattr(person, "id", None) != owner_id
+                        or getattr(person, "is_owner", False) is not True
+                        or getattr(person, "is_active", False) is not True):
+                    self._owner_tv = None
+                    return self.async_abort(reason="owner_denied")
+                self._owner_tv = None
+                self._owner_code = None
+                # A real owner approved this exact proof. Still NO LOGIN.
+                return self.async_abort(reason="owner_verified_no_login")
+        return self.async_show_form(
+            step_id="owner_approval",
+            description_placeholders={"code": self._owner_code},
+            data_schema=vol.Schema({
+                vol.Required("qa_instructions", default=_OWNER_QA_NOTICE): str,
+                vol.Required("ha_code", default=self._owner_code): str,
+                vol.Required("owner_approved"): bool,
             }),
             errors=errors,
         )

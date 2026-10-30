@@ -1,10 +1,12 @@
 {
   "domain": "kellies_voice_v3qa",
   "name": "Kellie's Voice v3 QA (no login)",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "config_flow": true,
   "dependencies": [
-    "zeroconf"
+    "zeroconf",
+    "frontend",
+    "panel_custom"
   ],
   "zeroconf": [
     "_kellies-pair._tcp.local."

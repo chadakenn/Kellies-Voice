@@ -14,7 +14,7 @@ This folder is a separate, minimal Home Assistant custom integration. Its domain
 4. Restart Home Assistant. Confirm your existing Kellie's Voice entities, services and live TV are still working.
 5. On the **separately installed DEBUG TV APK**, go to Settings → Home Assistant → Secure pairing v3 (DEBUG TEST ONLY) → Start 2-minute v3 test.
 6. In HA Settings → Devices & services, select the new **Kellie's Voice v3 SAFE TEST** discovery (not your production Kellie's Voice), then select Start.
-7. Compare all eight digits, press OK on the actual TV remote, and confirm in HA. The successful result is a message, **not a new TV or working OAuth login**.
+7. Compare all eight digits, press OK on the physical TV remote, then proceed to the **owner_approval** step. In a second HA owner browser tab open `/kellies-voice-v3qa-approval` and click **Approve this TV** for the identical code. Return to the original HA dialog and submit. Expect **`owner_verified_no_login`**, never a new TV or working OAuth login.
 
 Stop if you see a request for an HA token, login, or if the original `kellies_voice` folder is going to be replaced. You do not need to disable or uninstall the production integration.
 
@@ -23,3 +23,20 @@ Stop if you see a request for an HA token, login, or if the original `kellies_vo
 Delete ONLY `/config/custom_components/kellies_voice_v3qa` and restart HA. Nothing is supposed to be stored in HA config entries or Android Keystore by this test.
 
 Drafts #247 and this isolated package stay off main and public releases until the relevant security review and real-device QA pass.
+## v3 authenticated owner proof (draft, optional QA step)
+
+After all eight digits match and you approve using the TV remote, this QA
+version **does not yet finish**. The new `owner_approval` form must receive
+a separate confirmation from an authenticated, active **Home Assistant owner**.
+Keep the pairing flow OPEN in the first browser tab. In a second tab, open
+`/kellies-voice-v3qa-approval` on the SAME Home Assistant instance.
+Verify the exact code displayed there, click **Approve this TV**, and return
+to the original config flow. Only after the backend confirms both TV and
+owner proofs will HA report `owner_verified_no_login`.
+
+A signed-in ordinary admin who is not the HA owner must be rejected.
+Do not type a Home Assistant user ID anywhere. Close the QA flow or allow
+the 120-second session to expire to discard it. Moving between Home
+Assistant panel and config-flow modal in one tab may dismiss the modal,
+so two tabs are necessary for this **developer test**. This is NOT the
+consumer one-click onboarding UI and does not issue credentials.
