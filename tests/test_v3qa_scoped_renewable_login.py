@@ -13,6 +13,11 @@ import types
 import unittest
 from unittest.mock import patch
 
+try:
+    from cryptography.hazmat.primitives.asymmetric import ec
+except ImportError:
+    ec = None
+
 ROOT = (Path(__file__).resolve().parents[1] /
         "custom_components/kellies_voice_v3qa")
 PKG = "kv_safe_renewable_login_test"
@@ -193,8 +198,8 @@ class SafeRenewalTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(issuer.TvLoginDenied):
             issuer.revoke_by_saved_lease(self.hass, dict(token_id="x"))
 
+    @unittest.skipUnless(ec is not None, "v3 cryptography optional in general HA CI")
     async def test_commit_only_after_cryptographic_activation_ack_and_final_scope_check(self):
-        from cryptography.hazmat.primitives.asymmetric import ec
         keys = importlib.import_module(PKG + ".pairing_key_commitment")
         v3 = importlib.import_module(PKG + ".pairing_v3_verified")
         wire = importlib.import_module(PKG + ".pairing_v3_wire")
