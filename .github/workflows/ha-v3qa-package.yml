@@ -36,9 +36,15 @@ jobs:
           python -m pip install --disable-pip-version-check cryptography==46.0.4
           python -m unittest discover -s tests -p 'test_v3qa_aead.py' -v
           python -m unittest discover -s tests -p 'test_v3qa_owner_receipt.py' -v
+          python -m unittest discover -s tests -p 'test_v3qa_scoped_token_handoff.py' -v
+          python -m unittest discover -s tests -p 'test_v3qa_scoped_renewable_login.py' -v
           python -m unittest discover -s tests -p 'test_v3qa_receipt_wire_end_to_end.py' -v
       - name: Prove HA owner approval encrypts only a bound one-use receipt
         run: python -m unittest discover -s tests -p 'test_v3qa_owner_receipt.py' -v
+      - name: Prove restricted renewable login and crash reaper before hardware
+        run: python -m unittest discover -s tests -p 'test_v3qa_scoped_renewable_login.py' -v
+      - name: Enforce renewable-login inactive staging and HTTP safety
+        run: python -m unittest discover -s tests -p 'test_v3qa_renewable_login_contract.py' -v
       - name: Verify ZIP is isolated
         run: |
           python - <<'PY'
