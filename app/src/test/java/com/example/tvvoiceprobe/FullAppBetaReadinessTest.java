@@ -9,8 +9,8 @@ public final class FullAppBetaReadinessTest {
         String status = FullAppBetaReadiness.describe(
                 false, false, false, false, false, false, false);
         assertTrue(status.contains("NOT CONFIGURED"));
-        assertTrue(status.contains("TEST-ONLY OWNER RECEIPT"));
-        assertTrue(status.contains("does NOT log in"));
+        assertTrue(status.contains("optional owner-approved dedicated TV login"));
+        assertTrue(status.contains("owner receipt alone does NOT"));
         assertFalse(status.contains("CONNECTED AND AUTHENTICATED"));
     }
 
