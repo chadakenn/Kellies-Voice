@@ -171,6 +171,12 @@ public final class PairingKeyCommitment {
             return !closed && peerPublic != null;
         }
 
+        /** Package-only role accessor, fails if commitments were not verified. */
+        synchronized String verifiedRole() {
+            if (!ready()) throw new IllegalStateException("v3 peer not verified");
+            return role;
+        }
+
         synchronized VerifiedTranscript verifiedTranscript() {
             if (!ready()) throw new IllegalStateException("v3 peer not verified");
             // Capture all six fields with one lock. A cancellation on another
