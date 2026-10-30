@@ -35,10 +35,9 @@ public final class PairingV3QaActivity extends Activity {
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
-        if ((getApplicationInfo().flags &
-                android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) == 0) {
-            // This must never be advertised in the signed public APK
-            // while credential pairing remains an unfinished protocol.
+        if (!BuildConfig.DEBUG && !BuildConfig.IS_QA) {
+            // Available only in disposable debug or explicitly signed QA variants.
+            // Never expose this experimental credential flow in the public APK.
             finish();
             return;
         }
