@@ -56,13 +56,13 @@ public final class PairingV3QaActivity extends Activity {
         TextView heading = text("KELLIE'S VOICE  |  SECURE TV PAIRING", 25, GOLD);
         heading.setTypeface(Typeface.DEFAULT_BOLD);
         root.addView(heading);
-        root.addView(text("V3 BETA  •  OPTIONAL OWNER-APPROVED LOGIN", 16, MUTED));
+        root.addView(text("V3 TEST MODE  •  OPTIONAL OWNER-APPROVED LOGIN", 16, MUTED));
         root.addView(text(
             "Start a short local pairing window, compare the same eight-digit "
             + "code in Home Assistant and on this TV, then press OK. "
             + "After TV OK, approve this TV in the signed-in HA owner panel "
             + "and keep this screen visible for the encrypted receipt. "
-            + "NO login, microphone or existing alerts are changed.",
+            + "Login is optional; microphone and existing alerts remain unchanged.",
             18, FG));
 
         status = text(
@@ -94,7 +94,7 @@ public final class PairingV3QaActivity extends Activity {
                     + "In Home Assistant, use the owner approval page then "
                     + "Submit in the original dialog BEFORE the two-minute "
                     + "window expires. Await encrypted owner acknowledgement. "
-                    + "This test does not sign in.");
+                    + "If the owner opted into login, wait for activation.");
                 code.setVisibility(View.VISIBLE);
             } else {
                 status.setText("Pairing expired. Start a new attempt.");
