@@ -137,7 +137,8 @@ public final class PairingV3QaActivity extends Activity {
                 stateMessage -> {
                     if (attempt != generation || isFinishing() || isDestroyed()) return;
                     if (stateMessage.startsWith(
-                            "SECURE OWNER APPROVAL VERIFIED")) {
+                            "SECURE OWNER APPROVAL VERIFIED")
+                            || stateMessage.startsWith("TV LOGIN ACTIVATED")) {
                         // Tear down the now-consumed debug LAN listener and
                         // its pending expiry callback. Keep success visible.
                         stopWindow();
