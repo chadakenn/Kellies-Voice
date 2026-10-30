@@ -37,6 +37,14 @@ final class PairingV3ScopedTokenHandoff implements AutoCloseable {
     private boolean closed;
     private String tokenId;
 
+    /** Inject an Android Keystore vault in the app, a fake in JVM tests. */
+    interface Vault {
+        void stage(TvRenewableLoginPolicy.Grant grant, String refresh,
+                   String access, long lifetime) throws Exception;
+        void activateAfterVerifiedServerCommit(
+                String tvUuid, String tokenId) throws Exception;
+    }
+
     static final class Packet {
         final long sequence;
         final byte[] sealed;
@@ -163,7 +171,7 @@ final class PairingV3ScopedTokenHandoff implements AutoCloseable {
      * Decrypt and STAGE first; a missing storage commit means NO stage ACK.
      */
     synchronized Packet stageProvisional(long seq, byte[] encrypted,
-            long nowMillis, TvRenewableLoginVault vault) throws Exception {
+            long nowMillis, Vault vault) throws Exception {
         check(0, nowMillis);
         if (seq != 1 || vault == null) {
             close();
@@ -198,7 +206,7 @@ final class PairingV3ScopedTokenHandoff implements AutoCloseable {
 
     /** Only a verified HA->TV 'commit-ready' can activate the staged grant. */
     synchronized Packet activateAfterCommitReady(long seq, byte[] encrypted,
-            long nowMillis, TvRenewableLoginVault vault) throws Exception {
+            long nowMillis, Vault vault) throws Exception {
         check(1, nowMillis);
         if (seq != 2 || vault == null || tokenId == null) {
             close();
