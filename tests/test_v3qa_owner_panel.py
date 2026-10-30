@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import importlib
+import hashlib
 from pathlib import Path
 import sys
 import types
@@ -45,10 +46,15 @@ class OwnerPanelTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual("kellies-voice-v3qa-approval", args["frontend_url_path"])
             self.assertIs(args["require_admin"], True)
             self.assertEqual("kellies_voice_v3qa", args["config_panel_domain"])
-            self.assertEqual("/api/kellies_voice_v3qa/owner-panel.js", args["module_url"])
+            asset_bytes = (ROOT / "frontend" /
+                           "kellies-voice-v3qa-owner-panel.js").read_bytes()
+            expected_digest = hashlib.sha256(asset_bytes).hexdigest()[:12]
+            self.assertEqual(
+                "/api/kellies_voice_v3qa/owner-panel.js?v=" + expected_digest,
+                args["module_url"])
             self.assertIs(args["embed_iframe"], False)
             static = hass.http.async_register_static_paths.await_args.args[0][0]
-            self.assertEqual(args["module_url"], static[0])
+            self.assertEqual("/api/kellies_voice_v3qa/owner-panel.js", static[0])
             self.assertFalse(static[2])
             self.assertTrue(Path(static[1]).is_file())
 
