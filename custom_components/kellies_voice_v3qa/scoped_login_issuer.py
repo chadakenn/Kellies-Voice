@@ -105,7 +105,7 @@ async def issue_provisional(
         if user2 is not user or scope2 != proof:
             raise TvLoginDenied("TV scope changed during authorization")
         refresh = await hass.auth.async_create_refresh_token(
-            user, client_id=lease.client_id, token_type="normal",
+            user, client_id=lease.client_id,
         )
         if (refresh is None or refresh.user is not user
                 or refresh.client_id != lease.client_id
