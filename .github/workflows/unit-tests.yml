@@ -27,6 +27,10 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
       - name: Run fast JVM unit tests without native engine
         run: ./gradlew --no-daemon -PskipWakeNative=true :app:testDebugUnitTest
+      - name: Compile non-debuggable QA variant without signing secrets
+        # PRs must not have access to the long-term signing key.
+        # This checks Kotlin/Java variant compilation, NOT an installable QA APK.
+        run: ./gradlew --no-daemon -PskipWakeNative=true :app:compileQaKotlin :app:compileQaJavaWithJavac
       - name: Build actual JNI-enabled debug APK for TV hardware testing
         # The previous skipWakeNative assembleDebug uploaded an APK with NO
         # libmicrowakeword.so; it could not test wake-word capture on a TV.
