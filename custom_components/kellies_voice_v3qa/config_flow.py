@@ -169,6 +169,7 @@ class KelliesVoiceV3QaConfigFlow(ConfigFlow, domain=DOMAIN):
                 except Exception:
                     person = None
                 if (person is None
+                        or getattr(person, "id", None) != owner_id
                         or getattr(person, "is_owner", False) is not True
                         or getattr(person, "is_active", False) is not True):
                     self._owner_tv = None
