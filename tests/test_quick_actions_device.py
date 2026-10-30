@@ -78,7 +78,16 @@ class DeviceSettingsPolicyTests(unittest.TestCase):
 
     def test_entities_are_native_config_controls_on_device_page(self):
         self.assertIn("EntityCategory.CONFIG", device_code)
-        self.assertIn('f"Quick Action {slot} · {name}"', device_code)
+        self.assertIn('order = {"label": "1", "entity": "2", "action": "3"}[field]', device_code)
+        self.assertIn('f"Quick Action {slot} · {order}. {name}"', device_code)
+        # HA sorts its device Configuration card alphabetically by name.
+        for slot in range(1, 5):
+            fields = [
+                f"Quick Action {slot} · 1. Button label",
+                f"Quick Action {slot} · 2. Target",
+                f"Quick Action {slot} · 3. Action",
+            ]
+            self.assertEqual(fields, sorted(fields))
         self.assertIn("quick_action_labels(entry)", text_code)
         self.assertIn("quick_action_selects(entry)", select_code)
         self.assertIn("self.hass.config_entries.async_update_entry(", device_code)
