@@ -15,7 +15,7 @@ class BetaInstallSafetyTests(unittest.TestCase):
         self.assertIn("applicationIdSuffix '.debug'", GRADLE)
         self.assertIn("manifestPlaceholders['appDisplayName'] = \"Kellie's Voice Beta\"", GRADLE)
         self.assertIn('appDisplayName: "Kellie\'s Voice"', GRADLE)
-        self.assertIn('android:label="' + '
+        self.assertIn('android:label="' + chr(36) + '{appDisplayName}"', MANIFEST)
         self.assertIn("versionNameSuffix '-test'", GRADLE)
 
     def test_beta_menu_is_debug_only_not_a_public_new_login(self):
