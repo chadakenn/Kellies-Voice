@@ -211,6 +211,14 @@ public final class PairingV3Verified {
         }
     }
 
+    /** Package-only QA channel material; caller must erase returned bytes.
+     * This is NOT owner approval or an Android login.
+     */
+    static byte[] qaChannelMaterial(PrivateKey privateKey,
+            PairingKeyCommitment.Session verified) {
+        return derive(privateKey, verified);
+    }
+
     /** Exactly eight ASCII digits, derived only from the full v3 transcript. */
     public static String comparisonCode(PrivateKey privateKey,
             PairingKeyCommitment.Session session) {
