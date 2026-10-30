@@ -192,7 +192,11 @@ class TvLanCredentialRouteTests(unittest.IsolatedAsyncioTestCase):
     """Exercise the real aiohttp route guard without network or secrets."""
 
     async def test_post_only_encrypted_handoff_routes_and_no_other_routes(self):
-        wire = importlib.import_module(PKG + ".pairing_v3_wire")
+        route_pkg = "kv_v3qa_route_test"
+        module = types.ModuleType(route_pkg)
+        module.__path__ = [str(ROOT)]
+        with patch.dict(sys.modules, {route_pkg: module}):
+            wire = importlib.import_module(route_pkg + ".pairing_v3_wire")
         transport = wire.AiohttpV3LanTransport("192.168.1.50", 12345)
         requests = []
 
