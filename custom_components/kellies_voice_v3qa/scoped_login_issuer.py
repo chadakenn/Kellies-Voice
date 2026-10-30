@@ -148,3 +148,47 @@ def revoke_by_saved_lease(hass, lease: TokenLease) -> bool:
         raise TvLoginDenied("TV token identity mismatched")
     hass.auth.async_remove_refresh_token(token)
     return True
+
+
+async def finalize_after_authenticated_activation(
+    hass, journal: TokenLeaseJournal, *,
+    lease: TokenLease, handoff, alert_entity_id: str,
+    assist_entity_ids: tuple[str, ...],
+) -> None:
+    """Persist successful enrollment last, after exact TV signed activation.
+
+    This is an OFFLINE review hook, not a WebSocket or HTTP endpoint.
+    Caller must have verified the exact owner claim and physical remote OK
+    before creating the handoff. The Python handoff object is NOT an
+    authentication credential and must never be passed in from a client.
+    """
+    from .scoped_token_handoff import HaTokenHandoff
+    if (type(journal) is not TokenLeaseJournal
+            or type(lease) is not TokenLease
+            or type(handoff) is not HaTokenHandoff
+            or not handoff._closed or handoff._phase != 4
+            or lease.state != "issued"
+            or handoff.tv_uuid != lease.tv_uuid):
+        raise TvLoginDenied("No authenticated TV activation ACK")
+    await journal.load()
+    matching = [
+        entry for entry in journal.snapshot()
+        if entry.nonce == lease.nonce
+    ]
+    if len(matching) != 1 or matching[0] != lease:
+        raise TvLoginDenied("Durable TV token identity mismatch")
+    user, proof = await restricted_preflight(
+        hass, owner_id=lease.owner_id,
+        tv_user_id=lease.tv_user_id, tv_uuid=lease.tv_uuid,
+        alert_entity_id=alert_entity_id,
+        assist_entity_ids=assist_entity_ids,
+    )
+    token = hass.auth.async_get_refresh_token(lease.token_id)
+    if (token is None or token.id != lease.token_id
+            or token.user is not user or token.client_id != lease.client_id
+            or token.token_type != "normal"
+            or proof.tv_user_id != lease.tv_user_id):
+        raise TvLoginDenied("Revoked or changed TV grant")
+    # Failure to durably commit means next HA restart REVOKES the provisional
+    # token, even if the TV received a commit-ready message and turned on.
+    await journal.commit(lease.nonce)
