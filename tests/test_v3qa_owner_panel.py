@@ -1,6 +1,7 @@
 """HA owner-pairing custom panel registration; no browser or real HA needed."""
 from __future__ import annotations
 
+import asyncio
 import importlib
 import hashlib
 from pathlib import Path
@@ -35,7 +36,7 @@ class OwnerPanelTests(unittest.IsolatedAsyncioTestCase):
         }
         with patch.dict(sys.modules, modules):
             module = importlib.import_module(PACKAGE + ".owner_panel")
-            hass = types.SimpleNamespace(data={})
+            hass = types.SimpleNamespace(data={}, async_add_executor_job=lambda fn, *args: asyncio.to_thread(fn, *args))
             hass.http = types.SimpleNamespace(async_register_static_paths=AsyncMock())
             await module.async_register_pairing_approval_panel(hass)
             await module.async_register_pairing_approval_panel(hass)
