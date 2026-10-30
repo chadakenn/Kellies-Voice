@@ -9,9 +9,10 @@ additional **Full app beta test center** in
 
 This kit now has a second, opt-in way to connect: verify the eight-digit
 TV code, approve in the signed-in HA owner panel, and explicitly check
-**dedicated ongoing TV login**. With an HTTPS HA address configured, the
-TV receives its own renewable account and should reconnect without a
-copied token. **The standard non-admin Users role can control all
+**dedicated ongoing TV login**. When Home Assistant Cloud HTTPS is enabled, the
+TV uses that existing URL to receive its own renewable account and should
+reconnect without a copied token. Cloud sign-ins require a remote-capable
+dedicated account. **The standard non-admin Users role can control all
 Home Assistant entities**, so approve only for a trusted TV.
 
 Read `OWNER_APPROVED_LOGIN_TEST.md` in the kit before trying this path.
