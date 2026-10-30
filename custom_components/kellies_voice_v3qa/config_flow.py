@@ -17,7 +17,8 @@ _OWNER_QA_NOTICE = (
     "Home Assistant browser tab (signed in as the HA owner), open "
     "/kellies-voice-v3qa-approval. Compare the exact eight-digit TV "
     "code, click Approve this TV, then return here and check "
-    "owner_approved. This does NOT sign the TV in or issue any token."
+    "owner_approved. Ongoing login is optional only if the owner explicitly "
+    "checks the dedicated non-admin Users account option in the owner panel."
 )
 
 
