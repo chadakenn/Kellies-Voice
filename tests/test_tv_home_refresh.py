@@ -25,14 +25,18 @@ class TvHomeRefreshTests(unittest.TestCase):
         self.assertIn('BuildConfig.DEBUG || BuildConfig.IS_QA', home)
         self.assertIn('ComposeSettingsActivity.class', home)
         self.assertIn('showSettingsDashboard();', home)
-        self.assertIn("root.addView(scroller", home)
+        # The idle center now hosts Quick Actions, not permanent transcript cards.
+        self.assertIn("root.addView(centerArea, centerSpace)", home)
+        self.assertIn("centerArea.addView(quickHost", home)
+        self.assertIn("centerArea.addView(captionOverlay", home)
 
-    def test_voice_and_reply_updates_reuse_original_text_fields(self):
-        self.assertIn('recognized = label("Nothing yet"', ACTIVITY)
-        self.assertIn('response = label("Your answer will appear here."', ACTIVITY)
-        self.assertIn('recognized.setText(value)', ACTIVITY)
-        self.assertIn('response.setText(value)', ACTIVITY)
-        self.assertIn('if (recognized != null) recognized.setText("Listening...")', ACTIVITY)
+    def test_voice_and_reply_updates_use_temporary_captions(self):
+        self.assertNotIn('recognized = label("Nothing yet"', ACTIVITY)
+        self.assertNotIn('response = label("Your answer will appear here."', ACTIVITY)
+        self.assertIn('showCaption("Listening…", false)', ACTIVITY)
+        self.assertIn('showCaption("You said: " +', ACTIVITY)
+        self.assertIn('showCaption(text, large)', ACTIVITY)
+        self.assertIn('if (!captionSpeechActive)', ACTIVITY)
         self.assertIn('if (status != null) status.setText(message)', ACTIVITY)
 
     def test_all_home_elements_recolor_when_skin_changes(self):
@@ -40,8 +44,8 @@ class TvHomeRefreshTests(unittest.TestCase):
             "private void addButton(", 1
         )[0]
         for name in ("mainTitle", "homeSubtitle", "homePrivacyLabel", "connection",
-                     "status", "answerHeading", "response", "transcriptHeading", "recognized",
-                     "homeAnswerCard", "homeTranscriptCard", "homeStatusCard", "homeConnectionCard"):
+                     "status", "captionText", "captionOverlay",
+                     "homeStatusCard", "homeConnectionCard"):
             with self.subTest(name=name):
                 self.assertIn(name, palette)
         self.assertIn("b.hasFocus()", palette)
