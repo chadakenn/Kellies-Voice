@@ -227,6 +227,7 @@ class HaV3WireAttempt:
             raise ValueError("TV owner consent missing")
         tv = self._verified_tv
         user = None
+        committed = False
         try:
             issued, recorded, user = await provision_dedicated_tv_login(
                 hass, journal, owner_id=owner_id, tv_uuid=tv.tv_uuid,
@@ -256,12 +257,22 @@ class HaV3WireAttempt:
                 handoff.accept_activation_ack(
                     response["ack_seq"], _decode(response["ack"]))
                 await journal.commit(recorded.nonce)
+                committed = True
                 return True
             finally:
                 handoff.close()
         finally:
-            # If HA fails before commit, journal recovery revokes the token.
-            # The dedicated user can be removed separately by the HA owner.
+            if not committed and user is not None:
+                try:
+                    outcome = await journal.recover_unfinished()
+                    # Do not erase the account if a token could remain active.
+                    if (outcome and all(v == "revoked" for v in outcome.values())
+                            and not user.refresh_tokens):
+                        await hass.auth.async_remove_user(user)
+                except Exception:
+                    # Journal remains durable for next HA restart. Do not
+                    # falsely claim cleanup if disk/revocation failed.
+                    pass
             self.close()
 
     def close(self) -> None:
