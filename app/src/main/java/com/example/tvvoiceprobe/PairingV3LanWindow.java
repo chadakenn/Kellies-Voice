@@ -240,6 +240,31 @@ public final class PairingV3LanWindow implements AutoCloseable {
                     payload.put("proof", result.proof);
                 }
                 answer(socket, 200, payload);
+            } else if ("POST /v3/pair/owner-receipt HTTP/1.1".equals(firstLine)) {
+                // Accept only an authenticated, owner-approved and session-bound
+                // *encrypted* receipt. No tokens, credentials or generic API.
+                JSONObject payload = readJson(socket);
+                if (payload.length() != 4
+                        || !(payload.opt("protocol") instanceof Integer)
+                        || payload.getInt("protocol") != 3
+                        || !session.equals(payload.optString("session", ""))
+                        || !(payload.opt("sequence") instanceof Integer)
+                        || !(payload.opt("receipt") instanceof String)) {
+                    throw new IOException("Invalid v3 owner receipt request");
+                }
+                int seq = payload.getInt("sequence");
+                byte[] encrypted = b64(payload.getString("receipt"), 30);
+                PairingV3QaPingChannel.Packet ack =
+                        state.consumeOwnerReceipt(session, seq, encrypted);
+                answer(socket, 200, base()
+                        .put("ack_seq", ack.sequence)
+                        .put("ack", encode(ack.ciphertext)));
+                main.post(() -> {
+                    if (!closed.get()) statusListener.accept(
+                        "SECURE OWNER APPROVAL VERIFIED on this TV. "
+                        + "Encrypted TV acknowledgement sent to Home Assistant. "
+                        + "NO HOME ASSISTANT LOGIN OR TOKEN WAS CREATED.");
+                });
             } else {
                 // No v2 route, no redirect to v2, no credential handler.
                 answer(socket, 404, errorJson("not_available"));

@@ -168,4 +168,69 @@ public final class PairingV3TvWireStateTest {
             assertTrue(x.tv.isClosed());
         }
     }
+    private static byte[] receiptFixture() {
+        String hex = "e5604d85a1208646dc1e6db915a359d53967bb7822568f04b77b8ba2146c";
+        byte[] body = new byte[hex.length() / 2];
+        for (int i = 0; i < body.length; i++) {
+            body[i] = (byte) Integer.parseInt(hex.substring(i * 2, i * 2 + 2), 16);
+        }
+        return body;
+    }
+
+    @Test public void actualTvStateRequiresOwnerReceiptAfterPhysicalOkAndAcksCryptographically()
+            throws Exception {
+        try (Setup x = new Setup()) {
+            x.commits(); x.haReveal(); x.revealTv();
+            PairingV3QaPingChannel haAck = new PairingV3QaPingChannel(
+                    x.haKeys.getPrivate(), x.ha, UUID, 60000, x.clock.get());
+            try {
+                // No encrypted receipt before real physical TV remote action.
+                try { x.tv.consumeOwnerReceipt(SID, 1, receiptFixture());
+                    fail("Accepted owner receipt without physical remote OK"); }
+                catch (IllegalStateException expected) { }
+                assertTrue(x.tv.isClosed());
+            } finally { haAck.close(); }
+        }
+        try (Setup x = new Setup()) {
+            x.commits(); x.haReveal(); x.revealTv();
+            x.tv.approveFromPhysicalTvRemote(SID);
+            try (PairingV3QaPingChannel haAck = new PairingV3QaPingChannel(
+                    x.haKeys.getPrivate(), x.ha, UUID, 60000, x.clock.get())) {
+                PairingV3QaPingChannel.Packet ack = x.tv.consumeOwnerReceipt(
+                        SID, 1, receiptFixture());
+                assertEquals(1L, ack.sequence);
+                assertEquals("qa-pong", new String(haAck.open(
+                    ack.sequence, ack.ciphertext, x.clock.get()),
+                    java.nio.charset.StandardCharsets.US_ASCII));
+                assertTrue(x.tv.isClosed());
+                try { x.tv.consumeOwnerReceipt(SID, 1, receiptFixture());
+                    fail("Owner receipt replay"); }
+                catch (IllegalStateException expected) { }
+            }
+        }
+    }
+
+    @Test public void invalidOwnerReceiptCannotCompleteAndClosesTvTranscript()
+            throws Exception {
+        try (Setup x = new Setup()) {
+            x.commits(); x.haReveal(); x.revealTv();
+            x.tv.approveFromPhysicalTvRemote(SID);
+            byte[] corrupted = receiptFixture();
+            corrupted[0] ^= 1;
+            try { x.tv.consumeOwnerReceipt(SID, 1, corrupted);
+                fail("Tampered owner approval"); }
+            catch (IllegalArgumentException expected) { }
+            assertTrue(x.tv.isClosed());
+        }
+        try (Setup x = new Setup()) {
+            x.commits(); x.haReveal(); x.revealTv();
+            x.tv.approveFromPhysicalTvRemote(SID);
+            x.clock.addAndGet(PairingV3TvWireState.TIMEOUT_MS);
+            try { x.tv.consumeOwnerReceipt(SID, 1, receiptFixture());
+                fail("Expired receipt"); }
+            catch (IllegalStateException expected) { }
+            assertTrue(x.tv.isClosed());
+        }
+    }
+
 }

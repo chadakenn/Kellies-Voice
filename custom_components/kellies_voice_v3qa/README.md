@@ -38,7 +38,7 @@ returns `owner_setup_missing`, the startup registration did not finish.
 4. Add the YAML startup line above, validate the configuration, then restart Home Assistant. Confirm your existing Kellie's Voice entities, services and live TV are still working.
 5. On the **separately installed DEBUG TV APK**, go to Settings → Home Assistant → Secure pairing v3 (DEBUG TEST ONLY) → Start 2-minute v3 test.
 6. In HA Settings → Devices & services, select the new **Kellie's Voice v3 SAFE TEST** discovery (not your production Kellie's Voice), then select Start.
-7. Compare all eight digits, press OK on the physical TV remote, then proceed to the **owner_approval** step. In a second HA owner browser tab open `/kellies-voice-v3qa-approval` and click **Approve this TV** for the identical code. Return to the original HA dialog and submit. Expect **`owner_verified_no_login`**, never a new TV or working OAuth login.
+7. Compare all eight digits, press OK on the physical TV remote, then proceed to the **owner_approval** step. In a second HA owner browser tab open `/kellies-voice-v3qa-approval` and click **Approve this TV** for the identical code. Return to the original HA dialog and submit. Expect **`owner_receipt_verified_no_login`**, never a new TV or working OAuth login.
 
 Stop if you see a request for an HA token, login, or if the original `kellies_voice` folder is going to be replaced. You do not need to disable or uninstall the production integration.
 
@@ -60,8 +60,11 @@ a separate confirmation from an authenticated, active **Home Assistant owner**.
 Keep the pairing flow OPEN in the first browser tab. In a second tab, open
 `/kellies-voice-v3qa-approval` on the SAME Home Assistant instance.
 Verify the exact code displayed there, click **Approve this TV**, and return
-to the original config flow. Only after the backend confirms both TV and
-owner proofs will HA report `owner_verified_no_login`.
+to the original config flow. Only after HA sends the sealed owner receipt and decrypts the TV's
+AES-GCM acknowledgement will HA report `owner_receipt_verified_no_login`.
+The debug TV should also show SECURE OWNER APPROVAL VERIFIED. Keep the TV
+QA screen foreground for this entire test. The original two-minute v3
+listener window remains the hard deadline.
 
 A signed-in ordinary admin who is not the HA owner must be rejected.
 Do not type a Home Assistant user ID anywhere. Close the QA flow or allow

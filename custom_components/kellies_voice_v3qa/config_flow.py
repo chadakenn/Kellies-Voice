@@ -76,7 +76,8 @@ class KelliesVoiceV3QaConfigFlow(ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             if user_input.get("start_test") is not True:
                 return self.async_abort(reason="cancelled")
-            attempt = HaV3WireAttempt(self._session)
+            attempt = HaV3WireAttempt(
+                self._session, retain_owner_receipt=True)
             try:
                 code = await attempt.start(self._transport)
             except Exception:
@@ -119,12 +120,15 @@ class KelliesVoiceV3QaConfigFlow(ConfigFlow, domain=DOMAIN):
                 # The independent v3 ECDH+UUID-bound physical-TV MAC is
                 # verified BEFORE an HA owner claim can be registered.
                 verified_code = self._code
-                self._attempt = None
                 self._code = None
+                # Keep the verified ECDH state ONLY for the bounded owner
+                # acknowledgement path, never for any HA credential.
                 # Never attempt registration of a static HTTP route or
                 # frontend panel after Home Assistant has started serving.
                 # The QA owner UI must be registered during YAML startup.
                 if not owner_controls_ready(self.hass):
+                    self._attempt.close()
+                    self._attempt = None
                     _LOGGER.warning(
                         "V3 QA owner controls were not initialized at HA startup"
                     )
@@ -136,14 +140,20 @@ class KelliesVoiceV3QaConfigFlow(ConfigFlow, domain=DOMAIN):
                 except ValueError:
                     _LOGGER.exception("V3 QA verified owner claim rejected")
                     owner_claims(self.hass).cancel(self.flow_id)
+                    self._attempt.close()
+                    self._attempt = None
                     return self.async_abort(reason="owner_binding_rejected")
                 except Exception:
                     _LOGGER.exception("V3 QA verified owner claim failed unexpectedly")
                     owner_claims(self.hass).cancel(self.flow_id)
+                    self._attempt.close()
+                    self._attempt = None
                     return self.async_abort(reason="owner_unavailable")
                 self._owner_tv = result
                 self._owner_code = verified_code
-                self._owner_deadline = time.monotonic() + 120
+                # The original TV listening window, not a new 120s after
+                # physical OK, is authoritative for encryption-key lifetime.
+                self._owner_deadline = self._attempt._expires_at
                 return await self.async_step_owner_approval()
         return self.async_show_form(
             step_id="v3_code",
@@ -165,6 +175,9 @@ class KelliesVoiceV3QaConfigFlow(ConfigFlow, domain=DOMAIN):
         if (tv is None or time.monotonic() >= self._owner_deadline):
             if tv is not None:
                 owner_claims(self.hass).cancel(self.flow_id)
+            if self._attempt is not None:
+                self._attempt.close()
+                self._attempt = None
             self._owner_tv = None
             self._owner_code = None
             return self.async_abort(reason="owner_expired")
@@ -172,38 +185,50 @@ class KelliesVoiceV3QaConfigFlow(ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             if user_input.get("owner_approved") is not True:
                 owner_claims(self.hass).cancel(self.flow_id)
+                if self._attempt is not None:
+                    self._attempt.close()
                 self._owner_tv = None
                 self._owner_code = None
                 return self.async_abort(reason="cancelled")
             if user_input.get("qa_instructions") != _OWNER_QA_NOTICE:
                 owner_claims(self.hass).cancel(self.flow_id)
+                if self._attempt is not None:
+                    self._attempt.close()
                 self._owner_tv = None
                 self._owner_code = None
                 return self.async_abort(reason="owner_denied")
             if user_input.get("ha_code") != self._owner_code:
                 owner_claims(self.hass).cancel(self.flow_id)
+                if self._attempt is not None:
+                    self._attempt.close()
                 self._owner_tv = None
                 self._owner_code = None
                 return self.async_abort(reason="mismatch")
-            owner_id = owner_claims(self.hass).consume(
-                flow_id=self.flow_id, session=tv.session, tv_uuid=tv.tv_uuid)
-            if owner_id is None:
+            registry = owner_claims(self.hass)
+            if not registry.approved_for(
+                    flow_id=self.flow_id, session=tv.session,
+                    tv_uuid=tv.tv_uuid):
                 errors["base"] = "owner_pending"
             else:
-                try:
-                    person = await self.hass.auth.async_get_user(owner_id)
-                except Exception:
-                    person = None
-                if (person is None
-                        or getattr(person, "id", None) != owner_id
-                        or getattr(person, "is_owner", False) is not True
-                        or getattr(person, "is_active", False) is not True):
-                    self._owner_tv = None
-                    return self.async_abort(reason="owner_denied")
+                attempt = self._attempt
+                self._attempt = None
                 self._owner_tv = None
                 self._owner_code = None
-                # A real owner approved this exact proof. Still NO LOGIN.
-                return self.async_abort(reason="owner_verified_no_login")
+                if attempt is None:
+                    registry.cancel(self.flow_id)
+                    return self.async_abort(reason="owner_receipt_failed")
+                try:
+                    await attempt.finish_owner_receipt(
+                        self._transport, hass=self.hass,
+                        claims=registry, flow_id=self.flow_id)
+                except Exception:
+                    registry.cancel(self.flow_id)
+                    # Never log owner claim, ECDH keys, codes or packets.
+                    _LOGGER.warning(
+                        "V3 QA encrypted owner receipt was not acknowledged")
+                    return self.async_abort(reason="owner_receipt_failed")
+                return self.async_abort(
+                    reason="owner_receipt_verified_no_login")
         return self.async_show_form(
             step_id="owner_approval",
             description_placeholders={"code": self._owner_code},

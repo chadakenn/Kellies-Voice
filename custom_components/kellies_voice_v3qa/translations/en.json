@@ -19,7 +19,7 @@
       },
       "owner_approval": {
         "title": "Verified TV: confirm the signed-in HA owner (QA only)",
-        "description": "TV key exchange and physical remote OK passed. Open the Kellie's Voice v3 Owner QA panel in a SECOND Home Assistant browser tab; compare the eight-digit code {code} again and click Approve this TV. Return to this dialog and continue. This does NOT connect the TV or authorize credentials.",
+        "description": "TV P-256 key exchange and physical remote proof passed. Keep the TV QA screen visible. In a SECOND HA owner browser tab open /kellies-voice-v3qa-approval, compare code {code}, click Approve this TV, return here and Submit BEFORE the original TV two-minute window expires. HA will send only a one-use encrypted approval and must receive an encrypted TV acknowledgement. NO login or tokens.",
         "data": {
           "ha_code": "HA eight-digit verification code",
           "owner_approved": "I clicked Approve this TV in the signed-in HA owner panel"
@@ -38,7 +38,9 @@
       "owner_denied": "Owner approval was rejected or the Home Assistant account is inactive.",
       "owner_verified_no_login": "SUCCESS: v3 TV proof and actual signed-in Home Assistant owner approval are BOTH verified. This test does not log in the TV, create a token, or change existing connections.",
       "owner_setup_missing": "The Home Assistant v3 QA approval panel was not initialized at startup. Add kellies_voice_v3qa: to configuration.yaml and restart HA. No login was changed.",
-      "owner_binding_rejected": "The verified TV owner-claim record was rejected. Check the Home Assistant system logs for v3 QA owner binding. No credential was created."
+      "owner_binding_rejected": "The verified TV owner-claim record was rejected. Check the Home Assistant system logs for v3 QA owner binding. No credential was created.",
+      "owner_receipt_verified_no_login": "SUCCESS: The authenticated HA owner approved this exact TV, the TV decrypted the encrypted v3 receipt, and HA verified its cryptographic acknowledgement. NO login or token was created; original Kellie's Voice remains unchanged.",
+      "owner_receipt_failed": "The authenticated owner receipt did not complete or the TV did not cryptographically acknowledge it within the original two-minute window. Restart v3 QA. No credentials or normal TV connections were changed."
     },
     "error": {
       "unavailable": "Could not contact the temporary v3 TV test. Start again on the TV.",
