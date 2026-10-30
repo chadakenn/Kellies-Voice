@@ -62,6 +62,28 @@ stable HACS integration. Ensure the existing single top-level
 Configuration then restart HA. Check the owner panel:
 `/kellies-voice-v3qa-approval`. If it is missing, stop and inspect HA logs.
 
+## First-run TV setup wizard (beta)
+
+On the first **ordinary launch** of a fresh debug beta installation,
+a four-screen remote/D-pad wizard opens automatically:
+
+1. Welcome: what Kellie's Voice does, start or skip.
+2. Secure Home Assistant: open owner-approved v3 pairing, then return.
+   Never paste an owner token or manually create a shared login.
+3. Microphone: explicitly request Android's RECORD_AUDIO permission.
+   Granting it **does not start recording** or enable the wake word.
+4. Optional TV camera/announcement alerts: grant Android's
+   **Display over other apps**, explicitly opt in, and follow separate
+   **normal** Kellie's Voice HACS integration TV-device pairing steps.
+
+The wizard never starts microphone capture, background listening, TV
+notifications or camera popups simply because it was opened. Permissions
+can be skipped; **Finish** or **Skip setup for now** closes the first-run
+screen without showing it on every launch. Rerun any time under
+**Settings → Home Assistant → First-time setup wizard (DEBUG)**.
+The temporary v3 QA component only provisions login, not the regular
+alerts device. Nothing is copied from the separately installed stable app.
+
 ## Full app smoke test
 
 1. Sideload the **debug** APK as a *separate app*, launch
