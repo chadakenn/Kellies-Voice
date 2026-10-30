@@ -187,5 +187,74 @@ class DedicatedLoginTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(self.journal.snapshot()), 1)
 
 
+
+class TvLanCredentialRouteTests(unittest.IsolatedAsyncioTestCase):
+    """Exercise the real aiohttp route guard without network or secrets."""
+
+    async def test_post_only_encrypted_handoff_routes_and_no_other_routes(self):
+        wire = importlib.import_module(PKG + ".pairing_v3_wire")
+        transport = wire.AiohttpV3LanTransport("192.168.1.50", 12345)
+        requests = []
+
+        class FakeResponse:
+            status = 200
+
+            def __init__(self):
+                self.content = self
+
+            async def read(self, max_bytes):
+                self_max = max_bytes
+                assert self_max == wire._MAX_BODY + 1
+                return b'{"ok":true}'
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *args):
+                return False
+
+        class FakeSession:
+            def __init__(self, **kwargs):
+                assert kwargs["trust_env"] is False
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *args):
+                return False
+
+            def request(self, method, url, **kwargs):
+                assert kwargs["allow_redirects"] is False
+                requests.append((method, url))
+                return FakeResponse()
+
+        fake_aiohttp = types.SimpleNamespace(
+            ClientTimeout=lambda **kw: kw,
+            DummyCookieJar=lambda: object(),
+            ClientSession=FakeSession,
+        )
+        with patch.dict(sys.modules, {"aiohttp": fake_aiohttp}):
+            for path in ("/v3/pair/token-stage", "/v3/pair/token-commit"):
+                self.assertEqual(
+                    await transport.post(path, {"protocol": 3}),
+                    {"ok": True},
+                )
+            self.assertEqual(requests, [
+                ("POST", "http://192.168.1.50:12345/v3/pair/token-stage"),
+                ("POST", "http://192.168.1.50:12345/v3/pair/token-commit"),
+            ])
+            for path in ("/v3/pair/token-stage", "/v3/pair/token-commit",
+                         "/v3/pair/owner-receipt"):
+                with self.subTest(method="GET", path=path):
+                    with self.assertRaisesRegex(ValueError, "Unrecognized v3 route"):
+                        await transport.get(path, {"protocol": 3})
+            for path in ("/v2/pair/token-stage", "/v3/pair/unexpected",
+                         "http://example.test/v3/pair/token-stage"):
+                with self.subTest(method="POST", path=path):
+                    with self.assertRaisesRegex(ValueError, "Unrecognized v3 route"):
+                        await transport.post(path, {"protocol": 3})
+            self.assertEqual(len(requests), 2)
+
+
 if __name__ == "__main__":
     unittest.main()
