@@ -5,6 +5,19 @@ with the full Assist/camera/announcement/overlay/screensaver feature set and an
 additional **Full app beta test center** in
 **Settings → Home Assistant**, next to the debug-only v3 secure owner test.
 
+## PR #260: Owner-approved automatic login beta
+
+This kit now has a second, opt-in way to connect: verify the eight-digit
+TV code, approve in the signed-in HA owner panel, and explicitly check
+**dedicated ongoing TV login**. With an HTTPS HA address configured, the
+TV receives its own renewable account and should reconnect without a
+copied token. **The standard non-admin Users role can control all
+Home Assistant entities**, so approve only for a trusted TV.
+
+Read `OWNER_APPROVED_LOGIN_TEST.md` in the kit before trying this path.
+The manual token setup instructions below still apply if you skip that
+option or are testing the older beta behavior.
+
 ## Read this before installing
 
 - The beta APK uses a **separate Android application ID**
