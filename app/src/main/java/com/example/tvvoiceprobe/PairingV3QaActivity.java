@@ -60,8 +60,9 @@ public final class PairingV3QaActivity extends Activity {
         root.addView(text(
             "Start a short local pairing window, compare the same eight-digit "
             + "code in Home Assistant and on this TV, then press OK. "
-            + "This checks the secure key exchange only. Your existing "
-            + "Home Assistant login, microphone and alerts are unchanged.",
+            + "After TV OK, approve this TV in the signed-in HA owner panel "
+            + "and keep this screen visible for the encrypted receipt. "
+            + "NO login, microphone or existing alerts are changed.",
             18, FG));
 
         status = text(
@@ -89,8 +90,11 @@ public final class PairingV3QaActivity extends Activity {
             confirm.setEnabled(false);
             if (approved) {
                 status.setText(
-                    "TV remote OK recorded. Return to Home Assistant "
-                    + "to verify its v3 proof. This test does not sign in.");
+                    "TV REMOTE OK VERIFIED. Leave this screen open. "
+                    + "In Home Assistant, use the owner approval page then "
+                    + "Submit in the original dialog BEFORE the two-minute "
+                    + "window expires. Await encrypted owner acknowledgement. "
+                    + "This test does not sign in.");
                 code.setVisibility(View.VISIBLE);
             } else {
                 status.setText("Pairing expired. Start a new attempt.");
