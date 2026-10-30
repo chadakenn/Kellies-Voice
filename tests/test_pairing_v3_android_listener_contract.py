@@ -38,7 +38,7 @@ class AndroidV3AdapterContracts(unittest.TestCase):
     def test_limit_network_and_require_visible_start(self):
         for marker in (
             "new ServerSocket(0, 4)", "PairingV3TvWireState.TIMEOUT_MS",
-            "BODY_LIMIT = 512", "HEADER_LIMIT = 1024",
+            "BODY_LIMIT = 8192", "HEADER_LIMIT = 1024",
             "DEADLINE_MS = 1500", "MAX_REQUESTS = 80",
             'info.setAttribute("protocol", "3")',
             'info.setAttribute("mode", "verified-code-only")',
