@@ -62,24 +62,31 @@ class QuickActionDeviceSetting:
             raise HomeAssistantError(
                 "Only a Home Assistant administrator can edit TV Quick Actions."
             )
+        # Never save an old config-entry snapshot. Device controls are
+        # concurrent actors, and HA owns the current options in its registry.
+        current_entry = self.hass.config_entries.async_get_entry(self._entry.entry_id)
+        if current_entry is None:
+            raise HomeAssistantError("TV settings are no longer available.")
         try:
             proposed = updated_device_option(
-                self._entry.options, self._slot, self._field, value
+                current_entry.options, self._slot, self._field, value
             )
         except ValueError as error:
             # Display an actionable HA UI error without exposing private data.
             raise HomeAssistantError(str(error)) from None
-        if proposed != self._entry.options:
-            # The existing per-TV options update listener reloads the entry
-            # and makes the new slot immediately visible to its WebSocket.
+        if proposed != current_entry.options:
+            # The integration does not reload for shortcut-only edits. Reusing
+            # the current entry and writing entity state keeps all three
+            # controls mounted, with no stale options overwriting each other.
             self.hass.config_entries.async_update_entry(
-                self._entry, options=proposed
+                current_entry, options=proposed
             )
 
 
 class QuickActionLabel(QuickActionDeviceSetting, TextEntity):
     """User-visible TV button label, not a service or trusted payload."""
 
+    _attr_should_poll = True
     _attr_mode = TextMode.TEXT
     _attr_native_min = 0
     _attr_native_max = 26
@@ -90,6 +97,12 @@ class QuickActionLabel(QuickActionDeviceSetting, TextEntity):
 
     async def async_set_value(self, value: str) -> None:
         await self._set(value)
+        self._attr_native_value = value.strip()
+        self.async_write_ha_state()
+
+    async def async_update(self) -> None:
+        # Reflect edits made through Integrations → Configure too.
+        self._attr_native_value = self._saved()
 
 
 class QuickActionTarget(QuickActionDeviceSetting, SelectEntity):
@@ -143,10 +156,14 @@ class QuickActionTarget(QuickActionDeviceSetting, SelectEntity):
         if option not in self._selection_to_entity:
             raise HomeAssistantError("Select an available light, scene or script.")
         await self._set(self._selection_to_entity[option])
+        self._refresh()
+        self.async_write_ha_state()
 
 
 class QuickActionVerb(QuickActionDeviceSetting, SelectEntity):
     """Only Home Assistant's allowlisted service verbs, not arbitrary scripts."""
+
+    _attr_should_poll = True
 
     def __init__(self, entry: ConfigEntry, slot: int):
         self._setup(entry, slot, "action", "Action", "mdi:gesture-tap-button")
@@ -158,6 +175,12 @@ class QuickActionVerb(QuickActionDeviceSetting, SelectEntity):
         if option not in ACTIONS:
             raise HomeAssistantError("Choose Turn on, Turn off or Toggle.")
         await self._set(option)
+        self._attr_current_option = option
+        self.async_write_ha_state()
+
+    async def async_update(self) -> None:
+        value = self._saved()
+        self._attr_current_option = value if value in ACTIONS else "Turn on"
 
 
 def quick_action_labels(entry: ConfigEntry) -> list[QuickActionLabel]:
