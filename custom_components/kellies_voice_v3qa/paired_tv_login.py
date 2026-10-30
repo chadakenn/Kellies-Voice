@@ -17,9 +17,12 @@ class DedicatedTvLoginDenied(ValueError):
 
 async def provision_dedicated_tv_login(
     hass, journal: TokenLeaseJournal, *, owner_id: str, tv_uuid: str,
-    ha_origin: str,
+    ha_origin: str, remote_login: bool = False,
 ):
-    """Provision a LOCAL ONLY non-admin user and provisional renewable token.
+    """Provision a dedicated non-admin user and provisional renewable token.
+
+    Remote-capable only if HA's own HTTPS URL resolver selected an external
+    or Cloud endpoint, never from an untrusted TV address.
 
     Caller must already have the exact server-derived owner opt-in and v3
     physical TV proof. No public endpoint calls this function directly.
@@ -27,6 +30,9 @@ async def provision_dedicated_tv_login(
     if type(journal) is not TokenLeaseJournal:
         raise DedicatedTvLoginDenied("TV credential journal unavailable")
     origin = _trusted_origin(ha_origin)
+    if type(remote_login) is not bool:
+        raise DedicatedTvLoginDenied("Invalid dedicated TV network scope")
+    local_only = not remote_login
     owner = await hass.auth.async_get_user(owner_id)
     if (owner is None or owner.id != owner_id
             or owner.is_active is not True or owner.is_owner is not True):
@@ -36,10 +42,10 @@ async def provision_dedicated_tv_login(
     # the *standard* Users role can still read/control all entities.
     user = await hass.auth.async_create_user(
         "Kellie's Voice TV " + tv_uuid[-8:],
-        group_ids=[GROUP_ID_USER], local_only=True,
+        group_ids=[GROUP_ID_USER], local_only=local_only,
     )
     if (user is None or user.is_owner or user.is_admin or
-            user.system_generated or user.local_only is not True
+            user.system_generated or user.local_only is not local_only
             or user.is_active is not True or user.id == owner_id
             or {group.id for group in user.groups} != {GROUP_ID_USER}):
         raise DedicatedTvLoginDenied("Dedicated TV account rejected")
