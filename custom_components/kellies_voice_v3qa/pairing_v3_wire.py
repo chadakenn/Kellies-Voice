@@ -210,7 +210,8 @@ class HaV3WireAttempt:
                 self.close()
 
     async def finish_renewable_login(self, transport, *,
-                                    hass, journal, owner_id, ha_origin):
+                                    hass, journal, owner_id, ha_origin,
+                                    remote_login=False):
         """After signed receipt ACK, transfer one renewable dedicated-TV grant.
 
         Only the authenticated HA owner consent may supply owner_id.
@@ -230,7 +231,7 @@ class HaV3WireAttempt:
         try:
             issued, recorded, user = await provision_dedicated_tv_login(
                 hass, journal, owner_id=owner_id, tv_uuid=tv.tv_uuid,
-                ha_origin=ha_origin)
+                ha_origin=ha_origin, remote_login=remote_login)
             handoff = HaTokenHandoff(
                 private_key=self._private, verified=self._barrier, tv=tv,
                 ttl_seconds=30)
