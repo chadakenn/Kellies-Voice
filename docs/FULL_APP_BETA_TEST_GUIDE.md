@@ -60,6 +60,15 @@ Configuration then restart HA. Check the owner panel:
    approval is not a substitute for this login.
 3. Press TALK, ask one ordinary Assist question, confirm recognition, voice
    reply, and correct TV output. Repeat to test conversation continuity.
+   **For targeted alerts and camera popups**, open the beta TV's
+   **Settings → Home Assistant → Manage TV layout from Home Assistant**
+   and enable it, then in HA **Settings → Devices & services** add the
+   *normal* **Kellie's Voice** integration discovery for the **beta TV**.
+   This is a separate Android app with a separate TV pairing ID from stable.
+   Confirm the new beta TV device/alert controls exist in the normal
+   HACS integration and target this beta device for tests. **Do not**
+   select **Kellie's Voice v3 SAFE TEST** for ordinary alerts: that isolated
+   integration deliberately creates no usable devices.
 4. Open the floating voice overlay. Confirm close/Back and that the mic stops
    when the overlay is dismissed. Check manually disabled mic remains blocked.
 5. Enable **TV notifications & camera popups** (user opt-in). Grant Android's
