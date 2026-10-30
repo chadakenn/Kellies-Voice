@@ -1,16 +1,35 @@
-"""Isolated v3 TV verification and owner-only QA. No HA account changes.
+"""Isolated v3 identity and HA owner proof, with no credentials.
 
-The normal Kellie's Voice integration and credentials are never imported.
-An HA Zeroconf config flow does not necessarily run async_setup(), so the
-owner-only WebSocket and panel are explicitly initialized AFTER TV-OK proof.
+The approval panel and authenticated WebSocket commands must be registered
+during Home Assistant startup, not from a live Zeroconf config-flow.
+To opt into this developer QA integration, set `kellies_voice_v3qa:`
+in configuration.yaml and restart HA. Stable Kellie's Voice is untouched.
 """
+import logging
+
 from .owner_ws import async_register_owner_claim
 from .owner_panel import async_register_pairing_approval_panel
 
+_LOGGER = logging.getLogger(__name__)
+DOMAIN = "kellies_voice_v3qa"
+_READY = "owner_controls_ready"
+
+
 async def async_setup(hass, config):
+    """Install only the token-free owner approval UI during HA startup."""
+    try:
+        async_register_owner_claim(hass)
+        await async_register_pairing_approval_panel(hass)
+    except Exception:
+        # This was previously silently discarded as owner_unavailable.
+        # Do not include pairing session, UUID, codes or secrets in log text.
+        _LOGGER.exception("Kellie's Voice v3 QA owner-panel startup failed")
+        hass.data.setdefault(DOMAIN, {})[_READY] = False
+        return False
+    hass.data.setdefault(DOMAIN, {})[_READY] = True
     return True
 
-async def async_register_qa_owner_controls(hass):
-    # No token, no OAuth routes, no additional LAN listener.
-    async_register_owner_claim(hass)
-    await async_register_pairing_approval_panel(hass)
+
+def owner_controls_ready(hass):
+    """The pairing flow must not modify an already running HTTP router."""
+    return hass.data.get(DOMAIN, {}).get(_READY) is True
