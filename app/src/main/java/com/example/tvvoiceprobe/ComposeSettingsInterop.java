@@ -18,7 +18,8 @@ public final class ComposeSettingsInterop {
     public static synchronized void requestLegacySection(String section) {
         if ("HOME".equals(section) || "VOICE".equals(section)
                 || "OVERLAY".equals(section) || "ALERTS".equals(section)
-                || "SCREEN".equals(section) || "SYSTEM".equals(section)) {
+                || "SCREEN".equals(section) || "SYSTEM".equals(section)
+                || "TV_ALERTS_ENABLE".equals(section)) {
             pendingLegacySection = section;
         }
     }
