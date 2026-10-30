@@ -55,7 +55,7 @@ class FakeAuth:
         return result
 
     async def async_create_refresh_token(self, user, client_id):
-        token_id = "created-refresh-id"
+        token_id = "created-refresh-id-" + str(len(self.tokens) + 1)
         obj = types.SimpleNamespace(
             id=token_id, token="SECRET-REFRESH-DO-NOT-LOG",
             client_id=client_id, user=user, token_type="normal",
@@ -114,11 +114,11 @@ class DedicatedLoginTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(account.local_only)
         self.assertEqual({g.id for g in account.groups}, {"system-users"})
         self.assertEqual(issued.lease.tv_user_id, account.id)
-        self.assertEqual(recorded.token_id, "created-refresh-id")
+        self.assertEqual(recorded.token_id, "created-refresh-id-1")
         self.assertEqual(recorded.state, "issued")
         self.assertEqual(issued.access_token_seconds, 1800)
         on_disk = (Path(self.tmp.name) / "lease.json").read_text()
-        self.assertIn("created-refresh-id", on_disk)
+        self.assertIn("created-refresh-id-1", on_disk)
         self.assertNotIn("SECRET-", on_disk)
 
     async def test_plain_http_does_not_even_create_a_user(self):
@@ -136,6 +136,28 @@ class DedicatedLoginTests(unittest.IsolatedAsyncioTestCase):
                         self.hass, self.journal, owner_id=owner_id,
                         tv_uuid=TV, ha_origin=ORIGIN)
         self.assertEqual(self.auth.created, [])
+
+    async def test_one_failed_tv_is_revoked_without_affecting_second_tv(self):
+        first, lease1, _ = await self.module.provision_dedicated_tv_login(
+            self.hass, self.journal, owner_id="owner", tv_uuid=TV,
+            ha_origin=ORIGIN)
+        second, lease2, _ = await self.module.provision_dedicated_tv_login(
+            self.hass, self.journal, owner_id="owner",
+            tv_uuid="123e4567-e89b-42d3-a456-426614174001",
+            ha_origin=ORIGIN)
+        self.assertEqual(len(self.auth.tokens), 2)
+        self.assertTrue(await self.journal.revoke_unfinished_attempt(
+            lease1.nonce))
+        self.assertEqual(set(self.auth.tokens), {lease2.token_id})
+        self.assertEqual(
+            {x.nonce: x.state for x in self.journal.snapshot()}[lease2.nonce],
+            "issued")
+        await self.journal.commit(lease2.nonce)
+        self.assertEqual(
+            {x.nonce: x.state for x in self.journal.snapshot()}[lease2.nonce],
+            "committed")
+        with self.assertRaises(Exception):
+            await self.journal.revoke_unfinished_attempt(lease2.nonce)
 
     async def test_issuer_error_removes_new_token_and_preserves_intent(self):
         self.auth.fail_after_refresh = True
