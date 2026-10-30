@@ -65,7 +65,7 @@ public final class FirstRunSetupActivity extends Activity {
         super.onResume();
         // Android TV does not always deliver activity results from Special App Access.
         // Refresh visible permissions without automatically enabling alerts.
-        if (returningFromExternalSettings) {
+        if (returningFromExternalSettings || step == 1) {
             returningFromExternalSettings = false;
             render();
         }
