@@ -130,7 +130,7 @@ class KelliesVoiceV3QAOwnerPanel extends HTMLElement {
     loginOptIn.type = "checkbox";
     loginOptIn.style.marginRight = "10px";
     const warning = document.createElement("span");
-    warning.textContent = "Also set up ongoing TV login with a dedicated non-admin Home Assistant Users account. WARNING: a standard HA Users account can control ALL entities, not just exposed voice devices. Choose this only for a TV you trust. This does NOT give away your owner login.";
+    warning.textContent = "Also set up ongoing TV login with a dedicated non-admin Home Assistant Users account. WARNING: a standard HA Users account can control ALL entities, not just exposed voice devices. When using Home Assistant Cloud HTTPS, this TV account can also authenticate remotely. Choose this only for a TV you trust. This does NOT give away your owner login.";
     choice.append(loginOptIn, warning);
     const button = document.createElement("button");
     button.type = "button";
