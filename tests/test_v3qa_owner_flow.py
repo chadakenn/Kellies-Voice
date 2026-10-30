@@ -158,6 +158,18 @@ class V3QaOwnerFlowTests(unittest.IsolatedAsyncioTestCase):
             {"ha_code": "87654321", "owner_approved": True})
         self.assertEqual(result["reason"], "owner_expired")
 
+    async def test_different_owner_id_rejected_even_if_other_owner_active(self):
+        flow = self.make()
+        await self.verified(flow)
+        original = types.SimpleNamespace(id="owner", is_owner=True, is_active=True)
+        self.assertTrue(self.claims.owner_claims(flow.hass).claim(
+            flow_id=flow.flow_id, session=SID, user=original))
+        flow.hass.auth.async_get_user.return_value = types.SimpleNamespace(
+            id="another-owner", is_owner=True, is_active=True)
+        result = await flow.async_step_owner_approval(
+            {"ha_code": "87654321", "owner_approved": True})
+        self.assertEqual(result["reason"], "owner_denied")
+
     async def test_owner_privileges_are_rechecked_at_end(self):
         flow = self.make()
         await self.verified(flow)
