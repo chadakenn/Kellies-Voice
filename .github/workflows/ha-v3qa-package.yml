@@ -1,4 +1,4 @@
-name: Isolated v3 QA HA ZIP (no credentials)
+name: Isolated v3 QA HA ZIP (owner-opted renewable login beta)
 on:
   push:
     branches:
