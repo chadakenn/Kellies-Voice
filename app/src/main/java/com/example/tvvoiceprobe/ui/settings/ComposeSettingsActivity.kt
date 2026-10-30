@@ -558,7 +558,7 @@ fun CategoryContent(
                             // The shared authenticated setup path supports both
                             // manual credentials and v3 Keystore-backed TV grants.
                             // Only explicit user consent can start the receiver.
-                            onLegacySection("ALERTS")
+                            onLegacySection("TV_ALERTS_ENABLE")
                         } else {
                             prefs.setTvEvents(false)
                             context.stopService(Intent(context, TvEventsService::class.java))
