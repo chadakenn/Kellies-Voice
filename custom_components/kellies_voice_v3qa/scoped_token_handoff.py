@@ -143,36 +143,6 @@ class HaTokenHandoff(_Base):
     def __init__(self, **kw):
         super().__init__(role="ha", **kw)
 
-    def seal_provisional(self, issued: IssuedTvCredential, *, now=None):
-        self._check(0, now)
-        if (type(issued) is not IssuedTvCredential
-                or issued.lease.tv_uuid != self.tv_uuid
-                or issued.lease.owner_id == issued.lease.tv_user_id
-                or issued.lease.state != "intent"
-                or type(issued.refresh_token) is not str
-                or type(issued.access_token) is not str
-                or not issued.refresh_token or not issued.access_token
-                or not 30 <= issued.access_token_seconds <= 86400):
-            self.close()
-            raise TokenHandoffDenied("TV token identity not eligible")
-        doc = {
-            "v": 1, "tv": issued.lease.tv_uuid,
-            "client": issued.lease.client_id,
-            "id": issued.lease.token_id,
-            "refresh": issued.refresh_token,
-            "access": issued.access_token,
-            "expires": issued.access_token_seconds,
-        }
-        if doc["id"] is not None:
-            # The issuer returns original intent lease, not the persisted
-            # issued lease; callers MUST load the token ID from the journal
-            # before delivery. Never guess or fabricate it.
-            self.close()
-            raise TokenHandoffDenied("Unexpected stale token identity")
-        self.close()
-        raise TokenHandoffDenied(
-            "Load the issued journal record before encrypted handoff")
-
     def seal_recorded_provisional(self, issued, recorded_lease, *, now=None):
         self._check(0, now)
         if (type(issued) is not IssuedTvCredential
@@ -228,7 +198,9 @@ class HaTokenHandoff(_Base):
 class TvTokenHandoff(_Base):
     """One-use TV receipt. Its grant must first be staged into Keystore."""
 
-    def __init__(self, **kw):
+    def __init__(self, *, expected_ha_origin: str, **kw):
+        from .scoped_login_issuer import _trusted_origin
+        self._trusted_origin = _trusted_origin(expected_ha_origin)
         super().__init__(role="tv", **kw)
 
     def open_provisional(self, sequence, encrypted, *, now=None):
@@ -242,8 +214,15 @@ class TvTokenHandoff(_Base):
                     or set(doc) != {"v", "tv", "client", "id", "refresh", "access", "expires"}
                     or doc["v"] != 1 or doc["tv"] != self.tv_uuid
                     or type(doc["client"]) is not str
-                    or not doc["client"].endswith("/attempt/" + doc["client"].rsplit("/", 1)[-1])
+                    or not doc["client"].startswith(
+                        self._trusted_origin + "/kellies-voice/tv/"
+                        + self.tv_uuid + "/attempt/")
+                    or len(doc["client"].rsplit("/", 1)[-1]) != 32
+                    or not all(ch in "0123456789abcdef"
+                               for ch in doc["client"].rsplit("/", 1)[-1])
                     or type(doc["id"]) is not str or not doc["id"]
+                    or len(doc["id"]) > 128
+                    or not all(ch.isalnum() or ch in "-_" for ch in doc["id"])
                     or not all(type(doc[x]) is str and doc[x]
                                and len(doc[x]) <= 8192
                                for x in ("refresh", "access"))
