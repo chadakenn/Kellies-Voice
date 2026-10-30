@@ -4,7 +4,12 @@ import sys
 import types
 import unittest
 from pathlib import Path
-from cryptography.hazmat.primitives.asymmetric import ec
+try:
+    from cryptography.hazmat.primitives.asymmetric import ec
+except ImportError:
+    # General HA validation does not install optional crypto dependencies;
+    # dedicated v3 QA CI installs them and MUST execute these tests.
+    ec = None
 
 ROOT = Path(__file__).resolve().parents[1] / "custom_components/kellies_voice_v3qa"
 PKG = "kv_v3qa_aead_tests"
@@ -13,7 +18,8 @@ package.__path__ = [str(ROOT)]
 sys.modules[PKG] = package
 keys = importlib.import_module(PKG + ".pairing_key_commitment")
 verified = importlib.import_module(PKG + ".pairing_v3_verified")
-codec = importlib.import_module(PKG + ".pairing_v3_qa_channel")
+codec = (importlib.import_module(PKG + ".pairing_v3_qa_channel")
+         if ec is not None else None)
 SID = "AQIDBAUGBwgJCgsMDQ4PEA"
 TV = "123e4567-e89b-42d3-a456-426614174000"
 OTHER = "123e4567-e89b-42d3-a456-426614174001"
@@ -38,6 +44,7 @@ def pair(tv_id=TV, sid=SID):
     )
 
 
+@unittest.skipUnless(ec is not None, "v3 cryptography dependency not installed")
 class ChannelTests(unittest.TestCase):
     def test_cross_language_fixed_ciphertexts_and_two_way(self):
         tv, ha = pair()
