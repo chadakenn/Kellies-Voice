@@ -258,10 +258,18 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
             if (recoverySection != null) {
                 mainHandler.post(() -> {
                     if (!isFinishing() && !isDestroyed()) {
-                        try {
-                            activeSettingsSection = SettingsSection.valueOf(recoverySection);
-                            showSettingsMenu();
-                        } catch (IllegalArgumentException ignored) { }
+                        if ("TV_ALERTS_ENABLE".equals(recoverySection)) {
+                            // Compose ON was an explicit user request. Present
+                            // the existing permission-aware confirmation now,
+                            // rather than reopening the entire Alerts menu.
+                            activeSettingsSection = SettingsSection.ALERTS;
+                            chooseTvNotifications();
+                        } else {
+                            try {
+                                activeSettingsSection = SettingsSection.valueOf(recoverySection);
+                                showSettingsMenu();
+                            } catch (IllegalArgumentException ignored) { }
+                        }
                     }
                 });
             }
