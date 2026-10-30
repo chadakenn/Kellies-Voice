@@ -35,7 +35,15 @@ class OwnerStartupTests(unittest.IsolatedAsyncioTestCase):
         sys.modules[PKG] = module
         spec.loader.exec_module(module)
         self.qa = module
-        self.hass = types.SimpleNamespace(data={})
+        self.hass = types.SimpleNamespace(
+            data={}, config=types.SimpleNamespace(
+                path=lambda *parts: "/tmp/kellies-v3qa-startup-test-lease.json"))
+        fake_journal = types.SimpleNamespace(
+            load=AsyncMock(), recover_unfinished=AsyncMock(return_value={}))
+        journal = patch.object(self.qa, "TokenLeaseJournal",
+                               return_value=fake_journal)
+        journal.start()
+        self.addCleanup(journal.stop)
 
     async def test_success_only_after_both_panel_and_ws_registered(self):
         self.assertFalse(self.qa.owner_controls_ready(self.hass))
