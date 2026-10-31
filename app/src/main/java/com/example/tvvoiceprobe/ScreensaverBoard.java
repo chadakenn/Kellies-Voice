@@ -81,6 +81,8 @@ final class ScreensaverBoard {
     private int fullscreenSlot = -1;
     private TextView remotePointer;
     private boolean browsing;
+    /** Presentation only: HA UI needs native responsive sizing and non-overlapping TV controls. */
+    private boolean haDashboardPage;
     private final ScreensaverRemoteCursor cursor = new ScreensaverRemoteCursor();
     private int generation;
     private boolean stopped;
@@ -180,6 +182,7 @@ final class ScreensaverBoard {
         fullscreenSlot = -1;
         remotePointer = null;
         browsing = false;
+        haDashboardPage = false;
         if (!prefs.screensaverDashboard()) {
             showMessage("Frigate screensaver is off. Turn it on in Kellie's Voice settings, then press Close.");
             root.addView(closeButton());
@@ -187,6 +190,8 @@ final class ScreensaverBoard {
         }
         String page = prefs.screensaverUrl();
         String[] cameras = ScreensaverDashboard.cameraList(prefs.screensaverCameras());
+        haDashboardPage = !page.isEmpty()
+                && ScreensaverDashboard.isHomeAssistantPage(page, prefs.screensaverHaExternalAuth());
         if (!page.isEmpty()) {
             try {
                 if (prefs.screensaverHaExternalAuth()) showAuthenticatedHaPage(page);
@@ -317,12 +322,19 @@ final class ScreensaverBoard {
         web.setBackgroundColor(Color.BLACK);
         WebSettings settings = web.getSettings();
         OverlayPreferences prefs = new OverlayPreferences(context);
-        boolean desktop = prefs.screensaverDesktopPage();
+        boolean desktop = ScreensaverDashboard.useFrigateDesktopViewport(
+                page, prefs.screensaverDesktopPage(), authenticatedHaOrigin != null);
         if (desktop) {
             // Frigate otherwise uses a phone-width WebView viewport on many Android TVs.
             settings.setUseWideViewPort(true);
             settings.setLoadWithOverviewMode(true);
             settings.setUserAgentString(ScreensaverDashboard.desktopUserAgent(settings.getUserAgentString()));
+        } else if (haDashboardPage) {
+            // Home Assistant's frontend sets its own responsive meta viewport.
+            // Frigate's forced wide layout/overview scale clips HA login on TV.
+            settings.setUseWideViewPort(false);
+            settings.setLoadWithOverviewMode(false);
+            // Keep the installed Android WebView user agent for HA.
         }
         settings.setJavaScriptEnabled(true);
         settings.setMediaPlaybackRequiresUserGesture(true);
@@ -407,15 +419,18 @@ final class ScreensaverBoard {
     /** Explicit remote browsing. WebView itself may not expose Frigate's tiles to D-pad focus. */
     private Button browseButton() {
         Button browse = new Button(context);
-        browse.setText("Select camera");
+        browse.setText(haDashboardPage ? "Browse dashboard" : "Select camera");
         browse.setTextColor(Color.WHITE);
         browse.setTextSize(16);
         browse.setAllCaps(false);
         browse.setFocusable(true);
         browse.setOnClickListener(v -> startBrowsing());
-        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(dp(186), dp(52));
-        params.gravity = Gravity.BOTTOM | Gravity.START;
-        params.setMargins(dp(16), dp(16), dp(16), dp(16));
+        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
+                dp(haDashboardPage ? 208 : 186), dp(52));
+        params.gravity = haDashboardPage
+                ? Gravity.TOP | Gravity.END : Gravity.BOTTOM | Gravity.START;
+        if (haDashboardPage) params.setMargins(dp(16), dp(16), dp(24), dp(16));
+        else params.setMargins(dp(16), dp(16), dp(16), dp(16));
         browse.setLayoutParams(params);
         return browse;
     }
@@ -845,8 +860,12 @@ final class ScreensaverBoard {
         close.setFocusable(true);
         close.setOnClickListener(v -> host.close());
         FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(dp(180), dp(52));
-        params.gravity = Gravity.BOTTOM | Gravity.END;
-        params.setMargins(dp(16), dp(16), dp(24), dp(16));
+        // For HA, never cover login fields or dashboard controls in the bottom row.
+        // Frigate/camera mode retains its already-tested footer placement.
+        params.gravity = haDashboardPage
+                ? Gravity.TOP | Gravity.START : Gravity.BOTTOM | Gravity.END;
+        if (haDashboardPage) params.setMargins(dp(16), dp(16), dp(16), dp(16));
+        else params.setMargins(dp(16), dp(16), dp(24), dp(16));
         close.setLayoutParams(params);
         if (firstGridCell == null) close.post(() -> close.requestFocus());
         return close;
