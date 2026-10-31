@@ -64,6 +64,7 @@ public final class OverlayPreferences {
     private static final String KEY_UPDATE_CHANNEL = "update_channel";
     private static final String KEY_SCREENSAVER = "screensaver_dashboard";
     private static final String KEY_SCREENSAVER_URL = "screensaver_dashboard_url";
+    private static final String KEY_SCREENSAVER_HA_AUTH = "screensaver_ha_external_auth_opt_in";
     private static final String KEY_SCREENSAVER_CAMERAS = "screensaver_cameras";
     private static final String KEY_SCREENSAVER_SIZE = "screensaver_size";
     private static final String KEY_SCREENSAVER_DESKTOP = "screensaver_desktop_page";
