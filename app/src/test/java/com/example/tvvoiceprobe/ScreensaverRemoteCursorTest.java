@@ -38,6 +38,26 @@ public class ScreensaverRemoteCursorTest {
         assertEquals(540, held.pixelY(1080));
     }
 
+    @Test public void scrollingStartsOnlyWhenPointerReachesVerticalScreenEdge() {
+        ScreensaverRemoteCursor cursor = new ScreensaverRemoteCursor();
+        assertEquals(0f, cursor.verticalWheelAtEdge(ScreensaverRemoteCursor.DOWN, 0), 0f);
+        cursor.move(ScreensaverRemoteCursor.DOWN);
+        assertEquals(0f, cursor.verticalWheelAtEdge(ScreensaverRemoteCursor.DOWN, 0), 0f);
+        for (int i = 0; i < 30; i++) cursor.move(ScreensaverRemoteCursor.DOWN);
+        assertTrue(cursor.verticalWheelAtEdge(ScreensaverRemoteCursor.DOWN, 0) < 0f);
+        assertEquals(0f, cursor.verticalWheelAtEdge(ScreensaverRemoteCursor.UP, 0), 0f);
+        assertEquals(-3f, cursor.verticalWheelAtEdge(
+                ScreensaverRemoteCursor.DOWN, Integer.MAX_VALUE), 0f);
+        cursor.reset();
+        for (int i = 0; i < 30; i++) cursor.move(ScreensaverRemoteCursor.UP);
+        assertTrue(cursor.verticalWheelAtEdge(ScreensaverRemoteCursor.UP, 0) > 0f);
+        assertEquals(3f, cursor.verticalWheelAtEdge(
+                ScreensaverRemoteCursor.UP, Integer.MAX_VALUE), 0f);
+        assertEquals(0f, cursor.verticalWheelAtEdge(ScreensaverRemoteCursor.RIGHT, 5), 0f);
+        cursor.reset();
+        assertEquals(0f, cursor.verticalWheelAtEdge(ScreensaverRemoteCursor.UP, 0), 0f);
+    }
+
     @Test public void remotePointerMovesAndClicksWithinScreen() {
         ScreensaverRemoteCursor cursor = new ScreensaverRemoteCursor();
         assertEquals(500, cursor.pixelX(1000));
