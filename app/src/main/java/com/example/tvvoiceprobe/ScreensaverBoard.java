@@ -13,6 +13,7 @@ import android.os.Looper;
 import android.os.SystemClock;
 import android.util.DisplayMetrics;
 import android.view.Gravity;
+import android.view.InputDevice;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.TextureView;
@@ -148,6 +149,12 @@ final class ScreensaverBoard {
     private void onBack() {
         if (stopped) return;
         if (handleBack()) return;
+        // The HA screensaver is an appliance overlay, not a browser tab:
+        // one Back always closes it. Frigate retains its existing history path.
+        if (haDashboardPage && web != null) {
+            host.close();
+            return;
+        }
         // Preserve the Frigate webpage's own remote browsing Back behavior.
         if (browsing && web != null) {
             if (web.canGoBack()) {
@@ -217,9 +224,14 @@ final class ScreensaverBoard {
                 + "If you selected cameras in Home Assistant, turn on Home Assistant layout "
                 + "in Kellie's Voice settings, then check Screensaver status & permissions "
                 + "and choose Resync HA cameras.");
-        if (web != null) root.addView(browseButton());
-        closeControl = closeButton();
-        root.addView(closeControl);
+        // HA browsing starts with its visible remote pointer, and Back exits.
+        // Avoid covering the user's dashboard with redundant app controls.
+        // Retain both controls for native cameras and ordinary Frigate pages.
+        if (web != null && !haDashboardPage) root.addView(browseButton());
+        if (!haDashboardPage) {
+            closeControl = closeButton();
+            root.addView(closeControl);
+        }
         if (firstGridCell != null) firstGridCell.post(() -> {
             if (!stopped && fullscreenSlot < 0) firstGridCell.requestFocus();
         });
@@ -309,7 +321,8 @@ final class ScreensaverBoard {
                     // All credentials remain native, with a V2 main-frame-only bridge.
                     showPage(readyUrl, ready.url);
                     root.removeView(notice);
-                    root.addView(browseButton());
+                    // HA automatically starts pointer navigation in showPage().
+                    // No Browse button covers the dashboard.
                 } catch (RuntimeException ignored) {
                     if (haWebAuth != null) { haWebAuth.close(); haWebAuth = null; }
                     if (web != null) {
@@ -524,7 +537,46 @@ final class ScreensaverBoard {
             default: return false;
         }
         positionPointer();
+        if (haDashboardPage && (key == KeyEvent.KEYCODE_DPAD_UP
+                || key == KeyEvent.KEYCODE_DPAD_DOWN)) {
+            float wheel = cursor.verticalWheelAtEdge(
+                    key == KeyEvent.KEYCODE_DPAD_UP
+                            ? ScreensaverRemoteCursor.UP : ScreensaverRemoteCursor.DOWN,
+                    event.getRepeatCount());
+            if (wheel != 0f) scrollDashboard(wheel);
+        }
         return true;
+    }
+
+    /**
+     * Dispatch a genuine mouse-wheel motion to WebView at the remote cursor.
+     * This lets the browser scroll the element under the pointer (including
+     * nested HA cards) without JavaScript, DOM access or altering credentials.
+     * Only HA dashboard screens use this, never the Frigate camera viewer.
+     */
+    private void scrollDashboard(float axis) {
+        if (!haDashboardPage || !browsing || web == null
+                || web.getWidth() <= 0 || web.getHeight() <= 0) return;
+        MotionEvent.PointerProperties properties = new MotionEvent.PointerProperties();
+        properties.id = 0;
+        properties.toolType = MotionEvent.TOOL_TYPE_MOUSE;
+        MotionEvent.PointerCoords coords = new MotionEvent.PointerCoords();
+        coords.x = cursor.pixelX(web.getWidth());
+        // At a screen edge, use a nearby position within the actual content.
+        coords.y = Math.max(web.getHeight() * 0.12f,
+                Math.min(web.getHeight() * 0.88f, cursor.pixelY(web.getHeight())));
+        coords.setAxisValue(MotionEvent.AXIS_VSCROLL, axis);
+        long now = SystemClock.uptimeMillis();
+        MotionEvent wheel = MotionEvent.obtain(
+                now, now, MotionEvent.ACTION_SCROLL, 1,
+                new MotionEvent.PointerProperties[]{properties},
+                new MotionEvent.PointerCoords[]{coords},
+                0, 0, 1f, 1f, 0, 0, InputDevice.SOURCE_MOUSE, 0);
+        try {
+            web.dispatchGenericMotionEvent(wheel);
+        } finally {
+            wheel.recycle();
+        }
     }
 
     private void positionPointer() {
