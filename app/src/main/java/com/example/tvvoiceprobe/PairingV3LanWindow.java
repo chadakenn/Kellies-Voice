@@ -83,7 +83,7 @@ public final class PairingV3LanWindow implements AutoCloseable {
                         statusListener.accept(
                                 "V3 network discovery READY. Open Home Assistant > "
                                 + "Settings > Devices & services and select "
-                                + "Kellie's Voice v3 SAFE TEST.");
+                                + "Kellie's Voice TV.");
                     }
                 });
             }
@@ -147,7 +147,7 @@ public final class PairingV3LanWindow implements AutoCloseable {
             window.worker.setDaemon(true);
             window.worker.start();
             window.main.postDelayed(
-                    () -> window.expire("The full 2-minute window expired. Press START to retry."),
+                    () -> window.expire("The full 2-minute window expired. Choose START to retry."),
                     PairingV3TvWireState.TIMEOUT_MS);
             return window;
         } catch (RuntimeException error) {
@@ -181,18 +181,18 @@ public final class PairingV3LanWindow implements AutoCloseable {
         while (!closed.get()) {
             if (SystemClock.elapsedRealtime() - startedAt
                     >= PairingV3TvWireState.TIMEOUT_MS) {
-                main.post(() -> expire("V3 test expired after 2 minutes."));
+                main.post(() -> expire("Secure pairing expired after 2 minutes."));
                 return;
             }
             if (requests.get() >= MAX_REQUESTS) {
-                main.post(() -> expire("V3 test request limit reached. Press START to retry."));
+                main.post(() -> expire("V3 test request limit reached. Choose START to retry."));
                 return;
             }
             try (Socket socket = listener.accept()) {
                 activeSocket = socket;
                 socket.setSoTimeout(650);
                 if (requests.incrementAndGet() > MAX_REQUESTS) {
-                    main.post(() -> expire("V3 test request limit reached. Press START to retry."));
+                    main.post(() -> expire("V3 test request limit reached. Choose START to retry."));
                     return;
                 }
                 handle(socket);
