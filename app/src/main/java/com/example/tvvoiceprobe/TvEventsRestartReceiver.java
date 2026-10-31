@@ -55,9 +55,10 @@ public final class TvEventsRestartReceiver extends BroadcastReceiver {
         // reboot must recognize that already-active grant without requiring
         // the user to reopen the Activity. Never refresh over the network
         // or expose a token from this boot BroadcastReceiver.
-        boolean renewable = new TvRenewableLoginVault(context).hasActiveLogin();
+        TvRenewableLoginVault vault = new TvRenewableLoginVault(context);
+        boolean renewable = vault.hasActiveLogin();
         boolean manual = false;
-        if (!renewable) {
+        if (!vault.blocksManualFallback()) {
             try {
                 manual = new CredentialStore(context).load() != null;
             } catch (Exception ignored) {
