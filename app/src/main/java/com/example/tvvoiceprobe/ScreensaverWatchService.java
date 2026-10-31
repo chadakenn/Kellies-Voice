@@ -101,6 +101,7 @@ public final class ScreensaverWatchService extends Service {
         }
         ScreensaverWatchStatus.serviceRunning(true);
         ScreensaverWatchRecovery.record(this, ScreensaverWatchRecovery.RESULT_RUNNING, "");
+        ScreensaverWatchRecovery.cancelRecovery(this);
         windows = getSystemService(WindowManager.class);
         if (intent != null && ACTION_REFRESH_HA.equals(intent.getAction()) && settingsSync != null) {
             // Explicit local user request to fetch HA settings again without

@@ -21,7 +21,7 @@ final class ScreensaverWatchRecovery {
     static final String KEY_LAST_ATTEMPT = "last_attempt_ms";
     static final String KEY_LAST_RESULT = "last_result";
     static final String KEY_LAST_ERROR = "last_error";
-    static final String KEY_BOOT_RECEIVER = "boot_receiver_entered";
+    static final String KEY_BOOT_COUNT = "boot_receiver_boot_count";
     static final String RESULT_REQUESTED = "start requested";
     static final String RESULT_RUNNING = "service confirmed RUNNING";
     static final String RESULT_DENIED = "start denied";
@@ -31,6 +31,23 @@ final class ScreensaverWatchRecovery {
     static final int NOTICE_ID = 2245;
 
     private ScreensaverWatchRecovery() { }
+
+    /** Pure decision: should we attempt a start? */
+    static boolean decideStart(boolean screensaverOn, boolean haManageOn) {
+        return screensaverOn || haManageOn;
+    }
+
+    /** Pure decision: what recovery action after a failed start? */
+    static String decideRecovery(boolean shouldRun, boolean startAccepted) {
+        if (!shouldRun) return RESULT_SKIPPED;
+        if (startAccepted) return RESULT_REQUESTED;
+        return RESULT_NOTIFICATION;
+    }
+
+    /** Pure decision: is this boot's receiver entry current? */
+    static boolean bootMatches(int storedBootCount, int currentBootCount) {
+        return storedBootCount >= 0 && storedBootCount == currentBootCount;
+    }
 
     /** Whether the watcher service should be running at all. */
     static boolean shouldRun(Context context) {
@@ -52,14 +69,27 @@ final class ScreensaverWatchRecovery {
 
     static void noteBootReceiver(Context context) {
         if (context == null) return;
+        int boot = currentBootCount(context);
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-                .edit().putBoolean(KEY_BOOT_RECEIVER, true).apply();
+                .edit().putInt(KEY_BOOT_COUNT, boot).apply();
     }
 
-    static boolean bootReceiverEntered(Context context) {
+    /** True only if the receiver ran on the current boot, not an older one. */
+    static boolean bootReceiverEnteredThisBoot(Context context) {
         if (context == null) return false;
-        return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-                .getBoolean(KEY_BOOT_RECEIVER, false);
+        int stored = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getInt(KEY_BOOT_COUNT, -1);
+        return stored >= 0 && stored == currentBootCount(context);
+    }
+
+    static int currentBootCount(Context context) {
+        try {
+            return android.provider.Settings.Global.getInt(
+                    context.getContentResolver(),
+                    android.provider.Settings.Global.BOOT_COUNT, -1);
+        } catch (Exception ignored) {
+            return -1;
+        }
     }
 
     static String lastResult(Context context) {

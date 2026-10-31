@@ -4,37 +4,52 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 public class ScreensaverWatchRecoveryTest {
-    @Test public void resultConstantsAreDistinct() {
+    @Test public void featureOffSkipsAndDoesNotRecover() {
+        assertFalse(ScreensaverWatchRecovery.decideStart(false, false));
+        assertEquals(ScreensaverWatchRecovery.RESULT_SKIPPED,
+                ScreensaverWatchRecovery.decideRecovery(false, false));
+        assertEquals(ScreensaverWatchRecovery.RESULT_SKIPPED,
+                ScreensaverWatchRecovery.decideRecovery(false, true));
+    }
+
+    @Test public void screensaverOrHaManageOnAttemptsStart() {
+        assertTrue(ScreensaverWatchRecovery.decideStart(true, false));
+        assertTrue(ScreensaverWatchRecovery.decideStart(false, true));
+        assertTrue(ScreensaverWatchRecovery.decideStart(true, true));
+    }
+
+    @Test public void acceptedStartDoesNotPostNotification() {
+        assertEquals(ScreensaverWatchRecovery.RESULT_REQUESTED,
+                ScreensaverWatchRecovery.decideRecovery(true, true));
+    }
+
+    @Test public void deniedStartPostsNotificationRecovery() {
+        assertEquals(ScreensaverWatchRecovery.RESULT_NOTIFICATION,
+                ScreensaverWatchRecovery.decideRecovery(true, false));
+    }
+
+    @Test public void overlayMissingDoesNotBlockHaLayoutStartDecision() {
+        // HA layout ON with screensaver OFF still decides to start the service
+        // so settings sync can run. Overlay rendering is gated separately.
+        assertTrue(ScreensaverWatchRecovery.decideStart(false, true));
+    }
+
+    @Test public void bootReceiverMatchesOnlyCurrentBoot() {
+        assertTrue(ScreensaverWatchRecovery.bootMatches(42, 42));
+        assertFalse(ScreensaverWatchRecovery.bootMatches(41, 42));
+        assertFalse(ScreensaverWatchRecovery.bootMatches(-1, 42));
+        assertFalse(ScreensaverWatchRecovery.bootMatches(42, -1));
+    }
+
+    @Test public void repeatedRebootRequiresFreshReceiverEntry() {
+        // After a new boot the stored count no longer matches.
+        assertFalse(ScreensaverWatchRecovery.bootMatches(10, 11));
+        // After the receiver runs on the new boot it matches again.
+        assertTrue(ScreensaverWatchRecovery.bootMatches(11, 11));
+    }
+
+    @Test public void startRequestedIsDistinctFromConfirmedRunning() {
         assertNotEquals(ScreensaverWatchRecovery.RESULT_REQUESTED,
                 ScreensaverWatchRecovery.RESULT_RUNNING);
-        assertNotEquals(ScreensaverWatchRecovery.RESULT_RUNNING,
-                ScreensaverWatchRecovery.RESULT_DENIED);
-        assertNotEquals(ScreensaverWatchRecovery.RESULT_SKIPPED,
-                ScreensaverWatchRecovery.RESULT_NOTIFICATION);
-    }
-
-    @Test public void featureOffIsSkippedAndDoesNotScheduleRecovery() {
-        // Contract: when shouldRun is false, startIfEnabled records SKIPPED
-        // and cancels recovery. It must not post a notification or schedule work.
-        assertEquals("skipped (feature off)", ScreensaverWatchRecovery.RESULT_SKIPPED);
-    }
-
-    @Test public void startRequestedIsNotTheSameAsConfirmedRunning() {
-        // RESULT_REQUESTED means startForegroundService was accepted.
-        // RESULT_RUNNING means onStartCommand actually ran and called startForeground.
-        assertFalse(ScreensaverWatchRecovery.RESULT_REQUESTED
-                .equals(ScreensaverWatchRecovery.RESULT_RUNNING));
-    }
-
-    @Test public void denialRecordsExceptionClassNotAssumedCause() {
-        // The recovery records the actual exception simple name.
-        // It does not hard-code "Android denied BOOT_COMPLETED".
-        assertTrue(ScreensaverWatchRecovery.RESULT_DENIED.contains("denied"));
-    }
-
-    @Test public void notificationIsTheSupportedRecoveryPath() {
-        // When unattended start fails, a user-visible notification is posted.
-        // An inexact AlarmManager is not used to promise an automatic FGS restart.
-        assertEquals("notification posted", ScreensaverWatchRecovery.RESULT_NOTIFICATION);
     }
 }
