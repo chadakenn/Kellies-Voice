@@ -1,6 +1,6 @@
 # FAQ
 
-> **What about the v0.17 screen shots and automatic pairing?** Those are currently from an **experimental, separate Beta app**, not the public v0.16.14 HACS/APK installation. The [redacted ADB gallery](https://github.com/chadakenn/Kellies-Voice/blob/integration/v0.17.0-combined-qa/docs/screenshots/PR-192-CAPTURES.md) comes from an older Compose development preview. Follow the stable setup guide until the combined v0.17 release has actually shipped and passed its hardware and security gates.
+> **What about the v0.17 screenshots and automatic pairing?** The screenshot gallery depicts an **older development Beta**, not the public v0.16.14 HACS/APK installation. The current signed QA app uses the separate `.qa` Android package; automatic pairing v3 still has a separate experimental HA component. The [redacted ADB gallery](https://github.com/chadakenn/Kellies-Voice/blob/integration/v0.17.0-combined-qa/docs/screenshots/PR-192-CAPTURES.md) comes from an older Compose development preview. Follow the stable setup guide until the combined v0.17 release has actually shipped and passed its hardware and security gates.
 
 [← Documentation home](Home.md) · [Getting started](Getting-Started.md) · [YAML Cookbook](YAML-Cookbook.md) · [Troubleshooting](Troubleshooting.md)
 
