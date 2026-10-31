@@ -1,4 +1,4 @@
-"""Guard the TV beta first-run wizard and explicit-consent onboarding."""
+"""Guard the TV first-run wizard and explicit-consent onboarding."""
 from pathlib import Path
 import unittest
 
@@ -9,15 +9,16 @@ MANIFEST = (ROOT / "AndroidManifest.xml").read_text()
 
 
 class BetaFirstRunSetupTests(unittest.TestCase):
-    def test_separate_beta_only_activity_and_launch(self):
+    def test_production_activity_nonexported_and_existing_logins_preserved(self):
         self.assertIn('android:name=".FirstRunSetupActivity"', MANIFEST)
         self.assertIn('android:exported="false"', MANIFEST)
-        self.assertIn("BuildConfig.DEBUG || BuildConfig.IS_QA", WIZARD)
-        self.assertIn("if (!BuildConfig.DEBUG && !BuildConfig.IS_QA)", WIZARD)
+        self.assertNotIn("if (!BuildConfig.DEBUG && !BuildConfig.IS_QA)", WIZARD)
+        self.assertIn("new CredentialStore(activity).load() != null", WIZARD)
+        self.assertIn("new TvRenewableLoginVault(activity).hasActiveLogin()", WIZARD)
         self.assertIn("FirstRunSetupActivity.needsSetup(this)", VOICE)
         self.assertIn("state == null", VOICE)
         self.assertIn("startActivity(new Intent(this, FirstRunSetupActivity.class))", VOICE)
-        self.assertIn("First-time setup wizard (QA)", VOICE)
+        self.assertIn("First-time setup wizard", VOICE)
         self.assertIn('getBoolean(COMPLETED, false)', WIZARD)
         self.assertIn('putBoolean(COMPLETED, true)', WIZARD)
 
