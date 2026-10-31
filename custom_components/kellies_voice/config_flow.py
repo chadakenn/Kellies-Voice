@@ -4,9 +4,10 @@ import voluptuous as vol
 from homeassistant.config_entries import ConfigFlow, OptionsFlow
 from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 
-from .const import DOMAIN
+from .const import DOMAIN, QUICK_ACTION_CACHE
 from .validation import clean_tv_device_id
 from .home_shortcuts import COUNT, ACTIONS, validate_slot
+from .quick_action_icons import ICON_CHOICES, validate_override
 
 
 def _text(properties: dict, key: str) -> str:
@@ -39,8 +40,11 @@ class KellieVoiceOptionsFlow(OptionsFlow):
                                         current.get(f"shortcut_{slot}_entity", ""))
                 action = user_input.get(f"shortcut_{slot}_action",
                                         current.get(f"shortcut_{slot}_action", "Turn on"))
+                icon = user_input.get(f"shortcut_{slot}_icon",
+                                     current.get(f"shortcut_{slot}_icon", "Auto"))
                 try:
                     validate_slot(label, entity, action)
+                    validate_override(icon)
                 except ValueError:
                     errors["base"] = "invalid_shortcut"
                     break
@@ -48,8 +52,16 @@ class KellieVoiceOptionsFlow(OptionsFlow):
                     f"shortcut_{slot}_label": label.strip(),
                     f"shortcut_{slot}_entity": entity.strip(),
                     f"shortcut_{slot}_action": action,
+                    f"shortcut_{slot}_icon": icon,
                 })
             if not errors:
+                # The native device-page fields share this same per-TV draft.
+                # An explicit Options form submission replaces it atomically.
+                hass = getattr(self, "hass", None)
+                if hass is not None:
+                    hass.data.setdefault(DOMAIN, {}).setdefault(
+                        QUICK_ACTION_CACHE, {}
+                    )[self.config_entry.entry_id] = dict(updated)
                 return self.async_create_entry(title="", data=updated)
 
         fields = {
@@ -62,6 +74,7 @@ class KellieVoiceOptionsFlow(OptionsFlow):
             for field, default, value_type in (
                 ("label", "", str), ("entity", "", str),
                 ("action", "Turn on", vol.In(ACTIONS)),
+                ("icon", "Auto", vol.In(ICON_CHOICES)),
             ):
                 key = f"shortcut_{slot}_{field}"
                 fields[vol.Optional(

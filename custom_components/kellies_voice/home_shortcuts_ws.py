@@ -14,6 +14,7 @@ from homeassistant.core import Context, HomeAssistant, callback
 
 from .const import DOMAIN
 from .home_shortcuts import entries_from_options, selection
+from .quick_action_icons import resolve_shortcut_icon
 from .validation import clean_tv_device_id
 from .websocket import _tv_can_read
 
@@ -65,11 +66,19 @@ def websocket_get_home_shortcuts(hass, connection, msg):
     if entry is None:
         connection.send_error(msg["id"], websocket_api.ERR_UNAUTHORIZED, "TV not paired")
         return
-    slots = [
-        {"slot": item["slot"], "label": item["label"]}
-        for item in entries_from_options(entry.options)
-        if _authorized_slot(connection.user, item)
-    ]
+    slots = []
+    for item in entries_from_options(entry.options):
+        if not _authorized_slot(connection.user, item):
+            continue
+        # The icon comes only from HA's own entity state or an HA-owned
+        # allowlisted override. No URL, target id or executable action
+        # is sent to Android, and there is no arbitrary image download.
+        state = hass.states.get(item["entity_id"])
+        mdi = state.attributes.get("icon") if state else None
+        icon = resolve_shortcut_icon(
+            item.get("icon_override", "Auto"), mdi, item["domain"]
+        )
+        slots.append({"slot": item["slot"], "label": item["label"], "icon": icon})
     connection.send_result(msg["id"], {"shortcuts": slots})
 
 
