@@ -397,6 +397,18 @@ final class ScreensaverBoard {
                 }
             }
 
+            @Override public void onReceivedHttpError(WebView view, WebResourceRequest request,
+                    WebResourceResponse response) {
+                super.onReceivedHttpError(view, request, response);
+                if (request != null && request.getUrl() != null && response != null) {
+                    // Status and category only: never log auth codes, raw paths,
+                    // flow identifiers, cookies, response bodies or headers.
+                    ScreensaverWebDiagnostics.httpError(
+                            request.getUrl().toString(),
+                            response.getStatusCode(), request.isForMainFrame());
+                }
+            }
+
             @Override public void onReceivedError(WebView view, WebResourceRequest request,
                     android.webkit.WebResourceError error) {
                 super.onReceivedError(view, request, error);
@@ -412,7 +424,9 @@ final class ScreensaverBoard {
                 boolean allowed = strictLocalHttp
                         ? LanHttpDashboardPolicy.allowedNavigation(page, next)
                         : ScreensaverDashboard.sameSite(page, next);
-                if (!allowed) ScreensaverWebDiagnostics.authNote("blocked off-site navigation");
+                if (!allowed) ScreensaverWebDiagnostics.blockedNavigation(
+                        page, next, request.isForMainFrame(),
+                        request.isRedirect(), request.hasGesture());
                 return !allowed;
             }
         });
