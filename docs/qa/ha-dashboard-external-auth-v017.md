@@ -44,6 +44,37 @@ Home Assistant's in-page Logout button calls `revokeExternalAuth` and
 revokes the TV refresh token at `/auth/revoke`, **disconnecting the
 TV's Assist, alerts and cameras as well** until re-paired. This is expected.
 
+## Local-only connections: no Cloud or port forwarding needed
+
+**HTTPS does not mean Internet-facing.** Kellie's Voice and Home Assistant
+can stay on the same LAN all the time. With a locally trusted HTTPS endpoint
+for HA, a local DNS hostname or IP certificate that the TV's Android WebView
+trusts, and no external router forwarding, the owner-approved v3 TV login and
+embedded dashboard function entirely inside the home network. A **local**
+reverse proxy or TLS termination on HA itself is an option; nothing here
+requires Home Assistant Cloud, a public DNS entry or Cloudflare.
+
+**Already usable: local HTTP *without native TV token bridging*.** In HA open
+the Kellie's Voice TV device, set **Screensaver dashboard URL** to an
+`http://192.168.x.x:8123/...` page (or Frigate's HTTP address), and leave
+**Secure HA dashboard sign-in OFF**. The screensaver's existing WebView
+can then open that HTTP page without putting any token in its URL. This
+works for unauthenticated pages, and HA's own login or trusted_networks
+may work separately, but issue #261 reports that the HA login page can stall
+on “Please wait” in TV WebView. **Do not call this a fix for automatic
+authenticated local-HTTP HA dashboards.**
+
+**Requested but not implemented: LAN HTTP with owner-approved automatic TV
+login.** This needs separate security review in
+[issue #262](https://github.com/chadakenn/Kellies-Voice/issues/262).
+A plain HTTP TV browser request carrying an HA API access token is visible
+to other devices able to observe the local link, and a local network is
+not necessarily trustworthy. We should provide a clearly consented LAN-only
+mode only with a narrowly restricted TV user, exact endpoint checks,
+no public redirects or silent HTTPS fallback, and explicit warnings.
+The current v3 token *refresh* channel continues requiring HTTPS; do
+not manually copy a privileged HA owner's credential into the HTTP WebView.
+
 ## Limitations and hardware/security QA
 
 - Secure pairing is HTTPS-only. **HTTP trusted_networks bypass**, the original
