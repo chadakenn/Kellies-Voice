@@ -48,6 +48,40 @@ final class ScreensaverWebDiagnostics {
         Log.w(TAG, "load error code " + code + " for " + safeSummary(url));
     }
 
+    /**
+     * Fixed request categories only. Even the flow ID after /auth/login_flow/
+     * is untrusted secret-like material and MUST NOT be logged or echoed.
+     * Do not return URL, host, path, query, fragment, or free-form error data.
+     */
+    static String requestKind(String rawUrl) {
+        try {
+            String path = URI.create(rawUrl).getPath();
+            if (path == null) return "other";
+            if (path.equals("/auth/login_flow") || path.startsWith("/auth/login_flow/"))
+                return "auth-login-flow";
+            if (path.equals("/auth/token")) return "auth-token";
+            if (path.equals("/auth/authorize")) return "auth-authorize";
+            if (path.equals("/auth/providers")) return "auth-providers";
+            return "other";
+        } catch (Exception ignored) {
+            return "other";
+        }
+    }
+
+    /** Receives only sanitized integer HTTP code and a fixed path category. */
+    static void httpError(String url, int status, boolean mainFrame) {
+        int safeStatus = status >= 100 && status <= 599 ? status : 0;
+        Log.w(TAG, "HTTP error status=" + safeStatus
+                + " kind=" + requestKind(url)
+                + " mainFrame=" + mainFrame);
+    }
+
+    /** A navigation gate decision, without showing redirect targets or query params. */
+    static void blockedNavigation(String url) {
+        Log.i(TAG, "blocked navigation kind=" + requestKind(url)
+                + " destination=" + safeSummary(url));
+    }
+
     static void authNote(String note) {
         Log.i(TAG, note);
     }
