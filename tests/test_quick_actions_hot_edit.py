@@ -70,7 +70,9 @@ class HotEditTests(unittest.IsolatedAsyncioTestCase):
         setter = compile_function(
             "quick_action_device.py", "_set", "QuickActionDeviceSetting",
             {"updated_device_option": policy.updated_device_option,
-             "HomeAssistantError": ValueError},
+             "HomeAssistantError": ValueError,
+             "DOMAIN": "kellies_voice",
+             "QUICK_ACTION_CACHE": "quick_action_entry_cache"},
         )
         changed = compile_function(
             "__init__.py", "_options_updated", globals_={
@@ -102,6 +104,48 @@ class HotEditTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual("Movie Time", policy.entries_from_options(cfg.entry.options)[0]["label"])
         self.assertEqual(2, cfg.writes)  # Third write is unchanged default.
         self.assertEqual([], cfg.reloads)
+
+
+    async def test_stale_config_snapshot_cannot_overwrite_recent_slot_edits(self):
+        cfg = FakeConfigEntries()
+        original = dict(cfg.entry.options)
+        hass = types.SimpleNamespace(
+            config_entries=cfg,
+            auth=types.SimpleNamespace(async_get_user=self._get_admin),
+            data={"kellies_voice": {"native_timer_options_at_setup": {"tv-qa": False},
+                                     "quick_action_entry_cache": {"tv-qa": dict(original)}}},
+        )
+        setter = compile_function(
+            "quick_action_device.py", "_set", "QuickActionDeviceSetting",
+            {"updated_device_option": policy.updated_device_option,
+             "HomeAssistantError": ValueError,
+             "DOMAIN": "kellies_voice",
+             "QUICK_ACTION_CACHE": "quick_action_entry_cache"},
+        )
+        entity = types.SimpleNamespace(
+            hass=hass, _context=types.SimpleNamespace(user_id="owner"),
+            _entry=types.SimpleNamespace(entry_id="tv-qa"),
+            _slot=4, _field="label",
+        )
+
+        await setter(entity, "Movie Time")
+        # Emulate a stale ConfigEntry options view on another native platform.
+        cfg.entry.options = dict(original)
+        entity._field = "entity"
+        await setter(entity, "light.office_light")
+        self.assertEqual("Movie Time", cfg.entry.options["shortcut_4_label"])
+        self.assertEqual("light.office_light", cfg.entry.options["shortcut_4_entity"])
+
+        cfg.entry.options = dict(original)
+        entity._field = "action"
+        await setter(entity, "Toggle")
+        self.assertEqual(
+            ("Movie Time", "light.office_light", "Toggle"),
+            (cfg.entry.options["shortcut_4_label"],
+             cfg.entry.options["shortcut_4_entity"],
+             cfg.entry.options["shortcut_4_action"]),
+        )
+        self.assertEqual(3, cfg.writes)
 
     async def _get_admin(self, user_id):
         return types.SimpleNamespace(is_admin=user_id == "owner")
