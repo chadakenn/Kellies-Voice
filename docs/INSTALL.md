@@ -1,15 +1,15 @@
 # Install Kellie's Voice: start here (new testers)
 
-> **Testing v0.17.0?** This is a separate, not-yet-public, **persistently signed QA app** (`com.example.tvvoiceprobe.qa`) with Compose Settings, Quick Actions and HA-first v3 onboarding. It is *not* the disposable PR `app-debug.apk`. Do **not** install it using the stable HACS steps below or overwrite the stable `kellies_voice` component. See [v0.17 QA component differences, verified tests and remaining blockers](V017_BETA_STATUS.md).
+> **Testing a private QA build instead?** The separately installed, persistently signed `com.example.tvvoiceprobe.qa` APK is not the public signed release and does not inherit stable pairing. Do not install a PR `app-debug.apk` over it. See [QA boundaries](V017_BETA_STATUS.md).
 
-**Release guide: v0.16.14 (October 28, 2026)** · Use only the [latest published signed release](https://github.com/chadakenn/Kellies-Voice/releases/latest), not an Actions debug artifact.
+**Release guide: v0.17.0 (October 31, 2026)** · Use only the [latest published signed release](https://github.com/chadakenn/Kellies-Voice/releases/latest), not an Actions debug artifact.
 
 Welcome! **Kellie's Voice** turns an Android TV / Google TV into a voice companion for **your own Home Assistant**. It has two separate parts:
 
 1. **Android TV app**: listens after you press TALK, speaks Home Assistant's answer through the TV, and displays floating voice, timer, weather, announcement, and camera windows.
 2. **Home Assistant custom integration (via HACS)**: registers the TV and exposes per-TV controls and actions such as `kellies_voice.announce`, `show_camera`, `show_forecast`, and `start_timer`.
 
-**For v0.16.14, install both the signed Android TV APK and matching v0.16.14 HACS integration** now that v0.16.14 is publicly available. Installing the APK does **not** install HACS, and HACS does **not** install the APK. No separate AI server is needed on your TV.
+**For v0.17.0, install both the signed Android TV APK and matching v0.17.0 HACS integration**. Installing the APK does **not** install HACS, and HACS does **not** install the APK. No separate AI server is needed on your TV.
 
 **Quick recovery if announcements, timers, or camera popups stop:** Open the Kellie's Voice TV app (not Android's system Settings). Choose **SETTINGS → Alerts & cameras → TV alert status → Resume TV alerts**. Resume is inside the status popup; if missing, first enable **TV announcements & cameras**, configure Home Assistant, and allow Android **Display over other apps**. A working voice/TALK connection does not guarantee the separate alert receiver is connected. [Detailed recovery steps](TROUBLESHOOTING.md#tv-camera-or-announcement-popups-missing-find-resume-tv-alerts).
 
@@ -176,7 +176,7 @@ For weather, the recommended initial test is **Developer tools → Actions**, no
 | **Still requiring device acceptance** | Stable wake reactivation after reboot and permission loss; Philips phantom microphone inputs (#71), TV pairing typo/delivery (#69), native timer phrase routing (#57), other device compatibility (#41) |
 | **Development only, not yet released** | Draft voice silence fallback #183 and APK version-security checks #184, and future custom wake/TV-off modes. CI green is not hardware approval. |
 
-**Install only a published signed [v0.16.14 APK](https://github.com/chadakenn/Kellies-Voice/releases/tag/v0.16.14) and matching HACS integration** for normal use. Do not mistake GitHub Actions debug APKs, drafts, or PR branches for stable releases.
+**Install only a published signed [v0.17.0 APK](https://github.com/chadakenn/Kellies-Voice/releases/tag/v0.17.0) and matching HACS integration** for normal use. Do not mistake GitHub Actions debug APKs, drafts, or PR branches for stable releases.
 
 ## New tester checklist
 
