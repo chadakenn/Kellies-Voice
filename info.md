@@ -12,6 +12,12 @@ Kellie's Voice pairs a **native Android TV / Google TV voice app** with this **H
 
 **Important:** HACS installs only the Home Assistant integration. You must separately install the [signed Kellie's Voice Android TV APK](https://github.com/chadakenn/Kellies-Voice/releases/latest) and enable **Home Assistant layout** and, for alerts, **TV announcements & cameras** in its settings.
 
+### In development: v0.17.0 (not public HACS)
+
+A separate beta is testing a redesigned Compose Settings UI, HA-editable TV Quick Actions, opt-in HA-first **Secure Pairing v3** and authenticated screensaver dashboards. **These are not part of the stable v0.16.14 HACS download.** The regular `kellies_voice` integration and Android TV APK remain separate installs; the test-only `kellies_voice_v3qa` component must never be substituted for the standard integration. The v3 beta's optional dedicated HA user can control all entities and requires HTTPS for renewable login. Read the [v0.17 QA status and blockers](https://github.com/chadakenn/Kellies-Voice/blob/docs/v017-complete-onboarding-media-qa/docs/V017_BETA_STATUS.md).
+
+**Real ADB photos from an onn 4K Pro, developer build:** [Compose Settings and theme gallery](https://github.com/chadakenn/Kellies-Voice/blob/integration/v0.17.0-combined-qa/docs/screenshots/PR-192-CAPTURES.md). These are privacy-redacted captures of an *older 0.16.14-test preview*, not the final public UI. Existing released screenshots remain in the main README.
+
 ### Quick setup
 1. Add `https://github.com/chadakenn/Kellies-Voice` as an **Integration** in **HACS → Custom repositories** if HACS doesn't already know this repo.
 2. Download **v0.16.14** to match the [signed Android v0.16.14 APK](https://github.com/chadakenn/Kellies-Voice/releases/tag/v0.16.14), then restart Home Assistant.
