@@ -33,7 +33,9 @@ class HaDashboardExternalAuthTests(unittest.TestCase):
 
     def test_token_and_logout_flow_are_off_ui_thread_and_fail_closed(self):
         bridge = source("HaDashboardExternalAuthBridge.java")
-        self.assertIn("vault.connectionOnWorker()", bridge)
+        self.assertIn("vault.connectionOnWorker(force)", bridge)
+        self.assertIn('payload.optBoolean("force", false)', bridge)
+        self.assertIn("renewOnWorker(boolean force)", source("TvRenewableLoginVault.java"))
         self.assertIn("vault.accessRemainingSeconds()", bridge)
         self.assertIn("vault.revokeOnWorker()", bridge)
         self.assertIn('new Thread(() -> {', bridge)
