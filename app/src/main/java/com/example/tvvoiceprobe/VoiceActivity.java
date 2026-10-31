@@ -469,15 +469,12 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         toolbar.setPadding(0, menuDp(5), 0, 0);
         addButton(toolbar, "TALK", v -> startTalk());
         addButton(toolbar, "STOP", v -> assist.finishTalking());
-        addButton(toolbar, "SETTINGS", v -> {
-            if (BuildConfig.DEBUG || BuildConfig.IS_QA
-                    || BuildConfig.VERSION_NAME.contains("-dev.")) {
+        // Compose Settings is the supported entry point in stable, QA and dev.
+        // Legacy settings screens remain reachable through ComposeSettingsInterop
+        // for controls that have not yet been migrated.
+        addButton(toolbar, "SETTINGS", v ->
                 startActivity(new Intent(this,
-                        com.example.tvvoiceprobe.ui.settings.ComposeSettingsActivity.class));
-            } else {
-                showSettingsDashboard();
-            }
-        });
+                        com.example.tvvoiceprobe.ui.settings.ComposeSettingsActivity.class)));
         root.addView(toolbar, new LinearLayout.LayoutParams(-1, -2));
         applyMainPalette();
 
@@ -1052,7 +1049,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                         "Test a spoken announcement",
                         "TV alert status & connection",
                         "Live camera decoder: " + LiveCameraMode.label(prefs.cameraMode()),
-                        "Pair this Beta TV in Home Assistant (alerts device)"
+                        "Pair this TV in Home Assistant (alerts device)"
                 };
                 break;
             case SCREEN:

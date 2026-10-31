@@ -48,16 +48,24 @@ class TvSettingsRoutingTest(unittest.TestCase):
             "final String title;", 1)[0]
         names = re.findall(r"^        ([A-Z]+)[(]", enum, re.MULTILINE)
         self.assertEqual(list(EXPECTED_CATEGORIES), names)
-        # Both test variants use a single Settings entry routed into Compose.
-        # Stable still enters the proven Java settings until migration is approved.
-        toolbar = ACTIVITY.split('addButton(toolbar, "SETTINGS", v -> {', 1)[1].split(
+        # Stable, QA and dev must all open the full Compose settings page.
+        # The legacy Java menus remain available via ComposeSettingsInterop
+        # for options which still need them.
+        toolbar = ACTIVITY.split('addButton(toolbar, "SETTINGS", v ->', 1)[1].split(
             'root.addView(toolbar', 1
         )[0]
-        self.assertIn("if (BuildConfig.DEBUG || BuildConfig.IS_QA", toolbar)
-        self.assertIn('BuildConfig.VERSION_NAME.contains("-dev.")', toolbar)
         self.assertIn("ComposeSettingsActivity.class", toolbar)
-        self.assertIn("showSettingsDashboard();", toolbar)
+        self.assertNotIn("BuildConfig.DEBUG", toolbar)
+        self.assertNotIn("BuildConfig.IS_QA", toolbar)
+        self.assertNotIn("BuildConfig.VERSION_NAME", toolbar)
+        self.assertNotIn("showSettingsDashboard();", toolbar)
         self.assertNotIn('addButton(toolbar, "COMPOSE"', toolbar)
+        compose = (
+            Path(__file__).resolve().parents[1]
+            / "app/src/main/java/com/example/tvvoiceprobe/ui/settings/ComposeSettingsActivity.kt"
+        ).read_text(encoding="utf-8")
+        self.assertIn('text = "Kellie\'s Voice  \\u00b7  Settings"', compose)
+        self.assertNotIn("Compose Settings (preview)", compose)
 
     def test_compose_keyboard_focus_and_recovery_remain_accessible(self):
         compose = (
