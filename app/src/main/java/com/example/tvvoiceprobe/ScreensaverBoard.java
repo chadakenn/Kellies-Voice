@@ -65,6 +65,7 @@ final class ScreensaverBoard {
     private final List<Call> calls = new ArrayList<>();
     private OkHttpClient http;
     private WebView web;
+    private HaDashboardExternalAuthBridge haWebAuth;
     private ScreensaverLiveGrid liveGrid;
     private ImageView[] gridPhotos;
     private View[] gridCells;
@@ -186,9 +187,10 @@ final class ScreensaverBoard {
         String[] cameras = ScreensaverDashboard.cameraList(prefs.screensaverCameras());
         if (!page.isEmpty()) {
             try {
-                showPage(page);
+                if (prefs.screensaverHaExternalAuth()) showAuthenticatedHaPage(page);
+                else showPage(page, null);
             } catch (RuntimeException ignored) {
-                showMessage("This TV couldn't open the Frigate page.");
+                showMessage("This TV couldn't open the dashboard page.");
             }
         } else if (cameras.length > 0) showCameras(cameras);
         else showMessage("No Frigate URL or HA cameras are saved on this TV.\n"
@@ -233,6 +235,10 @@ final class ScreensaverBoard {
             http.connectionPool().evictAll();
             http = null;
         }
+        if (haWebAuth != null) {
+            haWebAuth.close();
+            haWebAuth = null;
+        }
         if (web != null) {
             web.stopLoading();
             if (web.getParent() instanceof ViewGroup) ((ViewGroup) web.getParent()).removeView(web);
@@ -242,7 +248,64 @@ final class ScreensaverBoard {
         }
     }
 
-    private void showPage(String page) {
+    /** Optional HA dashboard mode. The four-camera grid and ordinary Frigate
+     * WebView never receive HA credentials. The v3 pairing and HTTPS origin
+     * must be verified before even creating the authenticated WebView.
+     */
+    private void showAuthenticatedHaPage(String page) {
+        final int current = generation;
+        TextView notice = showMessage("Connecting securely to Home Assistant dashboard…");
+        if (!HaDashboardExternalAuthBridge.supported()) {
+            notice.setText("This Android TV WebView cannot safely sign into an HA dashboard. "
+                    + "Update Android System WebView or disable HA dashboard sign-in.");
+            return;
+        }
+        TvRenewableLoginVault vault = new TvRenewableLoginVault(context);
+        if (!vault.blocksManualFallback() || !vault.hasActiveLogin()) {
+            notice.setText("HA dashboard sign-in requires the owner-approved TV login. "
+                    + "Connect the TV from Kellie's Voice SETTINGS first.");
+            return;
+        }
+        new Thread(() -> {
+            CredentialStore.Connection authorized = null;
+            String signedUrl = "";
+            try {
+                authorized = vault.connectionOnWorker();
+                if (authorized != null) signedUrl =
+                        HaDashboardAuthPolicy.authenticatedUrl(page, authorized.url);
+            } catch (Exception ignored) {
+                // No token or sensitive HA address in logs.
+            }
+            final String readyUrl = signedUrl;
+            final CredentialStore.Connection ready = authorized;
+            main.post(() -> {
+                if (stopped || current != generation) return;
+                if (ready == null || readyUrl.isEmpty()) {
+                    notice.setText("HA dashboard sign-in unavailable. Use an HTTPS dashboard "
+                            + "URL on this TV's paired Home Assistant server, or reconnect in SETTINGS.");
+                    return;
+                }
+                try {
+                    // All credentials remain native, with a V2 main-frame-only bridge.
+                    showPage(readyUrl, ready.url);
+                    root.removeView(notice);
+                    root.addView(browseButton());
+                } catch (RuntimeException ignored) {
+                    if (haWebAuth != null) { haWebAuth.close(); haWebAuth = null; }
+                    if (web != null) {
+                        web.stopLoading();
+                        if (web.getParent() instanceof ViewGroup)
+                            ((ViewGroup) web.getParent()).removeView(web);
+                        web.destroy();
+                        web = null;
+                    }
+                    notice.setText("HA dashboard secure WebView failed. No login was shared.");
+                }
+            });
+        }, "KelliesHaDashboardConnect").start();
+    }
+
+    private void showPage(String page, String authenticatedHaOrigin) {
         web = new WebView(context);
         web.setBackgroundColor(Color.BLACK);
         WebSettings settings = web.getSettings();
@@ -263,6 +326,14 @@ final class ScreensaverBoard {
         CookieManager cookies = CookieManager.getInstance();
         if (cookies != null) cookies.setAcceptThirdPartyCookies(web, false);
         web.setFocusableInTouchMode(true);
+        if (authenticatedHaOrigin != null) {
+            final WebView loadedWeb = web;
+            final int openedGeneration = generation;
+            haWebAuth = new HaDashboardExternalAuthBridge(web, page,
+                    authenticatedHaOrigin, new TvRenewableLoginVault(context),
+                    () -> !stopped && openedGeneration == generation
+                            && web == loadedWeb);
+        }
         web.setOnKeyListener((view, key, event) -> browsing && remoteKey(key, event));
         web.setWebViewClient(new WebViewClient() {
             @Override public void onPageFinished(WebView view, String url) {
@@ -281,7 +352,8 @@ final class ScreensaverBoard {
         FrameLayout.LayoutParams params = cardParams();
         // Let Frigate use the whole TV; Close floats over the bottom-right corner.
         if (params.width == FrameLayout.LayoutParams.MATCH_PARENT) params.bottomMargin = 0;
-        root.addView(web, params);
+        // Keep Close / browse controls ABOVE the asynchronously loaded page.
+        root.addView(web, 0, params);
         web.loadUrl(page);
     }
 
