@@ -9,6 +9,7 @@ public final class HaLayout {
     public static final String POSITION = "position";
     public static final String SIZE = "size";
     public static final String STYLE = "style";
+    public static final String COMMUNITY_THEME_LIST = "community_theme_list";
     public static final String AUTO_HIDE = "auto_hide";
     public static final String AUTO_LISTEN = "auto_listen";
     public static final String ALERT_POSITION = "alert_position";
@@ -23,13 +24,15 @@ public final class HaLayout {
     public static final String SCREENSAVER_PAGE_LAYOUT = "screensaver_page_layout";
     public static final String SCREENSAVER_FIT = "screensaver_fit";
     public static final String SCREENSAVER_URL = "screensaver_url";
+    public static final String SCREENSAVER_HA_AUTH = "screensaver_ha_external_auth";
+    public static final String SCREENSAVER_LAN_HTTP = "screensaver_lan_http_only";
     public static final String SCREENSAVER_CAMERAS = "screensaver_cameras";
     public static final String SCREENSAVER_LIVE = "screensaver_live_mode";
 
     private HaLayout() {}
 
     public static boolean known(String setting) {
-        return POSITION.equals(setting) || SIZE.equals(setting) || STYLE.equals(setting)
+        return POSITION.equals(setting) || SIZE.equals(setting) || STYLE.equals(setting) || COMMUNITY_THEME_LIST.equals(setting)
                 || AUTO_HIDE.equals(setting) || AUTO_LISTEN.equals(setting)
                 || ALERT_POSITION.equals(setting) || ALERT_SIZE.equals(setting)
                 || NOISE.equals(setting) || FOLLOW_TIMEOUT.equals(setting)
@@ -40,12 +43,14 @@ public final class HaLayout {
     public static boolean isScreensaver(String setting) {
         return SCREENSAVER_ENABLED.equals(setting) || SCREENSAVER_SIZE.equals(setting)
                 || SCREENSAVER_PAGE_LAYOUT.equals(setting) || SCREENSAVER_FIT.equals(setting)
-                || SCREENSAVER_URL.equals(setting) || SCREENSAVER_CAMERAS.equals(setting)
+                || SCREENSAVER_URL.equals(setting) || SCREENSAVER_HA_AUTH.equals(setting)
+                || SCREENSAVER_LAN_HTTP.equals(setting)
+                || SCREENSAVER_CAMERAS.equals(setting)
                 || SCREENSAVER_LIVE.equals(setting);
     }
 
     public static boolean changesPanel(String setting) {
-        return POSITION.equals(setting) || SIZE.equals(setting) || STYLE.equals(setting);
+        return POSITION.equals(setting) || SIZE.equals(setting) || STYLE.equals(setting) || COMMUNITY_THEME_LIST.equals(setting);
     }
 
     /** Value to write into Home Assistant for the TV's current preference. */
@@ -58,7 +63,9 @@ public final class HaLayout {
                 if (OverlayPreferences.SIZE_LARGE.equals(prefs.size())) return "Large";
                 return "Medium";
             case STYLE:
-                return OverlayPreferences.skinLabel(prefs.skin());
+                return skinLabelFor(prefs);
+            case COMMUNITY_THEME_LIST:
+                return communityThemeList(prefs);
             case AUTO_HIDE:
                 return prefs.autoHide() ? prefs.hideSeconds() + " seconds" : "Never";
             case AUTO_LISTEN:
@@ -87,6 +94,10 @@ public final class HaLayout {
                 return prefs.screensaverFit();
             case SCREENSAVER_URL:
                 return prefs.screensaverUrl();
+            case SCREENSAVER_HA_AUTH:
+                return prefs.screensaverHaExternalAuth() ? "on" : "off";
+            case SCREENSAVER_LAN_HTTP:
+                return prefs.screensaverLanHttpOnly() ? "on" : "off";
             case SCREENSAVER_CAMERAS:
                 return prefs.screensaverCameras();
             case SCREENSAVER_LIVE:
@@ -112,10 +123,13 @@ public final class HaLayout {
                 prefs.setSize(size);
                 return true;
             case STYLE:
-                String skin = styleKey(value);
+                String skin = styleKey(prefs, value);
                 if (skin == null || skin.equals(prefs.skin())) return false;
                 prefs.setSkin(skin);
                 return true;
+            case COMMUNITY_THEME_LIST:
+                // TV owns the list; HA may echo it back. Ignore.
+                return false;
             case AUTO_HIDE:
                 Integer seconds = hideSeconds(value);
                 if (seconds == null) return false;
@@ -193,6 +207,18 @@ public final class HaLayout {
                 if (value.equals(prefs.screensaverUrl())) return false;
                 prefs.setScreensaverUrl(value);
                 return true;
+            case SCREENSAVER_HA_AUTH:
+                if (!"on".equals(value) && !"off".equals(value)) return false;
+                boolean secureDashboard = "on".equals(value);
+                if (secureDashboard == prefs.screensaverHaExternalAuth()) return false;
+                prefs.setScreensaverHaExternalAuth(secureDashboard);
+                return true;
+            case SCREENSAVER_LAN_HTTP:
+                if (!"on".equals(value) && !"off".equals(value)) return false;
+                boolean privateLanViewer = "on".equals(value);
+                if (privateLanViewer == prefs.screensaverLanHttpOnly()) return false;
+                prefs.setScreensaverLanHttpOnly(privateLanViewer);
+                return true;
             case SCREENSAVER_LIVE:
                 if (!ScreensaverLiveMode.SNAPSHOTS.equals(value)
                         && !ScreensaverLiveMode.ONE.equals(value)
@@ -257,7 +283,7 @@ public final class HaLayout {
         }
     }
 
-    private static String styleKey(String value) {
+    private static String styleKey(OverlayPreferences prefs, String value) {
         if ("Aurora Glass".equals(value)) return OverlayPreferences.SKIN_AURORA;
         switch (value) {
             case "Copper Glass":
@@ -269,9 +295,39 @@ public final class HaLayout {
             case "Night Signal":
             case OverlayPreferences.SKIN_SIGNAL:
                 return OverlayPreferences.SKIN_SIGNAL;
+            case "Neon Obsidian":
+            case OverlayPreferences.SKIN_OBSIDIAN:
+                return OverlayPreferences.SKIN_OBSIDIAN;
+            case "Jade Terminal":
+            case OverlayPreferences.SKIN_TERMINAL:
+                return OverlayPreferences.SKIN_TERMINAL;
             default:
+                // Community theme name → ID
+                if (prefs != null) {
+                    for (CommunityThemeStore.Theme t : CommunityThemeStore.list(prefs.getContext())) {
+                        if (t.name.equals(value)) return t.id;
+                    }
+                }
                 return null;
         }
+    }
+
+    private static String skinLabelFor(OverlayPreferences prefs) {
+        String id = prefs.skin();
+        if (CommunityThemeStore.isId(id)) {
+            CommunityThemeStore.Theme t = CommunityThemeStore.get(prefs.getContext(), id);
+            if (t != null) return t.name;
+        }
+        return OverlayPreferences.skinLabel(id);
+    }
+
+    private static String communityThemeList(OverlayPreferences prefs) {
+        StringBuilder sb = new StringBuilder();
+        for (CommunityThemeStore.Theme t : CommunityThemeStore.list(prefs.getContext())) {
+            if (sb.length() > 0) sb.append('|');
+            sb.append(t.name);
+        }
+        return sb.toString();
     }
 
     private static Integer hideSeconds(String value) {

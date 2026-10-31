@@ -13,6 +13,14 @@ Activate **TALK** on the TV and speak a natural question. Kellie's Voice sends t
 
 The Google Assistant button on the remote is not intercepted. The app checks for usable audio inputs, but microphone detection is still unreliable on some Philips TVs (issue #71), including subsequent releases (see [issue #71](https://github.com/chadakenn/Kellies-Voice/issues/71)); they may incorrectly show Listening and then receive no recognized speech. A USB microphone may be required.
 
+## Idle overlay documentation capture
+
+![Heavily privacy-redacted actual idle Kellie's Voice overlay with Ready for your question and TALK STOP CLOSE SETTINGS controls](https://raw.githubusercontent.com/chadakenn/Kellies-Voice/feature/compose-tv-settings/docs/screenshots/voice-overlay-idle-redacted.png)
+
+Direct ADB capture from the existing **0.16.14-test debug APK** on an onn 4K Pro, October 28, 2026. The overlay was idle; TALK was not pressed and no new Assist conversation was recorded. With owner permission, auto-listen was temporarily disabled for the capture and then restored to its original ON value. The separate existing wake-word setting was left unchanged.
+
+This image is **heavily redacted**: launcher artwork, surrounding content and translucent card background pixels are masked, leaving original foreground text, waveform and opaque controls at their captured positions. It does not document the complete card appearance, microphone performance or the newer PR #192 theme renderer. [Full capture gallery](https://github.com/chadakenn/Kellies-Voice/blob/feature/compose-tv-settings/docs/screenshots/PR-192-CAPTURES.md).
+
 ## Optional follow-up listening (v0.16.11)
 
 Use TV **Settings → Follow-up listening** to choose OFF (default) or ON with 5/8/10/15 seconds of listening after a *spoken answer* finishes. A real onn 4K Pro test confirmed a second question hands-free, 8-second timeout with the Android mic indicator clearing, and STOP cancellation. Other TVs and Back/Close/disconnection cases are not yet hardware verified. The HA Follow-up silence control adjusts time only; it cannot enable recording without the TV setting.

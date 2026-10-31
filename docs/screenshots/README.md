@@ -1,5 +1,9 @@
 # Real-device screenshot gallery 📸
 
+## Direct ADB captures for PR #192 — development preview
+
+[October 28 onn 4K Pro capture gallery](PR-192-CAPTURES.md): six Compose settings categories, all five local theme selections, a local announcement sample, a heavily redacted idle voice overlay and a fully camera-redacted screensaver preview. These were captured from the existing **0.16.14-test debug APK**. **Compose is development-only, not released Settings.** The installed APK predates the latest popup/theme fixes; the images do not verify those fixes. New captures use opaque privacy masks, not reconstructed UI or promotional artwork. See the gallery for each image's limits.
+
 > **Updated October 28, 2026:** Public stable v0.16.14 has a **six-category Settings hub** and optional **Okay Nabu**. The older `onn-settings-menu.jpg` shows the previous long Settings list and is historical, **not** the new v0.16.14 UI. New unredacted captures must be reviewed for private details before embedding.
 
 Phone photos from an onn 4K Pro are in this folder; a small selection appears in the main README. The SVG previews and `night-signal.png` are still **design references**, not photos of the TV.
@@ -18,6 +22,12 @@ Phone photos from an onn 4K Pro are in this folder; a small selection appears in
 | [onn-frigate-dashboard.jpg](onn-frigate-dashboard.jpg) | The opt-in Frigate website over the TV, with Kellie's Voice Close button. Private camera footage and people in the event strip are obscured. |
 | [onn-frigate-screensaver-diagnostics.jpg](onn-frigate-screensaver-diagnostics.jpg) | Frigate screensaver diagnostics. In this photo the watcher is not running and no Android dream event has arrived. |
 | [wake-okay-nabu-office-lights.mp4](wake-okay-nabu-office-lights.mp4) | Real **development demo video** of Okay Nabu opening the overlay and an office-lights command. Not evidence of zero-touch reboot wake or universal TV compatibility; review video frames for private details before promoting it broadly. |
+
+## How the v0.17 QA screenshots will be used
+
+The [PR #192 ADB capture index](PR-192-CAPTURES.md) has **all six Compose settings sections**, local Aurora/Copper/Charcoal/Night/Neon theme selections, a neutral announcement popup preview, a heavily masked voice overlay and a fully redacted camera-area screensaver preview. These real device pixels are already in this **combined QA branch** and can be linked from the v0.17 README, HACS description and source Wiki, with accurate labels. Their source debug app was **0.16.14-test**, not the final v0.17 candidate. See [v0.17 QA release checklist](../V017_BETA_STATUS.md).
+
+Once a release candidate passes hardware testing, capture the **final version** again before making those developer images the primary public screenshots. The privacy-redacted screensaver image does not prove live camera playback; use the previously hardware-verified live-grid photo for that claim.
 
 ## Requested captures
 

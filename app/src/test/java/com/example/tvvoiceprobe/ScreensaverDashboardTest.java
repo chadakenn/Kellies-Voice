@@ -33,6 +33,24 @@ public class ScreensaverDashboardTest {
         assertFalse(ScreensaverDashboard.desktopViewportScript().contains("token"));
     }
 
+    @Test public void haDashboardDoesNotInheritFrigateDesktopScaling() {
+        String haLocal = "http://homeassistant.local:8123/";
+        String haNumeric = "http://192.168.1.25:8123/lovelace/security";
+        String haSecure = "https://my-home.example.com/dashboard-home";
+        String frigate = "http://192.168.1.31:5000/";
+        assertTrue(ScreensaverDashboard.isHomeAssistantPage(haLocal, false));
+        assertTrue(ScreensaverDashboard.isHomeAssistantPage(haNumeric, false));
+        assertTrue(ScreensaverDashboard.isHomeAssistantPage(haSecure, true));
+        assertFalse(ScreensaverDashboard.isHomeAssistantPage(haSecure, false));
+        assertFalse(ScreensaverDashboard.isHomeAssistantPage(frigate, false));
+        assertFalse(ScreensaverDashboard.isHomeAssistantPage("javascript:alert(1)", false));
+        assertFalse(ScreensaverDashboard.useFrigateDesktopViewport(haLocal, true, false));
+        assertFalse(ScreensaverDashboard.useFrigateDesktopViewport(haNumeric, true, false));
+        assertFalse(ScreensaverDashboard.useFrigateDesktopViewport(haSecure, true, true));
+        assertFalse(ScreensaverDashboard.useFrigateDesktopViewport(frigate, false, false));
+        assertTrue(ScreensaverDashboard.useFrigateDesktopViewport(frigate, true, false));
+    }
+
     @Test public void fitPresetsChangeViewportAndFallbackSafely() {
         assertEquals(1920, ScreensaverDashboard.viewportWidth("Fit more cameras"));
         assertEquals(1440, ScreensaverDashboard.viewportWidth("Balanced"));
@@ -70,6 +88,41 @@ public class ScreensaverDashboardTest {
                 "http://192.168.1.20:5000/", "http://192.168.1.20:5000/?token=abc"));
     }
 
+    @Test public void passwordlessHaLoginRedirectStaysInsideExactOrigin() {
+        String configured = "http://192.168.1.82:8123/mobile-command/home";
+        // Owner-supplied dashboard URLs must remain secret-free.
+        assertEquals("", ScreensaverDashboard.dashboardUrl(
+                configured + "?access_token=not-for-settings"));
+        // But the *browser* must be free to follow HA's transient local
+        // authentication callback without logging or stripping its parameters.
+        assertTrue(ScreensaverDashboard.sameOriginNavigation(configured,
+                "http://192.168.1.82:8123/auth/authorize?client_id=TV&redirect_uri=%2F"));
+        assertTrue(ScreensaverDashboard.sameOriginNavigation(configured,
+                "http://192.168.1.82:8123/mobile-command/home?auth_callback=1&access_token=temporary"));
+        assertTrue(ScreensaverDashboard.sameOriginNavigation(configured,
+                "http://192.168.1.82:8123/auth/flow#access_token=temporary"));
+        assertTrue(ScreensaverDashboard.sameOriginNavigation(configured,
+                "HTTP://192.168.1.82:8123/auth/token?code=temporary"));
+        // No scheme, host, port, userinfo or origin widening.
+        for (String unsafe : new String[] {
+                "https://192.168.1.82:8123/auth/token?code=temporary",
+                "http://192.168.1.83:8123/auth/token?code=temporary",
+                "http://192.168.1.82:8124/auth/token?code=temporary",
+                "http://192.168.1.82:8123.evil.example/auth/token",
+                "http://other.example:8123/auth/token",
+                "http://user:pass@192.168.1.82:8123/auth/token",
+                "javascript:alert(1)", "intent://192.168.1.82:8123",
+                "file:///data/local/tmp/auth", "about:blank",
+                "http://192.168.1.82:8123/other\\\\path",
+                "http://192.168.1.82:8123/other\npath",
+                "http://192.168.1.82:8123/other%ZZ"
+        }) {
+            assertFalse(unsafe, ScreensaverDashboard.sameOriginNavigation(configured, unsafe));
+        }
+        assertFalse(ScreensaverDashboard.sameOriginNavigation(
+                configured + "?token=forbidden", configured));
+    }
+
     @Test public void cameraListKeepsFourRealEntities() {
         assertEquals("camera.driveway,camera.doorbell",
                 ScreensaverDashboard.cameras(" camera.driveway, nope, camera.doorbell "));
@@ -92,5 +145,27 @@ public class ScreensaverDashboardTest {
         assertEquals(0.72f, ScreensaverDashboard.fraction("medium"), 0.001f);
         assertEquals(1f, ScreensaverDashboard.fraction("large"), 0.001f);
         assertEquals("", ScreensaverDashboard.cameras("none"));
+    }
+
+    @Test public void httpLanDashboardIsAcceptedButNeverCarriesSecrets() {
+        String http = "http://192.168.1.10:8123/lovelace/wall?kiosk";
+        assertEquals(http, ScreensaverDashboard.dashboardUrl(http));
+        assertTrue(ScreensaverDashboard.sameSite(http, "http://192.168.1.10:8123/auth/authorize"));
+        assertFalse(ScreensaverDashboard.sameSite(http, "https://192.168.1.10:8123/lovelace"));
+        assertFalse(ScreensaverDashboard.sameSite(http, "http://192.168.1.11:8123/lovelace"));
+        assertFalse(ScreensaverDashboard.sameSite(http, "http://192.168.1.10:8124/lovelace"));
+        // Token in URL is rejected
+        assertEquals("", ScreensaverDashboard.dashboardUrl(
+                "http://192.168.1.10:8123/lovelace?token=secret"));
+    }
+
+    @Test public void authenticatedUrlNeverDowngradesToHttpExternalAuth() {
+        String httpPage = "http://192.168.1.10:8123/lovelace/wall";
+        String httpsHa = "https://ha.example.org:8123";
+        assertEquals("", HaDashboardAuthPolicy.authenticatedUrl(httpPage, httpsHa));
+        assertEquals("", HaDashboardAuthPolicy.authenticatedUrl(httpPage, httpPage));
+        // HTTPS same-origin still works
+        assertTrue(HaDashboardAuthPolicy.authenticatedUrl(
+                "https://ha.example.org:8123/lovelace", httpsHa).contains("external_auth=1"));
     }
 }

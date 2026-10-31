@@ -80,9 +80,11 @@ public final class HaDiscovery {
 
     private static String displayName(Context context) {
         String name = Settings.Global.getString(context.getContentResolver(), Settings.Global.DEVICE_NAME);
-        if (name == null) return "Kellie's Voice";
-        name = name.trim();
-        return name.isEmpty() ? "Kellie's Voice" : name;
+        name = name == null ? "Kellie's Voice" : name.trim();
+        if (name.isEmpty()) name = "Kellie's Voice";
+        // Distinguish the permanent QA app from the installed release/debug
+        // instances in the Home Assistant discovery list.
+        return BuildConfig.IS_QA ? name + " (QA)" : name;
     }
 
     private static String serviceName(Context context, String deviceId) {

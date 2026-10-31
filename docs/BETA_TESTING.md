@@ -1,8 +1,12 @@
 # Stable releases and opt-in beta testing
 
-**Public stable: [the latest signed release](https://github.com/chadakenn/Kellies-Voice/releases/latest).** v0.16.14 (Android build 54) is the current stable release with Okay Nabu and the categorized TV settings. v0.16.12 (build 50) was the preceding stable release. If you just want to use Kellie's Voice, stay on stable. You do **not** need to enable betas to get stable updates.
+**Public stable: [the latest signed release](https://github.com/chadakenn/Kellies-Voice/releases/latest).** v0.17.0 (Android build 55) is the current stable release. v0.16.14 (build 54) was the preceding stable release. If you just want to use Kellie's Voice, stay on stable. You do **not** need to enable betas for signed updates.
 
 **Previous beta:** v0.16.13-dev.1 (Android build 53) was an opt-in prerelease between stable v0.16.12 and the now-published stable v0.16.14. Choose stable v0.16.14 when available. Historical v0.16.12-dev.N versions are for manual recovery/testing, not the newest beta channel.
+
+## Private QA builds are different from the public beta channel
+
+Older v0.17 private QA integration artifacts were **development builds**, not automatically delivered HACS pre-releases. The tested nonpublishing signed QA installer is **`app-qa.apk` (`com.example.tvvoiceprobe.qa`)**, which coexists with stable and has a distinct TV identity/login. It must come from the persistent-signing **Build Kellie's Voice Signed APK** workflow, with **Publish public release unchecked**. The PR-built `app-debug.apk` (`.debug`) has a different package/signing identity and is **not** an update for an already-installed signed QA app. The isolated `kellies_voice_v3qa` ZIP is not a replacement for the public `kellies_voice` HACS integration. Do not install a QA artifact as a stable update. See [v0.17 tester status and release gates](V017_BETA_STATUS.md) and the [hardware ADB captures](screenshots/PR-192-CAPTURES.md) (older preview UI, not final).
 
 ## Join the beta (optional)
 

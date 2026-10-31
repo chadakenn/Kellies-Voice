@@ -1,0 +1,28 @@
+{
+  "format": 1,
+  "id": "community.twilight-violet",
+  "name": "Twilight Violet",
+  "author": "Kellie's Voice Community",
+  "base": "obsidian",
+  "colors": {
+    "screen": "#100C18",
+    "panel": "#1A1428",
+    "card": "#261C38",
+    "cardFocused": "#322848",
+    "accent": "#C4A6FF",
+    "accentSecondary": "#9B7ED9",
+    "text": "#F4EEFF",
+    "textMuted": "#A894C4",
+    "stroke": "#5A4A78",
+    "focus": "#D4C0FF",
+    "success": "#81C784",
+    "warning": "#FFB74D"
+  },
+  "shapes": {
+    "panelRadiusDp": 20,
+    "cardRadiusDp": 16,
+    "focusBorderDp": 3,
+    "spacingDp": 14
+  },
+  "animationScale": 1.1
+}

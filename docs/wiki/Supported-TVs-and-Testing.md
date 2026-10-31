@@ -39,7 +39,7 @@ This table distinguishes **maintainer-tested results** from **community testing 
 
 Other Android TV / Google TV / Fire TV models are welcome for community testing but are **not comprehensively verified**. Some Philips models have been used for camera and HDMI-safe decoder testing; microphone access is limited on devices that only expose echo-reference or line-in inputs. USB microphones may be required.
 
-## What is *not* verified in the public v0.16.14 release
+## What is *not* verified on every TV in v0.17.0
 
 - Guaranteed zero-touch wake recording immediately after power-on (Okay Nabu is shipped as **opt-in**, but may require a foreground app launch after reboot on Android 14+)
 - Automatic always-on follow-up without enabling the TV setting (the shipped opt-in follow-up is OFF by default)

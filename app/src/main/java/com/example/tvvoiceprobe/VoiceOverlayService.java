@@ -65,6 +65,7 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
     private VoiceWaveView wave;
     private HaAssistClient assist;
     private CredentialStore.Connection connection;
+    private boolean renewableSession;
     private OverlayPreferences preferences;
     private MediaPlayer player;
     private SpeechFocus speechFocus;
@@ -173,40 +174,49 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
                 return START_NOT_STICKY;
             }
 
-            connection = new CredentialStore(this).load();
-            if (connection == null) {
-                notifyLauncher(ACTION_OVERLAY_FAILED);
-                stopSelf();
-                return START_NOT_STICKY;
-            }
-            showPanel();
-            markOpen();
-            if (wakeTriggered) {
-                // The wake listener is still recording the start of the question.
-                // Stopping it here would drop those words. Capture claims them later.
-                attachAssist(true);
+            // Owner-approved v3 login is deliberately not copied into the
+            // older manual CredentialStore. A renewable-only QA TV must use its
+            // own active Keystore grant, renewed on a worker thread.
+            TvRenewableLoginVault vault = new TvRenewableLoginVault(this);
+            renewableSession = vault.blocksManualFallback();
+            if (!TvOverlayLoginPolicy.mayUseManual(renewableSession)) {
+                showPanel();
+                markOpen();
+                status("Authorizing Home Assistant TV login...");
+                // The window is already present. Background the launcher now
+                // rather than timing out while HA answers the token request.
+                notifyLauncher(ACTION_OVERLAY_READY);
+                new Thread(() -> {
+                    CredentialStore.Connection renewed = null;
+                    try {
+                        renewed = vault.connectionOnWorker();
+                    } catch (Exception ignored) {
+                        // No owner token or legacy login fallback on renew error.
+                        // Do not log refresh tokens or Home Assistant URLs.
+                    }
+                    final CredentialStore.Connection ready = renewed;
+                    main.post(() -> {
+                        if (closing || panel == null) return;
+                        if (ready == null) {
+                            firstAutoListenPending = false;
+                            pendingWakeCapture = false;
+                            status("TV login unavailable. Open SETTINGS to reconnect.");
+                            return;
+                        }
+                        connection = ready;
+                        beginOverlayAssist(wakeTriggered);
+                    });
+                }, "KelliesOverlayRenewableLogin").start();
             } else {
-                status("Waiting for the microphone...");
-                micHandoff = WakeWordService.requestHandoff(MicLease.OVERLAY, new WakeWordService.Handoff() {
-                    @Override public void accepted(WakeWordService.Cancellation cancellation) {
-                        main.post(() -> {
-                            if (closing || cancellation.isCancelled()) {
-                                MicLease.release(MicLease.OVERLAY);
-                                if (!closing) stopSelf();
-                                return;
-                            }
-                            attachAssist(false);
-                        });
-                    }
-
-                    @Override public void denied() {
-                        main.post(() -> {
-                            status("The microphone is in use. Leave diagnostics or stop TALK first.");
-                            notifyLauncher(ACTION_OVERLAY_FAILED);
-                            stopSelf();
-                        });
-                    }
-                });
+                connection = new CredentialStore(this).load();
+                if (connection == null) {
+                    notifyLauncher(ACTION_OVERLAY_FAILED);
+                    stopSelf();
+                    return START_NOT_STICKY;
+                }
+                showPanel();
+                markOpen();
+                beginOverlayAssist(wakeTriggered);
             }
         } catch (Exception ignored) {
             // Do not print private tokens or HA URL into logs.
@@ -216,12 +226,48 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
         return START_NOT_STICKY;
     }
 
+    /** Called on main after a working login has been selected. No microphone
+     * or Assist socket is opened while a renewable grant is being refreshed.
+     */
+    private void beginOverlayAssist(boolean wakeTriggered) {
+        if (closing || panel == null || connection == null) return;
+        if (wakeTriggered) {
+            // Preserve wake-capture routing while authenticating independently.
+            attachAssist(true);
+        } else {
+            status("Waiting for the microphone...");
+            micHandoff = WakeWordService.requestHandoff(
+                    MicLease.OVERLAY, new WakeWordService.Handoff() {
+                @Override public void accepted(WakeWordService.Cancellation cancellation) {
+                    main.post(() -> {
+                        if (closing || cancellation.isCancelled()) {
+                            MicLease.release(MicLease.OVERLAY);
+                            if (!closing) stopSelf();
+                            return;
+                        }
+                        attachAssist(false);
+                    });
+                }
+
+                @Override public void denied() {
+                    main.post(() -> {
+                        status("The microphone is in use. Leave diagnostics or stop TALK first.");
+                        notifyLauncher(ACTION_OVERLAY_FAILED);
+                        stopSelf();
+                    });
+                }
+            });
+        }
+    }
+
     private void attachAssist(boolean fromWake) {
         try {
-            // Only an explicit wake detection may claim this pre-authenticated
-            // socket. Ordinary TALK keeps its existing connection behavior.
+            // The warm wake socket uses only legacy manual login. Never claim
+            // it when a renewable TV login is active, even if a stale standby
+            // is still present from an older session.
+            if (renewableSession) WakeAssistConnection.stop();
             WakeAssistConnection.Claimed warmed =
-                    fromWake ? WakeAssistConnection.take(this) : null;
+                    fromWake && !renewableSession ? WakeAssistConnection.take(this) : null;
             assist = warmed == null ? new HaAssistClient(this, this) : warmed.client;
             assist.setLayoutSync(preferences.haManage());
             HaDiscovery.setWanted(this, preferences.haManage());
@@ -342,6 +388,10 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
         // Night Signal keeps its compact geometry, but uses warm brass accents
         // to avoid the generic cyan/violet AI appearance.
         boolean signal = OverlayPreferences.SKIN_SIGNAL.equals(preferences.skin());
+        boolean obsidian = OverlayPreferences.SKIN_OBSIDIAN.equals(preferences.skin());
+        boolean terminal = OverlayPreferences.SKIN_TERMINAL.equals(preferences.skin());
+        boolean community = CommunityThemeStore.isId(preferences.skin());
+        AppPalette theme = AppPalette.forSkin(this, preferences.skin());
 
         panel = new VoicePanel();
         panel.setOrientation(LinearLayout.VERTICAL);
@@ -350,32 +400,50 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
         panel.setFocusableInTouchMode(true);
         GradientDrawable background = new GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
-                signal ? new int[] {0xf21B1512, 0xf2261B15}
+                community ? new int[] {
+                        0xf0000000 | (theme.menuStart & 0x00ffffff),
+                        0xf0000000 | (theme.menuEnd & 0x00ffffff)}
+                        : terminal ? new int[] {0xf5030a07, 0xf508140d}
+                        : obsidian ? new int[] {0xf506070c, 0xf50e1018}
+                        : signal ? new int[] {0xf21B1512, 0xf2261B15}
                         : glass ? new int[] {0xe8201513, 0xf0291a17, 0xed150f0d}
                         : new int[] {0xf02A1A16, 0xf017100e});
-        background.setCornerRadius(dp(signal ? 8 : glass ? 22 : 14));
-        background.setStroke(dp(1), signal ? 0xff805F48 : glass ? 0x88E7A981 : 0xffD9946F);
+        background.setCornerRadius(dp(community ? 14 : terminal ? 3 : obsidian ? 18 : signal ? 8 : glass ? 22 : 14));
+        background.setStroke(dp(community || terminal || obsidian ? 2 : 1),
+                community ? theme.accent : terminal ? theme.accent : obsidian ? theme.accent : signal ? 0xff805F48
+                        : glass ? 0x88E7A981 : 0xffD9946F);
         panel.setBackground(aurora ? new AuroraGlassDrawable(dp(18)) : background);
         panel.setElevation(dp(signal ? 10 : 14));
 
-        if (signal) {
+        if (community || signal || terminal) {
             View rule = new View(this);
-            rule.setBackgroundColor(0xffE1B27B);
+            rule.setBackgroundColor(community ? theme.accent : terminal ? theme.accent : 0xffE1B27B);
             panel.addView(rule, new LinearLayout.LayoutParams(-1, dp(3)));
         }
 
-        TextView top = label(aurora ? "KELLIE’S VOICE" : signal ? "KELLIE'S VOICE" : glass ? "✦  KELLIE'S VOICE" : "🎙  KELLIE'S VOICE",
-                signal ? 13 : glass ? 15 : 19,
-                aurora ? 0xffBED6FF : signal ? 0xffE7C39B : glass ? 0xffF5D6BD : 0xffE6AB82);
+        TextView top = label(terminal ? "KELLIE@TV  /  VOICE"
+                        : aurora ? "KELLIE’S VOICE"
+                        : obsidian ? "✦  KELLIE'S VOICE"
+                        : signal ? "KELLIE'S VOICE"
+                        : glass ? "✦  KELLIE'S VOICE" : "🎙  KELLIE'S VOICE",
+                terminal ? 15 : obsidian ? 16 : signal ? 13 : glass ? 15 : 19,
+                community ? theme.accent : terminal ? theme.accent : obsidian ? theme.accent
+                        : aurora ? 0xffBED6FF : signal ? 0xffE7C39B
+                        : glass ? 0xffF5D6BD : 0xffE6AB82);
+        if (terminal) top.setTypeface(android.graphics.Typeface.MONOSPACE);
         top.setLetterSpacing(signal ? 0.18f : 0.12f);
         panel.addView(top);
 
         statusView = label("CONNECTING...", signal ? 13 : glass ? 14 : 15,
-                aurora ? 0xffCFDAF4 : signal ? 0xffF0DDC7 : 0xffF7E8DA);
+                community ? theme.text : terminal ? theme.text : obsidian ? theme.text : aurora ? 0xffCFDAF4
+                        : signal ? 0xffF0DDC7 : 0xffF7E8DA);
         panel.addView(statusView);
 
         wave = new VoiceWaveView(this);
-        wave.setLook(aurora ? VoiceWaveView.LOOK_AURORA : signal ? VoiceWaveView.LOOK_SIGNAL : VoiceWaveView.LOOK_COPPER);
+        wave.setLook(terminal ? VoiceWaveView.LOOK_TERMINAL
+                : obsidian ? VoiceWaveView.LOOK_OBSIDIAN
+                : aurora ? VoiceWaveView.LOOK_AURORA
+                : signal ? VoiceWaveView.LOOK_SIGNAL : VoiceWaveView.LOOK_COPPER);
         wave.setMode(VoiceWaveView.CONNECTING);
         panel.addView(wave, new LinearLayout.LayoutParams(-1, dp(glass ? 88 : signal ? 64 : 68)));
 
@@ -383,19 +451,23 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
         // TALK/STOP/CLOSE/SETTINGS buttons remain visible and remote-friendly.
         LinearLayout words = new LinearLayout(this);
         words.setOrientation(LinearLayout.VERTICAL);
-        if (glass || signal) {
+        if (community || glass || signal || terminal) {
             words.addView(label(signal ? "You said" : "YOU SAID", 11,
-                    aurora ? 0xff9CB9E9 : signal ? 0xffAF9881 : 0xffD1AC92));
+                    community ? theme.muted : terminal ? theme.muted : obsidian ? theme.muted : aurora ? 0xff9CB9E9
+                            : signal ? 0xffAF9881 : 0xffD1AC92));
         }
         transcriptView = label("Say something when listening starts...",
                 signal ? 16 : glass ? 17 : 16,
-                aurora ? 0xffE4ECFF : signal ? 0xffF0E2D0 : glass ? 0xffF7E9E0 : 0xffEBCDB9);
+                community ? theme.text : terminal ? theme.text : obsidian ? theme.text : aurora ? 0xffE4ECFF
+                        : signal ? 0xffF0E2D0 : glass ? 0xffF7E9E0 : 0xffEBCDB9);
         words.addView(transcriptView);
 
         words.addView(label(signal ? "Home Assistant" : "HOME ASSISTANT SAYS", 11,
-                aurora ? 0xff9CB9E9 : signal ? 0xffAF9881 : glass ? 0xffD1AC92 : 0xffC89A7B));
+                community ? theme.muted : terminal ? theme.muted : obsidian ? theme.muted : aurora ? 0xff9CB9E9
+                        : signal ? 0xffAF9881 : glass ? 0xffD1AC92 : 0xffC89A7B));
         answerView = label("Ready for your question",
-                aurora ? 27 : signal ? 26 : glass ? 23 : 19, 0xffffffff);
+                aurora ? 27 : signal ? 26 : glass ? 23 : 19,
+                community ? theme.text : terminal ? theme.text : obsidian ? theme.text : 0xffffffff);
         words.addView(answerView);
 
         answerScroll = new ScrollView(this);
@@ -500,7 +572,11 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
         button.setText(name);
         button.setTextSize(signal ? 14 : 13);
         button.setAllCaps(false);
-        button.setTextColor(signal ? 0xffF8E8D6 : 0xffffffff);
+        boolean obsidian = OverlayPreferences.SKIN_OBSIDIAN.equals(preferences.skin());
+        boolean terminal = OverlayPreferences.SKIN_TERMINAL.equals(preferences.skin());
+        boolean community = CommunityThemeStore.isId(preferences.skin());
+        AppPalette theme = AppPalette.forSkin(this, preferences.skin());
+        button.setTextColor(community ? theme.text : terminal ? theme.text : obsidian ? theme.text : signal ? 0xffF8E8D6 : 0xffffffff);
         button.setFocusable(true);
         button.setFocusableInTouchMode(true);
         button.setMinHeight(0);
@@ -510,7 +586,9 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
             button.setPadding(dp(6), 0, dp(6), 0);
         } else {
             button.setBackgroundTintList(ColorStateList.valueOf(
-                    OverlayPreferences.SKIN_AURORA.equals(preferences.skin()) ? 0xff172844 : 0xff574039));
+                    community ? theme.menuButton : terminal ? theme.menuButton : obsidian ? theme.menuButton
+                            : OverlayPreferences.SKIN_AURORA.equals(preferences.skin())
+                            ? 0xff172844 : 0xff574039));
         }
         button.setOnClickListener(v -> runnable.run());
         button.setOnFocusChangeListener((v, focused) -> {
@@ -524,9 +602,15 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
                 button.setBackgroundTintList(null);
             } else {
                 button.setBackgroundTintList(ColorStateList.valueOf(
-                        OverlayPreferences.SKIN_AURORA.equals(preferences.skin())
+                        community ? (focused ? theme.focus : theme.menuButton)
+                                : terminal ? (focused ? theme.accent : theme.menuButton)
+                                : obsidian ? (focused ? theme.accent : theme.menuButton)
+                                : OverlayPreferences.SKIN_AURORA.equals(preferences.skin())
                                 ? (focused ? 0xff3D65B2 : 0xff172844)
                                 : (focused ? 0xffBB7958 : 0xff574039)));
+                if (community || obsidian || terminal) {
+                    button.setTextColor(community ? theme.text : focused ? theme.screen : theme.text);
+                }
             }
         });
         if (signal) button.getOnFocusChangeListener().onFocusChange(button, false);

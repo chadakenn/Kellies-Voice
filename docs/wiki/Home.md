@@ -1,4 +1,6 @@
-**Now available: [v0.16.14](https://github.com/chadakenn/Kellies-Voice/releases/tag/v0.16.14)** with opt-in **Okay Nabu** local wake-word listening, adjustable post-wake audio ducking, a six-category remote-friendly Settings menu, and the existing four-camera screensaver. [Install the matching TV APK + HACS integration](Getting-Started.md), then see [Voice and Timers](Voice-and-Timers.md). Alternate TVs and optional native timer bridge still require testing.
+**Now available: [v0.17.0](https://github.com/chadakenn/Kellies-Voice/releases/tag/v0.17.0)** with new TV Settings, HA Quick Actions, a better HA dashboard screensaver and remote navigation, plus the opt-in Okay Nabu wake feature. Install the matching signed TV APK and HACS integration; see [Getting Started](Getting-Started.md) and the [release notes](https://github.com/chadakenn/Kellies-Voice/blob/main/docs/releases/v0.17.0.md).
+
+**About the preview screenshots:** The [real ADB gallery](https://github.com/chadakenn/Kellies-Voice/blob/main/docs/screenshots/PR-192-CAPTURES.md) was captured from an **earlier development build**, not the final public APK. The separate, owner-approved v3 pairing QA integration remains experimental and is not the normal HACS installation. Onn hardware QA confirmed automatic Mobile Command screensaver recovery after reboot; other TVs need validation.
 
 ![Kellie's Voice: Your home, your voice, your way](https://raw.githubusercontent.com/chadakenn/Kellies-Voice/main/docs/branding/kellies-voice-approved-banner.webp)
 

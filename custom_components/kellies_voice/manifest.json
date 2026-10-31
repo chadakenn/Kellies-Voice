@@ -7,13 +7,16 @@
   "config_flow": true,
   "documentation": "https://github.com/chadakenn/Kellies-Voice/blob/main/custom_components/kellies_voice/README.md",
   "iot_class": "local_push",
-  "version": "0.16.14",
+  "version": "0.17.0",
   "dependencies": [
     "zeroconf",
-    "websocket_api"
+    "websocket_api",
+    "panel_custom",
+    "http"
   ],
   "zeroconf": [
-    "_kellies-voice._tcp.local."
+    "_kellies-voice._tcp.local.",
+    "_kellies-pair._tcp.local."
   ],
   "issue_tracker": "https://github.com/chadakenn/Kellies-Voice/issues"
 }

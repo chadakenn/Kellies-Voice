@@ -1,7 +1,12 @@
 plugins {
     id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+    id 'org.jetbrains.kotlin.plugin.compose'
 }
 
+// The dedicated QA app has one permanent package ID. Only trusted signed
+// development workflows build it using the existing private keystore.
+// Ephemeral PR debug signing keys must never be used to distribute QA updates.
 android {
     namespace 'com.example.tvvoiceprobe'
     compileSdk 35
@@ -10,10 +15,14 @@ android {
         applicationId 'com.example.tvvoiceprobe'
         minSdk 26
         targetSdk 35
-        // Restart opted-in Frigate watcher on APK updates/reboot; ambient diagnostics.
-        versionCode 54
-        versionName '0.16.14'
-        // Host unit tests pass -PskipWakeNative=true. An APK build compiles the engine.
+        versionCode 55
+        versionName '0.17.0'
+        buildConfigField 'boolean', 'IS_QA', 'false'
+        manifestPlaceholders = [
+            appDisplayName: "Kellie's Voice",
+            overlayDisplayName: "Kellie's Voice Overlay",
+            dreamDisplayName: "Kellie's Voice Frigate",
+        ]
         if (findProperty('skipWakeNative') != 'true') {
             ndk {
                 abiFilters 'armeabi-v7a', 'arm64-v8a'
@@ -21,8 +30,6 @@ android {
         }
     }
 
-    // The keystore is private and supplied from GitHub Actions secrets.
-    // Never put the signing key or password into this public repository.
     signingConfigs {
         release {
             def keyPath = System.getenv('TV_SIGNING_KEYSTORE_PATH')
@@ -40,11 +47,42 @@ android {
         debug {
             applicationIdSuffix '.debug'
             versionNameSuffix '-test'
+            // The owner's untrusted PR beta installs beside the signed stable app.
+            manifestPlaceholders['appDisplayName'] = "Kellie's Voice Beta"
         }
         release {
             minifyEnabled false
             signingConfig signingConfigs.release
         }
+        qa {
+            // Non-debuggable signed variant: don't distribute a debuggable app
+            // under the same key that signs production.
+            initWith release
+            applicationIdSuffix '.qa'
+            versionNameSuffix '-qa'
+            buildConfigField 'boolean', 'IS_QA', 'true'
+            manifestPlaceholders['appDisplayName'] = "Kellie's Voice QA"
+            manifestPlaceholders['overlayDisplayName'] = "Kellie's Voice QA Overlay"
+            manifestPlaceholders['dreamDisplayName'] = "Kellie's Voice QA Frigate"
+            matchingFallbacks = ['release']
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+    buildFeatures {
+        compose true
+        buildConfig true
+    }
+    lint {
+        // The Lifecycle lint detector crashes against this Kotlin/UAST toolchain
+        // with IncompatibleClassChangeError in ComposeSettingsActivity.kt.
+        // Disable only the broken detector; preserve all other release lint checks.
+        disable 'NullSafeMutableLiveData'
     }
     if (findProperty('skipWakeNative') != 'true') {
         ndkVersion '27.2.12479018'
@@ -59,9 +97,24 @@ android {
 
 dependencies {
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
-    implementation 'androidx.core:core:1.13.1'
+    implementation 'androidx.core:core-ktx:1.13.1'
+    // Origin-scoped externalAppV2 bridge, never addJavascriptInterface (V1).
+    implementation 'androidx.webkit:webkit:1.13.0'
+    implementation 'androidx.activity:activity-compose:1.9.3'
+    implementation platform('androidx.compose:compose-bom:2024.10.01')
+    implementation 'androidx.compose.ui:ui'
+    implementation 'androidx.compose.ui:ui-tooling-preview'
+    implementation 'androidx.compose.material3:material3'
+    implementation 'androidx.compose.foundation:foundation'
+    implementation 'androidx.tv:tv-foundation:1.0.0'
+    implementation 'androidx.tv:tv-material:1.0.1'
     implementation 'androidx.media3:media3-exoplayer:1.8.0'
     implementation 'androidx.media3:media3-exoplayer-hls:1.8.0'
     implementation 'androidx.media3:media3-ui:1.8.0'
     testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.json:json:20240303'
+    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'
+    androidTestImplementation platform('androidx.compose:compose-bom:2024.10.01')
+    androidTestImplementation 'androidx.compose.ui:ui-test-junit4'
 }

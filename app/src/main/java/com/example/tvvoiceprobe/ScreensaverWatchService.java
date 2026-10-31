@@ -22,7 +22,7 @@ import android.view.WindowManager;
  */
 public final class ScreensaverWatchService extends Service {
     static final String ACTION_START = "com.example.tvvoiceprobe.SCREENSAVER_START";
-    static final String ACTION_STOP = "com.example.tvvoiceprobe.SCREENSAVER_STOP";
+    public static final String ACTION_STOP = "com.example.tvvoiceprobe.SCREENSAVER_STOP";
     static final String ACTION_TEST_OVERLAY = "com.example.tvvoiceprobe.SCREENSAVER_TEST_OVERLAY";
     static final String ACTION_REFRESH_HA = "com.example.tvvoiceprobe.SCREENSAVER_REFRESH_HA";
     private static final String CHANNEL = "kellie_screensaver";
@@ -61,14 +61,19 @@ public final class ScreensaverWatchService extends Service {
         }
     };
 
-    static void startIfEnabled(Context context) {
+    public static void startIfEnabled(Context context) {
         if (context == null) return;
-        OverlayPreferences prefs = new OverlayPreferences(context);
-        if (!prefs.screensaverDashboard() && !prefs.haManage()) return;
-        try {
-            context.startForegroundService(new Intent(context, ScreensaverWatchService.class)
-                    .setAction(ACTION_START));
-        } catch (RuntimeException ignored) { }
+        if (!ScreensaverWatchRecovery.shouldRun(context)) {
+            ScreensaverWatchRecovery.record(context, ScreensaverWatchRecovery.RESULT_SKIPPED, "feature off");
+            ScreensaverWatchRecovery.cancelRecovery(context);
+            return;
+        }
+        if (!ScreensaverWatchRecovery.tryStart(context)) {
+            // Unattended start was denied. Use a user-visible notification
+            // rather than an unreliable inexact alarm. Revalidate consent
+            // before posting.
+            ScreensaverWatchRecovery.postRecoveryNotification(context);
+        }
     }
 
     static void refreshFromHa(Context context) {
@@ -95,6 +100,8 @@ public final class ScreensaverWatchService extends Service {
             return START_NOT_STICKY;
         }
         ScreensaverWatchStatus.serviceRunning(true);
+        ScreensaverWatchRecovery.record(this, ScreensaverWatchRecovery.RESULT_RUNNING, "");
+        ScreensaverWatchRecovery.cancelRecovery(this);
         windows = getSystemService(WindowManager.class);
         if (intent != null && ACTION_REFRESH_HA.equals(intent.getAction()) && settingsSync != null) {
             // Explicit local user request to fetch HA settings again without

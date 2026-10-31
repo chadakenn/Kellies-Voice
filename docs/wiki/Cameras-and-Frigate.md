@@ -8,7 +8,7 @@ Kellie's Voice can show camera snapshots, opt-in HLS camera overlays, and an opt
 
 ## What it looks like on the TV
 
-These photos are from the owner's onn 4K Pro in October 2026. The four-camera grid and the Frigate website are included in the **stable v0.16.14** release (introduced in v0.16.12), opt-in and subject to camera/decoder compatibility. The home camera feeds and event strip are deliberately obscured for privacy.
+These photos are from the owner's onn 4K Pro in October 2026. The four-camera grid and the Frigate website are included in the **stable v0.17.0** release (introduced in v0.16.12), opt-in and subject to camera/decoder compatibility. The home camera feeds and event strip are deliberately obscured for privacy.
 
 ![Four muted live cameras and a Close button](https://raw.githubusercontent.com/chadakenn/Kellies-Voice/main/docs/screenshots/onn-live-camera-grid.jpg)
 
@@ -17,6 +17,16 @@ These photos are from the owner's onn 4K Pro in October 2026. The four-camera gr
 ![Frigate screensaver diagnostics. The watcher is not running in this photo](https://raw.githubusercontent.com/chadakenn/Kellies-Voice/main/docs/screenshots/onn-frigate-screensaver-diagnostics.jpg)
 
 The diagnostics photo is an example of the status screen, not a working screensaver. Here the watcher is stopped, Home Assistant layout sync has not started, and Android has not sent a dream event.
+
+## Additional direct ADB captures from PR #192 testing
+
+![Compose development preview for Frigate screensaver settings with camera entity names masked](https://raw.githubusercontent.com/chadakenn/Kellies-Voice/feature/compose-tv-settings/docs/screenshots/compose-screensaver-preview.png)
+
+Screensaver settings on the existing **0.16.14-test debug app**, captured October 28, 2026 on an onn 4K Pro. **This Compose settings page is a development preview**, not the released settings interface. Camera entity names are masked; the Frigate web URL was unconfigured.
+
+![Actual screensaver preview with the full camera area masked and the Close control retained](https://raw.githubusercontent.com/chadakenn/Kellies-Voice/feature/compose-tv-settings/docs/screenshots/frigate-overview-redacted.png)
+
+The screensaver preview opened from that development UI. All camera imagery, tile labels, timestamps, faces and scene details are covered by one opaque mask; only the genuine **Close** control remains visible. This deliberately does not show the camera layout, prove moving video, or establish decoder reliability. Preview was closed with Back. No camera mode was changed. [Capture details](https://github.com/chadakenn/Kellies-Voice/blob/feature/compose-tv-settings/docs/screenshots/PR-192-CAPTURES.md).
 
 ## Live HA camera screensaver (opt-in; introduced in v0.16.12)
 

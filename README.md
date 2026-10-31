@@ -6,7 +6,9 @@
 
 Kellie's Voice is a native Android TV / Google TV app with a companion **Home Assistant custom integration**. Talk to your Home Assistant Assist agent, see useful answers in a floating overlay, receive quiet smart-home announcements (optional spoken with audio ducking), and pop up security-camera views **over what you're already watching** when Android allows it.
 
-**Current public release: [v0.16.14](https://github.com/chadakenn/Kellies-Voice/releases/tag/v0.16.14)** (signed Android APK + matching HACS 0.16.14). For everyday use, install the [latest signed stable release](https://github.com/chadakenn/Kellies-Voice/releases/latest). Testers may opt into beta updates **separately in HACS and on their TV**; both default to stable. Routine development builds stay as Actions artifacts, not public Releases. [Learn how beta testing works](docs/BETA_TESTING.md).
+**v0.17.0 highlights:** redesigned Compose Settings, six included community theme packs with file-picker-free install (plus optional custom JSON imports), Home Assistant Quick Actions, improved HA dashboard login and remote pointer/Back, and automatic screensaver watcher recovery. Onn 4K Pro hardware tests passed for themes, Quick Actions, automatic four-camera screensaver loading and fullscreen video with audio. Owner-approved Home Assistant-first secure pairing, with no manual URL/token entry on the TV, is now integrated into the **normal** `kellies_voice` HACS component and release APK source, but is pending independent security/first-install review. Optional renewable login currently requires an HTTPS Home Assistant origin; no-paid-cloud local HTTPS is possible, while local HTTP-only auto-login is still tracked in [#262](https://github.com/chadakenn/Kellies-Voice/issues/262). See [draft release notes](docs/releases/v0.17.0.md), [release-readiness gates](docs/HA_FIRST_PAIRING_PRODUCTION_GATE.md), and [redacted developer screenshots](docs/screenshots/PR-192-CAPTURES.md).
+
+**Public signed releases:** Install the [latest published Android TV APK](https://github.com/chadakenn/Kellies-Voice/releases/latest) and its matching HACS integration; update both independently. Do not install unpublished Actions or PR APKs over the stable app.
 
 No replacement launcher, always-open browser tab, or separate AI server on the TV. Your existing Home Assistant setup does the thinking; Kellie's Voice handles the microphone, on-screen experience, and TV audio.
 
@@ -74,6 +76,24 @@ The muted live doorbell card opening on top of the voice overlay. The voice card
 **Media accuracy:** the old [onn-settings-menu.jpg](docs/screenshots/onn-settings-menu.jpg) is from the previous mixed Settings list, not the six-category v0.16.14 menu. The wake video demonstrates a development build, not zero-touch wake from reboot. Camera photos already published in the gallery are described as privacy-obscured; new footage needs a separate privacy review before publication.
 
 The older [illustrative concept previews](docs/screenshots/conversation-preview.svg) are still in the repo as design references only. See [docs/screenshots](docs/screenshots/README.md).
+
+### Compose TV Settings — development preview (PR #192)
+
+These direct ADB captures are from the existing **0.16.14-test debug app on an onn 4K Pro**, captured October 28, 2026. **COMPOSE is a development-only preview, not the released SETTINGS experience.** This installed APK predates the latest popup/theme fixes in PR #192; these images do not verify those fixes or five-theme Home Assistant synchronization.
+
+![Actual onn 4K Pro Compose development preview with Aurora Glass selected](docs/screenshots/compose-aurora-preview.png)
+
+Aurora Glass selected in the two-column Compose preview. The filled category and choice outlines show the captured UI state; screenshots alone do not establish complete D-pad or persistence coverage.
+
+![Actual onn 4K Pro Compose development preview with Neon Obsidian selected](docs/screenshots/compose-neon-preview.png)
+
+Neon Obsidian in the installed Compose preview. The installed Home Assistant theme catalog did not include Neon during this session; this is a local appearance capture, not a claim that Neon is released or synchronizes with that integration.
+
+![Actual local announcement preview over Compose settings on onn 4K Pro](docs/screenshots/announcement-preview.png)
+
+The built-in **Preview announcement popup** with neutral sample text, over app settings. This captures the local popup renderer, not a new Home Assistant delivery or spoken-audio test.
+
+See the [full capture gallery and privacy notes](docs/screenshots/PR-192-CAPTURES.md) for all six categories, five selected themes, the heavily redacted idle voice overlay, and the camera-redacted screensaver preview. Addresses, pairing identifiers, camera entity names, private footage and background artwork are masked. No listening command was issued for these screenshots.
 
 ## How it works
 
@@ -338,3 +358,15 @@ On your Kellie's Voice TV's **Home Assistant device** page, configure **TV alert
 Android v0.16.3 also attempts to restart the **already opted-in** TV alert receiver after a reboot or in-place APK update. It never automatically enables alerts or starts the microphone. Because Android TV can block background service startup, go to **Kellie's Voice → Settings → TV alert status → Resume TV alerts** if needed. Wi-Fi disconnects use the receiver's existing reconnect backoff; no stale alerts are replayed. An Android force-stop or some standby conditions still require opening the app.
 
 **Update both parts:** install Android v0.16.3 using **Settings → Check for app updates**, then update the Kellie's Voice HACS integration to v0.16.3 and **restart Home Assistant**. Don't uninstall the Android app or delete settings. On-TV verification of the *new* size/position controls and reboot/update recovery remains to be done. The live `TextureView` camera player and `hide_camera` action are preserved.
+
+## Community Theme Packs
+
+Custom themes can be created and imported without rebuilding the app.
+
+- Themes live in [`themes/community/`](themes/community/) as simple JSON files.
+- On the TV: **Settings → Overlay & appearance → Community Themes**.
+- Import uses Android’s system file picker.
+- Built-in themes remain available.
+- Themes are data only (no code, scripts, or external assets).
+
+See [themes/community/README.md](themes/community/README.md) and [themes/community/CONTRIBUTE.md](themes/community/CONTRIBUTE.md) for the format and contribution guide.

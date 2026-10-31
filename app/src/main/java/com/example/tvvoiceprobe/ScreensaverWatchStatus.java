@@ -10,6 +10,8 @@ final class ScreensaverWatchStatus {
     private static volatile String lastOverlay = "Not attempted";
     private static volatile String settingsSync = "HA settings sync not started";
     private static volatile String sourceSync = "No HA source update received";
+    private static volatile String startupResult = "not attempted";
+    private static volatile String startupError = "";
 
     private ScreensaverWatchStatus() { }
 
@@ -23,4 +25,10 @@ final class ScreensaverWatchStatus {
     static String settingsSync() { return settingsSync; }
     static void sourceSync(String label) { sourceSync = label; }
     static String sourceSync() { return sourceSync; }
+    static void startup(String result, String error) {
+        startupResult = result == null ? "" : result;
+        startupError = error == null ? "" : error;
+    }
+    static String startupResult() { return startupResult; }
+    static String startupError() { return startupError; }
 }

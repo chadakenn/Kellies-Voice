@@ -14,7 +14,7 @@ The Android TV app handles the microphone, floating overlays, on-screen speech, 
 
 ## Settings menu map
 
-Open **Kellie's Voice → SETTINGS** with the remote. v0.16.14 uses **six focusable categories**, not one scrolling list. Choose a category with D-pad and OK; **Back** returns to the category hub.
+Open **Kellie's Voice → SETTINGS** with the remote. v0.17.0 uses a **two-column Compose Settings layout** with six focusable categories, replacing the older long scrolling list. Choose a category with D-pad and OK; **Back** returns to the category hub.
 
 | Category | Key controls |
 | --- | --- |
@@ -28,6 +28,34 @@ Open **Kellie's Voice → SETTINGS** with the remote. v0.16.14 uses **six focusa
 **What connected means:** the main voice socket and TV alerts receiver are separate. A connected label does **not** prove a microphone captured speech or a specific popup rendered. The colored highlighted row indicates remote **focus**, not whether a setting is ON.
 
 The older [onn-settings-menu.jpg](https://github.com/chadakenn/Kellies-Voice/blob/main/docs/screenshots/onn-settings-menu.jpg) photo shows the **previous** long settings list, not v0.16.14's categories. We still need a privacy-redacted six-category photo. See [current Settings guide](https://github.com/chadakenn/Kellies-Voice/blob/main/docs/TV_SETTINGS.md).
+## Compose TV Settings development preview (PR #192)
+
+The separate **COMPOSE** button in the **0.16.14-test debug app** opens a two-column development preview. It is **not the public SETTINGS hub** described above and is not presented here as a released replacement.
+
+![Compose preview on a real onn 4K Pro; private Home Assistant address and pairing ID masked](https://raw.githubusercontent.com/chadakenn/Kellies-Voice/integration/v0.17.0-combined-qa/docs/screenshots/compose-home-preview.png)
+
+Home Assistant category on the owner's onn 4K Pro, captured directly through ADB on October 28, 2026. Solid masks cover the configured address and TV pairing identifier. The category list scrolls; not all six category labels fit in one frame.
+
+![Compose Voice and microphone preview showing the device's existing wake-listener state](https://raw.githubusercontent.com/chadakenn/Kellies-Voice/integration/v0.17.0-combined-qa/docs/screenshots/compose-voice-preview.png)
+
+The existing TV state showed **Wake word: LISTENING**. That is this owner's opted-in state, **not the default**; the capture session did not enable wake listening. Follow-up listening was off.
+
+![Compose Updates and account preview showing installed 0.16.14-test and the stable channel selected](https://raw.githubusercontent.com/chadakenn/Kellies-Voice/integration/v0.17.0-combined-qa/docs/screenshots/compose-updates-preview.png)
+
+The installed debug APK version and update-channel selection; no download or installation was performed. [All captured categories and themes](https://github.com/chadakenn/Kellies-Voice/blob/integration/v0.17.0-combined-qa/docs/screenshots/PR-192-CAPTURES.md) are development-preview evidence only. This APK predates the latest PR #192 popup/theme fixes.
+
+## More actual ADB captures (developer preview, not public)
+
+![Onn 4K Pro Compose Aurora Glass local theme selection](https://raw.githubusercontent.com/chadakenn/Kellies-Voice/integration/v0.17.0-combined-qa/docs/screenshots/compose-aurora-preview.png)
+
+*Aurora Glass in a real on-device developer UI preview, with private details masked.*
+
+![Onn 4K Pro Compose Alerts and cameras settings](https://raw.githubusercontent.com/chadakenn/Kellies-Voice/integration/v0.17.0-combined-qa/docs/screenshots/compose-alerts-preview.png)
+
+*Alerts & cameras category in the ADB development capture. This alone does not prove a Home Assistant announcement was delivered.*
+
+The [complete direct ADB gallery](https://github.com/chadakenn/Kellies-Voice/blob/integration/v0.17.0-combined-qa/docs/screenshots/PR-192-CAPTURES.md) also includes all five theme selections and redacted camera screens. The images show **0.16.14-test Compose preview**, not a final signed v0.17 public release.
+
 ## Microphone routing and phantom inputs
 
 Some Android TV devices expose echo-reference or playback inputs that cannot capture spoken commands. These may be mistaken for a built-in microphone.

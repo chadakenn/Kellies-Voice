@@ -34,6 +34,32 @@ public final class AppPalette {
         this.stroke = stroke;
     }
 
+
+    /** Context-aware lookup that can resolve community theme packs. */
+    public static AppPalette forSkin(android.content.Context context, String skin) {
+        if (context != null && CommunityThemeStore.isId(skin)) {
+            CommunityThemeStore.Theme theme = CommunityThemeStore.get(context, skin);
+            if (theme != null) {
+                try {
+                    return new AppPalette(
+                        theme.color("screen"),
+                        theme.color("accent"),
+                        theme.color("text"),
+                        theme.color("textMuted"),
+                        theme.color("card"),
+                        theme.color("focus"),
+                        theme.color("panel"),
+                        theme.color("screen"),
+                        theme.color("card"),
+                        theme.color("cardFocused"),
+                        theme.color("stroke")
+                    );
+                } catch (Exception ignored) { /* fall through to built-in */ }
+            }
+        }
+        return forSkin(skin);
+    }
+
     public static AppPalette forSkin(String skin) {
         if (OverlayPreferences.SKIN_AURORA.equals(skin)) {
             return new AppPalette(
@@ -52,6 +78,19 @@ public final class AppPalette {
                     0xff181512, 0xffE6AB82, 0xffF1DDC9, 0xffC89A7B,
                     0xff49382F, 0xffA66A4B, 0xff261C17, 0xff120E0C,
                     0xff493128, 0xff86533A, 0xffB88664);
+        }
+        if (OverlayPreferences.SKIN_OBSIDIAN.equals(skin)) {
+            return new AppPalette(
+                    0xff06070C, 0xff00E5FF, 0xffEAF0FF, 0xff8A93B2,
+                    0xff0E1018, 0xff8B5CFF, 0xff0E1018, 0xff06070C,
+                    0xff131520, 0xff1A1D2E, 0xff292A3C);
+        }
+        if (OverlayPreferences.SKIN_TERMINAL.equals(skin)) {
+            // Jade Terminal: green-black screen, phosphor green accent, mint text.
+            return new AppPalette(
+                    0xff030A07, 0xff39FF88, 0xffD6FFE6, 0xff5E8F73,
+                    0xff0B1A12, 0xff1F9E5A, 0xff08140D, 0xff030A07,
+                    0xff0F2418, 0xff17703F, 0xff2BB673);
         }
         // Current copper palette remains the default for existing installs.
         return new AppPalette(

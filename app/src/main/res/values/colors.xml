@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="kv_background">#06070C</color>
+    <color name="kv_surface">#0E1018</color>
+    <color name="kv_glass">#B8101320</color>
+    <color name="kv_stroke">#292A3CFF</color>
+    <color name="kv_primary">#00E5FF</color>
+    <color name="kv_secondary">#8B5CFF</color>
+    <color name="kv_alert">#FF2E88</color>
+    <color name="kv_detect">#B6FF3B</color>
+    <color name="kv_text">#EAF0FF</color>
+    <color name="kv_text_muted">#8A93B2</color>
+</resources>

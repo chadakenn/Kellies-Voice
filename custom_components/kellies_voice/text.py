@@ -1,4 +1,4 @@
-"""Per-TV Frigate web address and camera list text controls."""
+"""Per-TV screensaver dashboard URL, cameras and appearance text controls."""
 
 from homeassistant.components.text import TextEntity, TextMode
 from homeassistant.config_entries import ConfigEntry
@@ -11,6 +11,7 @@ from .const import DOMAIN
 from .camera_picker import get_camera_picker
 from .layout_attrs import layout_attributes
 from .frigate_settings import validate_frigate_setting
+from .quick_action_device import quick_action_labels
 
 
 async def async_setup_entry(
@@ -19,8 +20,10 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     async_add_entities([
-        KellieFrigateText(entry, "screensaver_url", "Frigate web URL", "mdi:web"),
+        KellieFrigateText(entry, "screensaver_url", "Screensaver dashboard URL", "mdi:web"),
         KellieFrigateText(entry, "screensaver_cameras", "Frigate HA camera entities (manual override)", "mdi:cctv"),
+        KellieFrigateText(entry, "community_theme_list", "Installed community themes", "mdi:palette"),
+        *quick_action_labels(entry),
     ])
 
 

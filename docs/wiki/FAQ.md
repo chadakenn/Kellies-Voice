@@ -1,5 +1,7 @@
 # FAQ
 
+> **What about the v0.17 screenshots and automatic pairing?** The screenshot gallery depicts an **older development Beta**, not screenshots captured from the final v0.17.0 release installer. The `.qa` Android package was for private testing; owner-approved pairing v3 still has a separate experimental HA component. The [redacted ADB gallery](https://github.com/chadakenn/Kellies-Voice/blob/integration/v0.17.0-combined-qa/docs/screenshots/PR-192-CAPTURES.md) comes from an older Compose development preview. Follow the stable setup guide until the combined v0.17 release has actually shipped and passed its hardware and security gates.
+
 [← Documentation home](Home.md) · [Getting started](Getting-Started.md) · [YAML Cookbook](YAML-Cookbook.md) · [Troubleshooting](Troubleshooting.md)
 
 ---
