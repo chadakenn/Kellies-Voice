@@ -24,6 +24,7 @@ public final class HaLayout {
     public static final String SCREENSAVER_PAGE_LAYOUT = "screensaver_page_layout";
     public static final String SCREENSAVER_FIT = "screensaver_fit";
     public static final String SCREENSAVER_URL = "screensaver_url";
+    public static final String SCREENSAVER_HA_AUTH = "screensaver_ha_external_auth";
     public static final String SCREENSAVER_CAMERAS = "screensaver_cameras";
     public static final String SCREENSAVER_LIVE = "screensaver_live_mode";
 
@@ -41,7 +42,8 @@ public final class HaLayout {
     public static boolean isScreensaver(String setting) {
         return SCREENSAVER_ENABLED.equals(setting) || SCREENSAVER_SIZE.equals(setting)
                 || SCREENSAVER_PAGE_LAYOUT.equals(setting) || SCREENSAVER_FIT.equals(setting)
-                || SCREENSAVER_URL.equals(setting) || SCREENSAVER_CAMERAS.equals(setting)
+                || SCREENSAVER_URL.equals(setting) || SCREENSAVER_HA_AUTH.equals(setting)
+                || SCREENSAVER_CAMERAS.equals(setting)
                 || SCREENSAVER_LIVE.equals(setting);
     }
 
@@ -90,6 +92,8 @@ public final class HaLayout {
                 return prefs.screensaverFit();
             case SCREENSAVER_URL:
                 return prefs.screensaverUrl();
+            case SCREENSAVER_HA_AUTH:
+                return prefs.screensaverHaExternalAuth() ? "on" : "off";
             case SCREENSAVER_CAMERAS:
                 return prefs.screensaverCameras();
             case SCREENSAVER_LIVE:
@@ -198,6 +202,12 @@ public final class HaLayout {
                 if (!value.isEmpty() && ScreensaverDashboard.dashboardUrl(value).isEmpty()) return false;
                 if (value.equals(prefs.screensaverUrl())) return false;
                 prefs.setScreensaverUrl(value);
+                return true;
+            case SCREENSAVER_HA_AUTH:
+                if (!"on".equals(value) && !"off".equals(value)) return false;
+                boolean secureDashboard = "on".equals(value);
+                if (secureDashboard == prefs.screensaverHaExternalAuth()) return false;
+                prefs.setScreensaverHaExternalAuth(secureDashboard);
                 return true;
             case SCREENSAVER_LIVE:
                 if (!ScreensaverLiveMode.SNAPSHOTS.equals(value)
