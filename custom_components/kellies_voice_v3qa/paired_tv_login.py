@@ -7,6 +7,7 @@ and a v3 encrypted approval receipt. Never grant or reuse the owner's token.
 """
 from __future__ import annotations
 import logging
+from uuid import UUID
 from homeassistant.auth.const import GROUP_ID_USER
 from .scoped_login_issuer import IssuedTvCredential, _trusted_origin
 from .token_lease_journal import TokenLeaseJournal
@@ -17,6 +18,43 @@ _LOGGER = logging.getLogger(__name__)
 
 class DedicatedTvLoginDenied(ValueError):
     pass
+
+
+def _valid_tv_uuid(value: object) -> bool:
+    """No HA user creation for a malformed or noncanonical TV identity."""
+    if type(value) is not str:
+        return False
+    try:
+        uid = UUID(value)
+        return str(uid) == value and uid.version == 4 and uid.variant == "specified in RFC 4122"
+    except (ValueError, AttributeError):
+        return False
+
+
+async def _remove_failed_tv_user(hass, user: object, owner_id: str) -> None:
+    """Best-effort cleanup of only the user created by this attempt.
+
+    Never delete an owner, admin, system user or preexisting account.
+    If removal fails, try deactivation to invalidate outstanding tokens.
+    """
+    if user is None:
+        return
+    if (type(getattr(user, "id", None)) is not str
+            or not user.id or user.id == owner_id
+            or getattr(user, "is_owner", None) is not False
+            or getattr(user, "is_admin", None) is not False
+            or getattr(user, "system_generated", None) is not False):
+        _LOGGER.warning("Dedicated TV cleanup blocked by account identity guard")
+        return
+    try:
+        await hass.auth.async_remove_user(user)
+        return
+    except Exception:
+        _LOGGER.warning("Dedicated TV cleanup could not remove new account")
+    try:
+        await hass.auth.async_deactivate_user(user)
+    except Exception:
+        _LOGGER.warning("Dedicated TV cleanup could not deactivate new account")
 
 
 async def provision_dedicated_tv_login(
@@ -33,6 +71,8 @@ async def provision_dedicated_tv_login(
     """
     if type(journal) is not TokenLeaseJournal:
         raise DedicatedTvLoginDenied("TV credential journal unavailable")
+    if not _valid_tv_uuid(tv_uuid):
+        raise DedicatedTvLoginDenied("Invalid TV identity")
     origin = _trusted_origin(ha_origin)
     if type(remote_login) is not bool:
         raise DedicatedTvLoginDenied("Invalid dedicated TV network scope")
@@ -50,20 +90,26 @@ async def provision_dedicated_tv_login(
            for lease in journal.snapshot()):
         _LOGGER.warning("Dedicated TV enrollment blocked at phase existing_tv_lease")
         raise DedicatedTvLoginDenied("Existing TV enrollment must be resolved")
-    # Separate HA user, not owner. Owner was explicitly warned that
-    # the *standard* Users role can still read/control all entities.
-    user = await hass.auth.async_create_user(
-        "Kellie's Voice TV " + tv_uuid[-8:],
-        group_ids=[GROUP_ID_USER], local_only=local_only,
-    )
-    if (user is None or user.is_owner or user.is_admin or
-            user.system_generated or user.local_only is not local_only
-            or user.is_active is not True or user.id == owner_id
-            or {group.id for group in user.groups} != {GROUP_ID_USER}):
-        raise DedicatedTvLoginDenied("Dedicated TV account rejected")
+    # Creation, lease registration and issuance share a failure cleanup
+    # boundary. Otherwise a failed durable lease write or HA token API call
+    # can leave behind a broad-access system-users TV account.
+    user = None
     refresh = None
-    phase = "lease_intent"
+    phase = "user_create"
     try:
+        # Separate HA user, not owner. Owner explicitly opted into the broad
+        # standard Users role; this is NOT a least-privilege scoped grant.
+        user = await hass.auth.async_create_user(
+            "Kellie's Voice TV " + tv_uuid[-8:],
+            group_ids=[GROUP_ID_USER], local_only=local_only,
+        )
+        phase = "user_validation"
+        if (user is None or user.is_owner or user.is_admin or
+                user.system_generated or user.local_only is not local_only
+                or user.is_active is not True or user.id == owner_id
+                or {group.id for group in user.groups} != {GROUP_ID_USER}):
+            raise DedicatedTvLoginDenied("Dedicated TV account rejected")
+        phase = "lease_intent"
         lease = await journal.begin_intent(
             origin=origin, tv_uuid=tv_uuid,
             tv_user_id=user.id, owner_id=owner_id)
@@ -94,9 +140,12 @@ async def provision_dedicated_tv_login(
         # token IDs or token material (some HA errors can include them).
         _LOGGER.warning("Dedicated TV login failed at phase %s (%s)",
                         phase, type(error).__name__)
-        if refresh is not None and refresh.user is user:
+        if refresh is not None and getattr(refresh, "user", None) is user:
             try:
                 hass.auth.async_remove_refresh_token(refresh)
             except Exception:
                 pass  # Retain durable intent for restart recovery.
+        # HA's supported AuthManager async_remove_user also revokes outstanding
+        # refresh tokens. Preserve the durable intent for restart cleanup.
+        await _remove_failed_tv_user(hass, user, owner_id)
         raise DedicatedTvLoginDenied("Dedicated TV login failed") from None
