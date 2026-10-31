@@ -6,9 +6,14 @@ consent in the authenticated owner panel; the caller has confirmed TV remote
 and a v3 encrypted approval receipt. Never grant or reuse the owner's token.
 """
 from __future__ import annotations
+import logging
+from .validation import clean_tv_device_id
 from homeassistant.auth.const import GROUP_ID_USER
 from .scoped_login_issuer import IssuedTvCredential, _trusted_origin
 from .token_lease_journal import TokenLeaseJournal
+
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class DedicatedTvLoginDenied(ValueError):
@@ -38,6 +43,18 @@ async def provision_dedicated_tv_login(
             or owner.is_active is not True or owner.is_owner is not True):
         raise DedicatedTvLoginDenied("Authenticated owner unavailable")
     await journal.load()
+    # Reject duplicate/invalid TV identity BEFORE minting another HA user.
+    # If another attempt races after this check, the durable journal still
+    # serializes begin_intent; its failure path cleans up the unused user.
+    try:
+        if clean_tv_device_id(tv_uuid) != tv_uuid:
+            raise ValueError("TV identity is not canonical")
+    except (ValueError, TypeError):
+        raise DedicatedTvLoginDenied("Invalid verified TV identity") from None
+    if any(lease.tv_uuid == tv_uuid and lease.state != "revoked"
+           for lease in journal.snapshot()):
+        _LOGGER.warning("TV enrollment refused: existing_tv_lease")
+        raise DedicatedTvLoginDenied("Existing TV enrollment must be resolved")
     # Separate HA user, not owner. Owner was explicitly warned that
     # the *standard* Users role can still read/control all entities.
     user = await hass.auth.async_create_user(
@@ -49,11 +66,13 @@ async def provision_dedicated_tv_login(
             or user.is_active is not True or user.id == owner_id
             or {group.id for group in user.groups} != {GROUP_ID_USER}):
         raise DedicatedTvLoginDenied("Dedicated TV account rejected")
-    refresh = None
+    lease = None
+    phase = "lease_intent"
     try:
         lease = await journal.begin_intent(
             origin=origin, tv_uuid=tv_uuid,
             tv_user_id=user.id, owner_id=owner_id)
+        phase = "refresh_issuance"
         refresh = await hass.auth.async_create_refresh_token(
             user, client_id=lease.client_id)
         if (refresh is None or refresh.user is not user
@@ -62,8 +81,10 @@ async def provision_dedicated_tv_login(
                 or type(refresh.token) is not str or not refresh.token
                 or type(refresh.id) is not str or not refresh.id):
             raise DedicatedTvLoginDenied("Unexpected HA token identity")
+        phase = "lease_record"
         recorded = await journal.record_id(
             nonce=lease.nonce, token_id=refresh.id)
+        phase = "access_issuance"
         access = hass.auth.async_create_access_token(refresh)
         lifetime = int(refresh.access_token_expiration.total_seconds())
         if (type(access) is not str or not access or
@@ -71,10 +92,23 @@ async def provision_dedicated_tv_login(
             raise DedicatedTvLoginDenied("HA access token invalid")
         return (IssuedTvCredential(
             lease, access, refresh.token, lifetime), recorded, user)
-    except Exception:
-        if refresh is not None and refresh.user is user:
+    except Exception as error:
+        # Failure is NEVER a successful enrollment. Revoke this precise
+        # attempt through the durable journal before removing its account.
+        # If revocation/storage fails, deactivate only the newly-created
+        # non-owner user. A remaining lease is retried by restart recovery.
+        _LOGGER.warning("Dedicated TV enrollment failed at %s (%s)",
+                        phase, type(error).__name__)
+        try:
+            if lease is not None:
+                await journal.revoke_unfinished_attempt(lease.nonce)
+            if user.refresh_tokens:
+                raise DedicatedTvLoginDenied("Failed TV token still present")
+            await hass.auth.async_remove_user(user)
+        except Exception:
             try:
-                hass.auth.async_remove_refresh_token(refresh)
+                await hass.auth.async_deactivate_user(user)
             except Exception:
-                pass  # Retain durable intent for restart recovery.
+                # Do not discard the durable journal entry or leak identities.
+                _LOGGER.warning("Dedicated TV account needs owner review")
         raise DedicatedTvLoginDenied("Dedicated TV login failed") from None
