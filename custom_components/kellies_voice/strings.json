@@ -22,18 +22,27 @@
         }
       },
       "v3_preview": {
-        "title": "Verify a Kellie's Voice TV (secure v3 test)",
-        "description": "This TV is offering a two-minute, local-network-only v3 pairing test. Press START on the TV first. Home Assistant will exchange fresh public keys and compute a matching eight-digit code. No account login, Home Assistant token or credentials will be created or sent. Leave your existing Kellie's Voice installation unchanged.",
+        "title": "Connect this TV securely from Home Assistant",
+        "description": "Start secure TV pairing from your TV Settings. Home Assistant will discover the TV on your local network and show a matching eight-digit code. No URL or token is typed on the TV.",
         "data": {
-          "start_v3_test": "Start the secure TV code comparison test"
+          "start_test": "Start secure eight-digit code verification"
         }
       },
       "v3_code": {
-        "title": "Compare the eight-digit code on both screens",
-        "description": "Your Home Assistant code is {code}. Compare all EIGHT digits to the code actually displayed on the TV, then press OK with the TV's physical remote. The code field below must remain identical. This verifies the TV key exchange ONLY and does not sign in the TV.",
+        "title": "Confirm all eight digits on the TV",
+        "description": "The code in Home Assistant is {code}. Compare all eight digits on the TV and press OK with the physical TV remote. Then continue to authenticated owner approval.",
         "data": {
-          "ha_code": "Home Assistant's eight-digit code",
-          "numbers_match": "All eight digits match the actual TV screen and I pressed TV remote OK"
+          "ha_code": "Home Assistant code",
+          "numbers_match": "All eight digits match and I pressed TV remote OK"
+        }
+      },
+      "owner_approval": {
+        "title": "Approve dedicated Kellie's Voice TV login",
+        "description": "The TV physically verified code {code}. Open the owner-only Kellie's Voice approval panel at /kellies-voice-approval in a second Home Assistant browser tab, approve the exact TV, then return here and Submit. Creating a dedicated non-admin TV account is optional but grants broad entity control; only opt in if you accept this. With no opt-in, no token is created.",
+        "data": {
+          "ha_code": "Eight-digit Home Assistant code",
+          "owner_approved": "I approved the matching TV in the owner panel",
+          "qa_instructions": "Read the security and account access notice"
         }
       }
     },
@@ -45,14 +54,34 @@
       "v3_cancelled": "The secure TV verification test was cancelled. No connection or credentials were changed.",
       "v3_code_mismatch": "The eight-digit code did not match. Nothing was paired or changed.",
       "v3_expired": "The secure TV session was unavailable or expired. Start a new test on the TV.",
-      "v3_preview_verified": "TV verified successfully using the secure v3 code and physical remote. This is verification only; your TV login has NOT been installed or changed."
+      "v3_preview_verified": "TV verified successfully using the secure v3 code and physical remote. This is verification only; your TV login has NOT been installed or changed.",
+      "discovery_only": "This QA integration only works when a TV debug app advertises the temporary v3 mDNS session.",
+      "invalid_discovery": "Invalid v3 TV discovery. Restart the temporary pairing test on your TV.",
+      "cancelled": "Cancelled: your current HA and TV login were not changed.",
+      "expired": "The temporary test expired. Start again using the TV physical remote.",
+      "mismatch": "Codes did not match. No pairing or login was changed.",
+      "verified_no_login": "SUCCESS: The physical TV and secure v3 session were verified. This is NOT a Home Assistant login. Your normal Kellie's Voice setup was not changed.",
+      "owner_unavailable": "The v3 QA owner registry unexpectedly failed. Check Home Assistant system logs. No login or credentials were changed.",
+      "owner_expired": "The two-minute owner approval window expired. Restart v3 pairing.",
+      "owner_denied": "Owner approval was rejected or the Home Assistant account is inactive.",
+      "owner_verified_no_login": "SUCCESS: v3 TV proof and actual signed-in Home Assistant owner approval are BOTH verified. This test does not log in the TV, create a token, or change existing connections.",
+      "owner_setup_missing": "Owner pairing UI was not initialized by Kellie's Voice. Restart Home Assistant and check the integration logs; existing TV connections are unchanged.",
+      "owner_binding_rejected": "The verified TV owner-claim record was rejected. Check the Home Assistant system logs for v3 QA owner binding. No credential was created.",
+      "owner_receipt_verified_no_login": "This TV was securely verified but the owner did not authorize a dedicated login. No credential or device entry was created. Start again to authorize login.",
+      "owner_receipt_failed": "The authenticated owner receipt did not complete or the TV did not cryptographically acknowledge it within the original two-minute window. Restart v3 QA. No credentials or normal TV connections were changed.",
+      "owner_login_connected": "Your dedicated TV login is active. Kellie's Voice has been registered with Home Assistant.",
+      "owner_login_failed": "The new TV login could not activate. Incomplete token enrollment will be recovered or revoked; the old connection remains unchanged.",
+      "https_required": "To keep the TV's renewable credentials protected, automatic login currently requires a configured Home Assistant HTTPS or Cloud URL. Pairing cannot activate over plaintext HTTP."
     },
     "error": {
       "invalid_device_id": "Enter the pairing ID shown on your TV.",
       "invalid_name": "Enter a TV name up to 64 characters.",
       "pairing_suffix_mismatch": "The four characters don't match the entered TV pairing ID. Recheck the ID on the TV and correct it using Back.",
       "v3_unavailable": "Could not contact or verify that TV over v3. Restart the test on the actual TV and retry.",
-      "v3_waiting_for_tv": "Waiting for physical TV remote OK. Compare all eight digits on the TV before continuing."
+      "v3_waiting_for_tv": "Waiting for physical TV remote OK. Compare all eight digits on the TV before continuing.",
+      "unavailable": "Could not contact the TV. Restart secure pairing on the TV.",
+      "waiting_for_tv": "Waiting for the physical TV remote approval. Verify all digits and press OK on the TV.",
+      "owner_pending": "An active Home Assistant owner must approve this exact TV. Open /kellies-voice-approval in another HA tab, click Approve, and retry."
     }
   },
   "services": {
