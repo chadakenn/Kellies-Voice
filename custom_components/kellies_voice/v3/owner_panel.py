@@ -1,6 +1,6 @@
-"""QA-only authenticated Home Assistant frontend for owner TV approval.
+"""Authenticated Home Assistant owner approval for secure TV pairing.
 
-Does not authorize OAuth or transfer credentials. Panel is only available to
+The panel never transfers credentials. It only supplies an owner claim to
 an HA admin, and backend WebSocket *independently* requires the actual owner.
 """
 from __future__ import annotations
