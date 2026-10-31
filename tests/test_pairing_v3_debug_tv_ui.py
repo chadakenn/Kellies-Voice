@@ -1,7 +1,7 @@
-"""Only separately installed DEBUG and signed QA APKs expose v3 pairing.
+"""Secure pairing is available in signed production Android TV APKs.
 
 The stock launcher, currently connected TV credentials, normal HA settings,
-mic, wake word and public release menu must stay unchanged.
+mic and wake word must stay unchanged, and the listener is short-lived.
 """
 from pathlib import Path
 import unittest
@@ -19,10 +19,10 @@ class V3DebugTvOnboardingContract(unittest.TestCase):
         cls.voice = VOICE.read_text()
         cls.manifest = MANIFEST.read_text()
 
-    def test_qa_or_debug_entry_nonexported_and_never_launcher(self):
-        self.assertIn("if (!BuildConfig.DEBUG && !BuildConfig.IS_QA)", self.activity)
+    def test_production_entry_nonexported_and_not_a_launcher(self):
+        self.assertNotIn("if (!BuildConfig.DEBUG && !BuildConfig.IS_QA)", self.activity)
         self.assertIn("BuildConfig.DEBUG || BuildConfig.IS_QA", self.voice)
-        self.assertIn("Secure TV pairing (QA owner-approved login)", self.voice)
+        self.assertIn("Secure Home Assistant pairing (no typing)", self.voice)
         self.assertIn('android:name=".PairingV3QaActivity"', self.manifest)
         # Isolated activity is registered without Android launcher intent filters.
         self.assertRegex(self.manifest,
@@ -40,7 +40,7 @@ class V3DebugTvOnboardingContract(unittest.TestCase):
         self.assertIn("attempt != generation", self.activity)
         self.assertIn("start.setEnabled(true)", self.activity)
 
-    def test_no_account_login_or_automatic_microphone(self):
+    def test_no_credential_input_or_automatic_microphone(self):
         for forbidden in (
             "CredentialStore(", "store.save(", "HaAssistClient(",
             "WakeWordService.", "AudioRecord(", "startForegroundService(",
@@ -48,7 +48,7 @@ class V3DebugTvOnboardingContract(unittest.TestCase):
         ):
             with self.subTest(forbidden=forbidden):
                 self.assertNotIn(forbidden, self.activity)
-        self.assertIn("V3 TEST MODE", self.activity)
+        self.assertIn("SECURE HOME ASSISTANT PAIRING", self.activity)
         self.assertIn("Login is optional", self.activity)
 
 
