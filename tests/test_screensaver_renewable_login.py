@@ -14,7 +14,7 @@ SOURCE = (Path(__file__).resolve().parents[1] / "app" / "src" / "main" /
 class ScreensaverRenewableLoginTests(unittest.TestCase):
     def test_keystore_v3_connection_on_worker_and_manual_policy(self):
         self.assertIn("TvRenewableLoginVault vault = new TvRenewableLoginVault(context);", SOURCE)
-        self.assertIn("vault.hasActiveLogin()", SOURCE)
+        self.assertIn("vault.blocksManualFallback()", SOURCE)
         self.assertIn("!TvOverlayLoginPolicy.mayUseManual(renewable)", SOURCE)
         self.assertIn("vault.connectionOnWorker()", SOURCE)
         self.assertIn('new Thread(() -> {', SOURCE)
