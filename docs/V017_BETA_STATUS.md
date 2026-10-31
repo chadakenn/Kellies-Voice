@@ -1,12 +1,12 @@
 # Kellie's Voice v0.17.0: tester guide and release-readiness status
 
-> **Developer QA as of October 31, 2026. NOT a public release.** The current public stable release is **v0.16.14**. Do not substitute the isolated v3 QA component for the normal HACS integration or claim that the draft beta is ready for everyone. [Stable installation instructions](INSTALL.md) remain authoritative for new users.
+> **Historical QA record, October 31, 2026.** The signed public v0.17.0 release must be downloaded separately from GitHub Releases with its matching HACS integration. This page documents the *earlier Beta test* and does not make the isolated v3 QA component part of public HACS. [Stable installation instructions](INSTALL.md) remain authoritative for new users.
 
 ## Which components are which?
 
 | Component | What it does | Installation / status |
 | --- | --- | --- |
-| **Kellie's Voice Android TV** | Voice/TALK, overlay, spoken answers, camera display and screensaver | Signed public v0.16.14 for normal use |
+| **Kellie's Voice Android TV** | Voice/TALK, overlay, spoken answers, camera display and screensaver | Signed public v0.17.0 for normal use once released |
 | **Kellie's Voice HACS integration** (`kellies_voice`) | TV device and controls; automation actions, alerts and camera events | Install separately from HACS, match the public APK |
 | **Kellie's Voice Beta** (`com.example.tvvoiceprobe.qa`) | Separate **persistently signed** test TV app with Compose Settings and v3 pairing tests | v0.17 signed `app-qa.apk` from the manual nonpublishing QA workflow. Coexists with stable; does **not** inherit stable credentials. Disposable `app-debug.apk` is *not* an update for this app |
 | **Kellie's Voice v3 QA** (`kellies_voice_v3qa`) | Isolated Home Assistant pairing/owner verification and renewable-login experiment | Draft QA-only ZIP, not the public HACS component; do **not** overwrite `custom_components/kellies_voice` |
