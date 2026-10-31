@@ -21,9 +21,9 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 /**
- * D-pad-first, explicitly consented first-run wizard for the isolated beta.
+ * D-pad-first, explicitly consented first-run wizard for the Kellie's Voice.
  * No microphone, wake listener, login or TV-alert service is started on entry.
- * Stable app is untouched; wizard state belongs to the .debug or .qa package.
+ * The wizard never overwrites a working manual login during upgrades.
  */
 public final class FirstRunSetupActivity extends Activity {
     private static final String PREFS = "kv_first_run_setup";
@@ -37,18 +37,17 @@ public final class FirstRunSetupActivity extends Activity {
     private AppPalette palette;
 
     public static boolean needsSetup(Activity activity) {
-        return (BuildConfig.DEBUG || BuildConfig.IS_QA)
-                && !activity.getSharedPreferences(PREFS, MODE_PRIVATE)
-                        .getBoolean(COMPLETED, false);
+        if (activity.getSharedPreferences(PREFS, MODE_PRIVATE)
+                .getBoolean(COMPLETED, false)) return false;
+        // In-place upgrades must NOT hijack an already configured TV.
+        try {
+            if (new CredentialStore(activity).load() != null) return false;
+        } catch (Exception ignored) { }
+        return !new TvRenewableLoginVault(activity).hasActiveLogin();
     }
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
-        // This screen is test-only until first-run permission/alert hardware QA.
-        if (!BuildConfig.DEBUG && !BuildConfig.IS_QA) {
-            finish();
-            return;
-        }
         step = state != null ? state.getInt("step", 0)
                 : getSharedPreferences(PREFS, MODE_PRIVATE).getInt(STEP, 0);
         step = Math.max(0, Math.min(3, step));
@@ -190,7 +189,7 @@ public final class FirstRunSetupActivity extends Activity {
                         19, allowed ? palette.accent : palette.muted, true));
                 page.addView(text("TV alerts: " + (preferences.tvEvents() ? "ENABLED" : "OFF"),
                         19, palette.muted, false));
-                page.addView(text("Alerts are optional. The Beta needs Android overlay "
+                page.addView(text("Alerts are optional. The TV needs Android overlay "
                         + "permission AND its own device registered under the normal "
                         + "Kellie's Voice integration in Home Assistant. Secure v3 "
                         + "login alone does not register an alerts device.",
@@ -233,7 +232,7 @@ public final class FirstRunSetupActivity extends Activity {
         } catch (Exception ignored) {
             returningFromExternalSettings = false;
             new AlertDialog.Builder(this).setMessage(
-                    "Open Android TV Settings > Apps > Kellie's Voice Beta > Permissions.")
+                    "Open Android TV Settings > Apps > Kellie's Voice TV > Permissions.")
                     .setPositiveButton("OK", null).show();
         }
     }
@@ -252,14 +251,14 @@ public final class FirstRunSetupActivity extends Activity {
     private void showAlertPairing() {
         OverlayPreferences p = new OverlayPreferences(this);
         new AlertDialog.Builder(this)
-                .setTitle("Register Beta TV for alerts")
-                .setMessage("1. Finish the wizard and keep Kellie's Voice Beta open.\n"
-                        + "2. In the Beta, Settings > Home Assistant > Manage TV layout "
+                .setTitle("Register TV TV for alerts")
+                .setMessage("1. Finish the wizard and keep Kellie's Voice TV open.\n"
+                        + "2. In the TV, Settings > Home Assistant > Manage TV layout "
                         + "from Home Assistant: ON.\n"
                         + "3. Home Assistant > Settings > Devices & services > "
-                        + "add the NORMAL Kellie's Voice integration for this Beta TV.\n"
+                        + "add the NORMAL Kellie's Voice integration for this TV TV.\n"
                         + "4. Return to Alerts & cameras > TV alert status > Resume.\n\n"
-                        + "Beta pairing ID (not a credential):\n" + p.deviceId()
+                        + "TV pairing ID (not a credential):\n" + p.deviceId()
                         + "\n\nDo not use the separate Kellie's Voice v3 QA integration "
                         + "as the alert device.")
                 .setPositiveButton("OK", null).show();
@@ -290,7 +289,7 @@ public final class FirstRunSetupActivity extends Activity {
                     .setAction(TvEventsService.ACTION_RESUME));
             new AlertDialog.Builder(this).setTitle("TV alerts requested")
                     .setMessage("Receiver enabled. To receive camera popups and announcements, "
-                            + "also register this Beta TV in the normal Kellie's Voice "
+                            + "also register this TV TV in the normal Kellie's Voice "
                             + "Home Assistant integration.")
                     .setPositiveButton("Pairing instructions",
                             (d, w) -> showAlertPairing())
