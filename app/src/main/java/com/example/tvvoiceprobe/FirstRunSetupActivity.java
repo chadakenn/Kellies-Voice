@@ -153,11 +153,12 @@ public final class FirstRunSetupActivity extends Activity {
                 page.addView(text("On the TV, start secure pairing, compare the eight digits "
                         + "with Home Assistant, confirm with your physical remote, "
                         + "then approve the dedicated TV login in the HA owner panel. "
-                        + "The TV can be discovered and verified over local HTTP, "
-                        + "but automatic renewable Home Assistant login currently "
-                        + "needs an HTTPS HA address (Cloud or local HTTPS). "
-                        + "A separate non-admin TV account can control all "
-                        + "Home Assistant entities.", 18, palette.muted, false));
+                        + "The TV can be discovered and verified over local HTTP. "
+                        + "Automatic renewable login needs HTTPS. Local HTTPS on your "
+                        + "LAN works without Home Assistant Cloud. See the Local HTTPS "
+                        + "setup guide if your HA is HTTP-only. A separate non-admin "
+                        + "TV account can control all Home Assistant entities.",
+                        18, palette.muted, false));
                 focusButton = button("OPEN SECURE TV PAIRING", () ->
                         startActivity(new Intent(this, PairingV3QaActivity.class)));
                 button("CONTINUE TO MICROPHONE", () -> advance(2));
