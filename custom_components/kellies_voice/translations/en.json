@@ -38,7 +38,7 @@
       },
       "owner_approval": {
         "title": "Approve dedicated Kellie's Voice TV login",
-        "description": "The TV physically verified code {code}. Open the owner-only Kellie's Voice approval panel at /kellies-voice-approval in a second Home Assistant browser tab, approve the exact TV, then return here and Submit. Creating a dedicated non-admin TV account is optional but grants broad entity control; only opt in if you accept this. With no opt-in, no token is created.",
+        "description": "Physical TV proof passed for code {code}. In a SECOND signed-in Home Assistant browser tab, open [**APPROVE THIS TV**](/kellies-voice-approval), check the exact eight-digit code and explicitly authorize a separate dedicated TV login. A non-admin HA Users account still has broad entity control. Return to this pairing dialog and select Continue before the two-minute window expires. No TV URL or token is typed.",
         "data": {
           "ha_code": "Eight-digit Home Assistant code",
           "owner_approved": "I approved the matching TV in the owner panel",
