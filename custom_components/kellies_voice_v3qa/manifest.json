@@ -1,7 +1,9 @@
 {
   "domain": "kellies_voice_v3qa",
   "name": "Kellie's Voice v3 QA (no login)",
-  "version": "0.0.4",
+  "codeowners": [
+    "@chadakenn"
+  ],
   "config_flow": true,
   "dependencies": [
     "frontend",
@@ -9,13 +11,11 @@
     "panel_custom",
     "zeroconf"
   ],
+  "documentation": "https://github.com/chadakenn/Kellies-Voice/blob/feature/ha-v3-isolated-qa-integration/custom_components/kellies_voice_v3qa/README.md",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/chadakenn/Kellies-Voice/issues/193",
+  "version": "0.0.4",
   "zeroconf": [
     "_kellies-pair._tcp.local."
-  ],
-  "documentation": "https://github.com/chadakenn/Kellies-Voice/blob/feature/ha-v3-isolated-qa-integration/custom_components/kellies_voice_v3qa/README.md",
-  "issue_tracker": "https://github.com/chadakenn/Kellies-Voice/issues/193",
-  "iot_class": "local_push",
-  "codeowners": [
-    "@chadakenn"
   ]
 }
