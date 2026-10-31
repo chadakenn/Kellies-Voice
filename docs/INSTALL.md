@@ -2,14 +2,14 @@
 
 > **Testing a private QA build instead?** The separately installed, persistently signed `com.example.tvvoiceprobe.qa` APK is not the public signed release and does not inherit stable pairing. Do not install a PR `app-debug.apk` over it. See [QA boundaries](V017_BETA_STATUS.md).
 
-**Public release candidate guide: v0.17.0 (October 31, 2026)** · Use only the [latest published signed release](https://github.com/chadakenn/Kellies-Voice/releases/latest), not an Actions debug artifact.
+**Release guide: v0.17.0 (October 31, 2026)** · Use only the [latest published signed release](https://github.com/chadakenn/Kellies-Voice/releases/latest), not an Actions debug artifact.
 
 Welcome! **Kellie's Voice** turns an Android TV / Google TV into a voice companion for **your own Home Assistant**. It has two separate parts:
 
 1. **Android TV app**: listens after you press TALK, speaks Home Assistant's answer through the TV, and displays floating voice, timer, weather, announcement, and camera windows.
 2. **Home Assistant custom integration (via HACS)**: registers the TV and exposes per-TV controls and actions such as `kellies_voice.announce`, `show_camera`, `show_forecast`, and `start_timer`.
 
-**For v0.17.0, install both the signed Android TV APK and matching v0.17.0 HACS integration**. Installing the APK does **not** install HACS, and HACS does **not** install the APK. No separate AI server is needed on your TV.
+**For v0.17.0, install both the published signed Android TV APK and matching v0.17.0 HACS integration**. Installing the APK does **not** install HACS, and HACS does **not** install the APK. No separate AI server is needed on your TV.
 
 **Quick recovery if announcements, timers, or camera popups stop:** Open the Kellie's Voice TV app (not Android's system Settings). Choose **SETTINGS → Alerts & cameras → TV alert status → Resume TV alerts**. Resume is inside the status popup; if missing, first enable **TV announcements & cameras**, configure Home Assistant, and allow Android **Display over other apps**. A working voice/TALK connection does not guarantee the separate alert receiver is connected. [Detailed recovery steps](TROUBLESHOOTING.md#tv-camera-or-announcement-popups-missing-find-resume-tv-alerts).
 
@@ -51,7 +51,7 @@ See the [current release notes](releases/v0.16.14.md), [hardware checklist](TEST
 
 ## Step 1: Install the signed Android TV APK
 
-1. Open the **[latest public Kellie's Voice release](https://github.com/chadakenn/Kellies-Voice/releases/latest)**. For the new wake/settings features choose **v0.16.14** from the published Releases list; v0.16.12 is the preceding stable release.
+1. Open the **[latest public Kellie's Voice release](https://github.com/chadakenn/Kellies-Voice/releases/latest)** and use the signed **v0.17.0** APK when published, with the matching HACS integration. v0.16.14 remains available for previous installations.
 2. Download the release asset **`app-release.apk`**. Do **not** download a PR's `app-debug.apk` or GitHub Actions test artifact for a first installation.
 3. Transfer it to the TV. Options include a USB stick, a TV-compatible file manager, **Send Files to TV** on your phone and TV, or ADB (`adb install -r app-release.apk`).
 **Alternative: Downloader app.** On TVs where [Downloader](https://www.aftvnews.com/downloader/) is available, enter the official releases page URL `https://github.com/chadakenn/Kellies-Voice/releases/latest` in its browser, open the newest public release, and choose the asset named `app-release.apk`. GitHub redirects and TV browsers differ; if the APK does not download correctly, use **Send Files to TV**, USB, or the ADB option above. **There is no official Kellie's Voice Downloader short code** in this guide; do not rely on codes posted by unknown third parties.
