@@ -858,7 +858,7 @@ public final class TvEventsService extends Service {
         hideCard();
         int current = ++generation;
         OverlayPreferences placement = new OverlayPreferences(this);
-        TvPopupPalette colors = TvPopupPalette.forSkin(placement.skin());
+        TvPopupPalette colors = TvPopupPalette.forSkin(this, placement.skin());
         LinearLayout panel = new LinearLayout(this);
         panel.setOrientation(LinearLayout.VERTICAL);
         panel.setPadding(dp(16), dp(12), dp(16), dp(12));
@@ -987,7 +987,7 @@ public final class TvEventsService extends Service {
         hideCard();
         int current = ++generation;
         OverlayPreferences placement = new OverlayPreferences(this);
-        TvPopupPalette colors = TvPopupPalette.forSkin(placement.skin());
+        TvPopupPalette colors = TvPopupPalette.forSkin(this, placement.skin());
         LinearLayout panel = new LinearLayout(this);
         panel.setOrientation(LinearLayout.VERTICAL);
         panel.setPadding(dp(18), dp(13), dp(18), dp(14));
