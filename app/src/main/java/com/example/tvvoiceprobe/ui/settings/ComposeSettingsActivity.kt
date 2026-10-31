@@ -64,8 +64,8 @@ import com.example.tvvoiceprobe.ui.theme.LocalKellieSkin
 import com.example.tvvoiceprobe.ui.theme.SkinStore
 
 /**
- * Premium full-screen Jetpack Compose for TV Settings preview.
- * Original dialog Settings remain fully available via the SETTINGS toolbar button.
+ * Full-screen Jetpack Compose TV Settings for public, QA, and development builds.
+ * Legacy Java controls remain reachable through explicit fallback actions.
  * Controls reuse OverlayPreferences and existing service entry points.
  */
 class ComposeSettingsActivity : ComponentActivity() {
@@ -164,8 +164,7 @@ fun SettingsScreen(
             .padding(32.dp)
     ) {
         Text(
-            text = if (BuildConfig.IS_QA) "Kellie's Voice  \u00b7  Settings"
-                else "Kellie's Voice  \u00b7  Compose Settings (preview)",
+            text = "Kellie's Voice  \u00b7  Settings",
             color = skin.colors.accent,
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold
