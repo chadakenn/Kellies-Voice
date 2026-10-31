@@ -221,6 +221,39 @@ final class TvRenewableLoginVault implements PairingV3ScopedTokenHandoff.Vault {
         }
     }
 
+    /** Remaining valid time for the RAM-only access token; subtract a 45s
+     * buffer so the frontend always asks again before the token expires.
+     * Call after renewOnWorker() on the same worker.
+     */
+    synchronized int accessRemainingSeconds() {
+        long remaining = (accessExpiresElapsed - SystemClock.elapsedRealtime()) / 1000 - 45;
+        return (int) Math.max(1, Math.min(3600, remaining));
+    }
+
+    /** Explicit frontend logout revokes the *dedicated TV grant* on HA.
+     * No local wipe on a network error: the caller must report failure.
+     * Never send or log the refresh token to a WebView.
+     */
+    synchronized boolean revokeOnWorker() throws Exception {
+        if (Looper.myLooper() == Looper.getMainLooper())
+            throw new IllegalStateException("Never revoke HA on Android UI thread");
+        Record r = read();
+        if (r == null || !r.active) return false;
+        okhttp3.HttpUrl parsed = okhttp3.HttpUrl.parse(
+                TvRenewableLoginPolicy.tokenUrl(r.grant));
+        if (parsed == null) return false;
+        okhttp3.HttpUrl revocationUrl = parsed.newBuilder()
+                .encodedPath("/auth/revoke").query(null).build();
+        FormBody form = new FormBody.Builder().add("token", r.refresh).build();
+        Request request = new Request.Builder().url(revocationUrl)
+                .post(form).header("Cache-Control", "no-store").build();
+        try (Response response = http.newCall(request).execute()) {
+            if (response.code() != 200) return false;
+            clear(); // Persistent mode marker remains: never use a legacy owner token.
+            return true;
+        }
+    }
+
     /** Used after pairing listener closes. Never discard an active login. */
     synchronized void clearIfIncomplete() {
         try {
