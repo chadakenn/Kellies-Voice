@@ -27,6 +27,10 @@ It is **not** the neighboring **TV announcements & cameras** toggle and **not** 
 
 Manual Resume has been confirmed on an onn 4K Pro. With v0.16.9, a Home Assistant restart also reproduced a misleading permission-denied status while the receiver was actually disconnected. Pressing Resume restored it without changing account permissions. The original [issue #78](https://github.com/chadakenn/Kellies-Voice/issues/78) is closed, but follow-up automatic recovery work is being tested on the `dev` branch. This is **not** proof that reconnection works after standby on every device.
 
+## v0.17 Beta: preview works, but screensaver does not open on idle
+
+In the developer-only v0.17 combined beta, open **Settings → Screensaver → Screensaver status & recovery → Screensaver status & permissions**. If the screen says **feature ON**, **source configured**, **overlay ALLOWED**, but **Watcher NOT RUNNING**, the preview alone does not establish automatic screensaver support. On an onn 4K Pro after reboot, **Resync HA cameras** started the watcher and the Home Assistant dashboard then appeared automatically when Google TV went idle. This is a **temporary beta workaround**, not a finished reboot-recovery fix; see [issue #126](https://github.com/chadakenn/Kellies-Voice/issues/126). Don't change secure pairing or HA login to troubleshoot a stopped watcher. Normal v0.16.14 release instructions remain above and below.
+
 ## Connected but no speech is recognized
 
 A TV can show **Home Assistant voice: ✓ connected** and **TV alerts: ✓ connected** while **YOU SAID: Nothing yet** stays unchanged. These labels confirm connections, not that Android has granted access to a usable microphone.
