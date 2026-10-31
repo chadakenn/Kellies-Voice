@@ -11,7 +11,7 @@ import sys
 import tempfile
 import types
 import unittest
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 ROOT = Path(__file__).resolve().parents[1] / "custom_components/kellies_voice_v3qa"
 PKG = "kv_v3qa_dedicated_account_test"
@@ -36,6 +36,9 @@ class FakeAuth:
         self.created = []
         self.tokens = {}
         self.fail_after_refresh = False
+        self.fail_user_removal = False
+        self.removed_users = []
+        self.deactivated_users = []
 
     async def async_get_user(self, uid):
         if uid == "owner":
@@ -53,6 +56,22 @@ class FakeAuth:
         )
         self.created.append(result)
         return result
+
+    async def async_remove_user(self, user):
+        if self.fail_user_removal:
+            raise RuntimeError("simulated account store failure")
+        assert user in self.created and not user.is_owner and not user.is_admin
+        for token in list(user.refresh_tokens.values()):
+            self.async_remove_refresh_token(token)
+        self.created.remove(user)
+        self.removed_users.append(user.id)
+
+    async def async_deactivate_user(self, user):
+        assert user in self.created and not user.is_owner
+        user.is_active = False
+        for token in list(user.refresh_tokens.values()):
+            self.async_remove_refresh_token(token)
+        self.deactivated_users.append(user.id)
 
     async def async_create_refresh_token(self, user, client_id):
         token_id = "created-refresh-id-" + str(len(self.tokens) + 1)
@@ -216,8 +235,64 @@ class DedicatedLoginTests(unittest.IsolatedAsyncioTestCase):
                 self.hass, self.journal, owner_id="owner",
                 tv_uuid=TV, ha_origin=ORIGIN)
         self.assertEqual(self.auth.tokens, {})
+        self.assertEqual(self.auth.created, [])
+        self.assertEqual(len(self.auth.removed_users), 1)
         self.assertEqual(len(self.journal.snapshot()), 1)
 
+
+
+class ProvisionFailureCleanupTests(DedicatedLoginTests):
+    """Additional pairing failure paths with no live Home Assistant."""
+
+    async def test_bad_identity_never_creates_broad_tv_user(self):
+        for tv in ("", "not-a-uuid", "123e4567-e89b-12d3-a456-426614174000",
+                   TV.upper(), "123e4567-e89b-42d3-a456-42661417400"):
+            with self.subTest(tv=tv):
+                with self.assertRaises(self.module.DedicatedTvLoginDenied):
+                    await self.module.provision_dedicated_tv_login(
+                        self.hass, self.journal, owner_id="owner",
+                        tv_uuid=tv, ha_origin=ORIGIN)
+        self.assertEqual(self.auth.created, [])
+        self.assertEqual(self.auth.tokens, [])
+
+    async def test_failed_lease_write_removes_new_account(self):
+        with patch.object(self.journal, "begin_intent",
+                          new_callable=AsyncMock,
+                          side_effect=RuntimeError("simulated journal write failure")):
+            with self.assertRaises(self.module.DedicatedTvLoginDenied):
+                await self.module.provision_dedicated_tv_login(
+                    self.hass, self.journal, owner_id="owner",
+                    tv_uuid=TV, ha_origin=ORIGIN)
+        self.assertEqual(self.auth.created, [])
+        self.assertEqual(len(self.auth.removed_users), 1)
+        self.assertEqual(self.auth.tokens, {})
+        self.assertEqual(self.journal.snapshot(), ())
+
+    async def test_user_removal_failure_deactivates_new_user(self):
+        self.auth.fail_after_refresh = True
+        self.auth.fail_user_removal = True
+        with self.assertRaises(self.module.DedicatedTvLoginDenied):
+            await self.module.provision_dedicated_tv_login(
+                self.hass, self.journal, owner_id="owner",
+                tv_uuid=TV, ha_origin=ORIGIN)
+        self.assertEqual(len(self.auth.created), 1)
+        self.assertFalse(self.auth.created[0].is_active)
+        self.assertEqual(len(self.auth.deactivated_users), 1)
+        self.assertEqual(self.auth.tokens, {})
+
+    async def test_two_simultaneous_attempts_for_same_tv_keep_one_account(self):
+        async def enroll():
+            try:
+                return await self.module.provision_dedicated_tv_login(
+                    self.hass, self.journal, owner_id="owner",
+                    tv_uuid=TV, ha_origin=ORIGIN)
+            except self.module.DedicatedTvLoginDenied:
+                return None
+        results = await asyncio.gather(enroll(), enroll())
+        self.assertEqual(sum(result is not None for result in results), 1)
+        self.assertEqual(len(self.auth.created), 1)
+        self.assertEqual(len(self.auth.tokens), 1)
+        self.assertEqual(len(self.journal.snapshot()), 1)
 
 
 class TvLanCredentialRouteTests(unittest.IsolatedAsyncioTestCase):
