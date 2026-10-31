@@ -890,10 +890,15 @@ fun CategoryContent(
                         prefs.setScreensaverHaExternalAuth(enabled)
                         haWebLogin = enabled
                         ComposeSettingsInterop.screensaverSettingsChanged()
+                        ComposeSettingsInterop.queueLayoutUpdate(HaLayout.SCREENSAVER_HA_AUTH)
                     }
                 )
                 Text(
-                    "Optional: enter an HTTPS dashboard URL on the same Home Assistant " +
+                    "Edit the Screensaver dashboard URL and Secure HA dashboard sign-in " +
+                        "switch in Home Assistant under this TV's Kellie's Voice device. " +
+                        "Turn on Home Assistant-managed layout on the TV to receive changes. " +
+                        "You can still edit these here.\n\n" +
+                        "Optional: enter an HTTPS dashboard URL on the same Home Assistant " +
                         "server used for owner-approved TV pairing. The native app gives " +
                         "the page a short-lived access token using HA external auth. " +
                         "No tokens appear in the URL. Frigate and the four-camera " +
