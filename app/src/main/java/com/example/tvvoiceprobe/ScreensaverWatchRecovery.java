@@ -1,16 +1,19 @@
 package com.example.tvvoiceprobe;
 
 import android.app.AlarmManager;
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.os.SystemClock;
 import android.provider.Settings;
 
 /**
- * Privacy-safe recovery for the screensaver watcher after reboot.
- * Records whether a start was attempted and why it failed.
+ * Privacy-safe diagnostics and supported recovery for the screensaver watcher.
+ * Does not assume why a background start failed. Records the actual exception
+ * class and uses a user-visible notification when unattended start is blocked.
  * Never logs URLs, tokens, or camera names.
  */
 final class ScreensaverWatchRecovery {
@@ -18,21 +21,24 @@ final class ScreensaverWatchRecovery {
     static final String KEY_LAST_ATTEMPT = "last_attempt_ms";
     static final String KEY_LAST_RESULT = "last_result";
     static final String KEY_LAST_ERROR = "last_error";
-    static final String RESULT_STARTED = "started";
-    static final String RESULT_DENIED = "denied";
-    static final String RESULT_SKIPPED = "skipped";
-    static final String RESULT_SCHEDULED = "scheduled";
+    static final String KEY_BOOT_RECEIVER = "boot_receiver_entered";
+    static final String RESULT_REQUESTED = "start requested";
+    static final String RESULT_RUNNING = "service confirmed RUNNING";
+    static final String RESULT_DENIED = "start denied";
+    static final String RESULT_SKIPPED = "skipped (feature off)";
+    static final String RESULT_NOTIFICATION = "notification posted";
+    static final String CHANNEL = "kellie_screensaver";
+    static final int NOTICE_ID = 2245;
 
     private ScreensaverWatchRecovery() { }
 
-    /** Decide whether the watcher should be running. */
+    /** Whether the watcher service should be running at all. */
     static boolean shouldRun(Context context) {
         if (context == null) return false;
         OverlayPreferences prefs = new OverlayPreferences(context);
         return prefs.screensaverDashboard() || prefs.haManage();
     }
 
-    /** Record a privacy-safe startup outcome. */
     static void record(Context context, String result, String error) {
         if (context == null) return;
         SharedPreferences prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
@@ -42,6 +48,18 @@ final class ScreensaverWatchRecovery {
                 .putString(KEY_LAST_ERROR, error == null ? "" : error)
                 .apply();
         ScreensaverWatchStatus.startup(result, error);
+    }
+
+    static void noteBootReceiver(Context context) {
+        if (context == null) return;
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .edit().putBoolean(KEY_BOOT_RECEIVER, true).apply();
+    }
+
+    static boolean bootReceiverEntered(Context context) {
+        if (context == null) return false;
+        return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getBoolean(KEY_BOOT_RECEIVER, false);
     }
 
     static String lastResult(Context context) {
@@ -56,20 +74,22 @@ final class ScreensaverWatchRecovery {
                 .getString(KEY_LAST_ERROR, "");
     }
 
-    /** Try to start the watcher. Returns true if the start call succeeded. */
+    /**
+     * Attempt to start the watcher. Does not check overlay permission here;
+     * the service itself gates overlay rendering. HA layout sync must still
+     * start when overlay permission is missing.
+     * Returns true if startForegroundService was accepted by the system.
+     */
     static boolean tryStart(Context context) {
         if (!shouldRun(context)) {
             record(context, RESULT_SKIPPED, "feature off");
-            return false;
-        }
-        if (!Settings.canDrawOverlays(context)) {
-            record(context, RESULT_DENIED, "overlay permission missing");
+            cancelRecovery(context);
             return false;
         }
         try {
             context.startForegroundService(new Intent(context, ScreensaverWatchService.class)
                     .setAction(ScreensaverWatchService.ACTION_START));
-            record(context, RESULT_STARTED, "");
+            record(context, RESULT_REQUESTED, "");
             return true;
         } catch (RuntimeException e) {
             String type = e.getClass().getSimpleName();
@@ -78,21 +98,44 @@ final class ScreensaverWatchRecovery {
         }
     }
 
-    /** Schedule a one-shot recovery if the immediate start was denied. */
-    static void scheduleRecovery(Context context) {
-        if (context == null) return;
-        AlarmManager alarms = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-        if (alarms == null) return;
-        Intent retry = new Intent(context, ScreensaverWatchService.class)
-                .setAction(ScreensaverWatchService.ACTION_START);
-        PendingIntent pi = PendingIntent.getService(context, 77, retry,
+    /**
+     * Supported recovery when an unattended start is denied.
+     * Posts a user-visible notification that opens Settings so the user can
+     * resume the watcher. Does not use an inexact AlarmManager to promise
+     * an automatic FGS restart (not a reliable exemption).
+     */
+    static void postRecoveryNotification(Context context) {
+        if (context == null || !shouldRun(context)) return;
+        NotificationManager manager = context.getSystemService(NotificationManager.class);
+        if (manager == null) return;
+        NotificationChannel channel = new NotificationChannel(CHANNEL,
+                "Kellie's Voice screensaver", NotificationManager.IMPORTANCE_DEFAULT);
+        channel.setDescription("Screensaver watcher recovery");
+        manager.createNotificationChannel(channel);
+        Intent open = new Intent(context, VoiceActivity.class)
+                .setAction("com.example.tvvoiceprobe.OPEN_SETTINGS")
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        PendingIntent pending = PendingIntent.getActivity(context, 78, open,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-        long when = SystemClock.elapsedRealtime() + 45_000L;
+        Notification notice = new Notification.Builder(context, CHANNEL)
+                .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .setContentTitle("Kellie's Voice screensaver")
+                .setContentText("Tap to resume the screensaver watcher")
+                .setContentIntent(pending)
+                .setAutoCancel(true)
+                .build();
         try {
-            alarms.setAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP, when, pi);
-            record(context, RESULT_SCHEDULED, "alarm +45s");
+            manager.notify(NOTICE_ID, notice);
+            record(context, RESULT_NOTIFICATION, "user tap required");
         } catch (RuntimeException ignored) {
-            record(context, RESULT_DENIED, "alarm schedule failed");
+            record(context, RESULT_DENIED, "notification failed");
         }
+    }
+
+    /** Cancel any outstanding recovery notification when the feature is turned off. */
+    static void cancelRecovery(Context context) {
+        if (context == null) return;
+        NotificationManager manager = context.getSystemService(NotificationManager.class);
+        if (manager != null) manager.cancel(NOTICE_ID);
     }
 }

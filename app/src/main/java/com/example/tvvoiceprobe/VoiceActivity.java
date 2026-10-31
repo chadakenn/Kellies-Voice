@@ -2594,6 +2594,10 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                 + "\nLast HA source: " + ScreensaverWatchStatus.sourceSync()
                 + "\nLast Android dream event: " + ScreensaverWatchStatus.lastEvent()
                 + "\nLast overlay outcome: " + ScreensaverWatchStatus.lastOverlay()
+                + "\nStartup: " + ScreensaverWatchRecovery.lastResult(this)
+                + (ScreensaverWatchRecovery.lastError(this).isEmpty() ? ""
+                        : " (" + ScreensaverWatchRecovery.lastError(this) + ")")
+                + "\nBoot receiver entered: " + (ScreensaverWatchRecovery.bootReceiverEntered(this) ? "yes" : "no")
                 + "\n\nIf HA shows four cameras but the TV reports zero, "
                 + "enable Home Assistant layout on this TV, then reopen diagnostics. "
                 + "The snapshot grid requires the saved HA connection; "
