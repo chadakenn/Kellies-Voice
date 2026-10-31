@@ -76,10 +76,34 @@ final class ScreensaverWebDiagnostics {
                 + " mainFrame=" + mainFrame);
     }
 
+    /**
+     * Diagnostic reason flags only, never print either full origin or URL.
+     * A hostname alias on the same server still fails strict same-origin
+     * navigation checks, and this reports the comparison without identifying it.
+     */
+    static String originComparison(String first, String second) {
+        try {
+            URI a = URI.create(first);
+            URI b = URI.create(second);
+            return "sameScheme=" + (a.getScheme() != null
+                    && a.getScheme().equalsIgnoreCase(b.getScheme() == null ? "" : b.getScheme()))
+                    + " sameHost=" + (a.getHost() != null
+                    && a.getHost().equalsIgnoreCase(b.getHost() == null ? "" : b.getHost()))
+                    + " samePort=" + (a.getPort() == b.getPort());
+        } catch (Exception ignored) {
+            return "originComparison=invalid";
+        }
+    }
+
     /** A navigation gate decision, without showing redirect targets or query params. */
-    static void blockedNavigation(String url) {
-        Log.i(TAG, "blocked navigation kind=" + requestKind(url)
-                + " destination=" + safeSummary(url));
+    static void blockedNavigation(String initial, String next, boolean mainFrame,
+            boolean redirect, boolean gesture) {
+        Log.i(TAG, "blocked navigation kind=" + requestKind(next)
+                + " destination=" + safeSummary(next)
+                + " mainFrame=" + mainFrame
+                + " redirect=" + redirect
+                + " gesture=" + gesture
+                + " " + originComparison(initial, next));
     }
 
     static void authNote(String note) {
