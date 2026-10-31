@@ -61,7 +61,11 @@ final class HaDashboardExternalAuthBridge {
         if (sourceOrigin == null || !allowed(source, sourceOrigin.toString(), isMainFrame))
             return;
         try {
-            JSONObject request = new JSONObject(incoming.getData());
+            // Ignore untrusted payloads before parsing; frontend only needs
+            // a tiny type/callback message, never a large JSON document.
+            String raw = incoming.getData();
+            if (raw == null || raw.length() > 2048) return;
+            JSONObject request = new JSONObject(raw);
             JSONObject payload = request.optJSONObject("payload");
             if (payload == null) return;
             String type = request.optString("type", "");
