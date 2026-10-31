@@ -13,7 +13,7 @@ Copy-and-paste Home Assistant examples for Kellie's Voice. All snippets use safe
 - **Automations** — paste into the automation YAML editor.
 - **Custom sentences / intent_script** — advanced; see the timer section and the repository's VOICE_TIMERS.md. These are optional and not required for the direct actions to work.
 
-**Current public release:** v0.16.11. Actionable popup buttons and the Frigate screensaver are still development-only.
+**Current public release:** v0.17.0. Camera popups, the Frigate/HA screensaver and Home Assistant actions are available with the matching signed TV app and `kellies_voice` HACS integration. Some advanced actions and camera behavior depend on supported hardware and opted-in settings.
 
 ## Announcements
 
