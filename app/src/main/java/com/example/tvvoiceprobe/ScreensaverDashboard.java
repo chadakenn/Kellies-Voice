@@ -136,6 +136,34 @@ public final class ScreensaverDashboard {
         }
     }
 
+    /**
+     * HA's login and Lovelace layouts are responsive. Frigate's desktop
+     * viewport workaround must not run on HA pages: on Android TV it can
+     * push the login dialog beyond the visible area.
+     *
+     * This is presentation-only detection, NEVER a security or auth check.
+     * Authentication must still use HaDashboardAuthPolicy independently.
+     */
+    public static boolean isHomeAssistantPage(String page, boolean secureHaSignIn) {
+        if (secureHaSignIn) return true;
+        String valid = dashboardUrl(page);
+        if (valid.isEmpty()) return false;
+        try {
+            URI uri = new URI(valid);
+            String host = uri.getHost();
+            return uri.getPort() == 8123
+                    || "homeassistant.local".equalsIgnoreCase(host)
+                    || "homeassistant".equalsIgnoreCase(host);
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    public static boolean useFrigateDesktopViewport(String page, boolean desktopPreferred,
+            boolean secureHaSignIn) {
+        return desktopPreferred && !isHomeAssistantPage(page, secureHaSignIn);
+    }
+
     /** Up to four camera.* entities. Anything else is dropped. */
     public static String cameras(String raw) {
         if (raw == null || raw.trim().isEmpty()) return "";
