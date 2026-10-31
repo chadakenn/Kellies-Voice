@@ -41,7 +41,7 @@ async def async_register_pairing_approval_panel(hass) -> None:
         hass,
         webcomponent_name="kellies-voice-owner-panel",
         frontend_url_path=_PANEL_URL,
-        sidebar_title="Kellie's Voice v3 Owner QA",
+        sidebar_title="Kellie's Voice Pairing",
         sidebar_icon="mdi:television-check",
         module_url=f"{_ASSET_PATH}?v={panel_version}",
         require_admin=True,
