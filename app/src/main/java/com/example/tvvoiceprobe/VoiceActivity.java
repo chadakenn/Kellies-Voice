@@ -209,6 +209,11 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                 TvEventsRecovery.note(TvEventsRecovery.STOPPED);
             }
         }
+        // Visible Activity: resume a previously enabled screensaver watcher.
+        // This is the supported path after a blocked background start.
+        if (!transparentShortcut) {
+            ScreensaverWatchService.startIfEnabled(this);
+        }
         // These independent connections can diverge after Home Assistant restarts.
         mainHandler.removeCallbacks(connectionLabelRefresh);
         mainHandler.removeCallbacks(shortcutsRefresh);
@@ -2594,6 +2599,11 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                 + "\nLast HA source: " + ScreensaverWatchStatus.sourceSync()
                 + "\nLast Android dream event: " + ScreensaverWatchStatus.lastEvent()
                 + "\nLast overlay outcome: " + ScreensaverWatchStatus.lastOverlay()
+                + "\nStartup: " + ScreensaverWatchRecovery.lastResult(this)
+                + (ScreensaverWatchRecovery.lastError(this).isEmpty() ? ""
+                        : " (" + ScreensaverWatchRecovery.lastError(this) + ")")
+                + "\nBoot receiver this boot: " + (ScreensaverWatchRecovery.bootReceiverEnteredThisBoot(this) ? "yes" : "no")
+                + "\nRecovery: open Kellie's Voice to resume the watcher"
                 + "\n\nIf HA shows four cameras but the TV reports zero, "
                 + "enable Home Assistant layout on this TV, then reopen diagnostics. "
                 + "The snapshot grid requires the saved HA connection; "
