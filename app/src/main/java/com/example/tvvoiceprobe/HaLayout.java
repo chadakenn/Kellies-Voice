@@ -9,6 +9,7 @@ public final class HaLayout {
     public static final String POSITION = "position";
     public static final String SIZE = "size";
     public static final String STYLE = "style";
+    public static final String COMMUNITY_THEME_LIST = "community_theme_list";
     public static final String AUTO_HIDE = "auto_hide";
     public static final String AUTO_LISTEN = "auto_listen";
     public static final String ALERT_POSITION = "alert_position";
@@ -29,7 +30,7 @@ public final class HaLayout {
     private HaLayout() {}
 
     public static boolean known(String setting) {
-        return POSITION.equals(setting) || SIZE.equals(setting) || STYLE.equals(setting)
+        return POSITION.equals(setting) || SIZE.equals(setting) || STYLE.equals(setting) || COMMUNITY_THEME_LIST.equals(setting)
                 || AUTO_HIDE.equals(setting) || AUTO_LISTEN.equals(setting)
                 || ALERT_POSITION.equals(setting) || ALERT_SIZE.equals(setting)
                 || NOISE.equals(setting) || FOLLOW_TIMEOUT.equals(setting)
@@ -45,7 +46,7 @@ public final class HaLayout {
     }
 
     public static boolean changesPanel(String setting) {
-        return POSITION.equals(setting) || SIZE.equals(setting) || STYLE.equals(setting);
+        return POSITION.equals(setting) || SIZE.equals(setting) || STYLE.equals(setting) || COMMUNITY_THEME_LIST.equals(setting);
     }
 
     /** Value to write into Home Assistant for the TV's current preference. */
@@ -58,7 +59,9 @@ public final class HaLayout {
                 if (OverlayPreferences.SIZE_LARGE.equals(prefs.size())) return "Large";
                 return "Medium";
             case STYLE:
-                return OverlayPreferences.skinLabel(prefs.skin());
+                return skinLabelFor(prefs);
+            case COMMUNITY_THEME_LIST:
+                return communityThemeList(prefs);
             case AUTO_HIDE:
                 return prefs.autoHide() ? prefs.hideSeconds() + " seconds" : "Never";
             case AUTO_LISTEN:
@@ -112,10 +115,13 @@ public final class HaLayout {
                 prefs.setSize(size);
                 return true;
             case STYLE:
-                String skin = styleKey(value);
+                String skin = styleKey(prefs, value);
                 if (skin == null || skin.equals(prefs.skin())) return false;
                 prefs.setSkin(skin);
                 return true;
+            case COMMUNITY_THEME_LIST:
+                // TV owns the list; HA may echo it back. Ignore.
+                return false;
             case AUTO_HIDE:
                 Integer seconds = hideSeconds(value);
                 if (seconds == null) return false;
@@ -257,7 +263,7 @@ public final class HaLayout {
         }
     }
 
-    private static String styleKey(String value) {
+    private static String styleKey(OverlayPreferences prefs, String value) {
         if ("Aurora Glass".equals(value)) return OverlayPreferences.SKIN_AURORA;
         switch (value) {
             case "Copper Glass":
@@ -276,8 +282,32 @@ public final class HaLayout {
             case OverlayPreferences.SKIN_TERMINAL:
                 return OverlayPreferences.SKIN_TERMINAL;
             default:
+                // Community theme name → ID
+                if (prefs != null) {
+                    for (CommunityThemeStore.Theme t : CommunityThemeStore.list(prefs.getContext())) {
+                        if (t.name.equals(value)) return t.id;
+                    }
+                }
                 return null;
         }
+    }
+
+    private static String skinLabelFor(OverlayPreferences prefs) {
+        String id = prefs.skin();
+        if (CommunityThemeStore.isId(id)) {
+            CommunityThemeStore.Theme t = CommunityThemeStore.get(prefs.getContext(), id);
+            if (t != null) return t.name;
+        }
+        return OverlayPreferences.skinLabel(id);
+    }
+
+    private static String communityThemeList(OverlayPreferences prefs) {
+        StringBuilder sb = new StringBuilder();
+        for (CommunityThemeStore.Theme t : CommunityThemeStore.list(prefs.getContext())) {
+            if (sb.length() > 0) sb.append('|');
+            sb.append(t.name);
+        }
+        return sb.toString();
     }
 
     private static Integer hideSeconds(String value) {

@@ -72,6 +72,8 @@ public final class OverlayPreferences {
     private final SharedPreferences preferences;
     private final Context appContext;
 
+    public Context getContext() { return appContext; }
+
     public OverlayPreferences(Context context) {
         appContext = context.getApplicationContext();
         preferences = appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
