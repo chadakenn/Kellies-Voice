@@ -211,13 +211,8 @@ public final class WakeWordService extends Service {
                 android.provider.Settings.canDrawOverlays(this))) return false;
         // Never use an old owner token when a renewable TV login was selected.
         // The overlay renews that grant on a worker after wake detection.
-        TvRenewableLoginVault vault = new TvRenewableLoginVault(this);
-        boolean signedIn = vault.blocksManualFallback() ? vault.hasActiveLogin() : false;
-        if (!vault.blocksManualFallback()) {
-            try { signedIn = new CredentialStore(this).load() != null; }
-            catch (Exception ignored) { return false; }
-        }
-        return signedIn && MicrophoneRouting.preflight(this, prefs.allowUnverifiedMic()) == null;
+        return WakeWordLoginGate.hasSavedLogin(this)
+                && MicrophoneRouting.preflight(this, prefs.allowUnverifiedMic()) == null;
     }
 
     private void listen() {

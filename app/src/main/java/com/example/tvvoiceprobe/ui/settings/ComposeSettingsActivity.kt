@@ -56,6 +56,7 @@ import com.example.tvvoiceprobe.FirstRunSetupActivity
 import com.example.tvvoiceprobe.TvAlertLayout
 import com.example.tvvoiceprobe.OverlayPreferences
 import com.example.tvvoiceprobe.TvEventsService
+import com.example.tvvoiceprobe.WakeWordLoginGate
 import com.example.tvvoiceprobe.WakeWordService
 import com.example.tvvoiceprobe.ui.theme.KellieSkins
 import com.example.tvvoiceprobe.ui.theme.KellieTheme
@@ -590,8 +591,9 @@ fun CategoryContent(
                     checked = wake,
                     onCheckedChange = { on ->
                         if (on) {
-                            val creds = try { CredentialStore(context).load() } catch (e: Exception) { null }
-                            if (creds == null) {
+                            // Owner-approved pairing saves its renewable grant in
+                            // Android Keystore, not the legacy manual token store.
+                            if (!WakeWordLoginGate.hasSavedLogin(context)) {
                                 Toast.makeText(context, "Configure Home Assistant before enabling the wake word", Toast.LENGTH_LONG).show()
                                 return@SettingSwitch
                             }
