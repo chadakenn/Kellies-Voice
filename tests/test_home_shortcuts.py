@@ -5,6 +5,7 @@ from pathlib import Path
 import sys
 import time
 import types
+from types import MappingProxyType
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -28,6 +29,15 @@ def options():
 
 
 class ShortcutPolicyTests(unittest.TestCase):
+    def test_readonly_home_assistant_config_entry_options(self):
+        # Real HA ConfigEntry.options is MappingProxyType, not dict.
+        readonly = MappingProxyType(options())
+        values = shortcuts.entries_from_options(readonly)
+        self.assertEqual([1, 2, 3], [item["slot"] for item in values])
+        self.assertEqual("light.living_room", shortcuts.selection(readonly, 1)["entity_id"])
+        self.assertEqual([], shortcuts.entries_from_options(None))
+        self.assertEqual([], shortcuts.entries_from_options(["untrusted"]))
+
     def test_only_expected_domains_and_services(self):
         values = shortcuts.entries_from_options(options())
         self.assertEqual([1, 2, 3], [x["slot"] for x in values])
@@ -118,11 +128,11 @@ class FakeStates:
 class FakeHass:
     def __init__(self):
         self.config_entries = FakeEntries([
-            types.SimpleNamespace(data={"device_id": "tv0001"}, options=options()),
+            types.SimpleNamespace(data={"device_id": "tv0001"}, options=MappingProxyType(options())),
             types.SimpleNamespace(
                 data={"device_id": "tv0002"},
-                options={"shortcut_1_label": "Other", "shortcut_1_entity": "light.other",
-                         "shortcut_1_action": "Turn off"}),
+                options=MappingProxyType({"shortcut_1_label": "Other", "shortcut_1_entity": "light.other",
+                         "shortcut_1_action": "Turn off"})),
         ])
         self.data = {}
         self.services = FakeServices()
