@@ -1049,7 +1049,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                         "Test a spoken announcement",
                         "TV alert status & connection",
                         "Live camera decoder: " + LiveCameraMode.label(prefs.cameraMode()),
-                        "Pair this Beta TV in Home Assistant (alerts device)"
+                        "Pair this TV in Home Assistant (alerts device)"
                 };
                 break;
             case SCREEN:
