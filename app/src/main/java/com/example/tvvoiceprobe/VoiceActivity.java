@@ -599,7 +599,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
     }
 
     private AppPalette currentPalette() {
-        return AppPalette.forSkin(new OverlayPreferences(this).skin());
+        return AppPalette.forSkin(this, new OverlayPreferences(this).skin());
     }
 
     /** Repaint in place without resetting the conversation, D-pad or Assist. */

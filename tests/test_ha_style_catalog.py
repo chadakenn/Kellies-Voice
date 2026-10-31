@@ -30,7 +30,11 @@ class TestHaStyleCatalog(unittest.TestCase):
         self.assertIn('return "Jade Terminal"', prefs)
         self.assertIn('case "Jade Terminal":', layout)
         self.assertIn('SKIN_TERMINAL.equals(value)', prefs)
-        self.assertIn('return OverlayPreferences.skinLabel(prefs.skin())', layout)
+        # Community themes resolve their names dynamically; the six built-in
+        # labels remain available through the explicit fallback.
+        self.assertIn("return skinLabelFor(prefs);", layout)
+        self.assertIn("private static String skinLabelFor(OverlayPreferences prefs)", layout)
+        self.assertIn("return OverlayPreferences.skinLabel(id);", layout)
 
     def test_compose_and_overlay_select_jade_terminal(self):
         compose = (ANDROID / "ui/settings/ComposeSettingsActivity.kt").read_text(encoding="utf-8")

@@ -34,6 +34,32 @@ public final class AppPalette {
         this.stroke = stroke;
     }
 
+
+    /** Context-aware lookup that can resolve community theme packs. */
+    public static AppPalette forSkin(android.content.Context context, String skin) {
+        if (context != null && CommunityThemeStore.isId(skin)) {
+            CommunityThemeStore.Theme theme = CommunityThemeStore.get(context, skin);
+            if (theme != null) {
+                try {
+                    return new AppPalette(
+                        theme.color("screen"),
+                        theme.color("accent"),
+                        theme.color("text"),
+                        theme.color("textMuted"),
+                        theme.color("card"),
+                        theme.color("focus"),
+                        theme.color("panel"),
+                        theme.color("screen"),
+                        theme.color("card"),
+                        theme.color("cardFocused"),
+                        theme.color("stroke")
+                    );
+                } catch (Exception ignored) { /* fall through to built-in */ }
+            }
+        }
+        return forSkin(skin);
+    }
+
     public static AppPalette forSkin(String skin) {
         if (OverlayPreferences.SKIN_AURORA.equals(skin)) {
             return new AppPalette(

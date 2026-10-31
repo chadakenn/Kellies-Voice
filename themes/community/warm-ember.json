@@ -1,0 +1,28 @@
+{
+  "format": 1,
+  "id": "community.warm-ember",
+  "name": "Warm Ember",
+  "author": "Kellie's Voice Community",
+  "base": "glass",
+  "colors": {
+    "screen": "#1A100C",
+    "panel": "#2A1812",
+    "card": "#3D241C",
+    "cardFocused": "#4E3026",
+    "accent": "#FFB088",
+    "accentSecondary": "#E07A50",
+    "text": "#FFF0E6",
+    "textMuted": "#C9A090",
+    "stroke": "#8A5A48",
+    "focus": "#FFD0B0",
+    "success": "#66BB6A",
+    "warning": "#FFA726"
+  },
+  "shapes": {
+    "panelRadiusDp": 12,
+    "cardRadiusDp": 10,
+    "focusBorderDp": 3,
+    "spacingDp": 12
+  },
+  "animationScale": 0.9
+}

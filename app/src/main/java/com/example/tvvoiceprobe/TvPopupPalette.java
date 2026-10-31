@@ -60,6 +60,27 @@ public final class TvPopupPalette {
         this.forecastRadiusDp = forecastRadiusDp;
     }
 
+    /** Resolve installed community colors for alerts, cameras and forecasts.
+     * Built-in palettes keep their existing, hardware-tested appearance.
+     */
+    public static TvPopupPalette forSkin(android.content.Context context, String skin) {
+        if (context != null && CommunityThemeStore.isId(skin)) {
+            CommunityThemeStore.Theme custom = CommunityThemeStore.get(context, skin);
+            if (custom != null) {
+                AppPalette palette = AppPalette.forSkin(context, skin);
+                return new TvPopupPalette(
+                        translucent(palette.menuStart), translucent(palette.menuEnd),
+                        palette.stroke, palette.accent, palette.accent, palette.text,
+                        palette.muted, palette.screen, palette.menuButton,
+                        palette.focus, palette.text, 12, false,
+                        translucent(palette.menuStart), translucent(palette.menuEnd),
+                        palette.stroke, palette.accent, palette.accent,
+                        palette.text, palette.muted, 12);
+            }
+        }
+        return forSkin(skin);
+    }
+
     /** Called when a popup is created; switching themes affects the next popup. */
     public static TvPopupPalette forSkin(String skin) {
         AppPalette palette = AppPalette.forSkin(skin);

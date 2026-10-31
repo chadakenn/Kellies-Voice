@@ -1,0 +1,28 @@
+{
+  "format": 1,
+  "id": "community.forest-canopy",
+  "name": "Forest Canopy",
+  "author": "Kellie's Voice Community",
+  "base": "terminal",
+  "colors": {
+    "screen": "#0C1410",
+    "panel": "#142018",
+    "card": "#1C2C22",
+    "cardFocused": "#24382C",
+    "accent": "#7DCEA0",
+    "accentSecondary": "#52B788",
+    "text": "#E8F8EE",
+    "textMuted": "#8FBF9F",
+    "stroke": "#3A6A50",
+    "focus": "#A8E6C3",
+    "success": "#4CAF50",
+    "warning": "#FFB74D"
+  },
+  "shapes": {
+    "panelRadiusDp": 8,
+    "cardRadiusDp": 6,
+    "focusBorderDp": 2,
+    "spacingDp": 10
+  },
+  "animationScale": 0.8
+}
