@@ -54,9 +54,11 @@ class KellieVoiceOptionsFlow(OptionsFlow):
             if not errors:
                 # The native device-page fields share this same per-TV draft.
                 # An explicit Options form submission replaces it atomically.
-                self.hass.data.setdefault(DOMAIN, {}).setdefault(
-                    QUICK_ACTION_CACHE, {}
-                )[self.config_entry.entry_id] = dict(updated)
+                hass = getattr(self, "hass", None)
+                if hass is not None:
+                    hass.data.setdefault(DOMAIN, {}).setdefault(
+                        QUICK_ACTION_CACHE, {}
+                    )[self.config_entry.entry_id] = dict(updated)
                 return self.async_create_entry(title="", data=updated)
 
         fields = {
