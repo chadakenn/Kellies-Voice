@@ -1,5 +1,7 @@
 # Install Kellie's Voice: start here (new testers)
 
+> **Testing v0.17.0?** This is a separate, not-yet-public debug Beta with Compose Settings, Quick Actions and HA-first v3 onboarding. Do **not** install it using the stable HACS steps below or overwrite the stable `kellies_voice` component. See [v0.17 QA component differences, verified tests and remaining blockers](V017_BETA_STATUS.md).
+
 **Release guide: v0.16.14 (October 28, 2026)** · Use only the [latest published signed release](https://github.com/chadakenn/Kellies-Voice/releases/latest), not an Actions debug artifact.
 
 Welcome! **Kellie's Voice** turns an Android TV / Google TV into a voice companion for **your own Home Assistant**. It has two separate parts:
