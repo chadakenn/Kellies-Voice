@@ -1003,8 +1003,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         String[] entries;
         switch (section) {
             case HOME:
-                // Never expose unfinished pairing in production releases.
-                // QA and debug use distinct package IDs; never enable on public release.
+                // Public secure pairing is owner approved; the QA test center stays separate.
                 boolean testBuild = BuildConfig.DEBUG || BuildConfig.IS_QA;
                 entries = testBuild ? new String[] {
                         "Connect / reconnect Home Assistant",
@@ -1016,9 +1015,11 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                         "First-time setup wizard (QA)"
                 } : new String[] {
                         "Connect / reconnect Home Assistant",
-                        "Edit Home Assistant address & token",
+                        "Edit Home Assistant address & token (legacy fallback)",
                         "Start new conversation",
-                        "Manage TV layout from Home Assistant: " + (prefs.haManage() ? "ON" : "OFF")
+                        "Manage TV layout from Home Assistant: " + (prefs.haManage() ? "ON" : "OFF"),
+                        "Secure Home Assistant pairing (no typing)",
+                        "First-time setup wizard"
                 };
                 break;
             case VOICE:
@@ -1081,12 +1082,13 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                                 case 2: newConversation(); break;
                                 case 3: chooseHaLayout(); break;
                                 case 4:
-                                    if ((BuildConfig.DEBUG || BuildConfig.IS_QA)) {
-                                        startActivity(new Intent(this, PairingV3QaActivity.class));
-                                    }
+                                    startActivity(new Intent(this, PairingV3QaActivity.class));
                                     break;
                                 case 5:
-                                    showFullAppBetaTestCenter();
+                                    if (BuildConfig.DEBUG || BuildConfig.IS_QA)
+                                        showFullAppBetaTestCenter();
+                                    else
+                                        startActivity(new Intent(this, FirstRunSetupActivity.class));
                                     break;
                                 case 6:
                                     if ((BuildConfig.DEBUG || BuildConfig.IS_QA))
