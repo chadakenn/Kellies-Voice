@@ -55,6 +55,6 @@ final class LanHttpDashboardPolicy {
      */
     static boolean allowedNavigation(String initial, String next) {
         return isStrictLanHttp(initial) && isStrictLanHttp(next)
-                && ScreensaverDashboard.sameSite(initial, next);
+                && ScreensaverDashboard.sameOriginNavigation(initial, next);
     }
 }
