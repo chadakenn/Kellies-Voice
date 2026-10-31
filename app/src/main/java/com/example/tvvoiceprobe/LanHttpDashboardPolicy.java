@@ -54,7 +54,11 @@ final class LanHttpDashboardPolicy {
      * not guaranteed local, so users should trust their HA custom cards.
      */
     static boolean allowedNavigation(String initial, String next) {
-        return isStrictLanHttp(initial) && isStrictLanHttp(next)
-                && ScreensaverDashboard.sameSite(initial, next);
+        // The initial numeric RFC1918 HTTP host is strictly validated.
+        // Any URL on precisely that same origin remains a LAN URL, even if
+        // Home Assistant adds a transient auth callback query/fragment.
+        // Re-running dashboardUrl() on a redirect would reject auth tokens.
+        return isStrictLanHttp(initial)
+                && ScreensaverDashboard.sameOriginNavigation(initial, next);
     }
 }

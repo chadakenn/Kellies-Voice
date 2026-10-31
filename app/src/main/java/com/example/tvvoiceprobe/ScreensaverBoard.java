@@ -423,7 +423,7 @@ final class ScreensaverBoard {
                 String next = request.getUrl().toString();
                 boolean allowed = strictLocalHttp
                         ? LanHttpDashboardPolicy.allowedNavigation(page, next)
-                        : ScreensaverDashboard.sameSite(page, next);
+                        : ScreensaverDashboard.sameOriginNavigation(page, next);
                 if (!allowed) ScreensaverWebDiagnostics.blockedNavigation(
                         page, next, request.isForMainFrame(),
                         request.isRedirect(), request.hasGesture());
