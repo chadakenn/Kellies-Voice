@@ -31,6 +31,9 @@ final class TvRenewableLoginVault implements PairingV3ScopedTokenHandoff.Vault {
     private static final String PREFS = "kellies_v3_scoped_login_v1";
     private static final String ALIAS = "kellies_v3_scoped_token_v1";
     private static final String KEY = "encrypted_tv_login";
+    // Non-secret, sticky security mode: a revoked renewable login must NEVER
+    // downgrade to an older, broader manual Home Assistant owner token.
+    private static final String KEY_RENEWABLE_MODE = "owner_approved_renewable_mode";
     private static final String AAD = "KelliesVoice/v3/scoped-renewable-login";
     private static final int MAX_JSON = 16_384;
     private final Context context;
@@ -166,6 +169,8 @@ final class TvRenewableLoginVault implements PairingV3ScopedTokenHandoff.Vault {
                 || !r.grant.tokenId.equals(tokenId))
             throw new IllegalStateException("Missing authenticated enrollment");
         r.active = true;
+        // Fail closed if the persistent downgrade guard cannot be saved.
+        rememberRenewableMode();
         write(r);
     }
 
@@ -178,6 +183,9 @@ final class TvRenewableLoginVault implements PairingV3ScopedTokenHandoff.Vault {
         Record r = read();
         if (r == null || !r.active)
             throw new IllegalStateException("No completed restricted TV login");
+        // Migrate pre-guard QA enrollments before refresh can be rejected.
+        // The 400/403 revocation path clears the credential, not this marker.
+        rememberRenewableMode();
         long now = SystemClock.elapsedRealtime();
         if (cachedAccess != null && now + 60_000 < accessExpiresElapsed)
             return cachedAccess;
@@ -233,6 +241,20 @@ final class TvRenewableLoginVault implements PairingV3ScopedTokenHandoff.Vault {
         return new CredentialStore.Connection(record.grant.haOrigin, token);
     }
 
+    /** No secret stored here. This flag remains after revoke/corrupt storage;
+     * a staged, unfinished login also blocks the legacy path until cleaned.
+     * Explicit owner reset must be implemented and reviewed separately.
+     */
+    synchronized boolean blocksManualFallback() {
+        SharedPreferences saved = prefs();
+        return saved.getBoolean(KEY_RENEWABLE_MODE, false) || saved.contains(KEY);
+    }
+
+    private void rememberRenewableMode() {
+        if (!prefs().edit().putBoolean(KEY_RENEWABLE_MODE, true).commit())
+            throw new IllegalStateException("Cannot persist safe TV login mode");
+    }
+
     synchronized boolean hasActiveLogin() {
         try {
             Record record = read();
@@ -243,6 +265,8 @@ final class TvRenewableLoginVault implements PairingV3ScopedTokenHandoff.Vault {
     }
 
     synchronized void clear() {
+        // Revoke/removal wipes the credentials but deliberately retains
+        // KEY_RENEWABLE_MODE, preventing a legacy-token downgrade on relaunch.
         cachedAccess = null;
         accessExpiresElapsed = 0;
         prefs().edit().remove(KEY).commit();

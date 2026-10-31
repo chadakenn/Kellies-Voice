@@ -221,7 +221,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
         if (transparentShortcut || assist == null) return;
         // A completed owner-approved TV account supersedes the beta's old
         // manual token, with NO fallback if renewable authorization fails.
-        if (new TvRenewableLoginVault(this).hasActiveLogin()) {
+        if (new TvRenewableLoginVault(this).blocksManualFallback()) {
             settings = null;
             connectRenewableTvLogin();
             return;

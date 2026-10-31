@@ -54,9 +54,12 @@ public final class OverlayShortcutActivity extends Activity {
 
     private void launch() {
         if (isFinishing()) return;
-        boolean configured = false;
-        try { configured = new CredentialStore(this).load() != null; }
-        catch (Exception ignored) { }
+        TvRenewableLoginVault vault = new TvRenewableLoginVault(this);
+        boolean configured = vault.hasActiveLogin();
+        if (!vault.blocksManualFallback()) {
+            try { configured = new CredentialStore(this).load() != null; }
+            catch (Exception ignored) { configured = false; }
+        }
         if (!configured || !Settings.canDrawOverlays(this)
                 || checkSelfPermission(Manifest.permission.RECORD_AUDIO)
                         != PackageManager.PERMISSION_GRANTED) {

@@ -6,10 +6,10 @@ package com.example.tvvoiceprobe;
 final class TvOverlayLoginPolicy {
     private TvOverlayLoginPolicy() { }
 
-    /** Manual credentials are eligible only when no active renewable TV grant
-     * exists. A failed refresh must never silently authorize the old account.
+    /** Callers pass persistent renewable-mode selection, not merely whether a
+     * currently readable active token exists. Failure or revoke stays blocked.
      */
-    static boolean mayUseManual(boolean renewableActive) {
-        return !renewableActive;
+    static boolean mayUseManual(boolean renewableModeSelected) {
+        return !renewableModeSelected;
     }
 }

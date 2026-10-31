@@ -31,9 +31,12 @@ public final class WakeWordStartup {
             clearReminder(activity);
             return;
         }
-        boolean signedIn = false;
-        try { signedIn = new CredentialStore(activity).load() != null; }
-        catch (Exception ignored) { }
+        TvRenewableLoginVault vault = new TvRenewableLoginVault(activity);
+        boolean signedIn = vault.hasActiveLogin();
+        if (!vault.blocksManualFallback()) {
+            try { signedIn = new CredentialStore(activity).load() != null; }
+            catch (Exception ignored) { signedIn = false; }
+        }
         boolean routeReady = MicrophoneRouting.preflight(
                 activity, prefs.allowUnverifiedMic()) == null;
         if (!WakeWordSession.mayRestore(

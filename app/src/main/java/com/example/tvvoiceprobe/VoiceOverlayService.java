@@ -178,7 +178,7 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
             // older manual CredentialStore. A renewable-only QA TV must use its
             // own active Keystore grant, renewed on a worker thread.
             TvRenewableLoginVault vault = new TvRenewableLoginVault(this);
-            renewableSession = vault.hasActiveLogin();
+            renewableSession = vault.blocksManualFallback();
             if (!TvOverlayLoginPolicy.mayUseManual(renewableSession)) {
                 showPanel();
                 markOpen();

@@ -209,7 +209,7 @@ public final class TvEventsService extends Service {
         CredentialStore.Connection saved;
         try { saved = new CredentialStore(this).load(); }
         catch (Exception ignored) { saved = null; }
-        if (new TvRenewableLoginVault(this).hasActiveLogin()) {
+        if (new TvRenewableLoginVault(this).blocksManualFallback()) {
             // Prefer the dedicated TV login; never fall back to a previously
             // stored broad manual bearer token after pairing.
             saved = renewableCredentials;
