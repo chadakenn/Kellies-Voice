@@ -2192,9 +2192,13 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                     int slot = item.optInt("slot", -1);
                     String label = item.optString("label", "").trim();
                     if (slot < 1 || slot > 4 || label.isEmpty() || label.length() > 26) continue;
+                    // MDI metadata is not an executable payload or remote URL.
+                    // Render a familiar local icon and preserve the label for
+                    // accessibility and D-pad control.
+                    String glyph = TvHomeIcon.glyph(item.optString("icon", ""));
                     Button button = new Button(this);
                     button.setAllCaps(false);
-                    button.setText(label);
+                    button.setText(glyph + "   " + label);
                     button.setTextSize(18);
                     button.setContentDescription("Home Assistant shortcut: " + label);
                     button.setFocusable(true);
