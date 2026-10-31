@@ -38,7 +38,13 @@ _SHORTCUTS = Path(__file__).resolve().parents[1] / "custom_components/kellies_vo
 _spec = importlib.util.spec_from_file_location("timer_shortcuts", _SHORTCUTS)
 _module = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_module)
+_ICON_FILE = Path(__file__).resolve().parents[1] / "custom_components/kellies_voice/quick_action_icons.py"
+_icon_spec = importlib.util.spec_from_file_location("timer_quick_icons", _ICON_FILE)
+_icon_module = importlib.util.module_from_spec(_icon_spec)
+_icon_spec.loader.exec_module(_icon_module)
 runtime = {
+    "ICON_CHOICES": _icon_module.ICON_CHOICES,
+    "validate_override": _icon_module.validate_override,
     "OptionsFlow": FakeOptionsFlow,
     "vol": FakeVol,
     "COUNT": _module.COUNT,
