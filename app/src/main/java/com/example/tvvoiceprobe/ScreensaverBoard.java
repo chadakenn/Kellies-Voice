@@ -357,8 +357,7 @@ final class ScreensaverBoard {
                 if (request != null && request.isForMainFrame()) {
                     ScreensaverWebDiagnostics.loadError(
                             request.getUrl() == null ? "" : request.getUrl().toString(),
-                            error == null ? -1 : error.getErrorCode(),
-                            error == null ? "" : String.valueOf(error.getDescription()));
+                            error == null ? -1 : error.getErrorCode());
                 }
             }
 
