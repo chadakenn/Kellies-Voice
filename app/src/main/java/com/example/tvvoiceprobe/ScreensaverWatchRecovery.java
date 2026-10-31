@@ -27,7 +27,7 @@ final class ScreensaverWatchRecovery {
     static final String RESULT_DENIED = "start denied";
     static final String RESULT_SKIPPED = "skipped (feature off)";
     static final String RESULT_NOTIFICATION = "notification posted";
-    static final String CHANNEL = "kellie_screensaver";
+    static final String RECOVERY_CHANNEL = "kellie_screensaver_recovery";
     static final int NOTICE_ID = 2245;
 
     private ScreensaverWatchRecovery() { }
@@ -137,29 +137,47 @@ final class ScreensaverWatchRecovery {
     static void postRecoveryNotification(Context context) {
         if (context == null || !shouldRun(context)) return;
         NotificationManager manager = context.getSystemService(NotificationManager.class);
-        if (manager == null) return;
-        NotificationChannel channel = new NotificationChannel(CHANNEL,
-                "Kellie's Voice screensaver", NotificationManager.IMPORTANCE_DEFAULT);
-        channel.setDescription("Screensaver watcher recovery");
+        if (manager == null) {
+            record(context, RESULT_DENIED, "no notification manager");
+            return;
+        }
+        if (!notificationsEnabled(context, manager)) {
+            record(context, RESULT_DENIED, "notifications disabled");
+            return;
+        }
+        NotificationChannel channel = new NotificationChannel(RECOVERY_CHANNEL,
+                "Kellie's Voice screensaver recovery", NotificationManager.IMPORTANCE_DEFAULT);
+        channel.setDescription("Open the app to resume the screensaver watcher");
         manager.createNotificationChannel(channel);
         Intent open = new Intent(context, VoiceActivity.class)
                 .setAction("com.example.tvvoiceprobe.OPEN_SETTINGS")
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         PendingIntent pending = PendingIntent.getActivity(context, 78, open,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-        Notification notice = new Notification.Builder(context, CHANNEL)
+        Notification notice = new Notification.Builder(context, RECOVERY_CHANNEL)
                 .setSmallIcon(android.R.drawable.ic_dialog_info)
                 .setContentTitle("Kellie's Voice screensaver")
-                .setContentText("Tap to resume the screensaver watcher")
+                .setContentText("Open Kellie's Voice to resume the watcher")
                 .setContentIntent(pending)
                 .setAutoCancel(true)
                 .build();
         try {
             manager.notify(NOTICE_ID, notice);
-            record(context, RESULT_NOTIFICATION, "user tap required");
+            record(context, RESULT_NOTIFICATION, "open app to resume");
         } catch (RuntimeException ignored) {
             record(context, RESULT_DENIED, "notification failed");
         }
+    }
+
+    static boolean notificationsEnabled(Context context, NotificationManager manager) {
+        if (manager == null) return false;
+        if (android.os.Build.VERSION.SDK_INT >= 33) {
+            if (context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)
+                    != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                return false;
+            }
+        }
+        return manager.areNotificationsEnabled();
     }
 
     /** Cancel any outstanding recovery notification when the feature is turned off. */

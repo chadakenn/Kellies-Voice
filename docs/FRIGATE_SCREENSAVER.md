@@ -142,7 +142,7 @@ Default screensaver is **off**; page layout defaults to **Desktop TV** once enab
 
 The screensaver watcher is opted-in and does not start the microphone or alerts. On some Android TV devices the watcher does not resume after reboot. The cause is not assumed; the app records whether the boot receiver ran and the actual exception class if a start is denied.
 
-If an unattended start is denied, Kellie's Voice posts a user-visible notification. Tapping it opens Settings so the watcher can be resumed from a visible Activity (the supported path). An inexact AlarmManager is not used to promise an automatic foreground-service restart.
+If an unattended start is denied and notifications are enabled, Kellie's Voice posts a recovery notification on a dedicated channel. Opening Kellie's Voice (from the notification or normally) resumes the watcher from the visible Activity. On Android 13+, the POST_NOTIFICATIONS permission must be granted for the notification to appear; otherwise open the app to resume. An inexact AlarmManager is not used to promise an automatic foreground-service restart.
 
 Recovery respects the user's existing screensaver ON/OFF choice. When the feature is OFF, no recovery is scheduled and any outstanding notification is cancelled. HA layout sync still starts even if overlay permission is missing; overlay rendering is gated separately.
 

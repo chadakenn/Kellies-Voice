@@ -2602,7 +2602,8 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                 + "\nStartup: " + ScreensaverWatchRecovery.lastResult(this)
                 + (ScreensaverWatchRecovery.lastError(this).isEmpty() ? ""
                         : " (" + ScreensaverWatchRecovery.lastError(this) + ")")
-                + "\nBoot receiver entered: " + (ScreensaverWatchRecovery.bootReceiverEnteredThisBoot(this) ? "yes" : "no")
+                + "\nBoot receiver this boot: " + (ScreensaverWatchRecovery.bootReceiverEnteredThisBoot(this) ? "yes" : "no")
+                + "\nRecovery: open Kellie's Voice to resume the watcher"
                 + "\n\nIf HA shows four cameras but the TV reports zero, "
                 + "enable Home Assistant layout on this TV, then reopen diagnostics. "
                 + "The snapshot grid requires the saved HA connection; "
