@@ -1,0 +1,28 @@
+{
+  "format": 1,
+  "id": "community.soft-slate",
+  "name": "Soft Slate",
+  "author": "Kellie's Voice Community",
+  "base": "classic",
+  "colors": {
+    "screen": "#16181C",
+    "panel": "#22262C",
+    "card": "#2E343C",
+    "cardFocused": "#3A424C",
+    "accent": "#A8C0D8",
+    "accentSecondary": "#7A9AB8",
+    "text": "#F0F4F8",
+    "textMuted": "#9AA8B8",
+    "stroke": "#5A6A7A",
+    "focus": "#C8D8E8",
+    "success": "#66BB6A",
+    "warning": "#FFA726"
+  },
+  "shapes": {
+    "panelRadiusDp": 10,
+    "cardRadiusDp": 8,
+    "focusBorderDp": 2,
+    "spacingDp": 12
+  },
+  "animationScale": 1.0
+}

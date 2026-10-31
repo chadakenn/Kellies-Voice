@@ -42,5 +42,10 @@ Built-in themes (`glass`, `classic`, `signal`, `aurora`, `obsidian`, `terminal`)
 | Theme | Author | Base | Notes |
 |-------|--------|------|-------|
 | Copper Night | Community | glass | Example matching the default copper look |
+| Midnight Ocean | Community | aurora | Deep blue, soft focus |
+| Warm Ember | Community | glass | Warm amber on charcoal |
+| Forest Canopy | Community | terminal | Muted green, compact |
+| Twilight Violet | Community | obsidian | Purple glow, rounded |
+| Soft Slate | Community | classic | Neutral cool gray |
 
 See [CONTRIBUTE.md](CONTRIBUTE.md) for how to share your theme.
