@@ -73,11 +73,14 @@ final class HaDashboardExternalAuthBridge {
             // Callback is never copied into JavaScript. Only fixed functions.
             if (!HaDashboardAuthPolicy.callbackAllowed(type, callback)) return;
             if ("getExternalAuth".equals(type)) {
+                // HA may request a fresh token even before TTL expiry after
+                // its frontend receives an unauthorized API response.
+                final boolean force = payload.optBoolean("force", false);
                 new Thread(() -> {
                     CredentialStore.Connection conn = null;
                     int expiresIn = 0;
                     try {
-                        conn = vault.connectionOnWorker();
+                        conn = vault.connectionOnWorker(force);
                         if (conn != null) expiresIn = vault.accessRemainingSeconds();
                     } catch (Exception ignored) {
                         // Fail closed. No secret, URL or exception in diagnostics.
