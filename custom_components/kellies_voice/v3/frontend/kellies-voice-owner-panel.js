@@ -1,4 +1,4 @@
-/* Kellie's Voice owner-only pairing approval preview for Home Assistant.
+/* Kellie's Voice owner-only pairing approval for Home Assistant.
  * NO OAuth, token issuance, browser persistence, credentials or TV login.
  * HA supplies "hass" and authenticated connection in a custom panel.
  * All untrusted data is inserted using textContent, never innerHTML.
@@ -54,7 +54,7 @@ class KelliesVoiceOwnerPanel extends HTMLElement {
       <main>
         <h1>Kellie's Voice · SECURE TV PAIRING</h1>
         <p>Approve a TV whose v3 key-commitment handshake, eight-digit code, and physical remote OK were already verified by Home Assistant.</p>
-        <p class="warning">Owner proof runs without login unless you select the dedicated account option below. Optional ongoing login creates a separate non-admin HA Users account with broad entity access. Your existing Kellie's Voice remains unchanged.</p>
+        <p class="warning">Owner proof runs without login unless you select the dedicated account option below. Optional ongoing login creates a separate non-admin HA Users account with broad entity access. Your existing Kellie's Voice login is preserved.</p>
         <button id="refresh" type="button">Refresh available TVs</button>
         <p id="status" role="status">Checking for verified TVs…</p>
         <p id="error" role="alert"></p>
