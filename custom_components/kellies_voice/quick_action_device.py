@@ -12,7 +12,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity import DeviceInfo, EntityCategory
 
-from .const import DOMAIN
+from .const import DOMAIN, QUICK_ACTION_CACHE
 from .home_shortcuts import ACTIONS, COUNT, updated_device_option
 
 
@@ -48,9 +48,18 @@ class QuickActionDeviceSetting:
 
     def _saved(self) -> str:
         default = "Turn on" if self._field == "action" else ""
-        return self._entry.options.get(
-            f"shortcut_{self._slot}_{self._field}", default
-        )
+        # Entity constructors run before hass is assigned. Once mounted,
+        # all three editors read the SAME canonical per-TV draft, not three
+        # stale ConfigEntry snapshots.
+        options = self._entry.options
+        hass = getattr(self, "hass", None)
+        if hass is not None:
+            draft = hass.data.get(DOMAIN, {}).get(QUICK_ACTION_CACHE, {}).get(
+                self._entry.entry_id
+            )
+            if draft is not None:
+                options = draft
+        return options.get(f"shortcut_{self._slot}_{self._field}", default)
 
     async def _set(self, value: str) -> None:
         # Native entity services are callable beyond the integration's admin
@@ -67,17 +76,24 @@ class QuickActionDeviceSetting:
         current_entry = self.hass.config_entries.async_get_entry(self._entry.entry_id)
         if current_entry is None:
             raise HomeAssistantError("TV settings are no longer available.")
+        # ConfigEntry instances may be copied while entity platforms are
+        # updated. Merge edits against ONE canonical draft shared across all
+        # label, target and action entities for this exact TV. The code below
+        # has no await between reading and committing the draft.
+        drafts = self.hass.data.setdefault(DOMAIN, {}).setdefault(
+            QUICK_ACTION_CACHE, {}
+        )
+        current = drafts.get(current_entry.entry_id)
+        if current is None:
+            current = dict(current_entry.options)
         try:
             proposed = updated_device_option(
-                current_entry.options, self._slot, self._field, value
+                current, self._slot, self._field, value
             )
         except ValueError as error:
-            # Display an actionable HA UI error without exposing private data.
             raise HomeAssistantError(str(error)) from None
-        if proposed != current_entry.options:
-            # The integration does not reload for shortcut-only edits. Reusing
-            # the current entry and writing entity state keeps all three
-            # controls mounted, with no stale options overwriting each other.
+        if proposed != current:
+            drafts[current_entry.entry_id] = proposed
             self.hass.config_entries.async_update_entry(
                 current_entry, options=proposed
             )
