@@ -1,0 +1,25 @@
+name: Validate with hassfest
+
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - 'custom_components/kellies_voice/**'
+      - 'custom_components/kellies_voice_v3qa/**'
+      - '.github/workflows/hassfest.yaml'
+  pull_request:
+    paths:
+      - 'custom_components/kellies_voice/**'
+      - 'custom_components/kellies_voice_v3qa/**'
+      - '.github/workflows/hassfest.yaml'
+  schedule:
+    - cron: "0 0 * * 0"
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: home-assistant/actions/hassfest@master

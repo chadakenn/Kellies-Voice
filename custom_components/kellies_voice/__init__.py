@@ -5,6 +5,7 @@ import logging
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import config_validation as cv
 
 from .const import DOMAIN, PLATFORMS, QUICK_ACTION_CACHE
 from .services import async_register_services
@@ -16,6 +17,9 @@ from .v3 import async_register_owner_ui
 _LOGGER = logging.getLogger(__name__)
 _TIMER_KEY = "native_timer_registries"
 _TIMER_OPTIONS_AT_SETUP = "native_timer_options_at_setup"
+
+# Configuration is performed through the Home Assistant UI, not YAML.
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:

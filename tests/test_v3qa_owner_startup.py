@@ -21,9 +21,21 @@ class OwnerStartupTests(unittest.IsolatedAsyncioTestCase):
         ws.async_register_owner_claim = MagicMock()
         panel.async_register_pairing_approval_panel = AsyncMock()
         self.ws, self.panel = ws, panel
+        # This startup test runs without a Home Assistant installation.
+        # Stub only config_validation; production HA supplies the real helper.
+        ha = types.ModuleType("homeassistant")
+        ha.__path__ = []
+        helpers = types.ModuleType("homeassistant.helpers")
+        helpers.__path__ = []
+        cv = types.ModuleType("homeassistant.helpers.config_validation")
+        cv.empty_config_schema = lambda domain: {domain: {}}
+        helpers.config_validation = cv
         self.patch_modules = patch.dict(sys.modules, {
             PKG: fake_package, PKG + ".owner_ws": ws,
             PKG + ".owner_panel": panel,
+            "homeassistant": ha,
+            "homeassistant.helpers": helpers,
+            "homeassistant.helpers.config_validation": cv,
         })
         self.patch_modules.start()
         self.addCleanup(self.patch_modules.stop)

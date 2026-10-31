@@ -7,6 +7,7 @@ in configuration.yaml and restart HA. Stable Kellie's Voice is untouched.
 """
 import logging
 from pathlib import Path
+from homeassistant.helpers import config_validation as cv
 from .token_lease_journal import TokenLeaseJournal
 
 from .owner_ws import async_register_owner_claim
@@ -14,6 +15,8 @@ from .owner_panel import async_register_pairing_approval_panel
 
 _LOGGER = logging.getLogger(__name__)
 DOMAIN = "kellies_voice_v3qa"
+# This optional, isolated QA integration is explicitly enabled via an empty YAML key.
+CONFIG_SCHEMA = cv.empty_config_schema(DOMAIN)
 _READY = "owner_controls_ready"
 
 

@@ -1,22 +1,25 @@
 {
   "domain": "kellies_voice",
   "name": "Kellie's Voice",
+  "after_dependencies": [
+    "intent"
+  ],
   "codeowners": [
     "@chadakenn"
   ],
   "config_flow": true,
-  "documentation": "https://github.com/chadakenn/Kellies-Voice/blob/main/custom_components/kellies_voice/README.md",
-  "iot_class": "local_push",
-  "version": "0.17.1",
   "dependencies": [
     "zeroconf",
     "websocket_api",
     "panel_custom",
     "http"
   ],
+  "documentation": "https://github.com/chadakenn/Kellies-Voice/blob/main/custom_components/kellies_voice/README.md",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/chadakenn/Kellies-Voice/issues",
+  "version": "0.17.1",
   "zeroconf": [
     "_kellies-voice._tcp.local.",
     "_kellies-pair._tcp.local."
-  ],
-  "issue_tracker": "https://github.com/chadakenn/Kellies-Voice/issues"
+  ]
 }
