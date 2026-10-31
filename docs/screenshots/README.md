@@ -23,6 +23,12 @@ Phone photos from an onn 4K Pro are in this folder; a small selection appears in
 | [onn-frigate-screensaver-diagnostics.jpg](onn-frigate-screensaver-diagnostics.jpg) | Frigate screensaver diagnostics. In this photo the watcher is not running and no Android dream event has arrived. |
 | [wake-okay-nabu-office-lights.mp4](wake-okay-nabu-office-lights.mp4) | Real **development demo video** of Okay Nabu opening the overlay and an office-lights command. Not evidence of zero-touch reboot wake or universal TV compatibility; review video frames for private details before promoting it broadly. |
 
+## How the v0.17 QA screenshots will be used
+
+The [PR #192 ADB capture index](PR-192-CAPTURES.md) has **all six Compose settings sections**, local Aurora/Copper/Charcoal/Night/Neon theme selections, a neutral announcement popup preview, a heavily masked voice overlay and a fully redacted camera-area screensaver preview. These real device pixels are already in this **combined QA branch** and can be linked from the v0.17 README, HACS description and source Wiki, with accurate labels. Their source debug app was **0.16.14-test**, not the final v0.17 candidate. See [v0.17 QA release checklist](../V017_BETA_STATUS.md).
+
+Once a release candidate passes hardware testing, capture the **final version** again before making those developer images the primary public screenshots. The privacy-redacted screensaver image does not prove live camera playback; use the previously hardware-verified live-grid photo for that claim.
+
 ## Requested captures
 
 | Screenshot / photo | What it should show | Proposed file |

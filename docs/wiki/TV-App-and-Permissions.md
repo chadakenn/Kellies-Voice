@@ -32,17 +32,29 @@ The older [onn-settings-menu.jpg](https://github.com/chadakenn/Kellies-Voice/blo
 
 The separate **COMPOSE** button in the **0.16.14-test debug app** opens a two-column development preview. It is **not the public SETTINGS hub** described above and is not presented here as a released replacement.
 
-![Compose preview on a real onn 4K Pro; private Home Assistant address and pairing ID masked](https://raw.githubusercontent.com/chadakenn/Kellies-Voice/feature/compose-tv-settings/docs/screenshots/compose-home-preview.png)
+![Compose preview on a real onn 4K Pro; private Home Assistant address and pairing ID masked](https://raw.githubusercontent.com/chadakenn/Kellies-Voice/integration/v0.17.0-combined-qa/docs/screenshots/compose-home-preview.png)
 
 Home Assistant category on the owner's onn 4K Pro, captured directly through ADB on October 28, 2026. Solid masks cover the configured address and TV pairing identifier. The category list scrolls; not all six category labels fit in one frame.
 
-![Compose Voice and microphone preview showing the device's existing wake-listener state](https://raw.githubusercontent.com/chadakenn/Kellies-Voice/feature/compose-tv-settings/docs/screenshots/compose-voice-preview.png)
+![Compose Voice and microphone preview showing the device's existing wake-listener state](https://raw.githubusercontent.com/chadakenn/Kellies-Voice/integration/v0.17.0-combined-qa/docs/screenshots/compose-voice-preview.png)
 
 The existing TV state showed **Wake word: LISTENING**. That is this owner's opted-in state, **not the default**; the capture session did not enable wake listening. Follow-up listening was off.
 
-![Compose Updates and account preview showing installed 0.16.14-test and the stable channel selected](https://raw.githubusercontent.com/chadakenn/Kellies-Voice/feature/compose-tv-settings/docs/screenshots/compose-updates-preview.png)
+![Compose Updates and account preview showing installed 0.16.14-test and the stable channel selected](https://raw.githubusercontent.com/chadakenn/Kellies-Voice/integration/v0.17.0-combined-qa/docs/screenshots/compose-updates-preview.png)
 
-The installed debug APK version and update-channel selection; no download or installation was performed. [All captured categories and themes](https://github.com/chadakenn/Kellies-Voice/blob/feature/compose-tv-settings/docs/screenshots/PR-192-CAPTURES.md) are development-preview evidence only. This APK predates the latest PR #192 popup/theme fixes.
+The installed debug APK version and update-channel selection; no download or installation was performed. [All captured categories and themes](https://github.com/chadakenn/Kellies-Voice/blob/integration/v0.17.0-combined-qa/docs/screenshots/PR-192-CAPTURES.md) are development-preview evidence only. This APK predates the latest PR #192 popup/theme fixes.
+
+## More actual ADB captures (developer preview, not public)
+
+![Onn 4K Pro Compose Aurora Glass local theme selection](https://raw.githubusercontent.com/chadakenn/Kellies-Voice/integration/v0.17.0-combined-qa/docs/screenshots/compose-aurora-preview.png)
+
+*Aurora Glass in a real on-device developer UI preview, with private details masked.*
+
+![Onn 4K Pro Compose Alerts and cameras settings](https://raw.githubusercontent.com/chadakenn/Kellies-Voice/integration/v0.17.0-combined-qa/docs/screenshots/compose-alerts-preview.png)
+
+*Alerts & cameras category in the ADB development capture. This alone does not prove a Home Assistant announcement was delivered.*
+
+The [complete direct ADB gallery](https://github.com/chadakenn/Kellies-Voice/blob/integration/v0.17.0-combined-qa/docs/screenshots/PR-192-CAPTURES.md) also includes all five theme selections and redacted camera screens. The images show **0.16.14-test Compose preview**, not a final signed v0.17 public release.
 
 ## Microphone routing and phantom inputs
 

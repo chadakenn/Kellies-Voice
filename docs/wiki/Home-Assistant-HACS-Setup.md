@@ -20,6 +20,12 @@ The Home Assistant side is a custom integration installed through HACS. It regis
 **Extra protection for manually entered IDs (next development version):** the confirmation page now asks you to enter the **last four characters from the pairing ID displayed on the TV**. A mismatched suffix cannot create the HA entry. This catches a mismatch **only in the final four characters**; compare the entire ID carefully. It does not prove the TV is connected or that an announcement was delivered. The paired TV's receiver diagnostic must be checked separately after setup; old or disconnected TVs may remain offline.
 
 
+## v0.17 developer QA is a separate flow
+
+**For normal public v0.16.14 users, use the HACS steps above.** The draft v0.17 Beta introduces an opt-in Home Assistant-first `Secure pairing v3` test: verify eight digits, press OK on the physical TV remote, and independently approve the same TV from the HA owner panel. Its optional dedicated TV account can control **all HA entities** as a standard non-admin user and needs HTTPS for renewable login. The isolated `kellies_voice_v3qa` component is **not** the regular HACS integration and must never replace `custom_components/kellies_voice`.
+
+For current real-device results, installation boundaries and unresolved security/recovery items, see the [v0.17 QA guide](https://github.com/chadakenn/Kellies-Voice/blob/docs/v017-complete-onboarding-media-qa/docs/V017_BETA_STATUS.md). Do not present it as a released zero-touch pairing flow.
+
 ## After pairing
 
 Open the TV device page in Home Assistant. You will see controls for:
