@@ -8,7 +8,7 @@ import time
 import voluptuous as vol
 from .pairing_v3_wire import HaV3WireAttempt
 from .owner_claim import owner_claims
-from . import owner_controls_ready
+from . import owner_controls_ready, async_register_owner_ui
 from ..const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
@@ -28,6 +28,13 @@ class V3OwnerPairingFlowMixin:
     async def async_step_v3_preview(self, user_input=None):
         if self._v3_session is None or self._v3_transport is None:
             return self.async_abort(reason="invalid_discovery")
+        # A first-time HACS install may have no config entries yet, so async_setup
+        # may not have run. Attempt to register the owner UI when discovery
+        # begins, before any TV code proof or credential issuance. Fail closed
+        # if the HA HTTP router is already frozen or unavailable.
+        if not owner_controls_ready(self.hass):
+            if not await async_register_owner_ui(self.hass):
+                return self.async_abort(reason="owner_setup_missing")
         errors = {}
         if user_input is not None:
             if user_input.get("start_test") is not True:
