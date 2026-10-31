@@ -22,9 +22,9 @@ class TvHomeRefreshTests(unittest.TestCase):
         self.assertEqual(["TALK", "STOP", "SETTINGS"], buttons)
         self.assertIn('v -> startTalk()', home)
         self.assertIn('v -> assist.finishTalking()', home)
-        self.assertIn('BuildConfig.DEBUG || BuildConfig.IS_QA', home)
         self.assertIn('ComposeSettingsActivity.class', home)
-        self.assertIn('showSettingsDashboard();', home)
+        self.assertNotIn('BuildConfig.DEBUG || BuildConfig.IS_QA', home)
+        self.assertNotIn('showSettingsDashboard();', home)
         # The idle center now hosts Quick Actions, not permanent transcript cards.
         self.assertIn("root.addView(centerArea, centerSpace)", home)
         self.assertIn("centerArea.addView(quickHost", home)
