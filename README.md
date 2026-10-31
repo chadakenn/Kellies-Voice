@@ -6,6 +6,8 @@
 
 Kellie's Voice is a native Android TV / Google TV app with a companion **Home Assistant custom integration**. Talk to your Home Assistant Assist agent, see useful answers in a floating overlay, receive quiet smart-home announcements (optional spoken with audio ducking), and pop up security-camera views **over what you're already watching** when Android allows it.
 
+**v0.17.0 development preview:** We're testing a side-by-side Beta with Compose Settings, Home Assistant Quick Actions and optional HA-first secure pairing v3. The actual [ADB screenshot gallery](docs/screenshots/PR-192-CAPTURES.md) shows early developer UI; it is **not** a public-release feature promise. See [verified v0.17 hardware results, known blockers and tester guidance](docs/V017_BETA_STATUS.md). Stable v0.16.14 instructions below remain the right choice for new users.
+
 **Current public release: [v0.16.14](https://github.com/chadakenn/Kellies-Voice/releases/tag/v0.16.14)** (signed Android APK + matching HACS 0.16.14). For everyday use, install the [latest signed stable release](https://github.com/chadakenn/Kellies-Voice/releases/latest). Testers may opt into beta updates **separately in HACS and on their TV**; both default to stable. Routine development builds stay as Actions artifacts, not public Releases. [Learn how beta testing works](docs/BETA_TESTING.md).
 
 No replacement launcher, always-open browser tab, or separate AI server on the TV. Your existing Home Assistant setup does the thinking; Kellie's Voice handles the microphone, on-screen experience, and TV audio.
