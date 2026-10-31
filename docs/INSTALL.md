@@ -2,7 +2,7 @@
 
 > **Testing a private QA build instead?** The separately installed, persistently signed `com.example.tvvoiceprobe.qa` APK is not the public signed release and does not inherit stable pairing. Do not install a PR `app-debug.apk` over it. See [QA boundaries](V017_BETA_STATUS.md).
 
-**Release guide: v0.17.0 (October 31, 2026)** · Use only the [latest published signed release](https://github.com/chadakenn/Kellies-Voice/releases/latest), not an Actions debug artifact.
+**Public release candidate guide: v0.17.0 (October 31, 2026)** · Use only the [latest published signed release](https://github.com/chadakenn/Kellies-Voice/releases/latest), not an Actions debug artifact.
 
 Welcome! **Kellie's Voice** turns an Android TV / Google TV into a voice companion for **your own Home Assistant**. It has two separate parts:
 
@@ -40,7 +40,7 @@ See the [current release notes](releases/v0.16.14.md), [hardware checklist](TEST
 
 - **Home Assistant** running and reachable from the TV, with a working **Assist pipeline** containing speech-to-text (STT), a conversation agent, and text-to-speech (TTS) if you want spoken answers. Test that pipeline in Home Assistant first.
 - An **Android TV / Google TV** device where you can sideload an APK, use the remote's D-pad/OK, and grant microphone permission. **The onn 4K Pro with its built-in microphone is the principal field-tested device.** Other models, including Fire TV devices, are welcome for testing but are **not verified compatible**; some devices have no accessible microphone.
-- The TV and Home Assistant must be able to reach one another on your network. A valid Home Assistant URL and a **long-lived access token**, created under your own Home Assistant user profile's **Security** settings.
+- The TV and Home Assistant must be able to reach one another on your network. **Recommended v0.17.0 pairing needs no manually entered URL or token on the TV.** It uses an owner-approved dedicated TV login and requires Home Assistant reachable over **HTTPS** for ongoing token renewal. Local HTTPS does not require a Cloud subscription. A manually created long-lived access token is only a fallback for older installations or unsupported networks.
 - [HACS](https://www.hacs.xyz/) installed in Home Assistant to use the recommended integration setup. Manual custom-component installation is also possible.
 
 **Philips microphone follow-up (#71):** The v0.16.8 microphone input allowlist is present, but physical retests on two Philips TVs still incorrectly start listening with only non-microphone input devices. This remains pending alternate-TV hardware validation in v0.16.11. A compatible USB microphone may help; please share the TV app's non-sensitive Hardware microphone diagnostics. [Report findings on #71](https://github.com/chadakenn/Kellies-Voice/issues/71).
@@ -65,37 +65,30 @@ See the [current release notes](releases/v0.16.14.md), [hardware checklist](TEST
 
 **If Android says the signature conflicts:** stop rather than deleting the installed app. Only very old *debug-signed* builds require the one-time uninstall-and-reconfigure migration documented in [Troubleshooting](TROUBLESHOOTING.md) and [Signing](SIGNING.md). Do not assume a signature error on an existing signed release is normal.
 
-## Step 2: Connect Kellie's Voice to Home Assistant
+## Step 2: Install the matching Home Assistant integration with HACS
 
-1. Open **Kellie's Voice → SETTINGS → Home Assistant → Configure Home Assistant** on the TV.
-2. Enter your Home Assistant base URL, including scheme and port if applicable (for example `https://ha.example.net` or `http://homeassistant.local:8123` if your TV can resolve it). Enter the **long-lived access token** you generated. Keep it private.
-3. Choose **Save and connect**. The TV should report **Connected and authenticated**.
-4. Grant the **microphone permission** when prompted, then select **TALK** using the TV remote's D-pad and OK.
-5. Wait for **LISTENING**, speak a simple question such as **“What time is it?”**, and select **STOP** if needed. Verify that your words appear on-screen, the Home Assistant answer appears, and audio plays through the TV speakers if TTS is configured.
-6. If connection or audio fails, open [Troubleshooting](TROUBLESHOOTING.md) and check the HA Assist pipeline, URL, TV sound, and on-screen error first.
+1. If needed, [install HACS](https://www.hacs.xyz/docs/use/) in Home Assistant.
+2. In **HACS → ⋮ → Custom repositories**, add `https://github.com/chadakenn/Kellies-Voice` as an **Integration**.
+3. Download the matching **v0.17.0** Home Assistant integration, then **restart Home Assistant**.
+4. Keep the TV and HA connected on a network that allows local mDNS discovery and the temporary TV pairing listener. The TV may be on a different VLAN only if discovery and the pairing connection are explicitly allowed.
 
-**Important:** The standard Google Assistant microphone button on the physical remote may still launch **Google**, not Kellie's Voice. On the tested onn 4K Pro, voice input uses the TV device's built-in microphone. A remote's Bluetooth mic is **not guaranteed accessible** to third-party apps. You do not need to say “Julia” to start a command. The optional **Okay Nabu** wake word starts hands-free listening in v0.16.14 once enabled; it does not take over Google Assistant's remote microphone button.
+**HACS installs only the HA component.** Install the separately signed TV APK too.
 
-**Tip:** The Google TV/Google Home phone remote can make URL and token entry easier; keyboard/clipboard behavior varies. There is no QR-code pairing flow yet.
+## Step 3: Home Assistant-first pairing (recommended, no TV typing)
 
-## Step 3: Install the matching Home Assistant integration with HACS
+1. On the TV, open **Kellie's Voice → Settings → Home Assistant → Secure Home Assistant pairing** (or choose **First-time setup wizard**). Start the temporary two-minute discovery window with the physical TV remote.
+2. On your computer or phone, open **Home Assistant → Settings → Devices & services**. Select the discovered Kellie's Voice TV and start secure pairing. The TV and Home Assistant display a matching **eight-digit code**.
+3. Compare **all eight digits** and confirm using **OK on the physical TV remote**. In the signed-in Home Assistant **owner approval** panel, select the same TV and explicitly authorize the dedicated login. The HA flow includes a link to the owner panel. Return to the pairing flow to finish.
+4. The TV receives its own encrypted, renewable dedicated Home Assistant login and should connect without entering a Home Assistant URL, token or pairing ID. Reopen Kellie's Voice and try TALK after selecting a working HA Assist pipeline.
+5. For alerts, enable the TV's optional **TV announcements & cameras** and **Display over other apps** Android permission. Pairing by itself does not start the microphone, wake word, or alerts.
 
-1. If HACS is not installed, [install HACS](https://www.hacs.xyz/docs/use/) first.
-2. In **Home Assistant → HACS → ⋮ → Custom repositories**, add:
-   `https://github.com/chadakenn/Kellies-Voice`  
-   Select category **Integration**. This is usually needed only once.
-3. Open [Kellie's Voice in HACS](https://my.home-assistant.io/redirect/hacs_repository/?owner=chadakenn&repository=Kellies-Voice&category=integration) and install/download the **matching v0.16.14** integration from the HACS Releases selector.
-4. **Restart Home Assistant** so the custom integration and services load.
-5. On your TV, enable **Kellie's Voice → Settings → Home Assistant → Home Assistant layout**. Leave the TV online and connected while pairing.
-6. In Home Assistant, open **Settings → Devices & services** and add the discovered **Kellie's Voice** device. If discovery doesn't find it (for example across VLANs), choose **Add integration → Kellie's Voice**, then enter the pairing ID from **TV → Settings → Home Assistant layout → Show this TV's pairing ID**.
-7. Open the newly added TV device in Home Assistant. Confirm its position, size, overlay theme/style, alert settings, and other controls appear. Changes can require the next TV connection or next popup to become visible.
+**Credential and network notice:** A separate *non-admin* Home Assistant **Users** account can still control **all** HA entities. Read the on-screen consent and pair only a TV you trust. Do not reuse your owner's token. An **HTTPS** HA origin is currently required to renew this login: HA Cloud is supported but optional; an HTTPS endpoint entirely on your LAN also works if its certificate is trusted by the Android app. Local **HTTP-only** setups can discover and verify the TV but cannot complete renewable auto-login yet. See [Local HTTPS setup](LOCAL_HTTPS_SETUP.md) and [issue #262](https://github.com/chadakenn/Kellies-Voice/issues/262). Installing a local CA on a TV does not automatically make the native app trust that CA.
 
+### Manual fallback for older installations
 
-**Extra protection for manually entered IDs (next development version):** the confirmation page now asks you to enter the **last four characters from the pairing ID displayed on the TV**. A mismatched suffix cannot create the HA entry. This catches a mismatch **only in the final four characters**; compare the entire ID carefully. It does not prove the TV is connected or that an announcement was delivered. The paired TV's receiver diagnostic must be checked separately after setup; old or disconnected TVs may remain offline.
+Existing manually configured TVs remain supported. If you cannot use secure discovery/HTTPS and accept the risk of local HTTP bearer-token traffic, open **Settings → Home Assistant → Configure Home Assistant**, enter your HA base URL and your own long-lived access token, then **Save and connect**. This is **not** the recommended zero-typing setup. Never post the token or embed it in a dashboard URL.
 
-**Don't confuse the IDs:** the TV's **Kellie's Voice pairing ID** is used when adding the device and in actions such as `kellies_voice.start_timer`. A separate Home Assistant **device-registry ID** is used internally for Assist source-device tracking, an internal value, not the pairing ID.
-
-**Manual alternative:** copy the complete `custom_components/kellies_voice` folder into your HA `config/custom_components/kellies_voice`, then restart HA and add the integration as above. HACS is preferred for testers because it can manage updates.
+If mDNS cannot find the TV for HA device controls, **Add integration → Kellie's Voice** can still use the TV's stable pairing ID with the on-screen suffix confirmation. **A manually added device entry alone does not authenticate the TV**. For the Google Assistant remote microphone button, third-party Android TV apps may not be permitted to intercept it; Kellie's Voice's TV mic or supported external mic is separate.
 
 ## Step 4: Enable TV popups (optional, but needed for cameras, forecasts, and timers)
 
