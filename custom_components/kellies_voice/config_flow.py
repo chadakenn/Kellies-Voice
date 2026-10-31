@@ -175,9 +175,10 @@ class KellieVoiceConfigFlow(V3OwnerPairingFlowMixin, ConfigFlow, domain=DOMAIN):
         )
 
     async def async_step_zeroconf(self, discovery_info: ZeroconfServiceInfo):
-        # Experimental v3 ephemeral discovery advertises protocol=3 and
-        # NO permanent TV UUID, HA URL, bearer token or owner identity.
-        # It cannot fall back to legacy v1/v2 or create a config entry.
+        # Secure v3 discovery advertises a short-lived session, not a
+        # permanent TV ID, HA URL, bearer token, or owner identity. Physical
+        # TV proof, authenticated owner approval, and a one-time encrypted
+        # credential activation must all complete before an HA entry exists.
         if _text(discovery_info.properties, "protocol") == "3":
             if _text(discovery_info.properties, "mode") != "verified-code-only":
                 return self.async_abort(reason="v3_invalid_discovery")
@@ -194,7 +195,7 @@ class KellieVoiceConfigFlow(V3OwnerPairingFlowMixin, ConfigFlow, domain=DOMAIN):
             await self.async_set_unique_id("v3-preview:" + session)
             self._abort_if_unique_id_configured()
             self.context["title_placeholders"] = {
-                "name": "Kellie's Voice secure pairing v3 TEST"
+                "name": "Kellie's Voice secure pairing"
             }
             return await self.async_step_v3_preview()
 
