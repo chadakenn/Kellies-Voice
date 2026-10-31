@@ -468,7 +468,7 @@ final class ScreensaverBoard {
         // manual owner token if the renewable grant is unavailable/revoked.
         TvRenewableLoginVault vault = new TvRenewableLoginVault(context);
         boolean renewable = vault.hasActiveLogin();
-        if (renewable) {
+        if (!TvOverlayLoginPolicy.mayUseManual(renewable)) {
             TextView signInNotice = showMessage("Connecting securely to Home Assistant cameras…");
             new Thread(() -> {
                 CredentialStore.Connection ready = null;
