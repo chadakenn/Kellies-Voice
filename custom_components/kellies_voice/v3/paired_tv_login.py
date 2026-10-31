@@ -65,6 +65,19 @@ async def provision_dedicated_tv_login(
             user.system_generated or user.local_only is not local_only
             or user.is_active is not True or user.id == owner_id
             or {group.id for group in user.groups} != {GROUP_ID_USER}):
+        # HA returned an identity that does not match the exact non-admin
+        # user we requested. Never touch a returned owner/admin/system user.
+        # An otherwise ordinary newly-created user must not be orphaned.
+        if (user is not None and user.id != owner_id
+                and not user.is_owner and not user.is_admin
+                and not user.system_generated):
+            try:
+                await hass.auth.async_remove_user(user)
+            except Exception:
+                try:
+                    await hass.auth.async_deactivate_user(user)
+                except Exception:
+                    _LOGGER.warning("Unexpected TV user needs owner review")
         raise DedicatedTvLoginDenied("Dedicated TV account rejected")
     lease = None
     phase = "lease_intent"
