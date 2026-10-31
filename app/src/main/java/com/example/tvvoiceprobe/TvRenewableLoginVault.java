@@ -178,6 +178,13 @@ final class TvRenewableLoginVault implements PairingV3ScopedTokenHandoff.Vault {
      * Access token is short-lived RAM cache and is not an owner token.
      */
     synchronized String renewOnWorker() throws Exception {
+        return renewOnWorker(false);
+    }
+
+    /** The HA frontend may ask for force=true after an auth rejection.
+     * Bypass RAM cache but never the owner-approved Keystore grant.
+     */
+    synchronized String renewOnWorker(boolean force) throws Exception {
         if (Looper.myLooper() == Looper.getMainLooper())
             throw new IllegalStateException("Never refresh HA on Android UI thread");
         Record r = read();
@@ -187,7 +194,7 @@ final class TvRenewableLoginVault implements PairingV3ScopedTokenHandoff.Vault {
         // The 400/403 revocation path clears the credential, not this marker.
         rememberRenewableMode();
         long now = SystemClock.elapsedRealtime();
-        if (cachedAccess != null && now + 60_000 < accessExpiresElapsed)
+        if (!force && cachedAccess != null && now + 60_000 < accessExpiresElapsed)
             return cachedAccess;
         FormBody form = new FormBody.Builder()
                 .add("grant_type", "refresh_token")
@@ -267,10 +274,14 @@ final class TvRenewableLoginVault implements PairingV3ScopedTokenHandoff.Vault {
 
     /** Existing manual CredentialStore remains separate and unchanged. */
     synchronized CredentialStore.Connection connectionOnWorker() throws Exception {
+        return connectionOnWorker(false);
+    }
+
+    synchronized CredentialStore.Connection connectionOnWorker(boolean force) throws Exception {
         Record record = read();
         if (record == null || !record.active)
             return null;
-        String token = renewOnWorker();
+        String token = renewOnWorker(force);
         return new CredentialStore.Connection(record.grant.haOrigin, token);
     }
 
