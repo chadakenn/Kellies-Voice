@@ -529,6 +529,10 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                 != PackageManager.PERMISSION_GRANTED || !Settings.canDrawOverlays(this)) {
             return false;
         }
+        // A v3 owner-approved TV login is stored in Android Keystore, never
+        // in the legacy/manual CredentialStore. No network I/O on the UI thread.
+        TvRenewableLoginVault vault = new TvRenewableLoginVault(this);
+        if (vault.blocksManualFallback()) return vault.hasActiveLogin();
         try {
             return new CredentialStore(this).load() != null;
         } catch (Exception ignored) {
@@ -720,7 +724,7 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
                 return true;
             }
             if (code == KeyEvent.KEYCODE_DPAD_DOWN) {
-                focus(TvHomeNavigation.down(selected));
+                focus(TvHomeNavigation.down(selected, homeShortcutButtons.size()));
                 return true;
             }
             if (code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER
@@ -1768,7 +1772,15 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
 
     private void launchOverlay() {
         // Never activate the overlay without explicit user action and consent.
-        if (settings == null) {
+        // The encrypted v3 credential is obtained asynchronously by the
+        // overlay service. Do not require an obsolete manual owner credential.
+        TvRenewableLoginVault vault = new TvRenewableLoginVault(this);
+        boolean selectedRenewable = vault.blocksManualFallback();
+        if (selectedRenewable && !vault.hasActiveLogin()) {
+            status("TV login unavailable. Open SETTINGS to reconnect.");
+            return;
+        }
+        if (!selectedRenewable && settings == null) {
             status("Configure Home Assistant before opening the overlay.");
             return;
         }
