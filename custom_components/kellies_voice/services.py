@@ -247,6 +247,7 @@ async def _async_announce(call: ServiceCall) -> None:
         )
         speak = clean_speak(call.data.get("speak"))
         actions = clean_actions(call.data.get("actions"))
+        interactive = bool(call.data.get("interactive", False))
         targets = _event_targets(call, call.data.get("device_id"))
     except ValueError as err:
         raise ServiceValidationError(str(err)) from None
@@ -346,6 +347,7 @@ async def _async_show_live_camera(call: ServiceCall) -> None:
                 "device_id": device_id,
                 **({"speak": speak} if speak else {}),
                 **({"actions": actions, "announcement_id": issued} if issued else {}),
+                **({"interactive": True} if interactive else {}),
             },
         )
     _LOGGER.debug("Fired %s for %s configured TV(s)", EVENT_LIVE_CAMERA, len(targets))

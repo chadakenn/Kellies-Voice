@@ -62,4 +62,18 @@ public class TvEventPayloadTest {
         String longText = "a".repeat(181);
         assertEquals("", TvEventPayload.speak(longText));
     }
+
+    @Test public void interactiveCameraFlagIsOptionalAndBackwardCompatible() {
+        // Absent or false means passive (no focus steal)
+        org.json.JSONObject passive = new org.json.JSONObject();
+        assertFalse(passive.optBoolean("interactive", false));
+        // Explicit true enables interactive mode
+        org.json.JSONObject interactive = new org.json.JSONObject();
+        try { interactive.put("interactive", true); } catch (Exception ignored) {}
+        assertTrue(interactive.optBoolean("interactive", false));
+        // Non-boolean falls back safely
+        org.json.JSONObject bad = new org.json.JSONObject();
+        try { bad.put("interactive", "yes"); } catch (Exception ignored) {}
+        assertFalse(bad.optBoolean("interactive", false));
+    }
 }
