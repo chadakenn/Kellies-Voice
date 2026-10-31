@@ -109,6 +109,12 @@ class FakeEntries:
         return self.entries
 
 
+class FakeStates:
+    def get(self, entity_id):
+        icons = {"light.living_room": "mdi:lamp", "scene.movie_time": "mdi:movie-open"}
+        return types.SimpleNamespace(attributes={"icon": icons[entity_id]}) if entity_id in icons else None
+
+
 class FakeHass:
     def __init__(self):
         self.config_entries = FakeEntries([
@@ -120,6 +126,7 @@ class FakeHass:
         ])
         self.data = {}
         self.services = FakeServices()
+        self.states = FakeStates()
 
 
 def make_ws_functions():
@@ -139,6 +146,10 @@ def make_ws_functions():
     ns = {
         "DOMAIN": "kellies_voice",
         "selection": shortcuts.selection,
+        "resolve_shortcut_icon": lambda override, actual, domain: (
+            "mdi:lamp" if actual == "mdi:lamp" else
+            ("mdi:movie-open" if actual == "mdi:movie-open" else "mdi:script-text")
+        ),
         "entries_from_options": shortcuts.entries_from_options,
         "websocket_api": Errors,
         "_tv_can_read": lambda hass, user, tv_id: tv_id in ("tv0001", "tv0002"),
@@ -164,8 +175,8 @@ class ShortcutWebsocketTests(unittest.IsolatedAsyncioTestCase):
             "id": 4, "device_id": "tv0001",
         })
         self.assertEqual([(4, {"shortcuts": [
-            {"slot": 1, "label": "Living room on"},
-            {"slot": 2, "label": "Movie Time"},
+            {"slot": 1, "label": "Living room on", "icon": "mdi:lamp"},
+            {"slot": 2, "label": "Movie Time", "icon": "mdi:movie-open"},
         ]})], self.connection.results)
         self.assertNotIn("entity_id", str(self.connection.results))
 
