@@ -4,9 +4,10 @@
   "version": "0.0.4",
   "config_flow": true,
   "dependencies": [
-    "zeroconf",
     "frontend",
-    "panel_custom"
+    "http",
+    "panel_custom",
+    "zeroconf"
   ],
   "zeroconf": [
     "_kellies-pair._tcp.local."
