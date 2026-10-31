@@ -209,14 +209,15 @@ public final class WakeWordService extends Service {
                 checkSelfPermission(Manifest.permission.RECORD_AUDIO)
                         == PackageManager.PERMISSION_GRANTED,
                 android.provider.Settings.canDrawOverlays(this))) return false;
-        // Do not allow a wake listener without an HA login. The token remains
-        // inside CredentialStore; no plaintext credentials enter wake logging.
-        try {
-            return new CredentialStore(this).load() != null
-                    && MicrophoneRouting.preflight(this, prefs.allowUnverifiedMic()) == null;
-        } catch (Exception ignored) {
-            return false;
+        // Never use an old owner token when a renewable TV login was selected.
+        // The overlay renews that grant on a worker after wake detection.
+        TvRenewableLoginVault vault = new TvRenewableLoginVault(this);
+        boolean signedIn = vault.blocksManualFallback() ? vault.hasActiveLogin() : false;
+        if (!vault.blocksManualFallback()) {
+            try { signedIn = new CredentialStore(this).load() != null; }
+            catch (Exception ignored) { return false; }
         }
+        return signedIn && MicrophoneRouting.preflight(this, prefs.allowUnverifiedMic()) == null;
     }
 
     private void listen() {
