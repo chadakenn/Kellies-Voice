@@ -54,6 +54,9 @@ final class ScreensaverBoard {
 
     private static final int MAX_SNAPSHOT_BYTES = 2 * 1024 * 1024;
     private static final long REFRESH_MS = 5000L;
+    // HA's renewable access tokens expire after 30 minutes. Re-create the
+    // screen's camera streams before expiry; no saved manual-token fallback.
+    private static final long RENEWABLE_RELOAD_MS = 20 * 60_000L;
 
     private final Context context;
     private final Host host;
@@ -458,13 +461,56 @@ final class ScreensaverBoard {
             grid.addView(line, rowParams);
         }
         root.addView(grid, cardParams());
-        CredentialStore.Connection connection = signedIn();
-        if (connection == null) {
+        final int current = generation;
+        // v3 owner-approved TV logins live in Android Keystore, not in the
+        // legacy manual CredentialStore. Never block the screensaver's main
+        // thread with an HTTPS token refresh, and never fall back to a stored
+        // manual owner token if the renewable grant is unavailable/revoked.
+        TvRenewableLoginVault vault = new TvRenewableLoginVault(context);
+        boolean renewable = vault.hasActiveLogin();
+        if (!TvOverlayLoginPolicy.mayUseManual(renewable)) {
+            TextView signInNotice = showMessage("Connecting securely to Home Assistant cameras…");
+            new Thread(() -> {
+                CredentialStore.Connection ready = null;
+                try {
+                    ready = vault.connectionOnWorker();
+                } catch (Exception ignored) {
+                    // No token, URL, camera address or credential in logs.
+                }
+                final CredentialStore.Connection authorized = ready;
+                main.post(() -> {
+                    if (stopped || current != generation) return;
+                    if (authorized == null) {
+                        signInNotice.setText("TV login unavailable. Open SETTINGS to reconnect to Home Assistant.");
+                        return;
+                    }
+                    root.removeView(signInNotice);
+                    beginCameraStreams(authorized, cameras, photos, surfaces, liveStatuses,
+                            liveLimit, decoder, current);
+                    // Reload only the camera view. Current HA access tokens
+                    // must not be reused after they expire during a long dream.
+                    main.postDelayed(() -> {
+                        if (!stopped && current == generation) start();
+                    }, RENEWABLE_RELOAD_MS);
+                });
+            }, "KelliesScreensaverRenewableLogin").start();
+            return;
+        }
+        // Manual-only installations keep their previous screensaver path.
+        CredentialStore.Connection manual = signedIn();
+        if (manual == null) {
             showMessage("Sign in to Home Assistant to load these cameras.");
             return;
         }
+        beginCameraStreams(manual, cameras, photos, surfaces, liveStatuses,
+                liveLimit, decoder, current);
+    }
+
+    private void beginCameraStreams(CredentialStore.Connection connection, String[] cameras,
+            ImageView[] photos, TextureView[] surfaces, TextView[] liveStatuses,
+            int liveLimit, String decoder, int current) {
+        if (stopped || current != generation || connection == null) return;
         http = new OkHttpClient();
-        int current = generation;
         refresh(connection, cameras, photos, current);
         if (liveLimit > 0) {
             liveGrid = new ScreensaverLiveGrid(context, connection, cameras,
@@ -640,7 +686,7 @@ final class ScreensaverBoard {
         }
     }
 
-    private void showMessage(String text) {
+    private TextView showMessage(String text) {
         TextView message = new TextView(context);
         message.setText(text);
         message.setTextColor(Color.WHITE);
@@ -649,6 +695,7 @@ final class ScreensaverBoard {
         message.setBackgroundColor(Color.BLACK);
         message.setPadding(dp(32), dp(32), dp(32), dp(32));
         root.addView(message, cardParams());
+        return message;
     }
 
     private FrameLayout.LayoutParams cardParams() {
