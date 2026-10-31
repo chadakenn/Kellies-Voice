@@ -173,3 +173,18 @@ The matching v0.16.0 Android TV app and HACS integration also support a third, o
 This patch switches video compositing to an Android `TextureView` inside the overlay instead of the default Media3 `SurfaceView`, which can be invisible on some TV overlay windows. It also loads a clearly labeled snapshot as fallback while HLS is preparing or when playback fails. The small status label shows the **Home Assistant stream error code** or **Media3 playback error code** without printing signed streaming URLs or access tokens. No new permissions, ports or stream-host allowlists are added.
 
 When testing, use `kellies_voice.show_live_camera`. A fallback still image is **not proof** that the live stream works. Confirm moving frames and the status `LIVE · muted` before declaring success. If it fails, report the exact visible code (e.g. `Live playback error 2004`) and whether the fallback snapshot loaded.
+
+## Interactive vs passive camera popups
+
+Ordinary automatic camera and doorbell alerts are **passive**. They never steal focus from the app underneath, so remote Back continues to control the TV app. This is the default.
+
+For deliberately requested camera views (for example a voice command or a button that should be dismissible), set the optional `interactive: true` parameter on the `kellies_voice.show_live_camera` service call. In interactive mode:
+
+- The popup becomes focusable.
+- Remote Back closes the camera and restores focus to the underlying TV app.
+- A small “Back closes camera” hint is shown.
+- Camera audio, video, the existing `hide_camera` action, and automatic expiration are unchanged.
+
+If the overlay permission is missing or focus cannot be obtained, the popup falls back safely and does not trap the remote. No AccessibilityService is used.
+
+Interactive mode is opt-in and backward-compatible. Existing automations that do not pass `interactive` continue to produce passive popups.

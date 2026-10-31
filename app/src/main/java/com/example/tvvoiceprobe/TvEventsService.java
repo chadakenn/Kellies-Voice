@@ -756,7 +756,8 @@ public final class TvEventsService extends Service {
                             && photo != null && entity.equals(snapshotEntity)
                             && title.equals(snapshotTitle) && header == snapshotHeader
                             && fit == snapshotFit;
-                    showSnapshotCard(title, entity, duration, header, fit, refresh, popupActions, popupId);
+                    boolean interactive = data.optBoolean("interactive", false);
+                    showSnapshotCard(title, entity, duration, header, fit, refresh, popupActions, popupId, interactive);
                     if (card != null) reportPopupReceipt("popup_created", diagnosticReceipt);
                     if (!sameCard && card != null) {
                         maybeSpeak(TvEventPayload.speak(data.optString("speak", "")));
@@ -769,10 +770,11 @@ public final class TvEventsService extends Service {
                     boolean header = data.optBoolean("show_header", true);
                     boolean fit = TvEventPayload.fitWholeImage(data.optString("image_fit"));
                     int refresh = TvEventPayload.snapshotRefresh(data.optInt("refresh_seconds", 0));
+                    boolean interactive = data.optBoolean("interactive", false);
                     showCard(TvEventPayload.cleanText(data.optString("title", "Live camera"), 65),
                             "LIVE · Starting muted video…", entity,
                             TvEventPayload.liveDuration(data.optInt("duration_seconds", 90)),
-                            true, header, fit, refresh, popupActions, popupId);
+                            true, header, fit, refresh, popupActions, popupId, interactive);
                     if (card != null) {
                         reportPopupReceipt("popup_created", diagnosticReceipt);
                         maybeSpeak(TvEventPayload.speak(data.optString("speak", "")));
@@ -951,6 +953,13 @@ public final class TvEventsService extends Service {
     private void showSnapshotCard(String title, String entity, int seconds,
                                   boolean header, boolean fit, int refreshSeconds,
                                   List<TvEventPayload.Action> actions, String announcementId) {
+        showSnapshotCard(title, entity, seconds, header, fit, refreshSeconds, actions, announcementId, false);
+    }
+
+    private void showSnapshotCard(String title, String entity, int seconds,
+                                  boolean header, boolean fit, int refreshSeconds,
+                                  List<TvEventPayload.Action> actions, String announcementId,
+                                  boolean interactive) {
         if (stopping || windowManager == null || !Settings.canDrawOverlays(this)) return;
         // Never reuse an old card with active buttons, and do not silently
         // discard newly issued action IDs when repeated snapshots arrive.
@@ -968,7 +977,7 @@ public final class TvEventsService extends Service {
             return;
         }
         showCard(title, "Home Assistant camera snapshot", entity, seconds,
-                false, header, fit, refreshSeconds, actions, announcementId);
+                false, header, fit, refreshSeconds, actions, announcementId, interactive);
     }
 
     private void showCard(String title, String text, String entity, int seconds, boolean live) {
@@ -983,6 +992,14 @@ public final class TvEventsService extends Service {
     private void showCard(String title, String text, String entity, int seconds,
                           boolean live, boolean showHeader, boolean fitWhole, int refreshSeconds,
                           List<TvEventPayload.Action> actions, String announcementId) {
+        showCard(title, text, entity, seconds, live, showHeader, fitWhole, refreshSeconds,
+                actions, announcementId, false);
+    }
+
+    private void showCard(String title, String text, String entity, int seconds,
+                          boolean live, boolean showHeader, boolean fitWhole, int refreshSeconds,
+                          List<TvEventPayload.Action> actions, String announcementId,
+                          boolean interactive) {
         if (stopping || windowManager == null || !Settings.canDrawOverlays(this)) return;
         hideCard();
         int current = ++generation;
@@ -1093,11 +1110,29 @@ public final class TvEventsService extends Service {
                 }
                 return false;
             });
+        } else if (interactive) {
+            // Interactive camera with no action buttons: still focusable so
+            // remote Back closes it and restores the underlying app.
+            panel.setFocusable(true);
+            panel.setFocusableInTouchMode(true);
+            panel.setOnKeyListener((view, key, event) -> {
+                if (key == KeyEvent.KEYCODE_BACK && event.getAction() == KeyEvent.ACTION_UP) {
+                    hideCard();
+                    return true;
+                }
+                return false;
+            });
+            TextView hint = label("Back closes camera", 12, colors.muted);
+            hint.setPadding(dp(8), dp(4), dp(8), dp(4));
+            panel.addView(hint);
         }
         int screen = getResources().getDisplayMetrics().widthPixels;
         int width = Math.min(dp(TvAlertLayout.widthDp(alertSize, entity != null, live)), screen - dp(48));
         int flags = WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN;
-        if (!hasButtons) flags |= WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+        // Passive alerts never steal focus. Interactive camera views (opt-in)
+        // become focusable so remote Back can close them.
+        boolean focusable = hasButtons || interactive;
+        if (!focusable) flags |= WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
                 | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
         WindowManager.LayoutParams params = new WindowManager.LayoutParams(
                 width, WindowManager.LayoutParams.WRAP_CONTENT,
@@ -1117,6 +1152,8 @@ public final class TvEventsService extends Service {
             if (firstButton != null) {
                 Button focus = firstButton;
                 panel.post(focus::requestFocus);
+            } else if (interactive) {
+                panel.post(panel::requestFocus);
             }
             if (entity != null) {
                 snapshotEntity = entity;

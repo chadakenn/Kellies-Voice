@@ -18,8 +18,8 @@ from .const import (
 
 EVENT_FIELDS = {
     EVENT_ANNOUNCEMENT: ("device_id", "title", "text", "speak", "duration_seconds", "actions", "announcement_id"),
-    EVENT_CAMERA_POPUP: ("device_id", "entity_id", "title", "speak", "duration_seconds", "show_header", "image_fit", "refresh_seconds", "actions", "announcement_id"),
-    EVENT_LIVE_CAMERA: ("device_id", "entity_id", "title", "speak", "duration_seconds", "show_header", "image_fit", "refresh_seconds", "actions", "announcement_id"),
+    EVENT_CAMERA_POPUP: ("device_id", "entity_id", "title", "speak", "duration_seconds", "show_header", "image_fit", "refresh_seconds", "actions", "announcement_id", "interactive"),
+    EVENT_LIVE_CAMERA: ("device_id", "entity_id", "title", "speak", "duration_seconds", "show_header", "image_fit", "refresh_seconds", "actions", "announcement_id", "interactive"),
     EVENT_HIDE_CAMERA: ("device_id",),
     EVENT_FORECAST: ("device_id", "location", "units", "issued", "duration_seconds", "days"),
     "kellies_voice_timer": (
@@ -34,7 +34,7 @@ STRING_LIMITS = {
     "device_id": 64, "operation": 12, "image_fit": 8,
 }
 INT_FIELDS = {"issued", "duration_seconds", "ends_at_ms", "refresh_seconds"}
-BOOL_FIELDS = {"show_header"}
+BOOL_FIELDS = {"show_header", "interactive"}
 DAY_FIELDS = {"label", "condition", "high", "low", "precipitation"}
 
 
