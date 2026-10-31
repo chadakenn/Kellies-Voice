@@ -767,7 +767,7 @@ fun CategoryContent(
             "screensaver" -> {
                 var ss by remember { mutableStateOf(prefs.screensaverDashboard()) }
                 SettingSwitch(
-                    title = "Frigate screensaver",
+                    title = "Screensaver dashboard / cameras",
                     subtitle = if (ss) "ON" else "OFF",
                     checked = ss,
                     onCheckedChange = { on ->
@@ -781,7 +781,7 @@ fun CategoryContent(
                 var editingUrl by remember { mutableStateOf(false) }
                 var urlDraft by remember { mutableStateOf(savedUrl) }
                 var urlError by remember { mutableStateOf<String?>(null) }
-                Text("Frigate dashboard URL", color = skin.colors.accent, fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                Text("Dashboard URL (Frigate or Home Assistant)", color = skin.colors.accent, fontSize = 18.sp, fontWeight = FontWeight.Medium)
                 if (!editingUrl) {
                     Text(
                         text = if (savedUrl.isEmpty()) "Not configured" else savedUrl,
@@ -789,7 +789,7 @@ fun CategoryContent(
                         fontSize = 13.sp
                     )
                     SettingsChoice(
-                        title = if (savedUrl.isEmpty()) "Enter Frigate URL" else "Edit Frigate URL",
+                        title = if (savedUrl.isEmpty()) "Enter dashboard URL" else "Edit dashboard URL",
                         selected = false,
                         onSelect = {
                             urlDraft = savedUrl
@@ -800,13 +800,13 @@ fun CategoryContent(
                     )
                     if (savedUrl.isNotEmpty()) {
                         SettingsChoice(
-                            title = "Clear Frigate URL",
+                            title = "Clear dashboard URL",
                             selected = false,
                             onSelect = {
                                 prefs.setScreensaverUrl("")
                                 savedUrl = ""
                                 ComposeSettingsInterop.applyScreensaverSetting(context, HaLayout.SCREENSAVER_URL)
-                                Toast.makeText(context, "Frigate URL cleared", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "Dashboard URL cleared", Toast.LENGTH_SHORT).show()
                             }
                         )
                     }
@@ -863,7 +863,7 @@ fun CategoryContent(
                             ComposeSettingsInterop.applyScreensaverSetting(context, HaLayout.SCREENSAVER_URL)
                             Toast.makeText(
                                 context,
-                                if (safe.isEmpty()) "Frigate URL cleared" else "Frigate URL saved",
+                                if (safe.isEmpty()) "Dashboard URL cleared" else "Dashboard URL saved",
                                 Toast.LENGTH_SHORT
                             ).show()
                         }
@@ -879,6 +879,29 @@ fun CategoryContent(
                         }
                     )
                 }
+
+                Spacer(modifier = Modifier.height(8.dp))
+                var haWebLogin by remember { mutableStateOf(prefs.screensaverHaExternalAuth()) }
+                SettingSwitch(
+                    title = "Sign in to Home Assistant dashboard",
+                    subtitle = if (haWebLogin) "ON · Dedicated secure TV login" else "OFF · Existing web mode",
+                    checked = haWebLogin,
+                    onCheckedChange = { enabled ->
+                        prefs.setScreensaverHaExternalAuth(enabled)
+                        haWebLogin = enabled
+                        ComposeSettingsInterop.screensaverSettingsChanged()
+                    }
+                )
+                Text(
+                    "Optional: enter an HTTPS dashboard URL on the same Home Assistant " +
+                        "server used for owner-approved TV pairing. The native app gives " +
+                        "the page a short-lived access token using HA external auth. " +
+                        "No tokens appear in the URL. Frigate and the four-camera " +
+                        "screensaver still work when this is OFF. " +
+                        "Signing out of the dashboard also revokes this TV's voice/camera login.",
+                    color = skin.colors.textMuted, fontSize = 12.sp,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
 
                 Spacer(modifier = Modifier.height(12.dp))
                 var savedCameras by remember { mutableStateOf(prefs.screensaverCameras()) }
