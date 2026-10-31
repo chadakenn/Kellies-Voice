@@ -50,6 +50,10 @@ publish the actual Wiki. Wiki content changes only when the maintainer
 explicitly runs the manual publisher. It copies the maintained 13 pages
 and preserves other Wiki pages rather than deleting contributors' work.
 
+## v0.17.0 draft documentation and screenshots
+
+The [direct ADB gallery](screenshots/PR-192-CAPTURES.md) is captured from an older development preview. It does not prove the combined v0.17 QA build has shipped. During QA, label every new screenshot with its actual app version and whether it shows local preview or live delivery. The [v0.17 QA status guide](V017_BETA_STATUS.md) tracks hardware passes and unresolved release blockers. **Do not publish draft v0.17 feature claims into the public Wiki automatically**; review against a real signed release first, then use the manual Wiki workflow described above. Stable documentation should not silently become beta installation instructions.
+
 ## Editorial guide
 
 - Keep the cover page clean: first-install path, YAML Cookbook,
