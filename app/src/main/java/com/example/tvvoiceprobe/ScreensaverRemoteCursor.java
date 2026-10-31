@@ -6,6 +6,9 @@ final class ScreensaverRemoteCursor {
     private float y = 0.5f;
     static final int UP = 0, RIGHT = 1, DOWN = 2, LEFT = 3;
 
+    /** New browsing session starts in the center instead of an old offscreen spot. */
+    void reset() { x = 0.5f; y = 0.5f; }
+
     void move(int direction) {
         final float step = 0.075f;
         if (direction == UP) y -= step;
