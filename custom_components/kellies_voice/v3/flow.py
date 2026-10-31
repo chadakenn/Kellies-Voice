@@ -1,0 +1,234 @@
+"""Home Assistant-first v3 owner-approved pairing, reusing the hardware-proven beta.
+
+The session and owner are verified server-side; credentials travel only through
+authenticated encrypted TV handoff. Physical OK + owner opt-in is required.
+"""
+import logging
+import time
+import voluptuous as vol
+from .pairing_v3_wire import HaV3WireAttempt
+from .owner_claim import owner_claims
+from . import owner_controls_ready
+from ..const import DOMAIN
+
+_LOGGER = logging.getLogger(__name__)
+_OWNER_QA_NOTICE = (
+    "SECURE TV PAIRING: Compare the full eight-digit code on both screens. "
+    "Approve this TV from the signed-in Home Assistant owner panel at "
+    "/kellies-voice-approval. A dedicated non-admin TV account can still "
+    "control all Home Assistant entities. Enable this only if you trust "
+    "the TV and explicitly accept that permission scope. Return to this "
+    "dialog before the two-minute session expires."
+)
+
+
+class V3OwnerPairingFlowMixin:
+    """Secure pairing steps composed into the standard HACS config flow."""
+
+    async def async_step_v3_preview(self, user_input=None):
+        if self._v3_session is None or self._v3_transport is None:
+            return self.async_abort(reason="invalid_discovery")
+        errors = {}
+        if user_input is not None:
+            if user_input.get("start_test") is not True:
+                return self.async_abort(reason="cancelled")
+            attempt = HaV3WireAttempt(
+                self._v3_session, retain_owner_receipt=True)
+            try:
+                code = await attempt.start(self._v3_transport)
+            except Exception:
+                attempt.close()
+                errors["base"] = "unavailable"
+            else:
+                self._v3_attempt = attempt
+                self._v3_code = code
+                return await self.async_step_v3_code()
+        return self.async_show_form(
+            step_id="v3_preview",
+            data_schema=vol.Schema({vol.Required("start_test"): bool}),
+            errors=errors,
+        )
+
+    async def async_step_v3_code(self, user_input=None):
+        if self._v3_attempt is None or self._v3_code is None:
+            return self.async_abort(reason="expired")
+        errors = {}
+        if user_input is not None:
+            if user_input.get("numbers_match") is not True:
+                self._v3_attempt.close()
+                self._v3_attempt = None
+                self._v3_code = None
+                return self.async_abort(reason="cancelled")
+            if user_input.get("ha_code") != self._v3_code:
+                self._v3_attempt.close()
+                self._v3_attempt = None
+                self._v3_code = None
+                return self.async_abort(reason="mismatch")
+            try:
+                result = await self._v3_attempt.confirmed_by_tv_remote(self._v3_transport)
+            except Exception:
+                self._v3_attempt = None
+                self._v3_code = None
+                return self.async_abort(reason="expired")
+            if result is None:
+                errors["base"] = "waiting_for_tv"
+            else:
+                # The independent v3 ECDH+UUID-bound physical-TV MAC is
+                # verified BEFORE an HA owner claim can be registered.
+                verified_code = self._v3_code
+                self._v3_code = None
+                # Keep the verified ECDH state ONLY for the bounded owner
+                # acknowledgement path, never for any HA credential.
+                # Never attempt registration of a static HTTP route or
+                # frontend panel after Home Assistant has started serving.
+                # The QA owner UI must be registered during YAML startup.
+                if not owner_controls_ready(self.hass):
+                    self._v3_attempt.close()
+                    self._v3_attempt = None
+                    _LOGGER.warning(
+                        "Owner controls were not initialized at Home Assistant startup"
+                    )
+                    return self.async_abort(reason="owner_setup_missing")
+                try:
+                    owner_claims(self.hass).begin(
+                        flow_id=self.flow_id, session=result.session,
+                        tv_uuid=result.tv_uuid, comparison_code=verified_code)
+                except ValueError:
+                    _LOGGER.exception("Verified owner claim rejected")
+                    owner_claims(self.hass).cancel(self.flow_id)
+                    self._v3_attempt.close()
+                    self._v3_attempt = None
+                    return self.async_abort(reason="owner_binding_rejected")
+                except Exception:
+                    _LOGGER.exception("Verified owner claim failed unexpectedly")
+                    owner_claims(self.hass).cancel(self.flow_id)
+                    self._v3_attempt.close()
+                    self._v3_attempt = None
+                    return self.async_abort(reason="owner_unavailable")
+                self._owner_tv = result
+                self._owner_code = verified_code
+                # The original TV listening window, not a new 120s after
+                # physical OK, is authoritative for encryption-key lifetime.
+                self._owner_deadline = self._v3_attempt._expires_at
+                return await self.async_step_owner_approval()
+        return self.async_show_form(
+            step_id="v3_code",
+            description_placeholders={"code": self._v3_code},
+            data_schema=vol.Schema({
+                vol.Required("ha_code", default=self._v3_code): str,
+                vol.Required("numbers_match"): bool,
+            }),
+            errors=errors,
+        )
+
+    async def async_step_owner_approval(self, user_input=None):
+        """Require an independently authenticated HA owner after TV proof.
+
+        No owner ID is accepted from a config-flow form, TV, or mDNS.
+        This form NEVER creates a config entry or sends a token.
+        """
+        tv = self._owner_tv
+        if (tv is None or time.monotonic() >= self._owner_deadline):
+            if tv is not None:
+                owner_claims(self.hass).cancel(self.flow_id)
+            if self._v3_attempt is not None:
+                self._v3_attempt.close()
+                self._v3_attempt = None
+            self._owner_tv = None
+            self._owner_code = None
+            return self.async_abort(reason="owner_expired")
+        errors = {}
+        if user_input is not None:
+            if user_input.get("owner_approved") is not True:
+                owner_claims(self.hass).cancel(self.flow_id)
+                if self._v3_attempt is not None:
+                    self._v3_attempt.close()
+                self._owner_tv = None
+                self._owner_code = None
+                return self.async_abort(reason="cancelled")
+            if user_input.get("qa_instructions") != _OWNER_QA_NOTICE:
+                owner_claims(self.hass).cancel(self.flow_id)
+                if self._v3_attempt is not None:
+                    self._v3_attempt.close()
+                self._owner_tv = None
+                self._owner_code = None
+                return self.async_abort(reason="owner_denied")
+            if user_input.get("ha_code") != self._owner_code:
+                owner_claims(self.hass).cancel(self.flow_id)
+                if self._v3_attempt is not None:
+                    self._v3_attempt.close()
+                self._owner_tv = None
+                self._owner_code = None
+                return self.async_abort(reason="mismatch")
+            registry = owner_claims(self.hass)
+            if not registry.approved_for(
+                    flow_id=self.flow_id, session=tv.session,
+                    tv_uuid=tv.tv_uuid):
+                errors["base"] = "owner_pending"
+            else:
+                attempt = self._v3_attempt
+                self._v3_attempt = None
+                self._owner_tv = None
+                self._owner_code = None
+                if attempt is None:
+                    registry.cancel(self.flow_id)
+                    return self.async_abort(reason="owner_receipt_failed")
+                # Explicit HA-owner opt-in only. No blanket TV account for
+                # users who approved the existing token-free test.
+                owner_id = registry.approved_owner_login(
+                    flow_id=self.flow_id, session=tv.session,
+                    tv_uuid=tv.tv_uuid)
+                origin = None
+                remote_login = False
+                if owner_id is not None:
+                    from .ha_https import resolve_tv_login_origin
+                    try:
+                        origin, remote_login = resolve_tv_login_origin(
+                            self.hass)
+                    except Exception:
+                        # No usable HTTPS origin means no renewable token.
+                        registry.cancel(self.flow_id)
+                        attempt.close()
+                        return self.async_abort(reason="https_required")
+                try:
+                    await attempt.finish_owner_receipt(
+                        self._v3_transport, hass=self.hass,
+                        claims=registry, flow_id=self.flow_id,
+                        **({"retain_for_login": True} if owner_id else {}))
+                    if owner_id:
+                        journal = self.hass.data[DOMAIN]["v3_token_journal"]
+                        await attempt.finish_renewable_login(
+                            self._v3_transport, hass=self.hass, journal=journal,
+                            owner_id=owner_id, ha_origin=origin,
+                            remote_login=remote_login)
+                except Exception:
+                    registry.cancel(self.flow_id)
+                    attempt.close()
+                    _LOGGER.exception(
+                        "V3 owner approval or TV login failed during %s",
+                        "renewable credential activation" if owner_id
+                        else "owner receipt acknowledgement",
+                    )
+                    return self.async_abort(reason="owner_login_failed"
+                                            if owner_id else "owner_receipt_failed")
+                if owner_id:
+                    # Only a completed encrypted TV credential ACK may add an HA
+                    # device. Older TV devices keep their existing entry intact.
+                    tv_id = tv.tv_uuid
+                    await self.async_set_unique_id(tv_id)
+                    self._abort_if_unique_id_configured()
+                    tv_name = "Kellie's Voice TV " + tv_id[-8:]
+                    return self.async_create_entry(
+                        title=tv_name, data={"device_id": tv_id, "name": tv_name}
+                    )
+                return self.async_abort(reason="owner_receipt_verified_no_login")
+        return self.async_show_form(
+            step_id="owner_approval",
+            description_placeholders={"code": self._owner_code},
+            data_schema=vol.Schema({
+                vol.Required("qa_instructions", default=_OWNER_QA_NOTICE): str,
+                vol.Required("ha_code", default=self._owner_code): str,
+                vol.Required("owner_approved"): bool,
+            }),
+            errors=errors,
+        )
