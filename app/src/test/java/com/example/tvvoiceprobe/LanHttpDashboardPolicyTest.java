@@ -55,7 +55,15 @@ public class LanHttpDashboardPolicyTest {
                 "http://192.168.1.2:8124/dashboard"));
         assertFalse(LanHttpDashboardPolicy.allowedNavigation(page,
                 "http://evil.example/dashboard"));
-        assertFalse(LanHttpDashboardPolicy.allowedNavigation(page,
+        // Browser redirects may carry transient auth state on the same
+        // private origin; this must NOT weaken configured URL validation.
+        assertTrue(LanHttpDashboardPolicy.allowedNavigation(page,
                 "http://192.168.1.2:8123/dashboard?access_token=abc"));
+        assertTrue(LanHttpDashboardPolicy.allowedNavigation(page,
+                "http://192.168.1.2:8123/auth/authorize?code=abc#token=temporary"));
+        assertFalse(LanHttpDashboardPolicy.isStrictLanHttp(
+                "http://192.168.1.2:8123/dashboard?access_token=abc"));
+        assertFalse(LanHttpDashboardPolicy.allowedNavigation(page,
+                "http://user:pass@192.168.1.2:8123/dashboard?token=abc"));
     }
 }
