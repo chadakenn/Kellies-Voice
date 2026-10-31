@@ -6,7 +6,7 @@
 
 ## v0.17.0 private combined QA is different from the public beta channel
 
-The draft v0.17 combined integration is currently a **development artifact**, not an automatically delivered HACS pre-release. The test APK is a **separate** `com.example.tvvoiceprobe.debug` app (Kellie's Voice Beta) with distinct login and TV identity. Its `kellies_voice_v3qa` ZIP is an **isolated QA component**, not a replacement for the public `kellies_voice` HACS integration. Do not install the draft as an ordinary stable update. See [v0.17 tester status and release gates](V017_BETA_STATUS.md) and the [hardware ADB captures](screenshots/PR-192-CAPTURES.md) (older preview UI, not final).
+The v0.17 combined integration is currently a **development artifact**, not an automatically delivered HACS pre-release. The tested nonpublishing signed QA installer is **`app-qa.apk` (`com.example.tvvoiceprobe.qa`)**, which coexists with stable and has a distinct TV identity/login. It must come from the persistent-signing **Build Kellie's Voice Signed APK** workflow, with **Publish public release unchecked**. The PR-built `app-debug.apk` (`.debug`) has a different package/signing identity and is **not** an update for an already-installed signed QA app. The isolated `kellies_voice_v3qa` ZIP is not a replacement for the public `kellies_voice` HACS integration. Do not install a QA artifact as a stable update. See [v0.17 tester status and release gates](V017_BETA_STATUS.md) and the [hardware ADB captures](screenshots/PR-192-CAPTURES.md) (older preview UI, not final).
 
 ## Join the beta (optional)
 
