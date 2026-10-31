@@ -421,6 +421,17 @@ public final class OverlayPreferences {
         preferences.edit().putString(KEY_SCREENSAVER_URL, ScreensaverDashboard.dashboardUrl(value)).apply();
     }
 
+    /** Secure HA dashboard WebView login is explicit opt-in, never automatic.
+     * Frigate URLs and existing four-camera grid remain unchanged.
+     */
+    public boolean screensaverHaExternalAuth() {
+        return preferences.getBoolean(KEY_SCREENSAVER_HA_AUTH, false);
+    }
+
+    public void setScreensaverHaExternalAuth(boolean enabled) {
+        preferences.edit().putBoolean(KEY_SCREENSAVER_HA_AUTH, enabled).apply();
+    }
+
     public String screensaverCameras() {
         return ScreensaverDashboard.cameras(preferences.getString(KEY_SCREENSAVER_CAMERAS, ""));
     }
