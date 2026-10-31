@@ -70,15 +70,20 @@ public final class OverlayPreferences {
     private static final String KEY_SCREENSAVER_FIT = "screensaver_fit";
     private static final String KEY_SCREENSAVER_LIVE = "screensaver_live_mode";
     private final SharedPreferences preferences;
+    private final Context appContext;
 
     public OverlayPreferences(Context context) {
-        preferences = context.getApplicationContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        appContext = context.getApplicationContext();
+        preferences = appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
     }
 
     public String skin() {
         String value = preferences.getString(KEY_SKIN, SKIN_GLASS);
         if (SKIN_CLASSIC.equals(value) || SKIN_SIGNAL.equals(value) || SKIN_AURORA.equals(value)
                 || SKIN_OBSIDIAN.equals(value) || SKIN_TERMINAL.equals(value)) return value;
+        if (CommunityThemeStore.isId(value) && CommunityThemeStore.get(appContext, value) != null) {
+            return value;
+        }
         return SKIN_GLASS;
     }
 
@@ -89,6 +94,8 @@ public final class OverlayPreferences {
         else if (SKIN_AURORA.equals(value)) stored = SKIN_AURORA;
         else if (SKIN_OBSIDIAN.equals(value)) stored = SKIN_OBSIDIAN;
         else if (SKIN_TERMINAL.equals(value)) stored = SKIN_TERMINAL;
+        else if (CommunityThemeStore.isId(value) &&
+                CommunityThemeStore.get(appContext, value) != null) stored = value;
         preferences.edit().putString(KEY_SKIN, stored).apply();
     }
 
