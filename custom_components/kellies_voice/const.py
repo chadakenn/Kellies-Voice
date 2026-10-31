@@ -1,6 +1,7 @@
 """Option text shared with the Android TV app. Do not rename values."""
 
 DOMAIN = "kellies_voice"
+QUICK_ACTION_CACHE = "quick_action_entry_cache"
 PLATFORMS = ["select", "switch", "text", "binary_sensor", "sensor"]
 
 POSITIONS = [
