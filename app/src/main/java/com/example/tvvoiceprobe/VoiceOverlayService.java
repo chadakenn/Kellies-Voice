@@ -390,7 +390,7 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
         boolean signal = OverlayPreferences.SKIN_SIGNAL.equals(preferences.skin());
         boolean obsidian = OverlayPreferences.SKIN_OBSIDIAN.equals(preferences.skin());
         boolean terminal = OverlayPreferences.SKIN_TERMINAL.equals(preferences.skin());
-        AppPalette theme = AppPalette.forSkin(preferences.skin());
+        AppPalette theme = AppPalette.forSkin(this, preferences.skin());
 
         panel = new VoicePanel();
         panel.setOrientation(LinearLayout.VERTICAL);
@@ -570,7 +570,7 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
         button.setAllCaps(false);
         boolean obsidian = OverlayPreferences.SKIN_OBSIDIAN.equals(preferences.skin());
         boolean terminal = OverlayPreferences.SKIN_TERMINAL.equals(preferences.skin());
-        AppPalette theme = AppPalette.forSkin(preferences.skin());
+        AppPalette theme = AppPalette.forSkin(this, preferences.skin());
         button.setTextColor(terminal ? theme.text : obsidian ? theme.text : signal ? 0xffF8E8D6 : 0xffffffff);
         button.setFocusable(true);
         button.setFocusableInTouchMode(true);
