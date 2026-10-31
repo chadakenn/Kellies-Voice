@@ -25,6 +25,13 @@ public final class TvRenewableLoginPolicyTest {
         assertEquals(TV, g.tvUuid);
     }
 
+    @Test public void localHttpIsRejectedForRenewableLogin() {
+        // Plain HTTP discovery is allowed for pairing, but renewable login
+        // must not use an HTTP origin. Local HTTPS is the zero-cloud path.
+        rejected("http://192.168.1.10:8123", TV, CLIENT, "token-ID_1");
+        rejected("http://homeassistant.local:8123", TV, CLIENT, "token-ID_1");
+    }
+
     @Test public void neverAllowLocalPlaintextOrInjectedOrigin() {
         for (String origin : new String[] {
             "http://192.168.1.82:8123", "http://homeassistant.local:8123",
