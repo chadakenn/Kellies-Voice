@@ -106,8 +106,8 @@ jobs:
             echo '::error::Release candidate must not be debuggable'
             exit 1
           fi
-          apk_cert="$("$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$apk" | sed -nE 's/^Signer #1 certificate SHA-256 digest: ([[:xdigit:]]+).*/\\1/p' | head -n 1)"
-          key_cert="$(keytool -list -v -storetype PKCS12 -keystore "$TV_SIGNING_KEYSTORE_PATH" -storepass "$TV_SIGNING_PASSWORD" -alias tvvoice | sed -nE 's/.*SHA256: ([[:xdigit:]:]+).*/\\1/p' | head -n 1 | tr -d ':' | tr '[:upper:]' '[:lower:]')"
+          apk_cert="$("$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$apk" | sed -nE 's/^Signer #1 certificate SHA-256 digest: ([[:xdigit:]]+).*/\1/p' | head -n 1)"
+          key_cert="$(keytool -list -v -storetype PKCS12 -keystore "$TV_SIGNING_KEYSTORE_PATH" -storepass "$TV_SIGNING_PASSWORD" -alias tvvoice | sed -nE 's/.*SHA256: ([[:xdigit:]:]+).*/\1/p' | head -n 1 | tr -d ':' | tr '[:upper:]' '[:lower:]')"
           if [[ -z "$apk_cert" || -z "$key_cert" || "$apk_cert" != "$key_cert" ]]; then
             echo '::error::Signed release candidate does not match the persistent key'
             exit 1
