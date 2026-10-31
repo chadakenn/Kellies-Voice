@@ -4,6 +4,10 @@
 
 **Previous beta:** v0.16.13-dev.1 (Android build 53) was an opt-in prerelease between stable v0.16.12 and the now-published stable v0.16.14. Choose stable v0.16.14 when available. Historical v0.16.12-dev.N versions are for manual recovery/testing, not the newest beta channel.
 
+## v0.17.0 private combined QA is different from the public beta channel
+
+The draft v0.17 combined integration is currently a **development artifact**, not an automatically delivered HACS pre-release. The test APK is a **separate** `com.example.tvvoiceprobe.debug` app (Kellie's Voice Beta) with distinct login and TV identity. Its `kellies_voice_v3qa` ZIP is an **isolated QA component**, not a replacement for the public `kellies_voice` HACS integration. Do not install the draft as an ordinary stable update. See [v0.17 tester status and release gates](V017_BETA_STATUS.md) and the [hardware ADB captures](screenshots/PR-192-CAPTURES.md) (older preview UI, not final).
+
 ## Join the beta (optional)
 
 Only testers who explicitly choose a development release should receive one. Beta features can break TV voice, overlays, reconnection, or Home Assistant integration, so keep a Home Assistant backup and share non-sensitive test observations on [GitHub Issues](https://github.com/chadakenn/Kellies-Voice/issues).
