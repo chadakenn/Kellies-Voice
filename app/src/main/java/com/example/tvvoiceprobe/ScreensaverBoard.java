@@ -488,13 +488,13 @@ final class ScreensaverBoard {
         if (event.getAction() != KeyEvent.ACTION_DOWN) return true;
         switch (key) {
             case KeyEvent.KEYCODE_DPAD_UP:
-                cursor.move(ScreensaverRemoteCursor.UP); break;
+                cursor.move(ScreensaverRemoteCursor.UP, event.getRepeatCount()); break;
             case KeyEvent.KEYCODE_DPAD_RIGHT:
-                cursor.move(ScreensaverRemoteCursor.RIGHT); break;
+                cursor.move(ScreensaverRemoteCursor.RIGHT, event.getRepeatCount()); break;
             case KeyEvent.KEYCODE_DPAD_DOWN:
-                cursor.move(ScreensaverRemoteCursor.DOWN); break;
+                cursor.move(ScreensaverRemoteCursor.DOWN, event.getRepeatCount()); break;
             case KeyEvent.KEYCODE_DPAD_LEFT:
-                cursor.move(ScreensaverRemoteCursor.LEFT); break;
+                cursor.move(ScreensaverRemoteCursor.LEFT, event.getRepeatCount()); break;
             case KeyEvent.KEYCODE_DPAD_CENTER:
             case KeyEvent.KEYCODE_ENTER:
                 tapWeb(); return true;
