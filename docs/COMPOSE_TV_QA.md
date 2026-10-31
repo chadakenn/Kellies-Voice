@@ -1,6 +1,6 @@
 # Compose TV Settings: draft PR #192 hardware QA
 
-**Status:** in-device QA, **not a stable release**. Production `SETTINGS` remains the safe legacy hub. Updated development debug and signed QA builds have **one `SETTINGS` button opening Compose** (with legacy recovery routes available). Older `0.16.14-test` debug builds showed both `SETTINGS` and `COMPOSE`; those historical test notes refer to that older APK. Auto-pairing is planned independently in [#193](https://github.com/chadakenn/Kellies-Voice/issues/193).
+**Historical QA report (October 28, 2026):** This document records development-build testing, not public APK verification. The public v0.17.0 APK includes Compose Settings, but its SETTINGS button mistakenly opens the legacy Java hub; [PR #295](https://github.com/chadakenn/Kellies-Voice/pull/295) corrects that release-only route. Older `0.16.14-test` debug builds had separate SETTINGS/COMPOSE buttons; those notes describe that older install. Owner-approved HA-first pairing subsequently shipped in v0.17.0 as an opt-in preview; independent security review remains open.
 
 ## Confirmed on maintainer's onn 4K Pro (October 28, 2026)
 
