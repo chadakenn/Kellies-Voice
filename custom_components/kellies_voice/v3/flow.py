@@ -81,7 +81,7 @@ class V3OwnerPairingFlowMixin:
                 # acknowledgement path, never for any HA credential.
                 # Never attempt registration of a static HTTP route or
                 # frontend panel after Home Assistant has started serving.
-                # The QA owner UI must be registered during YAML startup.
+                # The owner UI is loaded by the normal HACS integration at startup.
                 if not owner_controls_ready(self.hass):
                     self._v3_attempt.close()
                     self._v3_attempt = None
@@ -125,7 +125,7 @@ class V3OwnerPairingFlowMixin:
         """Require an independently authenticated HA owner after TV proof.
 
         No owner ID is accepted from a config-flow form, TV, or mDNS.
-        This form NEVER creates a config entry or sends a token.
+        The owner panel is the real authority. This form cannot fake approval.
         """
         tv = self._owner_tv
         if (tv is None or time.monotonic() >= self._owner_deadline):
@@ -146,20 +146,6 @@ class V3OwnerPairingFlowMixin:
                 self._owner_tv = None
                 self._owner_code = None
                 return self.async_abort(reason="cancelled")
-            if user_input.get("qa_instructions") != _OWNER_QA_NOTICE:
-                owner_claims(self.hass).cancel(self.flow_id)
-                if self._v3_attempt is not None:
-                    self._v3_attempt.close()
-                self._owner_tv = None
-                self._owner_code = None
-                return self.async_abort(reason="owner_denied")
-            if user_input.get("ha_code") != self._owner_code:
-                owner_claims(self.hass).cancel(self.flow_id)
-                if self._v3_attempt is not None:
-                    self._v3_attempt.close()
-                self._owner_tv = None
-                self._owner_code = None
-                return self.async_abort(reason="mismatch")
             registry = owner_claims(self.hass)
             if not registry.approved_for(
                     flow_id=self.flow_id, session=tv.session,
@@ -215,6 +201,11 @@ class V3OwnerPairingFlowMixin:
                     # Only a completed encrypted TV credential ACK may add an HA
                     # device. Older TV devices keep their existing entry intact.
                     tv_id = tv.tv_uuid
+                    # Preserve existing HA pairing entries on an in-place
+                    # upgrade. The owner's new TV credential is already live.
+                    if any(entry.data.get("device_id") == tv_id
+                           for entry in self._async_current_entries()):
+                        return self.async_abort(reason="owner_login_connected")
                     await self.async_set_unique_id(tv_id)
                     self._abort_if_unique_id_configured()
                     tv_name = "Kellie's Voice TV " + tv_id[-8:]
@@ -225,10 +216,6 @@ class V3OwnerPairingFlowMixin:
         return self.async_show_form(
             step_id="owner_approval",
             description_placeholders={"code": self._owner_code},
-            data_schema=vol.Schema({
-                vol.Required("qa_instructions", default=_OWNER_QA_NOTICE): str,
-                vol.Required("ha_code", default=self._owner_code): str,
-                vol.Required("owner_approved"): bool,
-            }),
+            data_schema=vol.Schema({vol.Required("owner_approved"): bool}),
             errors=errors,
         )
