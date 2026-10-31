@@ -2108,7 +2108,10 @@ public class VoiceActivity extends Activity implements HaAssistClient.Events {
     }
 
     private void enableWakeWord() {
-        if (settings == null) {
+        // The in-memory legacy connection is null during v3 renewal.
+        // Trust the same saved-login policy as the Compose Settings switch
+        // and the wake-word foreground service.
+        if (!WakeWordLoginGate.hasSavedLogin(this)) {
             status("Configure Home Assistant before enabling the wake word.");
             return;
         }
