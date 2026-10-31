@@ -14,6 +14,7 @@ from homeassistant.helpers.entity import DeviceInfo, EntityCategory
 
 from .const import DOMAIN, QUICK_ACTION_CACHE
 from .home_shortcuts import ACTIONS, COUNT, updated_device_option
+from .quick_action_icons import ICON_CHOICES
 
 
 NO_TARGET = "No action configured"
@@ -36,7 +37,7 @@ class QuickActionDeviceSetting:
         # HA sorts device Configuration entities by display name, not by
         # platform creation order. Numerically prefix the fields so each TV
         # button reads Label -> Target -> Action in one contiguous group.
-        order = {"label": "1", "entity": "2", "action": "3"}[field]
+        order = {"label": "1", "entity": "2", "action": "3", "icon": "4"}[field]
         self._attr_name = f"Quick Action {slot} · {order}. {name}"
         self._attr_icon = icon
         self._attr_device_info = DeviceInfo(
@@ -47,7 +48,7 @@ class QuickActionDeviceSetting:
         )
 
     def _saved(self) -> str:
-        default = "Turn on" if self._field == "action" else ""
+        default = "Turn on" if self._field == "action" else ("Auto" if self._field == "icon" else "")
         # Entity constructors run before hass is assigned. Once mounted,
         # all three editors read the SAME canonical per-TV draft, not three
         # stale ConfigEntry snapshots.
@@ -199,6 +200,30 @@ class QuickActionVerb(QuickActionDeviceSetting, SelectEntity):
         self._attr_current_option = value if value in ACTIONS else "Turn on"
 
 
+
+class QuickActionIcon(QuickActionDeviceSetting, SelectEntity):
+    """Auto HA icon by default; optional safe local-icon override."""
+
+    _attr_should_poll = True
+
+    def __init__(self, entry: ConfigEntry, slot: int):
+        self._setup(entry, slot, "icon", "Icon", "mdi:palette")
+        self._attr_options = list(ICON_CHOICES)
+        value = self._saved()
+        self._attr_current_option = value if value in ICON_CHOICES else "Auto"
+
+    async def async_select_option(self, option: str) -> None:
+        if option not in ICON_CHOICES:
+            raise HomeAssistantError("Choose a supported Quick Action icon.")
+        await self._set(option)
+        self._attr_current_option = option
+        self.async_write_ha_state()
+
+    async def async_update(self) -> None:
+        value = self._saved()
+        self._attr_current_option = value if value in ICON_CHOICES else "Auto"
+
+
 def quick_action_labels(entry: ConfigEntry) -> list[QuickActionLabel]:
     return [QuickActionLabel(entry, slot) for slot in range(1, COUNT + 1)]
 
@@ -207,5 +232,5 @@ def quick_action_selects(entry: ConfigEntry) -> list[SelectEntity]:
     return [
         entity
         for slot in range(1, COUNT + 1)
-        for entity in (QuickActionTarget(entry, slot), QuickActionVerb(entry, slot))
+        for entity in (QuickActionTarget(entry, slot), QuickActionVerb(entry, slot), QuickActionIcon(entry, slot))
     ]
