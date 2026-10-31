@@ -22,6 +22,7 @@ import android.window.OnBackInvokedCallback;
 import android.window.OnBackInvokedDispatcher;
 import android.webkit.CookieManager;
 import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -33,6 +34,7 @@ import android.widget.TextView;
 
 import androidx.media3.ui.AspectRatioFrameLayout;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -188,7 +190,12 @@ final class ScreensaverBoard {
         if (!page.isEmpty()) {
             try {
                 if (prefs.screensaverHaExternalAuth()) showAuthenticatedHaPage(page);
-                else showPage(page, null);
+                else if (prefs.screensaverLanHttpOnly() && page.startsWith("http://")
+                        && !LanHttpDashboardPolicy.isStrictLanHttp(page)) {
+                    showMessage("LAN HTTP restriction: enter a private numeric IP address "
+                            + "(10.x.x.x, 172.16–31.x.x or 192.168.x.x) or turn OFF "
+                            + "this opt-in setting. No credentials were shared.");
+                } else showPage(page, null);
             } catch (RuntimeException ignored) {
                 showMessage("This TV couldn't open the dashboard page.");
             }
@@ -338,10 +345,28 @@ final class ScreensaverBoard {
                             && web == loadedWeb);
         }
         web.setOnKeyListener((view, key, event) -> browsing && remoteKey(key, event));
+        final boolean strictLocalHttp = prefs.screensaverLanHttpOnly()
+                && LanHttpDashboardPolicy.isStrictLanHttp(page)
+                && authenticatedHaOrigin == null;
         web.setWebViewClient(new WebViewClient() {
             @Override public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
                 super.onPageStarted(view, url, favicon);
                 ScreensaverWebDiagnostics.pageStarted(url);
+            }
+            @Override public WebResourceResponse shouldInterceptRequest(
+                    WebView view, WebResourceRequest request) {
+                if (strictLocalHttp && request != null && request.getUrl() != null) {
+                    String next = request.getUrl().toString();
+                    // Best-effort block for ordinary HTTP(S) subresources:
+                    // remote scripts/images/frames are not part of a local-only
+                    // dashboard. WebSocket/service-worker behavior may differ.
+                    if ((next.startsWith("http://") || next.startsWith("https://"))
+                            && !LanHttpDashboardPolicy.allowedNavigation(page, next)) {
+                        return new WebResourceResponse("text/plain", "UTF-8",
+                                new ByteArrayInputStream(new byte[0]));
+                    }
+                }
+                return super.shouldInterceptRequest(view, request);
             }
             @Override public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
@@ -351,6 +376,7 @@ final class ScreensaverBoard {
                             ScreensaverDashboard.viewportWidth(prefs.screensaverFit())), null);
                 }
             }
+
             @Override public void onReceivedError(WebView view, WebResourceRequest request,
                     android.webkit.WebResourceError error) {
                 super.onReceivedError(view, request, error);
@@ -360,13 +386,14 @@ final class ScreensaverBoard {
                             error == null ? -1 : error.getErrorCode());
                 }
             }
-
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 if (request == null || request.getUrl() == null) return true;
                 String next = request.getUrl().toString();
-                boolean same = ScreensaverDashboard.sameSite(page, next);
-                if (!same) ScreensaverWebDiagnostics.authNote("blocked off-site navigation");
-                return !same;
+                boolean allowed = strictLocalHttp
+                        ? LanHttpDashboardPolicy.allowedNavigation(page, next)
+                        : ScreensaverDashboard.sameSite(page, next);
+                if (!allowed) ScreensaverWebDiagnostics.authNote("blocked off-site navigation");
+                return !allowed;
             }
         });
         FrameLayout.LayoutParams params = cardParams();

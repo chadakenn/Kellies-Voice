@@ -65,6 +65,7 @@ public final class OverlayPreferences {
     private static final String KEY_SCREENSAVER = "screensaver_dashboard";
     private static final String KEY_SCREENSAVER_URL = "screensaver_dashboard_url";
     private static final String KEY_SCREENSAVER_HA_AUTH = "screensaver_ha_external_auth_opt_in";
+    private static final String KEY_SCREENSAVER_LAN_HTTP = "screensaver_lan_http_only";
     private static final String KEY_SCREENSAVER_CAMERAS = "screensaver_cameras";
     private static final String KEY_SCREENSAVER_SIZE = "screensaver_size";
     private static final String KEY_SCREENSAVER_DESKTOP = "screensaver_desktop_page";
@@ -430,6 +431,17 @@ public final class OverlayPreferences {
 
     public void setScreensaverHaExternalAuth(boolean enabled) {
         preferences.edit().putBoolean(KEY_SCREENSAVER_HA_AUTH, enabled).apply();
+    }
+
+    /** Optional origin-restricted LAN HTTP viewer. This never grants access
+     * to the HTTPS-only renewable TV login or makes HTTP tokens safe.
+     */
+    public boolean screensaverLanHttpOnly() {
+        return preferences.getBoolean(KEY_SCREENSAVER_LAN_HTTP, false);
+    }
+
+    public void setScreensaverLanHttpOnly(boolean enabled) {
+        preferences.edit().putBoolean(KEY_SCREENSAVER_LAN_HTTP, enabled).apply();
     }
 
     public String screensaverCameras() {
