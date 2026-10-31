@@ -138,6 +138,48 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+      # QA Android and HA sources must come from the SAME checked-out SHA.
+      # This archive is for controlled manual integration testing, not HACS
+      # publishing and never overwrites the user's stable HA installation.
+      - name: Package matching Home Assistant QA integration ZIP
+        if: github.event_name == 'workflow_dispatch' && inputs.publish_release != true
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os
+          import zipfile
+          from pathlib import Path
+          root = Path('custom_components/kellies_voice')
+          assert (root / 'manifest.json').is_file(), 'Missing HA integration manifest'
+          files = sorted(
+              p for p in root.rglob('*')
+              if p.is_file() and not p.is_symlink()
+              and not any(part in ('__pycache__', '.git') for part in p.parts)
+              and p.suffix != '.pyc'
+          )
+          assert files, 'Empty HA integration'
+          Path('dist').mkdir(exist_ok=True)
+          with zipfile.ZipFile('dist/kellies-voice-ha-qa.zip', 'w',
+                               compression=zipfile.ZIP_DEFLATED) as archive:
+              for path in files:
+                  archive.write(path, path.as_posix())
+          with zipfile.ZipFile('dist/kellies-voice-ha-qa.zip') as archive:
+              names = archive.namelist()
+              assert 'custom_components/kellies_voice/manifest.json' in names
+              assert all(name.startswith('custom_components/kellies_voice/') for name in names)
+          print(f'Packaged {len(files)} HA integration files from checked-out QA commit.')
+          PY
+
+      - name: Upload matching Home Assistant QA ZIP
+        if: github.event_name == 'workflow_dispatch' && inputs.publish_release != true
+        uses: actions/upload-artifact@v4
+        with:
+          name: kellies-voice-ha-qa
+          path: dist/kellies-voice-ha-qa.zip
+          if-no-files-found: error
+          retention-days: 14
+
   publish-release:
     # Publishing requires a deliberate manual workflow-dispatch approval.
     # Never infer authorization from a commit message on main.

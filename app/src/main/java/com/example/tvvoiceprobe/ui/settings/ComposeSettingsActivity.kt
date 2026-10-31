@@ -767,7 +767,7 @@ fun CategoryContent(
             "screensaver" -> {
                 var ss by remember { mutableStateOf(prefs.screensaverDashboard()) }
                 SettingSwitch(
-                    title = "Frigate screensaver",
+                    title = "Screensaver dashboard / cameras",
                     subtitle = if (ss) "ON" else "OFF",
                     checked = ss,
                     onCheckedChange = { on ->
@@ -781,7 +781,7 @@ fun CategoryContent(
                 var editingUrl by remember { mutableStateOf(false) }
                 var urlDraft by remember { mutableStateOf(savedUrl) }
                 var urlError by remember { mutableStateOf<String?>(null) }
-                Text("Frigate dashboard URL", color = skin.colors.accent, fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                Text("Dashboard URL (Frigate or Home Assistant)", color = skin.colors.accent, fontSize = 18.sp, fontWeight = FontWeight.Medium)
                 if (!editingUrl) {
                     Text(
                         text = if (savedUrl.isEmpty()) "Not configured" else savedUrl,
@@ -789,7 +789,7 @@ fun CategoryContent(
                         fontSize = 13.sp
                     )
                     SettingsChoice(
-                        title = if (savedUrl.isEmpty()) "Enter Frigate URL" else "Edit Frigate URL",
+                        title = if (savedUrl.isEmpty()) "Enter dashboard URL" else "Edit dashboard URL",
                         selected = false,
                         onSelect = {
                             urlDraft = savedUrl
@@ -800,13 +800,13 @@ fun CategoryContent(
                     )
                     if (savedUrl.isNotEmpty()) {
                         SettingsChoice(
-                            title = "Clear Frigate URL",
+                            title = "Clear dashboard URL",
                             selected = false,
                             onSelect = {
                                 prefs.setScreensaverUrl("")
                                 savedUrl = ""
                                 ComposeSettingsInterop.applyScreensaverSetting(context, HaLayout.SCREENSAVER_URL)
-                                Toast.makeText(context, "Frigate URL cleared", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "Dashboard URL cleared", Toast.LENGTH_SHORT).show()
                             }
                         )
                     }
@@ -863,7 +863,7 @@ fun CategoryContent(
                             ComposeSettingsInterop.applyScreensaverSetting(context, HaLayout.SCREENSAVER_URL)
                             Toast.makeText(
                                 context,
-                                if (safe.isEmpty()) "Frigate URL cleared" else "Frigate URL saved",
+                                if (safe.isEmpty()) "Dashboard URL cleared" else "Dashboard URL saved",
                                 Toast.LENGTH_SHORT
                             ).show()
                         }
@@ -879,6 +879,74 @@ fun CategoryContent(
                         }
                     )
                 }
+
+                if (savedUrl.startsWith("http://", ignoreCase = true)) {
+                    Text(
+                        "LOCAL HTTP: This stays local only if the address resolves " +
+                            "to your home-network server. Credentials are not encrypted. " +
+                            "Frigate pages and " +
+                            "unauthenticated dashboards can use the existing WebView " +
+                            "with secure sign-in OFF. Home Assistant login may " +
+                            "still get stuck on 'Please wait' (issue #261). " +
+                            "Automatic TV token sign-in currently requires " +
+                            "a locally reachable HTTPS address. No cloud is required.",
+                        color = skin.colors.warning,
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(top = 6.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                var lanHttpRestricted by remember { mutableStateOf(prefs.screensaverLanHttpOnly()) }
+                SettingSwitch(
+                    title = "Restrict local HTTP dashboard to private LAN address",
+                    subtitle = if (lanHttpRestricted) "ON · Numeric private IPv4 only"
+                        else "OFF · Original HTTP web viewer",
+                    checked = lanHttpRestricted,
+                    onCheckedChange = { enabled ->
+                        prefs.setScreensaverLanHttpOnly(enabled)
+                        lanHttpRestricted = enabled
+                        ComposeSettingsInterop.applyScreensaverSetting(
+                            context, HaLayout.SCREENSAVER_LAN_HTTP)
+                    }
+                )
+                Text(
+                    "Optional HTTP web-view guard: only 10.x.x.x, 172.16–31.x.x " +
+                        "and 192.168.x.x addresses, with no URL secrets. " +
+                        "Same-origin navigation and ordinary web resources " +
+                        "are restricted, but WebSockets and redirects may bypass " +
+                        "WebView interception. This does NOT provide automatic " +
+                        "Home Assistant login and does NOT encrypt HTTP traffic. " +
+                        "Use local HTTPS for native, owner-approved TV login.",
+                    color = skin.colors.textMuted, fontSize = 12.sp,
+                    modifier = Modifier.padding(top = 5.dp)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                var haWebLogin by remember { mutableStateOf(prefs.screensaverHaExternalAuth()) }
+                SettingSwitch(
+                    title = "Sign in to Home Assistant dashboard",
+                    subtitle = if (haWebLogin) "ON · Dedicated secure TV login" else "OFF · Existing web mode",
+                    checked = haWebLogin,
+                    onCheckedChange = { enabled ->
+                        prefs.setScreensaverHaExternalAuth(enabled)
+                        haWebLogin = enabled
+                        ComposeSettingsInterop.screensaverSettingsChanged()
+                        ComposeSettingsInterop.queueLayoutUpdate(HaLayout.SCREENSAVER_HA_AUTH)
+                    }
+                )
+                Text(
+                    "Edit the Screensaver dashboard URL and Secure HA dashboard sign-in " +
+                        "switch in Home Assistant under this TV's Kellie's Voice device. " +
+                        "Turn on Home Assistant-managed layout on the TV to receive changes. " +
+                        "You can still edit these here.\n\n" +
+                        "Optional: enter an HTTPS dashboard URL on the same Home Assistant " +
+                        "server used for owner-approved TV pairing. The native app gives " +
+                        "the page a short-lived access token using HA external auth. " +
+                        "No tokens appear in the URL. Frigate and the four-camera " +
+                        "screensaver still work when this is OFF. " +
+                        "Signing out of the dashboard also revokes this TV's voice/camera login.",
+                    color = skin.colors.textMuted, fontSize = 12.sp,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
 
                 Spacer(modifier = Modifier.height(12.dp))
                 var savedCameras by remember { mutableStateOf(prefs.screensaverCameras()) }
