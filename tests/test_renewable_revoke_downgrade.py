@@ -42,10 +42,26 @@ class RenewableRevocationNoDowngradeTests(unittest.TestCase):
             "VoiceActivity.java": "new TvRenewableLoginVault(this).blocksManualFallback()",
             "TvEventsService.java": "new TvRenewableLoginVault(this).blocksManualFallback()",
             "TvEventsRestartReceiver.java": "if (!vault.blocksManualFallback())",
+            "WakeWordService.java": "vault.blocksManualFallback()",
+            "WakeAssistConnection.java": "blocksManualFallback()) return;",
+            "OverlayShortcutActivity.java": "if (!vault.blocksManualFallback())",
+            "WakeWordStartup.java": "if (!vault.blocksManualFallback())",
+            "ScreensaverSettingsSync.java": "if (vault.blocksManualFallback())",
         }
         for file, expected in checks.items():
             with self.subTest(file=file):
                 self.assertIn(expected, source(file))
+
+    def test_camera_setting_sync_renews_on_worker_before_using_websocket(self):
+        code = source("ScreensaverSettingsSync.java")
+        self.assertIn("vault.connectionOnWorker()", code)
+        self.assertIn('new Thread(() -> {', code)
+        self.assertIn('"KelliesScreensaverSettingsRenewal"', code)
+        self.assertIn("main.post(() -> {", code)
+        self.assertIn("thisGeneration != connectionGeneration", code)
+        self.assertIn("scheduleReconnect(null)", code)
+        self.assertIn("connectWith(ready)", code)
+        self.assertIn("if (vault.blocksManualFallback())", code)
 
     def test_policy_does_not_convert_revocation_to_manual_authorization(self):
         code = source("TvOverlayLoginPolicy.java")
