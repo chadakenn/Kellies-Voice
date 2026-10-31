@@ -63,12 +63,11 @@ public final class ScreensaverWatchService extends Service {
 
     public static void startIfEnabled(Context context) {
         if (context == null) return;
-        OverlayPreferences prefs = new OverlayPreferences(context);
-        if (!prefs.screensaverDashboard() && !prefs.haManage()) return;
-        try {
-            context.startForegroundService(new Intent(context, ScreensaverWatchService.class)
-                    .setAction(ACTION_START));
-        } catch (RuntimeException ignored) { }
+        if (!ScreensaverWatchRecovery.tryStart(context)) {
+            // Background start from BOOT_COMPLETED is often denied on Android 14+.
+            // Schedule a supported recovery instead of silently failing.
+            ScreensaverWatchRecovery.scheduleRecovery(context);
+        }
     }
 
     static void refreshFromHa(Context context) {
@@ -95,6 +94,7 @@ public final class ScreensaverWatchService extends Service {
             return START_NOT_STICKY;
         }
         ScreensaverWatchStatus.serviceRunning(true);
+        ScreensaverWatchRecovery.record(this, ScreensaverWatchRecovery.RESULT_STARTED, "");
         windows = getSystemService(WindowManager.class);
         if (intent != null && ACTION_REFRESH_HA.equals(intent.getAction()) && settingsSync != null) {
             // Explicit local user request to fetch HA settings again without

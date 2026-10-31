@@ -137,3 +137,13 @@ Default screensaver is **off**; page layout defaults to **Desktop TV** once enab
 
 - Does not modify PR #61 actionable announcement files.
 - Dev-only. Do not promote to main or publish a stable release until the owner's onn 4K Pro hardware QA passes.
+
+## Watcher recovery after reboot
+
+On some Android TV devices (including Onn 4K Pro), starting the screensaver watcher from `BOOT_COMPLETED` is denied by Android 14+ background-start restrictions. The watcher is opted-in and does not start the microphone or alerts.
+
+If the immediate start fails, Kellie's Voice records a privacy-safe diagnostic (attempted / denied / scheduled) and schedules a one-shot recovery via `AlarmManager`. The recovery does not force the screensaver ON; it respects the user's existing ON/OFF choice.
+
+Diagnostics are available in Settings → Screensaver status. They never include URLs, tokens, or camera names.
+
+Hardware acceptance still requires a physical reboot test: enable the screensaver, reboot the TV, do not open Settings, and confirm the dashboard appears when Google TV enters idle mode.
