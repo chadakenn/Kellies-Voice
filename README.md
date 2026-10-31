@@ -275,6 +275,10 @@ of recording unexpectedly later. [QA checklist](docs/TESTING.md). This historica
 
 For a complete **first-time installation and testing checklist**, start with **[Install Kellie's Voice: new testers](docs/INSTALL.md)**. Other Android/Google/Fire TV models, audio behavior, camera compatibility, and longer-running reliability especially need real tester reports. [Open a GitHub issue](https://github.com/chadakenn/Kellies-Voice/issues) with device model, app/HACS version, reproducible steps and redacted screenshots.
 
+### Community testing acknowledgments
+
+A special thank-you to [**@voravin**](https://github.com/voravin) for detailed testing on **two Philips Android TVs**, documenting Home Assistant screensaver login failures, and helping narrow down remote-navigation and trusted-network authentication issues in [issue #261](https://github.com/chadakenn/Kellies-Voice/issues/261). Clear reports from testers on different hardware are what make Kellie's Voice more reliable for everyone. 🙌
+
 Kellie's Voice is a community-built Home Assistant companion, **not an official Home Assistant or HACS product**.
 
 ## Close a camera by voice (v0.16.2)
