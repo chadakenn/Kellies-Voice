@@ -12,7 +12,7 @@ from . import owner_controls_ready, async_register_owner_ui
 from ..const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
-_OWNER_QA_NOTICE = (
+_OWNER_PAIRING_NOTICE = (
     "SECURE TV PAIRING: Compare the full eight-digit code on both screens. "
     "Approve this TV from the signed-in Home Assistant owner panel at "
     "/kellies-voice-approval. A dedicated non-admin TV account can still "
