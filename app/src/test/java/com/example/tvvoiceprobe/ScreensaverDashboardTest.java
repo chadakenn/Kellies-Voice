@@ -33,6 +33,24 @@ public class ScreensaverDashboardTest {
         assertFalse(ScreensaverDashboard.desktopViewportScript().contains("token"));
     }
 
+    @Test public void haDashboardDoesNotInheritFrigateDesktopScaling() {
+        String haLocal = "http://homeassistant.local:8123/";
+        String haNumeric = "http://192.168.1.25:8123/lovelace/security";
+        String haSecure = "https://my-home.example.com/dashboard-home";
+        String frigate = "http://192.168.1.31:5000/";
+        assertTrue(ScreensaverDashboard.isHomeAssistantPage(haLocal, false));
+        assertTrue(ScreensaverDashboard.isHomeAssistantPage(haNumeric, false));
+        assertTrue(ScreensaverDashboard.isHomeAssistantPage(haSecure, true));
+        assertFalse(ScreensaverDashboard.isHomeAssistantPage(haSecure, false));
+        assertFalse(ScreensaverDashboard.isHomeAssistantPage(frigate, false));
+        assertFalse(ScreensaverDashboard.isHomeAssistantPage("javascript:alert(1)", false));
+        assertFalse(ScreensaverDashboard.useFrigateDesktopViewport(haLocal, true, false));
+        assertFalse(ScreensaverDashboard.useFrigateDesktopViewport(haNumeric, true, false));
+        assertFalse(ScreensaverDashboard.useFrigateDesktopViewport(haSecure, true, true));
+        assertFalse(ScreensaverDashboard.useFrigateDesktopViewport(frigate, false, false));
+        assertTrue(ScreensaverDashboard.useFrigateDesktopViewport(frigate, true, false));
+    }
+
     @Test public void fitPresetsChangeViewportAndFallbackSafely() {
         assertEquals(1920, ScreensaverDashboard.viewportWidth("Fit more cameras"));
         assertEquals(1440, ScreensaverDashboard.viewportWidth("Balanced"));
