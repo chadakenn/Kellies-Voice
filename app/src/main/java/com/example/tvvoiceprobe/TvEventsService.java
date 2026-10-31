@@ -756,7 +756,8 @@ public final class TvEventsService extends Service {
                             && photo != null && entity.equals(snapshotEntity)
                             && title.equals(snapshotTitle) && header == snapshotHeader
                             && fit == snapshotFit;
-                    showSnapshotCard(title, entity, duration, header, fit, refresh, popupActions, popupId);
+                    boolean interactive = data.optBoolean("interactive", false);
+                    showSnapshotCard(title, entity, duration, header, fit, refresh, popupActions, popupId, interactive);
                     if (card != null) reportPopupReceipt("popup_created", diagnosticReceipt);
                     if (!sameCard && card != null) {
                         maybeSpeak(TvEventPayload.speak(data.optString("speak", "")));
@@ -952,6 +953,13 @@ public final class TvEventsService extends Service {
     private void showSnapshotCard(String title, String entity, int seconds,
                                   boolean header, boolean fit, int refreshSeconds,
                                   List<TvEventPayload.Action> actions, String announcementId) {
+        showSnapshotCard(title, entity, seconds, header, fit, refreshSeconds, actions, announcementId, false);
+    }
+
+    private void showSnapshotCard(String title, String entity, int seconds,
+                                  boolean header, boolean fit, int refreshSeconds,
+                                  List<TvEventPayload.Action> actions, String announcementId,
+                                  boolean interactive) {
         if (stopping || windowManager == null || !Settings.canDrawOverlays(this)) return;
         // Never reuse an old card with active buttons, and do not silently
         // discard newly issued action IDs when repeated snapshots arrive.
@@ -969,7 +977,7 @@ public final class TvEventsService extends Service {
             return;
         }
         showCard(title, "Home Assistant camera snapshot", entity, seconds,
-                false, header, fit, refreshSeconds, actions, announcementId);
+                false, header, fit, refreshSeconds, actions, announcementId, interactive);
     }
 
     private void showCard(String title, String text, String entity, int seconds, boolean live) {

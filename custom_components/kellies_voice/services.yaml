@@ -108,16 +108,16 @@ show_camera:
           min: 0
           max: 30
           step: 1
+          mode: box
     interactive:
       default: false
       description: >
-        Optional. When true, the live-camera popup becomes focusable so the
+        Optional. When true, the camera popup becomes focusable so the
         TV remote can close it with Back. Ordinary automatic alerts stay
         passive and never steal focus. Leave false (default) for doorbells
         and unsolicited popups.
       selector:
         boolean:
-          mode: box
     duration_seconds:
       example: 20
       selector:
@@ -170,6 +170,7 @@ show_live_camera:
           min: 0
           max: 30
           step: 1
+          mode: box
     interactive:
       default: false
       description: >
@@ -179,7 +180,6 @@ show_live_camera:
         and unsolicited popups.
       selector:
         boolean:
-          mode: box
     duration_seconds:
       example: 90
       selector:
