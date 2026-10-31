@@ -880,6 +880,20 @@ fun CategoryContent(
                     )
                 }
 
+                if (savedUrl.startsWith("http://", ignoreCase = true)) {
+                    Text(
+                        "LOCAL HTTP: This page stays on your home network, but " +
+                            "credentials are not encrypted. Frigate pages and " +
+                            "unauthenticated dashboards can use the existing WebView " +
+                            "with secure sign-in OFF. Home Assistant login may " +
+                            "still get stuck on 'Please wait' (issue #261). " +
+                            "Automatic TV token sign-in currently requires " +
+                            "a locally reachable HTTPS address. No cloud is required.",
+                        color = skin.colors.warning,
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(top = 6.dp)
+                    )
+                }
                 Spacer(modifier = Modifier.height(8.dp))
                 var haWebLogin by remember { mutableStateOf(prefs.screensaverHaExternalAuth()) }
                 SettingSwitch(
