@@ -1,0 +1,68 @@
+# Kellie's Voice v0.17.0: tester guide and release-readiness status
+
+> **Developer QA as of October 31, 2026. NOT a public release.** The current public stable release is **v0.16.14**. Do not substitute the isolated v3 QA component for the normal HACS integration or claim that the draft beta is ready for everyone. [Stable installation instructions](INSTALL.md) remain authoritative for new users.
+
+## Which components are which?
+
+| Component | What it does | Installation / status |
+| --- | --- | --- |
+| **Kellie's Voice Android TV** | Voice/TALK, overlay, spoken answers, camera display and screensaver | Signed public v0.16.14 for normal use |
+| **Kellie's Voice HACS integration** (`kellies_voice`) | TV device and controls; automation actions, alerts and camera events | Install separately from HACS, match the public APK |
+| **Kellie's Voice Beta** (`com.example.tvvoiceprobe.debug`) | Separate test TV app with Compose Settings and v3 pairing tests | Draft v0.17 QA APK. Can coexist with stable; does **not** inherit stable credentials |
+| **Kellie's Voice v3 QA** (`kellies_voice_v3qa`) | Isolated Home Assistant pairing/owner verification and renewable-login experiment | Draft QA-only ZIP, not the public HACS component; do **not** overwrite `custom_components/kellies_voice` |
+
+**Home Assistant Assist is the conversation engine.** "Julia" / "Julie" are the maintainer's personal assistant name, not another product, a required model, or a wake phrase. Local LLMs are optional. `Okay Nabu` is the separately opted-in wake word; Google's remote microphone is not automatically shared with third-party applications.
+
+## What is being tested in v0.17?
+
+- **Compose Settings:** two-column six-category navigation, theme selection, voice/mic preferences, overlay and alert controls, screensaver, updates, and clearer focus states. The earlier public six-category *classic Settings* is distinct from this development Compose UI.
+- **Quick Actions:** Home Assistant-editable TV buttons, device/action/name choices and icons, with remote-focus and persistence still part of release QA.
+- **HA-first secure pairing v3:** discovery of the short-lived TV session, code comparison, physical TV remote OK, authenticated Home Assistant owner approval, optional dedicated TV login and encrypted handoff. This is **not** the existing public manual URL/token onboarding flow.
+- **Home Assistant screensaver/dashboard:** preview, Frigate web or HA camera grid, live feeds when supported, and automatic Google TV ambient overlay via a separately running watcher.
+- **Permissions:** independent microphone, wake word, camera/announcement receiver, Display over other apps, and Home Assistant layout opt-ins. Opening Settings never grants these permissions implicitly.
+
+## Real onn 4K Pro hardware QA, October 31
+
+| Test | Result | Important qualifier |
+| --- | --- | --- |
+| v3 8-digit comparison + physical remote | **Passed** | A matching code alone is not an HA login |
+| Signed-in HA owner panel approval | **Passed** | Owner account does not transfer to the TV |
+| Dedicated v3 login | **Connected and authenticated** | Owner explicitly opted in |
+| Close and reopen beta | **Reconnected** | No manual credentials re-entered |
+| Full Onn 4K Pro reboot | **Reconnected; Assist voice command worked** | Does not yet establish HA restart/revoke/token-refresh reliability |
+| Screensaver Preview | **Rendered** | Preview bypasses idle trigger |
+| Screensaver automatic idle with watcher RUNNING | **Passed** | Dashboard appeared on normal Google TV idle |
+| Screensaver watcher start after reboot | **Failed** | Diagnostics showed `Watcher: NOT RUNNING`; tapping **Resync HA cameras** changed to RUNNING and ambient overlay then worked |
+
+**Known blocker:** fix reboot-time screensaver watcher restoration in [issue #126](https://github.com/chadakenn/Kellies-Voice/issues/126). It may involve Android's background service restrictions; the exact mechanism needs source fix and retest. This is not a camera playback/authentication failure. Do not treat the manual Resync workaround as a shipping fix.
+
+**Other release gates:** HA restart reconnect, refresh-token expiry/renewal, explicit revocation and replacement of a previously enrolled TV, two-TV isolation, actual alert and camera popup delivery in the combined build, D-pad and focus across themes and Quick Actions, independent security review [#214](https://github.com/chadakenn/Kellies-Voice/issues/214), and matching signed build/HACS QA. See [combined v0.17 QA PR #263](https://github.com/chadakenn/Kellies-Voice/pull/263). No public merge or release is implied by this document.
+
+## Secure pairing: what testers must understand
+
+The beta's opt-in ongoing login creates a **dedicated ordinary non-admin Home Assistant Users account**. Standard HA Users can access/control **all HA entities**, not just devices exposed to Assist. With a Home Assistant Cloud HTTPS origin, the account can also authenticate remotely. Use only for a personally trusted TV and only after explicit owner approval. Do not copy an HA owner's token to the TV. **The beta requires an HA HTTPS endpoint for renewable login**; local HTTP mDNS discovery/identity checks can still work without it.
+
+If an already paired beta is **CONNECTED AND AUTHENTICATED** and a fresh pairing attempt reports `Existing TV enrollment must be resolved`, do **not** delete the journal or account blindly. The current combined QA guard refuses duplicate active/unresolved leases. Confirm existing service connectivity and follow the reviewed re-enrollment/revocation path when available.
+
+## Screensaver troubleshooting in this QA build
+
+1. Open **Beta → Settings → Screensaver → Screensaver status & recovery → Screensaver status & permissions**.
+2. Check **Frigate feature ON**, source configured, **Overlay permission ALLOWED**, **Watcher RUNNING**, **Last Android dream event**, and **Last overlay outcome**.
+3. When watcher is not running after reboot, **Resync HA cameras** can start it (confirmed on onn). This is a **temporary QA workaround**.
+4. Return to Google TV, let it idle naturally, and check whether Kellie's Voice appears. Preview alone does not prove automatic operation.
+5. Report the non-sensitive diagnostic fields and installed beta version. Do not share TV identity, private camera feed, HA URL, passwords or tokens.
+
+## Real hardware screenshots, not design mockups
+
+The [October 28 direct ADB screenshot gallery](screenshots/PR-192-CAPTURES.md) includes the six development Compose Settings categories, local theme choices, a neutral announcement preview, a masked voice overlay, and a privacy-redacted screensaver preview. These were captured from **0.16.14-test**, a developer APK **predating the newest v0.17 fixes**. They demonstrate the actual preview appearance, **not** a final v0.17 screenshot or a passing test of every feature.
+
+The [original stable screenshot gallery](screenshots/README.md) contains verified voice overlay, live doorbell card, camera snapshot, and four-camera screenshots. Do not substitute old Settings images for new categories. Treat preview vs actual alerts and still vs live footage accurately. Keep private camera scenes, people, identifiers and addresses out of public media.
+
+## Public documentation / publishing checklist
+
+- [ ] Make README and HACS `info.md` explain why **Android APK + HACS integration are separate**, how to install matching versions, and the difference between manual stable pairing and QA automatic v3 login.
+- [ ] Link current **real** ADB captures, with true version and feature labels, from README, HACS, screenshot index and Wiki. Don't present development theme screenshots as public release screenshots.
+- [ ] Update Getting Started, TV Settings, HACS, Cameras/Frigate, Alerts, Troubleshooting, FAQ and YAML examples to match the **shipped stable** version; add clearly labeled v0.17 QA notes instead of replacing stable instructions too early.
+- [ ] Check every in-repo wiki link and heading with `python3 scripts/check_wiki_docs.py`.
+- [ ] After review and approved merge to `main`, separately run **Actions → Publish reviewed Kellie's Voice Wiki → PUBLISH**. The Wiki tab has its **own** Git repository; editing `docs/wiki` does not publish it.
+- [ ] Before promoting v0.17 public, repeat hardware acceptance and replace beta wording/links with the **actual released** APK, version and HACS artifact. No imaginary screenshots or tests.
