@@ -8,7 +8,7 @@ Kellie's Voice can show camera snapshots, opt-in HLS camera overlays, and an opt
 
 ## What it looks like on the TV
 
-These photos are from the owner's onn 4K Pro in October 2026. The four-camera grid and the Frigate website are included in the **stable v0.16.14** release (introduced in v0.16.12), opt-in and subject to camera/decoder compatibility. The home camera feeds and event strip are deliberately obscured for privacy.
+These photos are from the owner's onn 4K Pro in October 2026. The four-camera grid and the Frigate website are included in the **stable v0.17.0** release (introduced in v0.16.12), opt-in and subject to camera/decoder compatibility. The home camera feeds and event strip are deliberately obscured for privacy.
 
 ![Four muted live cameras and a Close button](https://raw.githubusercontent.com/chadakenn/Kellies-Voice/main/docs/screenshots/onn-live-camera-grid.jpg)
 
