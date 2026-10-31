@@ -9,7 +9,7 @@ on:
         default: false
         type: boolean
   push:
-    branches: [main]
+    branches: [main, release/v0.17.0-public-rc]
     paths:
       - 'app/**'
       - 'build.gradle'
@@ -61,7 +61,7 @@ jobs:
           echo "TV_SIGNING_KEYSTORE_PATH=$RUNNER_TEMP/kellies-voice-signing.p12" >> "$GITHUB_ENV"
 
       - name: Test Android and Home Assistant before manual signed builds
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/release/v0.17.0-public-rc'
         run: |
           ./gradlew --no-daemon -PskipWakeNative=true :app:assembleDebug :app:testDebugUnitTest
           python3 -m compileall -q custom_components/kellies_voice
@@ -81,7 +81,7 @@ jobs:
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose app/build/outputs/apk/release/app-release.apk
 
       - name: Upload installable signed APK
-        if: github.event_name != 'workflow_dispatch' || inputs.publish_release == true
+        if: github.ref == 'refs/heads/main' && (github.event_name != 'workflow_dispatch' || inputs.publish_release == true)
         uses: actions/upload-artifact@v4
         with:
           name: kellies-voice-signed
@@ -93,7 +93,7 @@ jobs:
       # It is an internal candidate artifact, never a GitHub Release.
       # Public 'Latest', HACS updates and update.json remain unchanged.
       - name: Verify release package identity and signing certificate
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/release/v0.17.0-public-rc'
         env:
           TV_SIGNING_PASSWORD: ${{ secrets.TV_SIGNING_PASSWORD }}
         shell: bash
@@ -114,7 +114,7 @@ jobs:
           fi
 
       - name: Upload privately verified release candidate APK (no publication)
-        if: github.event_name == 'workflow_dispatch' && inputs.publish_release != true
+        if: (github.event_name == 'workflow_dispatch' && inputs.publish_release != true) || (github.event_name == 'push' && github.ref == 'refs/heads/release/v0.17.0-public-rc')
         uses: actions/upload-artifact@v4
         with:
           name: kellies-voice-release-candidate-private
@@ -126,13 +126,13 @@ jobs:
       # The workflow already restores the trusted signing keystore above.
       # Never use a disposable PR debug certificate for tester updates.
       - name: Build signed separately installable QA APK
-        if: github.event_name == 'workflow_dispatch' && inputs.publish_release != true
+        if: (github.event_name == 'workflow_dispatch' && inputs.publish_release != true) || (github.event_name == 'push' && github.ref == 'refs/heads/release/v0.17.0-public-rc')
         env:
           TV_SIGNING_PASSWORD: ${{ secrets.TV_SIGNING_PASSWORD }}
         run: ./gradlew --no-daemon :app:assembleQa
 
       - name: Verify QA package, signature and native wake assets
-        if: github.event_name == 'workflow_dispatch' && inputs.publish_release != true
+        if: (github.event_name == 'workflow_dispatch' && inputs.publish_release != true) || (github.event_name == 'push' && github.ref == 'refs/heads/release/v0.17.0-public-rc')
         env:
           TV_SIGNING_PASSWORD: ${{ secrets.TV_SIGNING_PASSWORD }}
         shell: bash
@@ -161,7 +161,7 @@ jobs:
           fi
 
       - name: Upload persistently signed QA APK
-        if: github.event_name == 'workflow_dispatch' && inputs.publish_release != true
+        if: (github.event_name == 'workflow_dispatch' && inputs.publish_release != true) || (github.event_name == 'push' && github.ref == 'refs/heads/release/v0.17.0-public-rc')
         uses: actions/upload-artifact@v4
         with:
           name: kellies-voice-qa-signed
@@ -173,7 +173,7 @@ jobs:
       # This archive is for controlled manual integration testing, not HACS
       # publishing and never overwrites the user's stable HA installation.
       - name: Package matching Home Assistant QA integration ZIP
-        if: github.event_name == 'workflow_dispatch' && inputs.publish_release != true
+        if: (github.event_name == 'workflow_dispatch' && inputs.publish_release != true) || (github.event_name == 'push' && github.ref == 'refs/heads/release/v0.17.0-public-rc')
         shell: bash
         run: |
           set -euo pipefail
@@ -203,7 +203,7 @@ jobs:
           PY
 
       - name: Upload matching Home Assistant QA ZIP
-        if: github.event_name == 'workflow_dispatch' && inputs.publish_release != true
+        if: (github.event_name == 'workflow_dispatch' && inputs.publish_release != true) || (github.event_name == 'push' && github.ref == 'refs/heads/release/v0.17.0-public-rc')
         uses: actions/upload-artifact@v4
         with:
           name: kellies-voice-ha-qa
