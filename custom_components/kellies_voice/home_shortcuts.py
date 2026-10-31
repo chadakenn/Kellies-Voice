@@ -6,6 +6,7 @@ deliberately excluded. This module has no HA imports for easy security testing.
 """
 
 import re
+from collections.abc import Mapping
 
 COUNT = 4
 ACTIONS = ("Turn on", "Turn off", "Toggle")
@@ -38,7 +39,9 @@ def validate_slot(label, entity_id, action):
 
 def entries_from_options(options):
     """Configured slots only, strict validation even if HA storage was edited."""
-    if not isinstance(options, dict):
+    # Home Assistant ConfigEntry.options is a read-only MappingProxyType.
+    # Requiring dict silently hid all valid Quick Actions on real HA.
+    if not isinstance(options, Mapping):
         return []
     shortcuts = []
     for slot in range(1, COUNT + 1):
