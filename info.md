@@ -24,8 +24,8 @@ The upcoming **v0.17.0 release candidate is not public yet**. It pairs refreshed
 
 ### Quick setup
 1. Add `https://github.com/chadakenn/Kellies-Voice` as an **Integration** in **HACS → Custom repositories** if HACS doesn't already know this repo.
-2. Download **v0.16.14** to match the [signed Android v0.16.14 APK](https://github.com/chadakenn/Kellies-Voice/releases/tag/v0.16.14), then restart Home Assistant.
-3. In **Settings → Devices & services**, add the discovered Kellie's Voice TV, or choose manual pairing with the stable ID shown in the TV app.
+2. Download the **matching version** of the integration for the [latest published signed Android APK](https://github.com/chadakenn/Kellies-Voice/releases/latest), then restart Home Assistant.
+3. For v0.17.0, start **Secure Home Assistant pairing** on the TV, compare the eight digits, press TV remote OK, then approve the dedicated TV login from the Home Assistant owner panel. This needs trusted local or Cloud **HTTPS** for renewable login; otherwise the existing manual connection remains available. See [installation](https://github.com/chadakenn/Kellies-Voice/blob/main/docs/INSTALL.md) and [local HTTPS](https://github.com/chadakenn/Kellies-Voice/blob/main/docs/LOCAL_HTTPS_SETUP.md).
 4. Open the TV's HA device page to configure the overlay and use the actions above.
 
 **Screenshots:** Real onn 4K Pro photos are in the [README gallery](https://github.com/chadakenn/Kellies-Voice/blob/main/README.md#see-it-in-action-). They show the voice overlay, a still camera snapshot, and the live doorbell card starting. The brand banner and older illustrated previews are still concept graphics.
