@@ -94,11 +94,6 @@ class KelliesVoiceV3QaConfigFlow(ConfigFlow, domain=DOMAIN):
                 self._attempt = None
                 self._code = None
                 return self.async_abort(reason="cancelled")
-            if user_input.get("ha_code") != self._code:
-                self._attempt.close()
-                self._attempt = None
-                self._code = None
-                return self.async_abort(reason="mismatch")
             try:
                 result = await self._attempt.confirmed_by_tv_remote(self._transport)
             except Exception:
@@ -150,7 +145,6 @@ class KelliesVoiceV3QaConfigFlow(ConfigFlow, domain=DOMAIN):
             step_id="v3_code",
             description_placeholders={"code": self._code},
             data_schema=vol.Schema({
-                vol.Required("ha_code", default=self._code): str,
                 vol.Required("numbers_match"): bool,
             }),
             errors=errors,
@@ -174,20 +168,6 @@ class KelliesVoiceV3QaConfigFlow(ConfigFlow, domain=DOMAIN):
             return self.async_abort(reason="owner_expired")
         errors = {}
         if user_input is not None:
-            if user_input.get("owner_approved") is not True:
-                owner_claims(self.hass).cancel(self.flow_id)
-                if self._attempt is not None:
-                    self._attempt.close()
-                self._owner_tv = None
-                self._owner_code = None
-                return self.async_abort(reason="cancelled")
-            if user_input.get("ha_code") != self._owner_code:
-                owner_claims(self.hass).cancel(self.flow_id)
-                if self._attempt is not None:
-                    self._attempt.close()
-                self._owner_tv = None
-                self._owner_code = None
-                return self.async_abort(reason="mismatch")
             registry = owner_claims(self.hass)
             if not registry.approved_for(
                     flow_id=self.flow_id, session=tv.session,
@@ -245,9 +225,10 @@ class KelliesVoiceV3QaConfigFlow(ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="owner_approval",
             description_placeholders={"code": self._owner_code},
-            data_schema=vol.Schema({
-                vol.Required("ha_code", default=self._owner_code): str,
-                vol.Required("owner_approved"): bool,
-            }),
+            # A click on Continue never authorizes anything by itself.
+            # The actual approving HA owner must already have claimed this
+            # exact verified session through the authenticated WS panel.
+            # Avoid a second code field and redundant approval checkbox.
+            data_schema=vol.Schema({}),
             errors=errors,
         )
