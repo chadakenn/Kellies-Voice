@@ -38,7 +38,7 @@ final class ScreensaverRemoteCursor {
         final boolean down = direction == DOWN && y >= 0.975f;
         if (!up && !down) return 0f;
         final int repeats = Math.max(0, Math.min(16, repeatCount));
-        final float magnitude = Math.min(3f, 1f + repeats * 0.12f);
+        final float magnitude = Math.min(3f, 1f + repeats * 0.125f);
         return up ? magnitude : -magnitude;
     }
 
