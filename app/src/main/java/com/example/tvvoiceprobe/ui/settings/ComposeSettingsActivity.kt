@@ -3,6 +3,8 @@ package com.example.tvvoiceprobe.ui.settings
 import android.Manifest
 import android.app.AlertDialog
 import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.provider.Settings
@@ -318,6 +320,68 @@ fun CategoryContent(
                     }
                     Spacer(modifier = Modifier.height(6.dp))
                 }
+
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Community Themes", color = skin.colors.accent, fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                Text("Import JSON themes created by the community. Data only — never code.", color = skin.colors.textMuted, fontSize = 13.sp)
+                Spacer(modifier = Modifier.height(8.dp))
+
+                val context = androidx.compose.ui.platform.LocalContext.current
+                var installed by remember { mutableStateOf(com.example.tvvoiceprobe.CommunityThemeStore.list(context)) }
+                val importLauncher = rememberLauncherForActivityResult(
+                    ActivityResultContracts.OpenDocument()
+                ) { uri ->
+                    if (uri != null) {
+                        try {
+                            context.contentResolver.openInputStream(uri)?.use { stream ->
+                                val theme = com.example.tvvoiceprobe.CommunityThemeStore.importTheme(context, stream)
+                                installed = com.example.tvvoiceprobe.CommunityThemeStore.list(context)
+                                Toast.makeText(context, "Imported: ${theme.name}", Toast.LENGTH_SHORT).show()
+                            }
+                        } catch (e: Exception) {
+                            Toast.makeText(context, "Import failed: ${e.message}", Toast.LENGTH_LONG).show()
+                        }
+                    }
+                }
+
+                SettingsChoice(title = "Import Theme", selected = false, onSelect = {
+                    importLauncher.launch(arrayOf("application/json", "text/plain", "*/*"))
+                })
+
+                installed.forEach { theme ->
+                    val selected = skin.id == theme.id
+                    SettingsChoice(
+                        title = if (selected) "● ${theme.name} (${theme.author})" else "○ ${theme.name} (${theme.author})",
+                        selected = selected,
+                        onSelect = {
+                            val prefs = OverlayPreferences(context)
+                            prefs.setSkin(theme.id)
+                            onSkinChange(SkinStore.getSelected(context))
+                            Toast.makeText(context, "Applied: ${theme.name}", Toast.LENGTH_SHORT).show()
+                        }
+                    )
+                }
+
+                if (installed.isNotEmpty()) {
+                    SettingsChoice(title = "Remove selected community theme", selected = false, onSelect = {
+                        val current = OverlayPreferences(context).skin()
+                        if (com.example.tvvoiceprobe.CommunityThemeStore.isId(current)) {
+                            val file = java.io.File(context.filesDir, "community-themes/$current.json")
+                            if (file.delete()) {
+                                OverlayPreferences(context).setSkin(OverlayPreferences.SKIN_GLASS)
+                                installed = com.example.tvvoiceprobe.CommunityThemeStore.list(context)
+                                onSkinChange(SkinStore.getSelected(context))
+                                Toast.makeText(context, "Removed theme", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    })
+                }
+
+                SettingsChoice(title = "Restore Default (Copper Glass)", selected = false, onSelect = {
+                    OverlayPreferences(context).setSkin(OverlayPreferences.SKIN_GLASS)
+                    onSkinChange(SkinStore.getSelected(context))
+                    Toast.makeText(context, "Restored default theme", Toast.LENGTH_SHORT).show()
+                })
 
                 Spacer(modifier = Modifier.height(16.dp))
                 Text("Popup position", color = skin.colors.accent, fontSize = 18.sp, fontWeight = FontWeight.Medium)

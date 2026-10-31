@@ -198,3 +198,14 @@ Further information: [Troubleshooting](TROUBLESHOOTING.md) · [Camera scripts](V
 
 
 **Optional spoken announcements:** After installing, open the TV app → SETTINGS → Alerts & cameras → Spoken announcements → ON. Then Home Assistant `kellies_voice.announce` can include a `speak` sentence. Other audio is ducked temporarily and restored. Default remains silent.
+
+## Community Themes
+
+After pairing, you can import community theme packs:
+
+1. Download a `.json` theme from [themes/community](https://github.com/chadakenn/Kellies-Voice/tree/main/themes/community) or create your own from the template.
+2. On the TV open **Settings → Overlay & appearance → Community Themes → Import Theme**.
+3. Select the JSON file with the system file picker.
+4. Choose **Apply** to use it, or **Restore Default** to return to Copper Glass.
+
+Imported themes are stored privately on the TV and never overwrite pairing credentials or other settings. Unknown or invalid themes fall back to the default.

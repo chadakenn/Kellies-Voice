@@ -352,3 +352,15 @@ On your Kellie's Voice TV's **Home Assistant device** page, configure **TV alert
 Android v0.16.3 also attempts to restart the **already opted-in** TV alert receiver after a reboot or in-place APK update. It never automatically enables alerts or starts the microphone. Because Android TV can block background service startup, go to **Kellie's Voice → Settings → TV alert status → Resume TV alerts** if needed. Wi-Fi disconnects use the receiver's existing reconnect backoff; no stale alerts are replayed. An Android force-stop or some standby conditions still require opening the app.
 
 **Update both parts:** install Android v0.16.3 using **Settings → Check for app updates**, then update the Kellie's Voice HACS integration to v0.16.3 and **restart Home Assistant**. Don't uninstall the Android app or delete settings. On-TV verification of the *new* size/position controls and reboot/update recovery remains to be done. The live `TextureView` camera player and `hide_camera` action are preserved.
+
+## Community Theme Packs
+
+Custom themes can be created and imported without rebuilding the app.
+
+- Themes live in [`themes/community/`](themes/community/) as simple JSON files.
+- On the TV: **Settings → Overlay & appearance → Community Themes**.
+- Import uses Android’s system file picker.
+- Built-in themes remain available.
+- Themes are data only (no code, scripts, or external assets).
+
+See [themes/community/README.md](themes/community/README.md) and [themes/community/CONTRIBUTE.md](themes/community/CONTRIBUTE.md) for the format and contribution guide.

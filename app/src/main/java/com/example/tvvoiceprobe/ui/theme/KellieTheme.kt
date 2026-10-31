@@ -217,11 +217,46 @@ object KellieSkins {
 object SkinStore {
     fun getSelected(context: Context): KellieSkin {
         val prefs = OverlayPreferences(context)
-        return KellieSkins.byId(prefs.skin())
+        val id = prefs.skin()
+        if (com.example.tvvoiceprobe.CommunityThemeStore.isId(id)) {
+            val theme = com.example.tvvoiceprobe.CommunityThemeStore.get(context, id)
+            if (theme != null) {
+                return communityToSkin(theme)
+            }
+        }
+        return KellieSkins.byId(id)
     }
 
     fun setSelected(context: Context, skin: KellieSkin) {
         OverlayPreferences(context).setSkin(skin.id)
+    }
+
+    private fun communityToSkin(theme: com.example.tvvoiceprobe.CommunityThemeStore.Theme): KellieSkin {
+        fun c(key: String) = androidx.compose.ui.graphics.Color(theme.color(key))
+        return KellieSkin(
+            id = theme.id,
+            displayName = theme.name,
+            colors = KellieColors(
+                screen = c("screen"),
+                panel = c("panel"),
+                card = c("card"),
+                cardFocused = c("cardFocused"),
+                accent = c("accent"),
+                accentSecondary = c("accentSecondary"),
+                text = c("text"),
+                textMuted = c("textMuted"),
+                stroke = c("stroke"),
+                focus = c("focus"),
+                success = c("success"),
+                warning = c("warning")
+            ),
+            typography = Typography(),
+            panelShape = RoundedCornerShape(theme.panelRadiusDp.dp),
+            cardShape = RoundedCornerShape(theme.cardRadiusDp.dp),
+            focusBorderWidth = theme.focusBorderDp.dp,
+            spacing = theme.spacingDp.dp,
+            animationScale = theme.animationScale
+        )
     }
 }
 
