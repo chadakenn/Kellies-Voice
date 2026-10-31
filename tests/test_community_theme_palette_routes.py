@@ -19,8 +19,14 @@ class CommunityThemePaletteRouteTests(unittest.TestCase):
             src("VoiceActivity.java"))
 
     def test_voice_overlay_uses_context_aware_theme_palette(self):
-        self.assertEqual(src("VoiceOverlayService.java").count(
+        overlay = src("VoiceOverlayService.java")
+        self.assertEqual(overlay.count(
             "AppPalette.forSkin(this, preferences.skin())"), 2)
+        self.assertEqual(overlay.count(
+            "CommunityThemeStore.isId(preferences.skin())"), 2)
+        self.assertIn("community ? theme.accent", overlay)
+        self.assertIn("community ? theme.text", overlay)
+        self.assertIn("community ? (focused ? theme.focus : theme.menuButton)", overlay)
 
     def test_tv_alert_and_forecast_share_community_colors(self):
         popup = src("TvPopupPalette.java")
