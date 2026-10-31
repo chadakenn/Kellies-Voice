@@ -882,8 +882,9 @@ fun CategoryContent(
 
                 if (savedUrl.startsWith("http://", ignoreCase = true)) {
                     Text(
-                        "LOCAL HTTP: This page stays on your home network, but " +
-                            "credentials are not encrypted. Frigate pages and " +
+                        "LOCAL HTTP: This stays local only if the address resolves " +
+                            "to your home-network server. Credentials are not encrypted. " +
+                            "Frigate pages and " +
                             "unauthenticated dashboards can use the existing WebView " +
                             "with secure sign-in OFF. Home Assistant login may " +
                             "still get stuck on 'Please wait' (issue #261). " +
