@@ -42,15 +42,21 @@ class RenewableRevocationNoDowngradeTests(unittest.TestCase):
             "VoiceActivity.java": "new TvRenewableLoginVault(this).blocksManualFallback()",
             "TvEventsService.java": "new TvRenewableLoginVault(this).blocksManualFallback()",
             "TvEventsRestartReceiver.java": "if (!vault.blocksManualFallback())",
-            "WakeWordService.java": "vault.blocksManualFallback()",
+            "WakeWordService.java": "WakeWordLoginGate.hasSavedLogin(this)",
             "WakeAssistConnection.java": "blocksManualFallback()) return;",
             "OverlayShortcutActivity.java": "if (!vault.blocksManualFallback())",
-            "WakeWordStartup.java": "if (!vault.blocksManualFallback())",
+            "WakeWordStartup.java": "WakeWordLoginGate.hasSavedLogin(activity)",
             "ScreensaverSettingsSync.java": "if (vault.blocksManualFallback())",
         }
         for file, expected in checks.items():
             with self.subTest(file=file):
                 self.assertIn(expected, source(file))
+        # Shared helper preserves the exact same fail-closed rule: after
+        # renewable mode is selected, revoked v3 cannot use legacy tokens.
+        gate = source("WakeWordLoginGate.java")
+        self.assertIn("vault.blocksManualFallback()", gate)
+        self.assertIn("return eligible(true, vault.hasActiveLogin(), false);", gate)
+        self.assertIn("return renewableSelected ? renewableActive : manualCredentialsStored;", gate)
 
     def test_camera_setting_sync_renews_on_worker_before_using_websocket(self):
         code = source("ScreensaverSettingsSync.java")
