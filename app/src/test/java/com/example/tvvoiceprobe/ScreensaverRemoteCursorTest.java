@@ -4,6 +4,21 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 public class ScreensaverRemoteCursorTest {
+    @Test public void eachBrowsingSessionCanResetPointerToVisibleCenter() {
+        ScreensaverRemoteCursor pointer = new ScreensaverRemoteCursor();
+        for (int i = 0; i < 20; i++) {
+            pointer.move(ScreensaverRemoteCursor.RIGHT);
+            pointer.move(ScreensaverRemoteCursor.DOWN);
+        }
+        assertTrue(pointer.pixelX(1920) > 960);
+        assertTrue(pointer.pixelY(1080) > 540);
+        pointer.reset();
+        assertEquals(960, pointer.pixelX(1920));
+        assertEquals(540, pointer.pixelY(1080));
+        pointer.move(ScreensaverRemoteCursor.DOWN);
+        assertEquals(621, pointer.pixelY(1080));
+    }
+
     @Test public void remotePointerMovesAndClicksWithinScreen() {
         ScreensaverRemoteCursor cursor = new ScreensaverRemoteCursor();
         assertEquals(500, cursor.pixelX(1000));
