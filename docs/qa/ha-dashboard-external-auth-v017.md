@@ -9,14 +9,25 @@ It requires signed QA v0.17 and an owner-approved **dedicated TV login**.
 1. Pair the QA app to the intended Home Assistant server using the
    owner-approved renewable TV login. The pairing grant requires HTTPS.
    Do not copy an administrator's long-lived access token into the WebView.
-2. In **Settings → Screensaver**, turn on Screensaver dashboard / cameras.
-3. Set **Dashboard URL (Frigate or Home Assistant)** to a dashboard URL
-   on the **same exact HTTPS scheme/hostname/port** as the paired HA origin,
-   for example `https://ha.example.test:8123/tv-wall/wall?kiosk`.
-4. Turn on **Sign in to Home Assistant dashboard**. It is OFF by default.
+2. On TV, enable **Home Assistant-managed layout** (the same existing
+   setting used to control the Frigate camera grid and layout from HA) and
+   enable **Screensaver dashboard / cameras**.
+3. In HA go to **Settings → Devices & services → Kellie's Voice → Devices →
+   [your TV]**, then edit the existing **Screensaver dashboard URL** text
+   entity. This is the former **Frigate web URL** entity, **renamed without
+   changing its stable ID**, so previous URLs and automations survive. Choose
+   an URL on the **same exact HTTPS scheme/hostname/port** as the paired HA
+   origin, for example `https://ha.example.test:8123/tv-wall/wall?kiosk`.
+   No tokens, usernames or passwords go in this field.
+4. Turn on the TV device's **Secure HA dashboard sign-in** switch in HA.
+   This new configuration switch is OFF by default and is synced only to
+   its matching TV. It never starts the microphone. Both the URL and sign-in
+   switch remain editable on the TV as well. The existing generation-number
+   sync sends HA changes to the TV and refreshes an active screensaver.
 5. Open **Preview screensaver** and test the actual Android TV dream.
-   Turn off the sign-in switch to use the original unauthenticated Frigate
-   page viewer, or clear the URL to use the existing native camera grid.
+   Turn the HA sign-in switch OFF to restore the original unauthenticated
+   Frigate page viewer, or clear the URL to use the existing native camera
+   grid. The TV's HA-managed layout option must be on for HA edits to sync.
 
 The app adds `external_auth=1` to the dashboard URL (preserving any kiosk
 query and fragment), but **never adds a token**. It registers only
