@@ -250,7 +250,7 @@ class DedicatedLoginTests(unittest.IsolatedAsyncioTestCase):
                         self.hass, self.journal, owner_id="owner",
                         tv_uuid=tv, ha_origin=ORIGIN)
         self.assertEqual(self.auth.created, [])
-        self.assertEqual(self.auth.tokens, [])
+        self.assertEqual(self.auth.tokens, {})
 
     async def test_failed_lease_write_removes_new_account(self):
         with patch.object(self.journal, "begin_intent",
