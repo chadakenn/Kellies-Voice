@@ -1,6 +1,6 @@
 # Kellie's Voice: signed APK updates
 
-**Current published stable: [v0.17.0](https://github.com/chadakenn/Kellies-Voice/releases/tag/v0.17.0)** (signed Android build 55 and matching HACS integration 0.17.0). Prefer the **latest GitHub Release** or the signed in-app updater for normal updates; keep the installed app and its saved data. The old version-by-version recovery guidance below is historical. Wiki and release publication use intentionally separate manual GitHub workflows.
+**Current public stable:** See the [latest published signed release](https://github.com/chadakenn/Kellies-Voice/releases/latest) and match its Android APK version to the Home Assistant HACS integration version. **Historical v0.17.0** was Android build 55, with a public Settings navigation issue addressed for v0.17.1 in [PR #295](https://github.com/chadakenn/Kellies-Voice/pull/295). Prefer the **latest GitHub Release** or the signed in-app updater for normal updates; keep the installed app and its saved data. The old version-by-version recovery guidance below is historical. Wiki and release publication use intentionally separate manual GitHub workflows.
 
 **Canonical GitHub repository:** [chadakenn/Kellies-Voice](https://github.com/chadakenn/Kellies-Voice), renamed on 2026-10-21. GitHub release asset URLs preserve that exact capitalization.
 
