@@ -11,19 +11,14 @@
       },
       "v3_code": {
         "title": "Compare all eight digits on TV and Home Assistant",
-        "description": "Home Assistant code: {code}. Compare all EIGHT digits with the TV screen, then press the TV's physical remote OK button. This proves TV identity only and does not log it into Home Assistant.",
+        "description": "Home Assistant shows code **{code}**. Compare all eight digits with the TV, then press OK on the physical TV remote. Confirm below only if they match. This is identity verification, not a login.",
         "data": {
-          "ha_code": "Eight-digit Home Assistant code",
           "numbers_match": "All eight digits matched and I pressed OK on the actual TV remote"
         }
       },
       "owner_approval": {
         "title": "Verified TV: confirm the signed-in HA owner (QA only)",
-        "description": "**TV identity verified.** Leave this dialog open. In a **second browser tab**, open [**OPEN OWNER APPROVAL PANEL**](/kellies-voice-v3qa-approval). Sign in as the actual Home Assistant owner, compare all eight digits, optionally choose dedicated ongoing TV login, and click **Approve this TV**. Return to this dialog, check the approval box and select Submit before the TV's 2-minute window closes. A dedicated standard non-admin Users account can control **all HA entities** and may access HA remotely through Home Assistant Cloud. No credentials are issued unless the owner opts in. **Code: {code}**",
-        "data": {
-          "ha_code": "HA eight-digit verification code",
-          "owner_approved": "I approved this verified TV in the separate signed-in HA owner panel"
-        }
+        "description": "**TV verified.** In a **second browser tab**, open [**OPEN OWNER APPROVAL PANEL**](/kellies-voice-v3qa-approval). As the signed-in Home Assistant owner, confirm the eight-digit code and select **Approve this TV**. For automatic login, check the dedicated TV account option (a standard non-admin HA account can control all entities, so use it only on a TV you trust). Come back and press **Continue** before the two-minute window expires. No additional code entry or approval checkbox is needed. **TV code: {code}**"
       }
     },
     "abort": {
