@@ -241,9 +241,6 @@ class DedicatedLoginTests(unittest.IsolatedAsyncioTestCase):
 
 
 
-class ProvisionFailureCleanupTests(DedicatedLoginTests):
-    """Additional pairing failure paths with no live Home Assistant."""
-
     async def test_bad_identity_never_creates_broad_tv_user(self):
         for tv in ("", "not-a-uuid", "123e4567-e89b-12d3-a456-426614174000",
                    TV.upper(), "123e4567-e89b-42d3-a456-42661417400"):
