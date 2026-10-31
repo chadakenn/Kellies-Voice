@@ -31,7 +31,7 @@ class LanHttpViewerGuardTests(unittest.TestCase):
         self.assertIn("strictLocalHttp", board)
         self.assertIn("LanHttpDashboardPolicy.allowedNavigation(page, next)", board)
         self.assertIn("new WebResourceResponse(", board)
-        self.assertIn("LanHttpDashboardPolicy.allowedNavigation(page, request.getUrl().toString())", board)
+        self.assertIn("LanHttpDashboardPolicy.allowedNavigation(page, next)", board)
         self.assertNotIn("setWebContentsDebuggingEnabled", board)
         self.assertNotIn("addJavascriptInterface(", board)
 
