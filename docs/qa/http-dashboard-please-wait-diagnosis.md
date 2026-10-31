@@ -2,10 +2,10 @@
 
 ## Diagnosis
 
-Home Assistant's frontend shows "Please wait" when its authentication flow does not complete. In the screensaver WebView this commonly happens for local HTTP dashboards for one or more of these reasons:
+Home Assistant's frontend may show "Please wait" when its authentication flow does not complete. The specific cause for issue #261 is **not yet reproduced or established**. These are hypotheses to test on the reporter's HTTP-only setup:
 
-1. **Trusted-networks / cookie session not established**  
-   HA's HTTP trusted_networks path relies on a session cookie set by the backend. Android WebView does not always accept cookies by default unless `CookieManager.setAcceptCookie(true)` is called. Without the cookie, the frontend stays on the waiting screen.
+1. **Authentication flow / cookies not established**  
+   Home Assistant trusted-networks is an authentication provider that can let an IP-allowlisted client select a user without a password. It is **not equivalent to being logged in without an HA token**. Android WebView **accepts first-party cookies by default**, per Android documentation; explicitly calling `setAcceptCookie(true)` makes policy obvious, but is not a proven fix. Inspect the on-device authentication redirect flow, including provider selections and client IP/proxy routing.
 
 2. **external_auth=1 without a responding bridge**  
    If an HTTP URL is loaded with `external_auth=1` (or HA's frontend decides to wait for an external auth callback), and no `externalAppV2` listener answers, the frontend waits indefinitely. The existing HTTPS external-auth path deliberately does **not** append `external_auth=1` to HTTP URLs.
@@ -37,5 +37,12 @@ Automatic LAN-HTTP token login remains tracked in issue #262 and requires a sepa
 2. Confirm HA has the TV's IP in `trusted_networks` (or use the login form).
 3. Start the screensaver / preview.
 4. Check logcat for `KellieScreensaverWeb` lines (scheme, host class, errors only).
-5. Expected: either the dashboard loads, or a clear error is logged. "Please wait" should be reduced if the cookie was the blocker.
+5. Expected: dashboard loads or diagnostics show page lifecycle and any main-frame WebView error codes. A login spinner **may still appear with no WebView network error**. Never interpret lack of errors as successful authentication.
 6. Repeat with Secure HA dashboard sign-in **ON** and an HTTPS same-origin URL to confirm the existing external-auth path is unchanged.
+
+## References and security note
+
+- [Android WebView CookieManager](https://developer.android.com/reference/android/webkit/CookieManager): `setAcceptCookie` defaults to `true`.
+- [Home Assistant trusted-networks authentication](https://www.home-assistant.io/docs/authentication/providers/): trusted client networks are an authentication *provider*, not unrestricted API access; including the normal `homeassistant` provider preserves password login.
+- [Home Assistant external authentication](https://contributors.home-assistant.io/frontend/reference/external-auth/): the native V2 bridge is only activated with `external_auth=1`; HTTPS-only owner-approved pairing remains unchanged.
+- Diagnostics deliberately omit the free-form WebView error description because error text from providers may contain URLs or secrets despite attempted regex redaction. Logs contain only scheme, host class, port and numeric error code. Do not post complete logcat or token-bearing traces publicly.
