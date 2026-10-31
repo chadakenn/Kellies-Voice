@@ -88,6 +88,41 @@ public class ScreensaverDashboardTest {
                 "http://192.168.1.20:5000/", "http://192.168.1.20:5000/?token=abc"));
     }
 
+    @Test public void passwordlessHaLoginRedirectStaysInsideExactOrigin() {
+        String configured = "http://192.168.1.82:8123/mobile-command/home";
+        // Owner-supplied dashboard URLs must remain secret-free.
+        assertEquals("", ScreensaverDashboard.dashboardUrl(
+                configured + "?access_token=not-for-settings"));
+        // But the *browser* must be free to follow HA's transient local
+        // authentication callback without logging or stripping its parameters.
+        assertTrue(ScreensaverDashboard.sameOriginNavigation(configured,
+                "http://192.168.1.82:8123/auth/authorize?client_id=TV&redirect_uri=%2F"));
+        assertTrue(ScreensaverDashboard.sameOriginNavigation(configured,
+                "http://192.168.1.82:8123/mobile-command/home?auth_callback=1&access_token=temporary"));
+        assertTrue(ScreensaverDashboard.sameOriginNavigation(configured,
+                "http://192.168.1.82:8123/auth/flow#access_token=temporary"));
+        assertTrue(ScreensaverDashboard.sameOriginNavigation(configured,
+                "HTTP://192.168.1.82:8123/auth/token?code=temporary"));
+        // No scheme, host, port, userinfo or origin widening.
+        for (String unsafe : new String[] {
+                "https://192.168.1.82:8123/auth/token?code=temporary",
+                "http://192.168.1.83:8123/auth/token?code=temporary",
+                "http://192.168.1.82:8124/auth/token?code=temporary",
+                "http://192.168.1.82:8123.evil.example/auth/token",
+                "http://other.example:8123/auth/token",
+                "http://user:pass@192.168.1.82:8123/auth/token",
+                "javascript:alert(1)", "intent://192.168.1.82:8123",
+                "file:///data/local/tmp/auth", "about:blank",
+                "http://192.168.1.82:8123/other\\\\path",
+                "http://192.168.1.82:8123/other\npath",
+                "http://192.168.1.82:8123/other%ZZ"
+        }) {
+            assertFalse(unsafe, ScreensaverDashboard.sameOriginNavigation(configured, unsafe));
+        }
+        assertFalse(ScreensaverDashboard.sameOriginNavigation(
+                configured + "?token=forbidden", configured));
+    }
+
     @Test public void cameraListKeepsFourRealEntities() {
         assertEquals("camera.driveway,camera.doorbell",
                 ScreensaverDashboard.cameras(" camera.driveway, nope, camera.doorbell "));
