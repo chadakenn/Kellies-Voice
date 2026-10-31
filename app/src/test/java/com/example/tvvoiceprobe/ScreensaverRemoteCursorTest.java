@@ -16,7 +16,26 @@ public class ScreensaverRemoteCursorTest {
         assertEquals(960, pointer.pixelX(1920));
         assertEquals(540, pointer.pixelY(1080));
         pointer.move(ScreensaverRemoteCursor.DOWN);
-        assertEquals(621, pointer.pixelY(1080));
+        assertEquals(564, pointer.pixelY(1080));
+    }
+
+    @Test public void shortTapIsPreciseAndHeldDirectionAcceleratesSafely() {
+        ScreensaverRemoteCursor slow = new ScreensaverRemoteCursor();
+        ScreensaverRemoteCursor held = new ScreensaverRemoteCursor();
+        slow.move(ScreensaverRemoteCursor.RIGHT, 0);
+        held.move(ScreensaverRemoteCursor.RIGHT, 10);
+        assertTrue(held.pixelX(1920) > slow.pixelX(1920));
+        assertTrue(slow.pixelX(1920) > 960);
+        assertTrue(slow.pixelX(1920) < 1010);
+        for (int i = 0; i < 100; i++) {
+            held.move(ScreensaverRemoteCursor.RIGHT, Integer.MAX_VALUE);
+            held.move(ScreensaverRemoteCursor.DOWN, Integer.MAX_VALUE);
+        }
+        assertTrue(held.pixelX(1920) < 1920);
+        assertTrue(held.pixelY(1080) < 1080);
+        held.reset();
+        assertEquals(960, held.pixelX(1920));
+        assertEquals(540, held.pixelY(1080));
     }
 
     @Test public void remotePointerMovesAndClicksWithinScreen() {
