@@ -97,6 +97,14 @@ final class ScreensaverBoard {
             // The focused camera tile or footer button receives key events before
             // a root OnKeyListener. Intercept before dispatching to children.
             @Override public boolean dispatchKeyEvent(KeyEvent event) {
+                // Android WebView consumes TV D-pad keys for HTML focus before
+                // a child OnKeyListener can reliably route them. In explicit
+                // pointer mode, intercept at the parent BEFORE dispatching to
+                // the page, including key-up, so Forgot password and other
+                // browser links cannot steal directional navigation.
+                if (browsing && web != null && isRemotePointerKey(event.getKeyCode())) {
+                    return remoteKey(event.getKeyCode(), event);
+                }
                 if (event.getKeyCode() == KeyEvent.KEYCODE_BACK) {
                     if (event.getAction() == KeyEvent.ACTION_UP && !event.isCanceled()) {
                         onBack();
@@ -414,6 +422,15 @@ final class ScreensaverBoard {
         // Keep Close / browse controls ABOVE the asynchronously loaded page.
         root.addView(web, 0, params);
         web.loadUrl(page);
+        if (haDashboardPage) {
+            // HA login WebViews can trap the remote on a single HTML link.
+            // Automatically provide the visible TV pointer for HA pages only.
+            // Frigate retains its existing opt-in camera browsing button.
+            final WebView openedWeb = web;
+            web.post(() -> {
+                if (!stopped && web == openedWeb && !browsing) startBrowsing();
+            });
+        }
     }
 
     /** Explicit remote browsing. WebView itself may not expose Frigate's tiles to D-pad focus. */
@@ -437,6 +454,7 @@ final class ScreensaverBoard {
 
     private void startBrowsing() {
         if (web == null || stopped) return;
+        if (!browsing) cursor.reset();
         browsing = true;
         if (remotePointer == null) {
             remotePointer = new TextView(context);
@@ -450,6 +468,20 @@ final class ScreensaverBoard {
         }
         web.requestFocus();
         web.post(this::positionPointer);
+    }
+
+    private static boolean isRemotePointerKey(int key) {
+        switch (key) {
+            case KeyEvent.KEYCODE_DPAD_UP:
+            case KeyEvent.KEYCODE_DPAD_DOWN:
+            case KeyEvent.KEYCODE_DPAD_LEFT:
+            case KeyEvent.KEYCODE_DPAD_RIGHT:
+            case KeyEvent.KEYCODE_DPAD_CENTER:
+            case KeyEvent.KEYCODE_ENTER:
+                return true;
+            default:
+                return false;
+        }
     }
 
     private boolean remoteKey(int key, KeyEvent event) {
