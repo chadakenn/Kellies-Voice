@@ -179,7 +179,7 @@ public final class PairingV3QaActivity extends Activity {
         boolean wasRunning = window != null;
         stopWindow();
         if (wasRunning && status != null) {
-            status.setText("V3 test stopped because the QA screen left the foreground. "
+            status.setText("Pairing stopped because this screen closed. "
                     + "Return here and press START again.");
         }
         super.onStop();
