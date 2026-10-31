@@ -14,7 +14,7 @@ The Android TV app handles the microphone, floating overlays, on-screen speech, 
 
 ## Settings menu map
 
-Open **Kellie's Voice → SETTINGS** with the remote. v0.16.14 uses **six focusable categories**, not one scrolling list. Choose a category with D-pad and OK; **Back** returns to the category hub.
+Open **Kellie's Voice → SETTINGS** with the remote. v0.17.0 uses a **two-column Compose Settings layout** with six focusable categories, replacing the older long scrolling list. Choose a category with D-pad and OK; **Back** returns to the category hub.
 
 | Category | Key controls |
 | --- | --- |
