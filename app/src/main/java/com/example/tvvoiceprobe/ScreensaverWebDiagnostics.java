@@ -41,10 +41,11 @@ final class ScreensaverWebDiagnostics {
         Log.i(TAG, "page finished: " + safeSummary(url));
     }
 
-    static void loadError(String url, int code, String description) {
-        // description can contain the URL on some WebView versions; strip it.
-        String safeDesc = description == null ? "" : description.replaceAll("https?://\\S+", "[url]");
-        Log.w(TAG, "load error " + code + " for " + safeSummary(url) + " (" + safeDesc + ")");
+    static void loadError(String url, int code) {
+        // NEVER accept or log WebView's free-form error description. Some
+        // providers include credentials, fragments or unescaped content
+        // without an HTTP(S) prefix, defeating naive regex redaction.
+        Log.w(TAG, "load error code " + code + " for " + safeSummary(url));
     }
 
     static void authNote(String note) {
