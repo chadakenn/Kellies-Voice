@@ -60,6 +60,12 @@ class TvSettingsRoutingTest(unittest.TestCase):
         self.assertNotIn("BuildConfig.VERSION_NAME", toolbar)
         self.assertNotIn("showSettingsDashboard();", toolbar)
         self.assertNotIn('addButton(toolbar, "COMPOSE"', toolbar)
+        compose = (
+            Path(__file__).resolve().parents[1]
+            / "app/src/main/java/com/example/tvvoiceprobe/ui/settings/ComposeSettingsActivity.kt"
+        ).read_text(encoding="utf-8")
+        self.assertIn('text = "Kellie\'s Voice  \\u00b7  Settings"', compose)
+        self.assertNotIn("Compose Settings (preview)", compose)
 
     def test_compose_keyboard_focus_and_recovery_remain_accessible(self):
         compose = (
