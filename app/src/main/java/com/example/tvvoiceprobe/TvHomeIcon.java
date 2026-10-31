@@ -21,9 +21,10 @@ final class TvHomeIcon {
         if (has(name, "light", "lamp", "bulb", "led", "sconce", "chandelier",
                 "spotlight", "ceiling", "track-light")) return "💡";
         if (has(name, "movie", "film", "theater", "popcorn", "projector")) return "🎬";
-        if (has(name, "television", "tv", "monitor", "display", "cast")) return "📺";
         if (has(name, "fan", "air-condition", "weather-windy")) return "🌀";
+        // cctv contains "tv", so classify camera before TV.
         if (has(name, "camera", "cctv", "webcam", "video")) return "📷";
+        if (has(name, "television", "tv", "monitor", "display", "cast")) return "📺";
         if (has(name, "garage", "car", "vehicle")) return "🚗";
         if (has(name, "home", "house", "door", "sofa")) return "🏠";
         if (has(name, "music", "speaker", "audio", "radio", "playlist")) return "🎵";
