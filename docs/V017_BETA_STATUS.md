@@ -8,7 +8,7 @@
 | --- | --- | --- |
 | **Kellie's Voice Android TV** | Voice/TALK, overlay, spoken answers, camera display and screensaver | Signed public v0.16.14 for normal use |
 | **Kellie's Voice HACS integration** (`kellies_voice`) | TV device and controls; automation actions, alerts and camera events | Install separately from HACS, match the public APK |
-| **Kellie's Voice Beta** (`com.example.tvvoiceprobe.debug`) | Separate test TV app with Compose Settings and v3 pairing tests | Draft v0.17 QA APK. Can coexist with stable; does **not** inherit stable credentials |
+| **Kellie's Voice Beta** (`com.example.tvvoiceprobe.qa`) | Separate **persistently signed** test TV app with Compose Settings and v3 pairing tests | v0.17 signed `app-qa.apk` from the manual nonpublishing QA workflow. Coexists with stable; does **not** inherit stable credentials. Disposable `app-debug.apk` is *not* an update for this app |
 | **Kellie's Voice v3 QA** (`kellies_voice_v3qa`) | Isolated Home Assistant pairing/owner verification and renewable-login experiment | Draft QA-only ZIP, not the public HACS component; do **not** overwrite `custom_components/kellies_voice` |
 
 **Home Assistant Assist is the conversation engine.** "Julia" / "Julie" are the maintainer's personal assistant name, not another product, a required model, or a wake phrase. Local LLMs are optional. `Okay Nabu` is the separately opted-in wake word; Google's remote microphone is not automatically shared with third-party applications.
@@ -32,11 +32,17 @@
 | Full Onn 4K Pro reboot | **Reconnected; Assist voice command worked** | Does not yet establish HA restart/revoke/token-refresh reliability |
 | Screensaver Preview | **Rendered** | Preview bypasses idle trigger |
 | Screensaver automatic idle with watcher RUNNING | **Passed** | Dashboard appeared on normal Google TV idle |
-| Screensaver watcher start after reboot | **Failed** | Diagnostics showed `Watcher: NOT RUNNING`; tapping **Resync HA cameras** changed to RUNNING and ambient overlay then worked |
+| Screensaver watcher start after reboot | **Passed on Onn combined Beta** | After a full TV reboot, Mobile Command appeared from normal Google TV idle, without opening Kellie's Voice or pressing Resync. Earlier build had failed; recovery is merged to the v0.17 integration branch via [PR #288](https://github.com/chadakenn/Kellies-Voice/pull/288) |
+| HA dashboard login after reboot | **Passed on Onn** | Trusted-network login to Mobile Command persisted; no login page was displayed |
+| HA dashboard chrome / remote Back | **Passed on Onn** | Combined Beta hides redundant Close/Select camera controls on HA pages; hardware Back dismisses dashboard after reboot |
+| HA dashboard D-pad pointer scroll | **Passed on Onn earlier QA** | Verified in [PR #281](https://github.com/chadakenn/Kellies-Voice/pull/281); exact combined signed build should still receive a brief smoke test |
+| Live doorbell via direct HA service | **Passed on Onn combined Beta** | `kellies_voice.show_live_camera` displayed visibly moving video, without invoking the LLM |
+| Four-camera native grid/fullscreen audio | **Previously passed on older builds; not rerun on final combined Beta** | Must not infer four-feed playback and audio from one direct live doorbell popup |
+| Home Assistant LLM camera phrase | **Unrelated agent error** | User's local agent reached a 20-tool-call limit. Direct HA camera delivery and live playback work; don't gate camera release on LLM tuning |
 
-**Known blocker:** fix reboot-time screensaver watcher restoration in [issue #126](https://github.com/chadakenn/Kellies-Voice/issues/126). It may involve Android's background service restrictions; the exact mechanism needs source fix and retest. This is not a camera playback/authentication failure. Do not treat the manual Resync workaround as a shipping fix.
+**Issue #126 hardware regression resolved on Onn:** both the standalone watcher-recovery QA and the combined signed QA performed unattended post-reboot activation. [PR #288](https://github.com/chadakenn/Kellies-Voice/pull/288) is now merged into `integration/v0.17.0-combined-qa` at `373d871`. These results are **device-specific**, not a promise for every Android TV firmware. The fallback, if Android denies a background start, is to open Kellie's Voice; on Android 13+ a recovery notification also requires the user's notification permission.
 
-**Other release gates:** HA restart reconnect, refresh-token expiry/renewal, explicit revocation and replacement of a previously enrolled TV, two-TV isolation, actual alert and camera popup delivery in the combined build, D-pad and focus across themes and Quick Actions, independent security review [#214](https://github.com/chadakenn/Kellies-Voice/issues/214), and matching signed build/HACS QA. See [combined v0.17 QA PR #263](https://github.com/chadakenn/Kellies-Voice/pull/263). No public merge or release is implied by this document.
+**Other release gates:** HA restart reconnect, refresh-token expiry/renewal, explicit revocation and replacement of a previously enrolled TV, two-TV isolation, native four-camera/fullscreen audio verification on the final combined build, D-pad and focus across themes and Quick Actions, independent security review [#214](https://github.com/chadakenn/Kellies-Voice/issues/214), and matching signed build/HACS QA. See [combined v0.17 QA PR #263](https://github.com/chadakenn/Kellies-Voice/pull/263). No public merge or release is implied by this document.
 
 ## Secure pairing: what testers must understand
 
@@ -48,7 +54,7 @@ If an already paired beta is **CONNECTED AND AUTHENTICATED** and a fresh pairing
 
 1. Open **Beta → Settings → Screensaver → Screensaver status & recovery → Screensaver status & permissions**.
 2. Check **Frigate feature ON**, source configured, **Overlay permission ALLOWED**, **Watcher RUNNING**, **Last Android dream event**, and **Last overlay outcome**.
-3. When watcher is not running after reboot, **Resync HA cameras** can start it (confirmed on onn). This is a **temporary QA workaround**.
+3. On the tested Onn, reboot recovery is now automatic. If an *other* TV reports **Watcher NOT RUNNING**, record **Startup**, **Boot receiver this boot**, and **Last Android dream event** before using **Resync HA cameras** or opening the app, so the failure remains diagnosable. If Android blocks background startup, the app can resume from a visible Activity.
 4. Return to Google TV, let it idle naturally, and check whether Kellie's Voice appears. Preview alone does not prove automatic operation.
 5. Report the non-sensitive diagnostic fields and installed beta version. Do not share TV identity, private camera feed, HA URL, passwords or tokens.
 
