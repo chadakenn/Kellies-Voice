@@ -31,9 +31,7 @@ public final class WakeWordStartup {
             clearReminder(activity);
             return;
         }
-        boolean signedIn = false;
-        try { signedIn = new CredentialStore(activity).load() != null; }
-        catch (Exception ignored) { }
+        boolean signedIn = WakeWordLoginGate.hasSavedLogin(activity);
         boolean routeReady = MicrophoneRouting.preflight(
                 activity, prefs.allowUnverifiedMic()) == null;
         if (!WakeWordSession.mayRestore(

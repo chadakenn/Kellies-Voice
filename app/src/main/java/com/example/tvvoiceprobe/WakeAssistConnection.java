@@ -28,6 +28,9 @@ final class WakeAssistConnection {
         if (VoiceOverlayService.isOpen()) return;
         OverlayPreferences prefs = new OverlayPreferences(context);
         if (!prefs.wakeWord() || prefs.microphoneDisabled()) return;
+        // Renewable TV logins are refreshed by the wake-triggered overlay.
+        // Do not pre-authenticate a standby socket using an old owner token.
+        if (new TvRenewableLoginVault(context).blocksManualFallback()) return;
         CredentialStore.Connection login;
         try {
             login = new CredentialStore(context).load();

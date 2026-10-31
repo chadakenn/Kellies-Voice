@@ -1,6 +1,7 @@
 """Option text shared with the Android TV app. Do not rename values."""
 
 DOMAIN = "kellies_voice"
+QUICK_ACTION_CACHE = "quick_action_entry_cache"
 PLATFORMS = ["select", "switch", "text", "binary_sensor", "sensor"]
 
 POSITIONS = [
@@ -13,7 +14,14 @@ POSITIONS = [
     "Bottom center",
 ]
 SIZES = ["Small", "Medium", "Large"]
-STYLES = ["Copper Glass", "Compact Charcoal", "Night Signal", "Aurora Glass"]
+STYLES = [
+    "Copper Glass",
+    "Compact Charcoal",
+    "Night Signal",
+    "Aurora Glass",
+    "Neon Obsidian",
+    "Jade Terminal",
+]
 HIDE_TIMES = ["Never", "5 seconds", "7 seconds", "10 seconds", "20 seconds"]
 
 SELECTS = (

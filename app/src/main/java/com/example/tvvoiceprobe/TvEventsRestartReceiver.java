@@ -26,7 +26,8 @@ public final class TvEventsRestartReceiver extends BroadcastReceiver {
         WakeWordStartup.onDeviceRestart(context);
         // Independent of TV alerts. Restore the opted-in Frigate dream watcher
         // after app updates/reboot even when announcements are disabled.
-        // Background start may still be denied by individual Android TV firmware.
+        // Record that the receiver ran; do not assume why a start may fail.
+        ScreensaverWatchRecovery.noteBootReceiver(context);
         ScreensaverWatchService.startIfEnabled(context);
         boolean overlay = Settings.canDrawOverlays(context);
         boolean signedIn = signedIn(context);
@@ -50,11 +51,22 @@ public final class TvEventsRestartReceiver extends BroadcastReceiver {
     }
 
     private static boolean signedIn(Context context) {
-        try {
-            return new CredentialStore(context).load() != null;
-        } catch (Exception ignored) {
-            return false;
+        // V3 owner-approved pairing saves a renewable grant in its own
+        // encrypted vault, not in the older manual CredentialStore. A TV
+        // reboot must recognize that already-active grant without requiring
+        // the user to reopen the Activity. Never refresh over the network
+        // or expose a token from this boot BroadcastReceiver.
+        TvRenewableLoginVault vault = new TvRenewableLoginVault(context);
+        boolean renewable = vault.hasActiveLogin();
+        boolean manual = false;
+        if (!vault.blocksManualFallback()) {
+            try {
+                manual = new CredentialStore(context).load() != null;
+            } catch (Exception ignored) {
+                // A missing/corrupt manual credential is not authorization.
+            }
         }
+        return TvEventsRecovery.loginReady(manual, renewable);
     }
 
     static void showResume(Context context, String message) {

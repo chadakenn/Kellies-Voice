@@ -12,10 +12,20 @@ Kellie's Voice pairs a **native Android TV / Google TV voice app** with this **H
 
 **Important:** HACS installs only the Home Assistant integration. You must separately install the [signed Kellie's Voice Android TV APK](https://github.com/chadakenn/Kellies-Voice/releases/latest) and enable **Home Assistant layout** and, for alerts, **TV announcements & cameras** in its settings.
 
+### What's new with v0.17.0
+
+**v0.17.0** It pairs refreshed TV Settings and Home Assistant Quick Actions with improved dashboard login/remote navigation, reliable four-camera screensavers and bundled community themes. Onn 4K Pro hardware QA passed the camera grid, fullscreen playback with sound, themes after reboot and Quick Actions. The standard `kellies_voice` HACS source now contains **owner-approved Home Assistant-first pairing**, including matching eight-digit TV verification and a renewable dedicated non-admin TV login with no manual HA URL/token entry on the TV. The owner consent warns that a non-admin HA user can control all entities. Automatic renewable login currently requires a Home Assistant **HTTPS** origin; local HTTPS needs no Cloud subscription, while HTTP-only auto-login remains unsupported pending [#262](https://github.com/chadakenn/Kellies-Voice/issues/262). The v3 onboarding is an opt-in public preview, with fresh-install and independent security review still tracked in [#214](https://github.com/chadakenn/Kellies-Voice/issues/214); ordinary users should approve only TVs they trust. See the [latest published signed release](https://github.com/chadakenn/Kellies-Voice/releases/latest) for the current stable version.
+
+![Actual onn 4K Pro Compose Settings developer preview, Aurora Glass theme; private data masked](https://raw.githubusercontent.com/chadakenn/Kellies-Voice/integration/v0.17.0-combined-qa/docs/screenshots/compose-aurora-preview.png)
+
+*Development preview screenshot only, not proof that the pictured theme/layout has shipped to stable users.*
+
+**Real ADB photos from an onn 4K Pro, developer build:** [Compose Settings and theme gallery](https://github.com/chadakenn/Kellies-Voice/blob/integration/v0.17.0-combined-qa/docs/screenshots/PR-192-CAPTURES.md). These are privacy-redacted captures of an *older 0.16.14-test preview*, not the final public UI. Existing released screenshots remain in the main README.
+
 ### Quick setup
 1. Add `https://github.com/chadakenn/Kellies-Voice` as an **Integration** in **HACS → Custom repositories** if HACS doesn't already know this repo.
-2. Download **v0.16.14** to match the [signed Android v0.16.14 APK](https://github.com/chadakenn/Kellies-Voice/releases/tag/v0.16.14), then restart Home Assistant.
-3. In **Settings → Devices & services**, add the discovered Kellie's Voice TV, or choose manual pairing with the stable ID shown in the TV app.
+2. Download the **matching version** of the integration for the [latest published signed Android APK](https://github.com/chadakenn/Kellies-Voice/releases/latest), then restart Home Assistant.
+3. For v0.17.0, start **Secure Home Assistant pairing** on the TV, compare the eight digits, press TV remote OK, then approve the dedicated TV login from the Home Assistant owner panel. This needs trusted local or Cloud **HTTPS** for renewable login; otherwise the existing manual connection remains available. See [installation](https://github.com/chadakenn/Kellies-Voice/blob/main/docs/INSTALL.md) and [local HTTPS](https://github.com/chadakenn/Kellies-Voice/blob/main/docs/LOCAL_HTTPS_SETUP.md).
 4. Open the TV's HA device page to configure the overlay and use the actions above.
 
 **Screenshots:** Real onn 4K Pro photos are in the [README gallery](https://github.com/chadakenn/Kellies-Voice/blob/main/README.md#see-it-in-action-). They show the voice overlay, a still camera snapshot, and the live doorbell card starting. The brand banner and older illustrated previews are still concept graphics.

@@ -1,0 +1,28 @@
+{
+  "format": 1,
+  "id": "community.midnight-ocean",
+  "name": "Midnight Ocean",
+  "author": "Kellie's Voice Community",
+  "base": "aurora",
+  "colors": {
+    "screen": "#0A1628",
+    "panel": "#12243C",
+    "card": "#1A3352",
+    "cardFocused": "#24446A",
+    "accent": "#7EB6FF",
+    "accentSecondary": "#4A90D9",
+    "text": "#E8F1FF",
+    "textMuted": "#8AADD4",
+    "stroke": "#3A5A80",
+    "focus": "#A0CFFF",
+    "success": "#4CAF50",
+    "warning": "#FFB74D"
+  },
+  "shapes": {
+    "panelRadiusDp": 18,
+    "cardRadiusDp": 14,
+    "focusBorderDp": 3,
+    "spacingDp": 14
+  },
+  "animationScale": 1.0
+}

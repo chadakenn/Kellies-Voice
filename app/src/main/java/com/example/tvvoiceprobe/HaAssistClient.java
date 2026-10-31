@@ -43,6 +43,8 @@ public final class HaAssistClient {
         default void listening() { }
         default void processing() { }
         default void haLayout(String setting) { }
+        /** Full-screen TV home actions only; no microphone or overlay UI. */
+        default void homeShortcuts(JSONArray slots) { }
         default void localSilence() { }
         default void runEnded() { }
         /** Unexpected socket loss; in-progress Assist run has been reset. */
@@ -87,11 +89,14 @@ public final class HaAssistClient {
     private volatile long conversationTouchedMs;
     private volatile boolean discardConversationUpdate;
     private final Map<Integer, String> layoutWrites = new HashMap<>();
+    private final LayoutWriteFeedback layoutFeedback = new LayoutWriteFeedback();
     private final HaNetworkWatch networks;
     private volatile int commandId = 1;
     private volatile boolean layoutSync;
     private volatile boolean layoutSubscribed;
     private volatile int layoutStatesId = -1;
+    private volatile int homeShortcutListId = -1;
+    private final Map<Integer, Integer> homeShortcutPresses = new HashMap<>();
     private final Map<String, String> layoutEntities = new HashMap<>();
     private volatile boolean disposed = true;
 
@@ -252,8 +257,11 @@ public final class HaAssistClient {
             connecting = false;
             layoutSubscribed = false;
             layoutStatesId = -1;
+            homeShortcutListId = -1;
+            homeShortcutPresses.clear();
             layoutEntities.clear();
             layoutWrites.clear(); // Results from a lost socket can never arrive.
+            layoutFeedback.reset();
             stopForRunEnd();
             if (reconnectEnabled) scheduleReconnect();
         }
@@ -273,8 +281,11 @@ public final class HaAssistClient {
             connecting = false;
             layoutSubscribed = false;
             layoutStatesId = -1;
+            homeShortcutListId = -1;
+            homeShortcutPresses.clear();
             layoutEntities.clear();
             layoutWrites.clear(); // Do not retain unacknowledged old-transport writes.
+            layoutFeedback.reset();
             stopForRunEnd();
             events.connectionLost(); // Release overlay mic/listening UI on Wi-Fi recovery.
         }
@@ -325,6 +336,7 @@ public final class HaAssistClient {
             listener.status("Connected and authenticated. Ready.");
             if (deliver) listener.ready();
             requestLayout();
+            requestHomeShortcuts();
             return;
         }
         if ("auth_invalid".equals(type)) {
@@ -343,6 +355,25 @@ public final class HaAssistClient {
         }
         if ("result".equals(type)) {
             int id = msg.optInt("id", -1);
+            if (id == homeShortcutListId) {
+                homeShortcutListId = -1;
+                if (msg.optBoolean("success", false)) {
+                    JSONObject data = msg.optJSONObject("result");
+                    JSONArray configured = data == null ? null : data.optJSONArray("shortcuts");
+                    events.homeShortcuts(configured == null ? new JSONArray() : configured);
+                } else {
+                    events.homeShortcuts(new JSONArray());
+                }
+                return;
+            }
+            Integer pressed;
+            synchronized (this) { pressed = homeShortcutPresses.remove(id); }
+            if (pressed != null) {
+                events.status(msg.optBoolean("success", false)
+                        ? "Shortcut accepted by Home Assistant."
+                        : "That shortcut failed or is not permitted in Home Assistant.");
+                return;
+            }
             if (id == layoutStatesId) {
                 layoutStatesId = -1;
                 if (msg.optBoolean("success", false)) {
@@ -354,10 +385,9 @@ public final class HaAssistClient {
             String layoutSetting;
             synchronized (this) { layoutSetting = layoutWrites.remove(id); }
             if (layoutSetting != null) {
-                if (!msg.optBoolean("success", false)) {
-                    events.status("Home Assistant didn't accept the "
-                            + layoutSetting.replace('_', ' ') + " change.");
-                }
+                String messageForUser = layoutFeedback.onResult(id, layoutSetting,
+                        msg.optBoolean("success", false));
+                if (messageForUser != null) events.status(messageForUser);
                 return;
             }
             if (id == currentRunId && !msg.optBoolean("success", false)) {
@@ -511,6 +541,51 @@ public final class HaAssistClient {
 
     public synchronized int activeRunId() {
         return currentRunId;
+    }
+
+    /** Refresh the configured Home Assistant buttons on the existing HA socket. */
+    public synchronized void requestHomeShortcuts() {
+        if (!authenticated || socket == null || disposed) return;
+        try {
+            JSONObject request = new JSONObject();
+            int id = commandId++;
+            request.put("id", id);
+            request.put("type", "kellies_voice/get_home_shortcuts");
+            request.put("device_id", new OverlayPreferences(context).deviceId());
+            if (socket.send(request.toString())) homeShortcutListId = id;
+        } catch (Exception ignored) {
+            events.homeShortcuts(new JSONArray());
+        }
+    }
+
+    /** Only a slot number, NEVER a client-provided service, entity or payload. */
+    public synchronized boolean pressHomeShortcut(int slot) {
+        if (slot < 1 || slot > 4 || disposed || !authenticated || socket == null) {
+            events.status("Connect Home Assistant before using a shortcut.");
+            return false;
+        }
+        if (homeShortcutPresses.size() > 0) {
+            events.status("A shortcut is already running.");
+            return false;
+        }
+        try {
+            JSONObject request = new JSONObject();
+            int id = commandId++;
+            request.put("id", id);
+            request.put("type", "kellies_voice/press_home_shortcut");
+            request.put("device_id", new OverlayPreferences(context).deviceId());
+            request.put("slot", slot);
+            if (!socket.send(request.toString())) {
+                events.status("Could not send the shortcut to Home Assistant.");
+                return false;
+            }
+            homeShortcutPresses.put(id, slot);
+            events.status("Running Home Assistant shortcut...");
+            return true;
+        } catch (Exception ignored) {
+            events.status("Shortcut unavailable.");
+            return false;
+        }
     }
 
     public synchronized boolean talk() {
@@ -1062,8 +1137,11 @@ public final class HaAssistClient {
         conversationTouchedMs = 0L;
         discardConversationUpdate = false;
         layoutWrites.clear();
+        layoutFeedback.reset();
         layoutSubscribed = false;
         layoutStatesId = -1;
+        homeShortcutListId = -1;
+        homeShortcutPresses.clear();
         layoutEntities.clear();
         stopForRunEnd();
         WebSocket ws = socket;

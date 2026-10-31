@@ -1,0 +1,28 @@
+{
+  "format": 1,
+  "id": "community.copper-night",
+  "name": "Copper Night",
+  "author": "Kellie's Voice Community",
+  "base": "glass",
+  "colors": {
+    "screen": "#1B1412",
+    "panel": "#2B1B16",
+    "card": "#493128",
+    "cardFocused": "#62453B",
+    "accent": "#E9B390",
+    "accentSecondary": "#BA785B",
+    "text": "#F7E8DB",
+    "textMuted": "#C59A80",
+    "stroke": "#B98465",
+    "focus": "#E9B390",
+    "success": "#4CAF50",
+    "warning": "#FF9800"
+  },
+  "shapes": {
+    "panelRadiusDp": 16,
+    "cardRadiusDp": 12,
+    "focusBorderDp": 3,
+    "spacingDp": 12
+  },
+  "animationScale": 1.0
+}

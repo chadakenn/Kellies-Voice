@@ -20,17 +20,68 @@
         "data": {
           "confirmation_suffix": "Last four characters on TV"
         }
+      },
+      "v3_preview": {
+        "title": "Connect this TV securely from Home Assistant",
+        "description": "Start secure TV pairing from your TV Settings. Home Assistant will discover the TV on your local network and show a matching eight-digit code. No URL or token is typed on the TV.",
+        "data": {
+          "start_test": "Start secure eight-digit code verification"
+        }
+      },
+      "v3_code": {
+        "title": "Confirm all eight digits on the TV",
+        "description": "The code in Home Assistant is {code}. Compare all eight digits on the TV and press OK with the physical TV remote. Then continue to authenticated owner approval.",
+        "data": {
+          "ha_code": "Home Assistant code",
+          "numbers_match": "All eight digits match and I pressed TV remote OK"
+        }
+      },
+      "owner_approval": {
+        "title": "Approve dedicated Kellie's Voice TV login",
+        "description": "Physical TV proof passed for code {code}. In a SECOND signed-in Home Assistant browser tab, open [**APPROVE THIS TV**](/kellies-voice-approval), check the exact eight-digit code and explicitly authorize a separate dedicated TV login. A non-admin HA Users account still has broad entity control. Return to this pairing dialog and select Continue before the two-minute window expires. No TV URL or token is typed.",
+        "data": {
+          "ha_code": "Eight-digit Home Assistant code",
+          "owner_approved": "I approved the matching TV in the owner panel",
+          "qa_instructions": "Read the security and account access notice"
+        }
       }
     },
     "abort": {
       "already_configured": "This TV is already added.",
       "no_id": "The TV did not identify itself. Turn Home Assistant layout off and on in Kellie's Voice, then try again.",
-      "use_discovery": "If automatic detection is available, add the discovered TV. Otherwise use manual pairing."
+      "use_discovery": "If automatic detection is available, add the discovered TV. Otherwise use manual pairing.",
+      "v3_invalid_discovery": "The temporary TV v3 advertisement was invalid. Restart the two-minute pairing test on the TV.",
+      "v3_cancelled": "The secure TV verification test was cancelled. No connection or credentials were changed.",
+      "v3_code_mismatch": "The eight-digit code did not match. Nothing was paired or changed.",
+      "v3_expired": "The secure TV session was unavailable or expired. Start a new test on the TV.",
+      "v3_preview_verified": "TV verified successfully using the secure v3 code and physical remote. This is verification only; your TV login has NOT been installed or changed.",
+      "discovery_only": "This QA integration only works when a TV debug app advertises the temporary v3 mDNS session.",
+      "invalid_discovery": "Invalid v3 TV discovery. Restart the temporary pairing test on your TV.",
+      "cancelled": "Cancelled: your current HA and TV login were not changed.",
+      "expired": "The temporary test expired. Start again using the TV physical remote.",
+      "mismatch": "Codes did not match. No pairing or login was changed.",
+      "verified_no_login": "SUCCESS: The physical TV and secure v3 session were verified. This is NOT a Home Assistant login. Your normal Kellie's Voice setup was not changed.",
+      "owner_unavailable": "The v3 QA owner registry unexpectedly failed. Check Home Assistant system logs. No login or credentials were changed.",
+      "owner_expired": "The two-minute owner approval window expired. Restart v3 pairing.",
+      "owner_denied": "Owner approval was rejected or the Home Assistant account is inactive.",
+      "owner_verified_no_login": "SUCCESS: v3 TV proof and actual signed-in Home Assistant owner approval are BOTH verified. This test does not log in the TV, create a token, or change existing connections.",
+      "owner_setup_missing": "Owner pairing UI was not initialized by Kellie's Voice. Restart Home Assistant and check the integration logs; existing TV connections are unchanged.",
+      "owner_binding_rejected": "The verified TV owner-claim record was rejected. Check the Home Assistant system logs for v3 QA owner binding. No credential was created.",
+      "owner_receipt_verified_no_login": "This TV was securely verified but the owner did not authorize a dedicated login. No credential or device entry was created. Start again to authorize login.",
+      "owner_receipt_failed": "The authenticated owner receipt did not complete or the TV did not cryptographically acknowledge it within the original two-minute window. Restart v3 QA. No credentials or normal TV connections were changed.",
+      "owner_login_connected": "Your dedicated TV login is active. Kellie's Voice has been registered with Home Assistant.",
+      "owner_login_failed": "The new TV login could not activate. Incomplete token enrollment will be recovered or revoked; the old connection remains unchanged.",
+      "https_required": "To keep the TV's renewable credentials protected, automatic login currently requires a configured Home Assistant HTTPS or Cloud URL. Pairing cannot activate over plaintext HTTP."
     },
     "error": {
       "invalid_device_id": "Enter the pairing ID shown on your TV.",
       "invalid_name": "Enter a TV name up to 64 characters.",
-      "pairing_suffix_mismatch": "The four characters don't match the entered TV pairing ID. Recheck the ID on the TV and correct it using Back."
+      "pairing_suffix_mismatch": "The four characters don't match the entered TV pairing ID. Recheck the ID on the TV and correct it using Back.",
+      "v3_unavailable": "Could not contact or verify that TV over v3. Restart the test on the actual TV and retry.",
+      "v3_waiting_for_tv": "Waiting for physical TV remote OK. Compare all eight digits on the TV before continuing.",
+      "unavailable": "Could not contact the TV. Restart secure pairing on the TV.",
+      "waiting_for_tv": "Waiting for the physical TV remote approval. Verify all digits and press OK on the TV.",
+      "owner_pending": "An active Home Assistant owner must approve this exact TV. Open /kellies-voice-approval in another HA tab, click Approve, and retry."
     }
   },
   "services": {
@@ -156,12 +207,27 @@
   "options": {
     "step": {
       "init": {
-        "title": "Experimental native Assist timers",
-        "description": "OFF by default. Enable only for this paired TV when its Home Assistant Assist pipeline supplies the TV's HA registry device ID and routes phrases to native intents. TV countdowns and Home Assistant keep separate clocks; verify on hardware before relying on timers. Existing manual timer actions remain available. This does not enable the microphone.",
+        "title": "TV settings and home-screen shortcuts",
+        "description": "Optional shortcuts appear only on the FULL-SCREEN Kellie's Voice TV home, never the floating voice overlay. Each numbered row has a label, a Home Assistant light.*, scene.* or script.* entity, and an action. Leave label and entity blank to hide a slot. A TV user must have permission to control the configured entity. Do not use these for locks, garages or security controls.",
         "data": {
-          "native_timer_intents": "Enable experimental native timers for this TV"
+          "native_timer_intents": "Enable experimental native timers for this TV",
+          "shortcut_1_label": "Shortcut 1: button label (e.g. Movie Time)",
+          "shortcut_1_entity": "Shortcut 1: Home Assistant entity ID (light.*, scene.*, script.*)",
+          "shortcut_1_action": "Shortcut 1: action (Turn on, Turn off, Toggle)",
+          "shortcut_2_label": "Shortcut 2: button label (e.g. Movie Time)",
+          "shortcut_2_entity": "Shortcut 2: Home Assistant entity ID (light.*, scene.*, script.*)",
+          "shortcut_2_action": "Shortcut 2: action (Turn on, Turn off, Toggle)",
+          "shortcut_3_label": "Shortcut 3: button label (e.g. Movie Time)",
+          "shortcut_3_entity": "Shortcut 3: Home Assistant entity ID (light.*, scene.*, script.*)",
+          "shortcut_3_action": "Shortcut 3: action (Turn on, Turn off, Toggle)",
+          "shortcut_4_label": "Shortcut 4: button label (e.g. Movie Time)",
+          "shortcut_4_entity": "Shortcut 4: Home Assistant entity ID (light.*, scene.*, script.*)",
+          "shortcut_4_action": "Shortcut 4: action (Turn on, Turn off, Toggle)"
         }
       }
+    },
+    "error": {
+      "invalid_shortcut": "Each shortcut needs a short label and a light.*, scene.* or script.* entity. Scenes and scripts only support Turn on; lights support Turn on, Turn off and Toggle. Leave both fields empty to remove a shortcut."
     }
   }
 }

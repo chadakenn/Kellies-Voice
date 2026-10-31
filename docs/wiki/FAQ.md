@@ -1,5 +1,7 @@
 # FAQ
 
+> **v0.17.0 release note:** The public signed APK includes Compose Settings and the bundled theme packs, but its main SETTINGS button mistakenly opens the older dialog interface. See [PR #295](https://github.com/chadakenn/Kellies-Voice/pull/295) for the public-build routing fix. The [redacted Compose screenshots](https://github.com/chadakenn/Kellies-Voice/blob/main/docs/screenshots/PR-192-CAPTURES.md) came from development testing and are not proof that the public v0.17.0 APK opens that screen. Owner-approved no-typing pairing is available in the normal v0.17.0 app and HACS integration as an **opt-in public preview**, not a separate QA-only component. Renewable TV login requires a trusted HTTPS Home Assistant origin; first-install and independent security review are still tracked in [#214](https://github.com/chadakenn/Kellies-Voice/issues/214).
+
 [← Documentation home](Home.md) · [Getting started](Getting-Started.md) · [YAML Cookbook](YAML-Cookbook.md) · [Troubleshooting](Troubleshooting.md)
 
 ---

@@ -11,6 +11,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Required for TTS engine visibility on Android 11+ (target SDK 35). -->
     <queries>
         <intent>
@@ -20,7 +21,7 @@
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
     <uses-feature android:name="android.software.leanback" android:required="false" />
-    <application android:label="Kellie's Voice"
+    <application android:label="${appDisplayName}"
         android:theme="@android:style/Theme.Material.NoActionBar"
         android:banner="@drawable/tv_banner"
         android:icon="@drawable/ic_kellie_voice"
@@ -40,7 +41,7 @@
             </intent-filter>
         </activity>
         <activity android:name=".OverlayShortcutActivity"
-            android:label="Kellie's Voice Overlay"
+            android:label="${overlayDisplayName}"
             android:exported="true"
             android:excludeFromRecents="true"
             android:banner="@drawable/tv_banner"
@@ -59,6 +60,12 @@
                 android:resource="@xml/file_paths" />
         </provider>
         <activity android:name=".MainActivity" android:exported="false"/>
+        <!-- Beta guided onboarding and isolated ephemeral v3 verification. -->
+        <activity android:name=".FirstRunSetupActivity" android:exported="false" />
+        <activity android:name=".PairingV3QaActivity" android:exported="false" />
+        <activity android:name=".ui.settings.ComposeSettingsActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Material.NoActionBar" />
         <activity android:name=".ScreensaverPreviewActivity"
             android:exported="false"
             android:excludeFromRecents="true"
@@ -70,7 +77,7 @@
                 android:value="Show the opt-in Frigate dashboard while the Android TV screensaver is on" />
         </service>
         <service android:name=".FrigateScreensaverDream"
-            android:label="Kellie's Voice Frigate"
+            android:label="${dreamDisplayName}"
             android:exported="true"
             android:permission="android.permission.BIND_DREAM_SERVICE">
             <intent-filter>

@@ -14,6 +14,8 @@ public final class OverlayPreferences {
     public static final String SKIN_CLASSIC = "classic";
     public static final String SKIN_SIGNAL = "signal";
     public static final String SKIN_AURORA = "aurora";
+    public static final String SKIN_OBSIDIAN = "obsidian";
+    public static final String SKIN_TERMINAL = "terminal";
 
     public static final String POSITION_DEFAULT = "default";
     public static final String POSITION_TOP_LEFT = "top_left";
@@ -62,20 +64,30 @@ public final class OverlayPreferences {
     private static final String KEY_UPDATE_CHANNEL = "update_channel";
     private static final String KEY_SCREENSAVER = "screensaver_dashboard";
     private static final String KEY_SCREENSAVER_URL = "screensaver_dashboard_url";
+    private static final String KEY_SCREENSAVER_HA_AUTH = "screensaver_ha_external_auth_opt_in";
+    private static final String KEY_SCREENSAVER_LAN_HTTP = "screensaver_lan_http_only";
     private static final String KEY_SCREENSAVER_CAMERAS = "screensaver_cameras";
     private static final String KEY_SCREENSAVER_SIZE = "screensaver_size";
     private static final String KEY_SCREENSAVER_DESKTOP = "screensaver_desktop_page";
     private static final String KEY_SCREENSAVER_FIT = "screensaver_fit";
     private static final String KEY_SCREENSAVER_LIVE = "screensaver_live_mode";
     private final SharedPreferences preferences;
+    private final Context appContext;
+
+    public Context getContext() { return appContext; }
 
     public OverlayPreferences(Context context) {
-        preferences = context.getApplicationContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        appContext = context.getApplicationContext();
+        preferences = appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
     }
 
     public String skin() {
         String value = preferences.getString(KEY_SKIN, SKIN_GLASS);
-        if (SKIN_CLASSIC.equals(value) || SKIN_SIGNAL.equals(value) || SKIN_AURORA.equals(value)) return value;
+        if (SKIN_CLASSIC.equals(value) || SKIN_SIGNAL.equals(value) || SKIN_AURORA.equals(value)
+                || SKIN_OBSIDIAN.equals(value) || SKIN_TERMINAL.equals(value)) return value;
+        if (CommunityThemeStore.isId(value) && CommunityThemeStore.get(appContext, value) != null) {
+            return value;
+        }
         return SKIN_GLASS;
     }
 
@@ -84,6 +96,10 @@ public final class OverlayPreferences {
         if (SKIN_CLASSIC.equals(value)) stored = SKIN_CLASSIC;
         else if (SKIN_SIGNAL.equals(value)) stored = SKIN_SIGNAL;
         else if (SKIN_AURORA.equals(value)) stored = SKIN_AURORA;
+        else if (SKIN_OBSIDIAN.equals(value)) stored = SKIN_OBSIDIAN;
+        else if (SKIN_TERMINAL.equals(value)) stored = SKIN_TERMINAL;
+        else if (CommunityThemeStore.isId(value) &&
+                CommunityThemeStore.get(appContext, value) != null) stored = value;
         preferences.edit().putString(KEY_SKIN, stored).apply();
     }
 
@@ -91,6 +107,8 @@ public final class OverlayPreferences {
         if (SKIN_CLASSIC.equals(value)) return "Compact Charcoal";
         if (SKIN_SIGNAL.equals(value)) return "Night Signal";
         if (SKIN_AURORA.equals(value)) return "Aurora Glass";
+        if (SKIN_OBSIDIAN.equals(value)) return "Neon Obsidian";
+        if (SKIN_TERMINAL.equals(value)) return "Jade Terminal";
         return "Copper Glass";
     }
 
@@ -402,6 +420,28 @@ public final class OverlayPreferences {
 
     public void setScreensaverUrl(String value) {
         preferences.edit().putString(KEY_SCREENSAVER_URL, ScreensaverDashboard.dashboardUrl(value)).apply();
+    }
+
+    /** Secure HA dashboard WebView login is explicit opt-in, never automatic.
+     * Frigate URLs and existing four-camera grid remain unchanged.
+     */
+    public boolean screensaverHaExternalAuth() {
+        return preferences.getBoolean(KEY_SCREENSAVER_HA_AUTH, false);
+    }
+
+    public void setScreensaverHaExternalAuth(boolean enabled) {
+        preferences.edit().putBoolean(KEY_SCREENSAVER_HA_AUTH, enabled).apply();
+    }
+
+    /** Optional origin-restricted LAN HTTP viewer. This never grants access
+     * to the HTTPS-only renewable TV login or makes HTTP tokens safe.
+     */
+    public boolean screensaverLanHttpOnly() {
+        return preferences.getBoolean(KEY_SCREENSAVER_LAN_HTTP, false);
+    }
+
+    public void setScreensaverLanHttpOnly(boolean enabled) {
+        preferences.edit().putBoolean(KEY_SCREENSAVER_LAN_HTTP, enabled).apply();
     }
 
     public String screensaverCameras() {

@@ -9,7 +9,7 @@ on:
         default: false
         type: boolean
   push:
-    branches: [main]
+    branches: [main, release/v0.17.0-public-rc]
     paths:
       - 'app/**'
       - 'build.gradle'
@@ -60,8 +60,8 @@ jobs:
           keytool -list -storetype PKCS12 -keystore "$RUNNER_TEMP/kellies-voice-signing.p12" -storepass "$TV_SIGNING_PASSWORD" -alias tvvoice > /dev/null
           echo "TV_SIGNING_KEYSTORE_PATH=$RUNNER_TEMP/kellies-voice-signing.p12" >> "$GITHUB_ENV"
 
-      - name: Test Android and Home Assistant before public release
-        if: (github.event_name == 'workflow_dispatch' && inputs.publish_release == true)
+      - name: Test Android and Home Assistant before manual signed builds
+        if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/release/v0.17.0-public-rc'
         run: |
           ./gradlew --no-daemon -PskipWakeNative=true :app:assembleDebug :app:testDebugUnitTest
           python3 -m compileall -q custom_components/kellies_voice
@@ -81,11 +81,135 @@ jobs:
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose app/build/outputs/apk/release/app-release.apk
 
       - name: Upload installable signed APK
+        if: github.ref == 'refs/heads/main' && (github.event_name != 'workflow_dispatch' || inputs.publish_release == true)
         uses: actions/upload-artifact@v4
         with:
           name: kellies-voice-signed
           path: app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
+
+      # A manual run with Publish public release unchecked now verifies the
+      # REAL production-package signed release APK before publication.
+      # It is an internal candidate artifact, never a GitHub Release.
+      # Public 'Latest', HACS updates and update.json remain unchanged.
+      - name: Verify release package identity and signing certificate
+        if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/release/v0.17.0-public-rc'
+        env:
+          TV_SIGNING_PASSWORD: ${{ secrets.TV_SIGNING_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk=app/build/outputs/apk/release/app-release.apk
+          badging="$("$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$apk")"
+          grep -F "package: name='com.example.tvvoiceprobe'" <<< "$badging"
+          if grep -q 'application-debuggable' <<< "$badging"; then
+            echo '::error::Release candidate must not be debuggable'
+            exit 1
+          fi
+          apk_cert="$("$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$apk" | sed -nE 's/^Signer #1 certificate SHA-256 digest: ([[:xdigit:]]+).*/\1/p' | head -n 1)"
+          key_cert="$(keytool -list -v -storetype PKCS12 -keystore "$TV_SIGNING_KEYSTORE_PATH" -storepass "$TV_SIGNING_PASSWORD" -alias tvvoice | sed -nE 's/.*SHA256: ([[:xdigit:]:]+).*/\1/p' | head -n 1 | tr -d ':' | tr '[:upper:]' '[:lower:]')"
+          if [[ -z "$apk_cert" || -z "$key_cert" || "$apk_cert" != "$key_cert" ]]; then
+            echo '::error::Signed release candidate does not match the persistent key'
+            exit 1
+          fi
+
+      - name: Upload privately verified release candidate APK (no publication)
+        if: (github.event_name == 'workflow_dispatch' && inputs.publish_release != true) || (github.event_name == 'push' && github.ref == 'refs/heads/release/v0.17.0-public-rc')
+        uses: actions/upload-artifact@v4
+        with:
+          name: kellies-voice-release-candidate-private
+          path: app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+          retention-days: 7
+
+      # Manual, non-publishing builds also produce the persistent QA app.
+      # The workflow already restores the trusted signing keystore above.
+      # Never use a disposable PR debug certificate for tester updates.
+      - name: Build signed separately installable QA APK
+        if: (github.event_name == 'workflow_dispatch' && inputs.publish_release != true) || (github.event_name == 'push' && github.ref == 'refs/heads/release/v0.17.0-public-rc')
+        env:
+          TV_SIGNING_PASSWORD: ${{ secrets.TV_SIGNING_PASSWORD }}
+        run: ./gradlew --no-daemon :app:assembleQa
+
+      - name: Verify QA package, signature and native wake assets
+        if: (github.event_name == 'workflow_dispatch' && inputs.publish_release != true) || (github.event_name == 'push' && github.ref == 'refs/heads/release/v0.17.0-public-rc')
+        env:
+          TV_SIGNING_PASSWORD: ${{ secrets.TV_SIGNING_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk=app/build/outputs/apk/qa/app-qa.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$apk"
+          bash .github/scripts/verify-wake-apk.sh "$apk"
+          badging="$("$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$apk")"
+          grep -F "package: name='com.example.tvvoiceprobe.qa'" <<< "$badging"
+          if grep -q 'application-debuggable' <<< "$badging"; then
+            echo '::error::QA package must not be debuggable'
+            exit 1
+          fi
+          # In a QA-only run no production APK is built. Instead compare the
+          # APK certificate directly with the trusted, restored private keystore.
+          qa_cert="$("$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$apk" \
+            | sed -nE 's/^Signer #1 certificate SHA-256 digest: ([[:xdigit:]]+).*/\1/p' | head -n 1)"
+          key_cert="$(keytool -list -v -storetype PKCS12 \
+            -keystore "$TV_SIGNING_KEYSTORE_PATH" -storepass "$TV_SIGNING_PASSWORD" \
+            -alias tvvoice | sed -nE 's/.*SHA256: ([[:xdigit:]:]+).*/\1/p' \
+            | head -n 1 | tr -d ':' | tr '[:upper:]' '[:lower:]')"
+          if [[ -z "$qa_cert" || -z "$key_cert" || "$qa_cert" != "$key_cert" ]]; then
+            echo '::error::QA APK signing certificate does not match the trusted keystore'
+            exit 1
+          fi
+
+      - name: Upload persistently signed QA APK
+        if: (github.event_name == 'workflow_dispatch' && inputs.publish_release != true) || (github.event_name == 'push' && github.ref == 'refs/heads/release/v0.17.0-public-rc')
+        uses: actions/upload-artifact@v4
+        with:
+          name: kellies-voice-qa-signed
+          path: app/build/outputs/apk/qa/app-qa.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      # QA Android and HA sources must come from the SAME checked-out SHA.
+      # This archive is for controlled manual integration testing, not HACS
+      # publishing and never overwrites the user's stable HA installation.
+      - name: Package matching Home Assistant QA integration ZIP
+        if: (github.event_name == 'workflow_dispatch' && inputs.publish_release != true) || (github.event_name == 'push' && github.ref == 'refs/heads/release/v0.17.0-public-rc')
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os
+          import zipfile
+          from pathlib import Path
+          root = Path('custom_components/kellies_voice')
+          assert (root / 'manifest.json').is_file(), 'Missing HA integration manifest'
+          files = sorted(
+              p for p in root.rglob('*')
+              if p.is_file() and not p.is_symlink()
+              and not any(part in ('__pycache__', '.git') for part in p.parts)
+              and p.suffix != '.pyc'
+          )
+          assert files, 'Empty HA integration'
+          Path('dist').mkdir(exist_ok=True)
+          with zipfile.ZipFile('dist/kellies-voice-ha-qa.zip', 'w',
+                               compression=zipfile.ZIP_DEFLATED) as archive:
+              for path in files:
+                  archive.write(path, path.as_posix())
+          with zipfile.ZipFile('dist/kellies-voice-ha-qa.zip') as archive:
+              names = archive.namelist()
+              assert 'custom_components/kellies_voice/manifest.json' in names
+              assert all(name.startswith('custom_components/kellies_voice/') for name in names)
+          print(f'Packaged {len(files)} HA integration files from checked-out QA commit.')
+          PY
+
+      - name: Upload matching Home Assistant QA ZIP
+        if: (github.event_name == 'workflow_dispatch' && inputs.publish_release != true) || (github.event_name == 'push' && github.ref == 'refs/heads/release/v0.17.0-public-rc')
+        uses: actions/upload-artifact@v4
+        with:
+          name: kellies-voice-ha-qa
+          path: dist/kellies-voice-ha-qa.zip
+          if-no-files-found: error
+          retention-days: 14
 
   publish-release:
     # Publishing requires a deliberate manual workflow-dispatch approval.

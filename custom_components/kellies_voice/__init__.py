@@ -7,21 +7,29 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import config_validation as cv
 
-from .const import DOMAIN, PLATFORMS
+from .const import DOMAIN, PLATFORMS, QUICK_ACTION_CACHE
 from .services import async_register_services
 from .timer_handler import TimerBridge, TimerHandlerRegistry
 from .websocket import async_register_alert_subscription
+from .home_shortcuts_ws import async_register_home_shortcuts
+from .v3 import async_register_owner_ui
 
 _LOGGER = logging.getLogger(__name__)
 _TIMER_KEY = "native_timer_registries"
+_TIMER_OPTIONS_AT_SETUP = "native_timer_options_at_setup"
 
-# UI/config-entry only: reject accidental YAML configuration and satisfy hassfest.
+# Configuration is performed through the Home Assistant UI, not YAML.
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     async_register_services(hass)
     async_register_alert_subscription(hass)
+    async_register_home_shortcuts(hass)
+    # Normal HACS loads the owner UI; no separate v3 QA integration or YAML.
+    # Fail closed for new pairing if any owner approval service is unavailable;
+    # existing TV controls and manual accounts must stay operational.
+    await async_register_owner_ui(hass)
     return True
 
 
@@ -67,14 +75,33 @@ def _enable_native_timers(hass: HomeAssistant, entry: ConfigEntry) -> None:
 
 
 async def _options_updated(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Re-register only after an explicit options change, not on every event."""
-    await hass.config_entries.async_reload(entry.entry_id)
+    """Quick Action edits must NOT unload/reload in-flight device controls.
+
+    Shortcut fetch/press reads entry.options directly on every WebSocket call,
+    so changing a label/target/action does not need a platform restart. Reload
+    only if native timer registration actually changes.
+    """
+    previous = hass.data.setdefault(DOMAIN, {}).setdefault(
+        _TIMER_OPTIONS_AT_SETUP, {}
+    ).get(entry.entry_id, False)
+    current = entry.options.get("native_timer_intents", False) is True
+    if previous != current:
+        await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     async_register_services(hass)
     async_register_alert_subscription(hass)
+    async_register_home_shortcuts(hass)
+    # Canonical option snapshot used by the twelve native device controls.
+    # One slot edit must never write over another control's recent changes.
+    hass.data.setdefault(DOMAIN, {}).setdefault(
+        QUICK_ACTION_CACHE, {}
+    )[entry.entry_id] = dict(entry.options)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    hass.data.setdefault(DOMAIN, {}).setdefault(
+        _TIMER_OPTIONS_AT_SETUP, {}
+    )[entry.entry_id] = entry.options.get("native_timer_intents", False) is True
     entry.async_on_unload(entry.add_update_listener(_options_updated))
     if entry.options.get("native_timer_intents", False) is True:
         _enable_native_timers(hass, entry)

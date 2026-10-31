@@ -136,6 +136,68 @@ public final class ScreensaverDashboard {
         }
     }
 
+    /**
+     * Safe in-page browser navigation, not a user-supplied dashboard setting.
+     *
+     * The configured URL remains secret-free via dashboardUrl(). A real HA
+     * browser login, however, can navigate to same-origin routes whose query
+     * or fragment holds a transient authorization code/token. Re-applying
+     * dashboardUrl() to that redirect rejects it even when the origin matches.
+     * Keep exact scheme/host/port checks, forbid userinfo and unsafe schemes,
+     * but do not inspect or log the destination's query or fragment.
+     */
+    public static boolean sameOriginNavigation(String configuredPage, String destination) {
+        String initial = dashboardUrl(configuredPage);
+        if (initial.isEmpty() || destination == null
+                || destination.length() < 8 || destination.length() > 8192) return false;
+        for (int i = 0; i < destination.length(); i++) {
+            char c = destination.charAt(i);
+            if (c <= 32 || c == '\\' || c > 126) return false;
+        }
+        try {
+            URI source = new URI(initial);
+            URI target = new URI(destination);
+            String scheme = target.getScheme();
+            return !target.isOpaque()
+                    && target.getUserInfo() == null
+                    && scheme != null
+                    && ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme))
+                    && source.getScheme().equalsIgnoreCase(scheme)
+                    && source.getHost().equalsIgnoreCase(target.getHost())
+                    && source.getPort() == target.getPort();
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    /**
+     * HA's login and Lovelace layouts are responsive. Frigate's desktop
+     * viewport workaround must not run on HA pages: on Android TV it can
+     * push the login dialog beyond the visible area.
+     *
+     * This is presentation-only detection, NEVER a security or auth check.
+     * Authentication must still use HaDashboardAuthPolicy independently.
+     */
+    public static boolean isHomeAssistantPage(String page, boolean secureHaSignIn) {
+        if (secureHaSignIn) return true;
+        String valid = dashboardUrl(page);
+        if (valid.isEmpty()) return false;
+        try {
+            URI uri = new URI(valid);
+            String host = uri.getHost();
+            return uri.getPort() == 8123
+                    || "homeassistant.local".equalsIgnoreCase(host)
+                    || "homeassistant".equalsIgnoreCase(host);
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    public static boolean useFrigateDesktopViewport(String page, boolean desktopPreferred,
+            boolean secureHaSignIn) {
+        return desktopPreferred && !isHomeAssistantPage(page, secureHaSignIn);
+    }
+
     /** Up to four camera.* entities. Anything else is dropped. */
     public static String cameras(String raw) {
         if (raw == null || raw.trim().isEmpty()) return "";

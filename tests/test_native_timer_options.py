@@ -1,6 +1,7 @@
 """Test the real HA OptionsFlow methods without requiring Home Assistant."""
 
 import ast
+import importlib.util
 from pathlib import Path
 from types import SimpleNamespace
 import unittest
@@ -19,6 +20,9 @@ class FakeVol:
     @staticmethod
     def Schema(fields):
         return fields
+    @staticmethod
+    def In(values):
+        return str
 
 
 class FakeOptionsFlow:
@@ -30,7 +34,23 @@ class FakeOptionsFlow:
         return {"type": "create", **kwargs}
 
 
-runtime = {"OptionsFlow": FakeOptionsFlow, "vol": FakeVol}
+_SHORTCUTS = Path(__file__).resolve().parents[1] / "custom_components/kellies_voice/home_shortcuts.py"
+_spec = importlib.util.spec_from_file_location("timer_shortcuts", _SHORTCUTS)
+_module = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_module)
+_ICON_FILE = Path(__file__).resolve().parents[1] / "custom_components/kellies_voice/quick_action_icons.py"
+_icon_spec = importlib.util.spec_from_file_location("timer_quick_icons", _ICON_FILE)
+_icon_module = importlib.util.module_from_spec(_icon_spec)
+_icon_spec.loader.exec_module(_icon_module)
+runtime = {
+    "ICON_CHOICES": _icon_module.ICON_CHOICES,
+    "validate_override": _icon_module.validate_override,
+    "OptionsFlow": FakeOptionsFlow,
+    "vol": FakeVol,
+    "COUNT": _module.COUNT,
+    "ACTIONS": _module.ACTIONS,
+    "validate_slot": _module.validate_slot,
+}
 exec(compile(ast.Module(body=[OPTIONS], type_ignores=[]),
              "timer_options_from_config_flow.py", "exec"), runtime)
 OptionFlowUnderTest = runtime["KellieVoiceOptionsFlow"]
@@ -43,9 +63,12 @@ class NativeTimerOptionsTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual("form", view["type"])
         self.assertIn("native_timer_intents", view["data_schema"])
         enabled = await flow.async_step_init({"native_timer_intents": True})
-        self.assertEqual({"native_timer_intents": True}, enabled["data"])
+        self.assertIs(True, enabled["data"]["native_timer_intents"])
+        self.assertEqual("", enabled["data"]["shortcut_1_label"])
+        self.assertEqual("Turn on", enabled["data"]["shortcut_1_action"])
         disabled = await flow.async_step_init({"native_timer_intents": False})
-        self.assertEqual({"native_timer_intents": False}, disabled["data"])
+        self.assertIs(False, disabled["data"]["native_timer_intents"])
+        self.assertEqual("", disabled["data"]["shortcut_4_entity"])
 
     async def test_runtime_registration_is_guarded_and_reloads_on_change(self):
         src = (Path(__file__).resolve().parents[1] / "custom_components" /
