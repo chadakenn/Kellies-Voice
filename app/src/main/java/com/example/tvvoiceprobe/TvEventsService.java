@@ -125,6 +125,40 @@ public final class TvEventsService extends Service {
     private int layoutStatesId = -1;
     private WebSocket socket;
     private CredentialStore.Connection credentials;
+    private CredentialStore.Connection renewableCredentials;
+    private boolean renewableFetchInProgress;
+    private final Runnable renewableRefresh = this::refreshRenewableTvAlerts;
+
+    /** Refresh only the dedicated owner-approved TV account, on a worker. */
+    private void refreshRenewableTvAlerts() {
+        if (renewableFetchInProgress || stopping) return;
+        renewableFetchInProgress = true;
+        new Thread(() -> {
+            CredentialStore.Connection refreshed = null;
+            try {
+                refreshed = new TvRenewableLoginVault(this).connectionOnWorker();
+            } catch (Exception ignored) { }
+            final CredentialStore.Connection result = refreshed;
+            main.post(() -> {
+                renewableFetchInProgress = false;
+                if (stopping || !new OverlayPreferences(this).tvEvents()) return;
+                if (result == null) {
+                    TvEventsRecovery.note(TvEventsRecovery.SIGNED_OUT);
+                    // Never use a stale bearer or fall back to the owner token.
+                    stopSelf();
+                    return;
+                }
+                renewableCredentials = result;
+                if (socket != null) {
+                    socket.close(1000, "Refreshing TV access token");
+                    socket = null;
+                }
+                onStartCommand(new Intent(this, TvEventsService.class)
+                        .setAction(ACTION_START), 0, 0);
+            });
+        }, "KelliesTVAlertsRenew").start();
+    }
+
     private boolean stopping;
     private boolean cameraVisible;
     private int failedAttempts;
@@ -175,11 +209,30 @@ public final class TvEventsService extends Service {
         CredentialStore.Connection saved;
         try { saved = new CredentialStore(this).load(); }
         catch (Exception ignored) { saved = null; }
+        if (new TvRenewableLoginVault(this).blocksManualFallback()) {
+            // Prefer the dedicated TV login; never fall back to a previously
+            // stored broad manual bearer token after pairing.
+            saved = renewableCredentials;
+        } else if (saved == null) saved = renewableCredentials;
         if (saved == null) {
-            credentials = null;
-            TvEventsRecovery.note(TvEventsRecovery.SIGNED_OUT);
-            stopSelf();
-            return START_NOT_STICKY;
+            // No manual login: this beta may have a dedicated HA TV grant.
+            // Foreground notification first, because network refresh happens
+            // asynchronously and Android imposes a foreground-service deadline.
+            try {
+                createChannel();
+                Notification pending = buildNotification("Connecting dedicated TV login");
+                if (Build.VERSION.SDK_INT >= 34)
+                    startForeground(NOTICE_ID, pending,
+                            ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
+                else startForeground(NOTICE_ID, pending);
+                stopping = false;
+                refreshRenewableTvAlerts();
+                return START_STICKY;
+            } catch (RuntimeException ignored) {
+                TvEventsRecovery.note(TvEventsRecovery.SIGNED_OUT);
+                stopSelf();
+                return START_NOT_STICKY;
+            }
         }
         if (credentials != null
                 && (!credentials.url.equals(saved.url) || !credentials.token.equals(saved.token))) {
@@ -200,6 +253,10 @@ public final class TvEventsService extends Service {
             legacyFallbackAttempted = false;
         }
         credentials = saved;
+        if (renewableCredentials != null) {
+            main.removeCallbacks(renewableRefresh);
+            main.postDelayed(renewableRefresh, 24 * 60_000L);
+        }
         try {
             createChannel();
             Notification notification = buildNotification("TV alerts enabled");
@@ -465,6 +522,14 @@ public final class TvEventsService extends Service {
                 return;
             }
             if ("auth_invalid".equals(type)) {
+                if (renewableCredentials != null) {
+                    // Official HA refresh grant may have expired or been revoked.
+                    // Do not retry an invalid bearer indefinitely.
+                    renewableCredentials = null;
+                    ws.close(1000, "Renewing TV login");
+                    refreshRenewableTvAlerts();
+                    return;
+                }
                 terminalAlertError = true;
                 main.removeCallbacks(connectionWatchdog);
                 TvEventsRecovery.note(TvEventsRecovery.REJECTED);
@@ -793,7 +858,7 @@ public final class TvEventsService extends Service {
         hideCard();
         int current = ++generation;
         OverlayPreferences placement = new OverlayPreferences(this);
-        TvPopupPalette colors = TvPopupPalette.forSkin(placement.skin());
+        TvPopupPalette colors = TvPopupPalette.forSkin(this, placement.skin());
         LinearLayout panel = new LinearLayout(this);
         panel.setOrientation(LinearLayout.VERTICAL);
         panel.setPadding(dp(16), dp(12), dp(16), dp(12));
@@ -922,7 +987,7 @@ public final class TvEventsService extends Service {
         hideCard();
         int current = ++generation;
         OverlayPreferences placement = new OverlayPreferences(this);
-        TvPopupPalette colors = TvPopupPalette.forSkin(placement.skin());
+        TvPopupPalette colors = TvPopupPalette.forSkin(this, placement.skin());
         LinearLayout panel = new LinearLayout(this);
         panel.setOrientation(LinearLayout.VERTICAL);
         panel.setPadding(dp(18), dp(13), dp(18), dp(14));

@@ -18,7 +18,8 @@ public final class ComposeSettingsInterop {
     public static synchronized void requestLegacySection(String section) {
         if ("HOME".equals(section) || "VOICE".equals(section)
                 || "OVERLAY".equals(section) || "ALERTS".equals(section)
-                || "SCREEN".equals(section) || "SYSTEM".equals(section)) {
+                || "SCREEN".equals(section) || "SYSTEM".equals(section)
+                || "TV_ALERTS_ENABLE".equals(section)) {
             pendingLegacySection = section;
         }
     }
@@ -40,6 +41,11 @@ public final class ComposeSettingsInterop {
         boolean pending = updateChannelChanged;
         updateChannelChanged = false;
         return pending;
+    }
+
+    /** Presentation-only: never expose or copy the renewable access/refresh token. */
+    public static boolean hasOwnerApprovedLogin(Context context) {
+        return new TvRenewableLoginVault(context).hasActiveLogin();
     }
 
     private ComposeSettingsInterop() { }

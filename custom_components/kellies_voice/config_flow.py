@@ -4,9 +4,12 @@ import voluptuous as vol
 from homeassistant.config_entries import ConfigFlow, OptionsFlow
 from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 
-from .const import DOMAIN
+from .const import DOMAIN, QUICK_ACTION_CACHE
 from .validation import clean_tv_device_id
 from .home_shortcuts import COUNT, ACTIONS, validate_slot
+from .quick_action_icons import ICON_CHOICES, validate_override
+from .pairing_v3_wire import HaV3WireAttempt, AiohttpV3LanTransport
+from .pairing_key_commitment import _session_bytes
 
 
 def _text(properties: dict, key: str) -> str:
@@ -39,8 +42,11 @@ class KellieVoiceOptionsFlow(OptionsFlow):
                                         current.get(f"shortcut_{slot}_entity", ""))
                 action = user_input.get(f"shortcut_{slot}_action",
                                         current.get(f"shortcut_{slot}_action", "Turn on"))
+                icon = user_input.get(f"shortcut_{slot}_icon",
+                                     current.get(f"shortcut_{slot}_icon", "Auto"))
                 try:
                     validate_slot(label, entity, action)
+                    validate_override(icon)
                 except ValueError:
                     errors["base"] = "invalid_shortcut"
                     break
@@ -48,8 +54,16 @@ class KellieVoiceOptionsFlow(OptionsFlow):
                     f"shortcut_{slot}_label": label.strip(),
                     f"shortcut_{slot}_entity": entity.strip(),
                     f"shortcut_{slot}_action": action,
+                    f"shortcut_{slot}_icon": icon,
                 })
             if not errors:
+                # The native device-page fields share this same per-TV draft.
+                # An explicit Options form submission replaces it atomically.
+                hass = getattr(self, "hass", None)
+                if hass is not None:
+                    hass.data.setdefault(DOMAIN, {}).setdefault(
+                        QUICK_ACTION_CACHE, {}
+                    )[self.config_entry.entry_id] = dict(updated)
                 return self.async_create_entry(title="", data=updated)
 
         fields = {
@@ -62,6 +76,7 @@ class KellieVoiceOptionsFlow(OptionsFlow):
             for field, default, value_type in (
                 ("label", "", str), ("entity", "", str),
                 ("action", "Turn on", vol.In(ACTIONS)),
+                ("icon", "Auto", vol.In(ICON_CHOICES)),
             ):
                 key = f"shortcut_{slot}_{field}"
                 fields[vol.Optional(
@@ -84,6 +99,12 @@ class KellieVoiceConfigFlow(ConfigFlow, domain=DOMAIN):
         self._name = "Kellie's Voice"
         self._manual_device_id = ""
         self._manual_name = ""
+        # v3 ephemeral pairing is deliberately separate from the stable
+        # HA TV config entry and existing manual-token path.
+        self._v3_session = None
+        self._v3_transport = None
+        self._v3_attempt = None
+        self._v3_code = None
 
     async def async_step_user(self, user_input=None):
         """Manual fallback when the TV cannot advertise across mDNS/VLANs."""
@@ -150,6 +171,29 @@ class KellieVoiceConfigFlow(ConfigFlow, domain=DOMAIN):
         )
 
     async def async_step_zeroconf(self, discovery_info: ZeroconfServiceInfo):
+        # Experimental v3 ephemeral discovery advertises protocol=3 and
+        # NO permanent TV UUID, HA URL, bearer token or owner identity.
+        # It cannot fall back to legacy v1/v2 or create a config entry.
+        if _text(discovery_info.properties, "protocol") == "3":
+            if _text(discovery_info.properties, "mode") != "verified-code-only":
+                return self.async_abort(reason="v3_invalid_discovery")
+            try:
+                session = _text(discovery_info.properties, "session")
+                _session_bytes(session)
+                transport = AiohttpV3LanTransport(
+                    str(discovery_info.ip_address), discovery_info.port
+                )
+            except (TypeError, AttributeError, ValueError):
+                return self.async_abort(reason="v3_invalid_discovery")
+            self._v3_session = session
+            self._v3_transport = transport
+            await self.async_set_unique_id("v3-preview:" + session)
+            self._abort_if_unique_id_configured()
+            self.context["title_placeholders"] = {
+                "name": "Kellie's Voice secure pairing v3 TEST"
+            }
+            return await self.async_step_v3_preview()
+
         device_id = _text(discovery_info.properties, "id")
         if not device_id:
             return self.async_abort(reason="no_id")
@@ -170,4 +214,69 @@ class KellieVoiceConfigFlow(ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="confirm",
             description_placeholders={"name": self._name},
+        )
+
+    async def async_step_v3_preview(self, user_input=None):
+        """Run real v3 LAN key exchange only after a human opts in.
+
+        No tokens, account authorization, persisted device, or HA entry.
+        """
+        if self._v3_session is None or self._v3_transport is None:
+            return self.async_abort(reason="v3_invalid_discovery")
+        errors = {}
+        if user_input is not None:
+            if user_input.get("start_v3_test") is not True:
+                return self.async_abort(reason="v3_cancelled")
+            attempt = HaV3WireAttempt(self._v3_session)
+            try:
+                code = await attempt.start(self._v3_transport)
+            except Exception:
+                attempt.close()
+                errors["base"] = "v3_unavailable"
+            else:
+                self._v3_attempt = attempt
+                self._v3_code = code
+                return await self.async_step_v3_code()
+        return self.async_show_form(
+            step_id="v3_preview",
+            data_schema=vol.Schema({vol.Required("start_v3_test"): bool}),
+            errors=errors,
+        )
+
+    async def async_step_v3_code(self, user_input=None):
+        """Visible code and physical remote-proof check, preview ONLY."""
+        if self._v3_attempt is None or self._v3_code is None:
+            return self.async_abort(reason="v3_expired")
+        errors = {}
+        if user_input is not None:
+            if user_input.get("numbers_match") is not True:
+                self._v3_attempt.close()
+                self._v3_attempt = None
+                return self.async_abort(reason="v3_cancelled")
+            if user_input.get("ha_code") != self._v3_code:
+                self._v3_attempt.close()
+                self._v3_attempt = None
+                return self.async_abort(reason="v3_code_mismatch")
+            try:
+                result = await self._v3_attempt.confirmed_by_tv_remote(
+                    self._v3_transport)
+            except Exception:
+                self._v3_attempt = None
+                return self.async_abort(reason="v3_expired")
+            if result is None:
+                errors["base"] = "v3_waiting_for_tv"
+            else:
+                self._v3_attempt = None
+                self._v3_code = None
+                # No auth tokens, user IDs, credential handoff or config
+                # entry. A validated code/TV-OK proof is NOT a login.
+                return self.async_abort(reason="v3_preview_verified")
+        return self.async_show_form(
+            step_id="v3_code",
+            description_placeholders={"code": self._v3_code},
+            data_schema=vol.Schema({
+                vol.Required("ha_code", default=self._v3_code): str,
+                vol.Required("numbers_match"): bool,
+            }),
+            errors=errors,
         )

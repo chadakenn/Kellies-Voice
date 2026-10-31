@@ -26,6 +26,8 @@ final class ScreensaverSettingsSync {
     private WebSocket socket;
     private boolean stopped = true;
     private int attempts;
+    private int connectionGeneration;
+    private boolean renewableFetchPending;
     private final Runnable reconnect = this::connect;
     private final HaNetworkWatch networks;
 
@@ -37,6 +39,7 @@ final class ScreensaverSettingsSync {
     void start() {
         if (!stopped) return;
         stopped = false;
+        connectionGeneration++;
         networks.start();
         ScreensaverWatchStatus.settingsSync("Connecting to Home Assistant");
         connect();
@@ -44,16 +47,46 @@ final class ScreensaverSettingsSync {
 
     private void connect() {
         if (stopped || !new OverlayPreferences(context).haManage()) return;
-        CredentialStore.Connection saved;
-        try {
-            saved = new CredentialStore(context).load();
-        } catch (Exception ignored) {
-            saved = null;
+        TvRenewableLoginVault vault = new TvRenewableLoginVault(context);
+        if (vault.blocksManualFallback()) {
+            if (renewableFetchPending) return;
+            renewableFetchPending = true;
+            final int thisGeneration = connectionGeneration;
+            new Thread(() -> {
+                CredentialStore.Connection renewed = null;
+                try { renewed = vault.connectionOnWorker(); }
+                catch (Exception ignored) {
+                    // The denied/revoked TV account must never fall back to an
+                    // older manual Home Assistant owner token.
+                }
+                final CredentialStore.Connection ready = renewed;
+                main.post(() -> {
+                    if (stopped || thisGeneration != connectionGeneration) return;
+                    renewableFetchPending = false;
+                    if (!new OverlayPreferences(context).haManage()) return;
+                    if (ready == null) {
+                        ScreensaverWatchStatus.settingsSync(
+                                "Dedicated TV login unavailable. Reconnect from SETTINGS.");
+                        scheduleReconnect(null);
+                        return;
+                    }
+                    connectWith(ready);
+                });
+            }, "KelliesScreensaverSettingsRenewal").start();
+            return;
         }
-        if (saved == null || saved.url == null || saved.token == null) {
+        CredentialStore.Connection manual;
+        try { manual = new CredentialStore(context).load(); }
+        catch (Exception ignored) { manual = null; }
+        if (manual == null) {
             ScreensaverWatchStatus.settingsSync("No saved Home Assistant credentials on this TV");
             return;
         }
+        connectWith(manual);
+    }
+
+    private void connectWith(CredentialStore.Connection saved) {
+        if (stopped || saved == null || saved.url == null || saved.token == null) return;
         HttpUrl base = HttpUrl.parse(saved.url);
         if (base == null || (!"http".equals(base.scheme()) && !"https".equals(base.scheme()))) {
             ScreensaverWatchStatus.settingsSync("Invalid saved Home Assistant address");
@@ -160,6 +193,9 @@ final class ScreensaverSettingsSync {
 
     private void onNetworkReady() {
         if (stopped) return;
+        // Discard a token-refresh callback from before this network change.
+        connectionGeneration++;
+        renewableFetchPending = false;
         WebSocket old = socket;
         socket = null;
         main.removeCallbacks(reconnect);
@@ -170,6 +206,8 @@ final class ScreensaverSettingsSync {
 
     void stop() {
         stopped = true;
+        connectionGeneration++;
+        renewableFetchPending = false;
         networks.stop();
         ScreensaverWatchStatus.settingsSync("HA settings listener stopped");
         main.removeCallbacks(reconnect);

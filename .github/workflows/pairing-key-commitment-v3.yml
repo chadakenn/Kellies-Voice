@@ -1,0 +1,81 @@
+name: V3 HA ↔ TV real two-screen code QA (no credentials)
+
+on:
+  pull_request:
+    paths:
+      - 'custom_components/kellies_voice/pairing_key_commitment.py'
+      - 'app/src/main/java/com/example/tvvoiceprobe/PairingKeyCommitment.java'
+      - 'app/src/test/java/com/example/tvvoiceprobe/PairingKeyCommitmentTest.java'
+      - 'tests/test_pairing_key_commitment_v3.py'
+      - 'custom_components/kellies_voice/pairing_v3_verified.py'
+      - 'tests/test_pairing_v3_verified_sas.py'
+      - 'custom_components/kellies_voice/pairing_v3_wire.py'
+      - 'tests/test_pairing_v3_wire.py'
+      - 'app/src/main/java/com/example/tvvoiceprobe/PairingV3TvWireState.java'
+      - 'app/src/test/java/com/example/tvvoiceprobe/PairingV3TvWireStateTest.java'
+      - 'app/src/main/java/com/example/tvvoiceprobe/PairingV3LanWindow.java'
+      - 'tests/test_pairing_v3_android_listener_contract.py'
+      - 'app/src/main/java/com/example/tvvoiceprobe/PairingV3QaActivity.java'
+      - 'tests/test_pairing_v3_debug_tv_ui.py'
+      - 'custom_components/kellies_voice/config_flow.py'
+      - 'custom_components/kellies_voice/manifest.json'
+      - 'tests/test_pairing_v3_ha_config_flow.py'
+      - '.github/workflows/pairing-key-commitment-v3.yml'
+  workflow_dispatch:
+
+jobs:
+  offline-python-commitment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+      - name: Install P-256 test dependency
+        run: python -m pip install 'cryptography>=44,<48'
+      - name: Verify Python key commitment and shared Java vectors
+        run: python -m unittest discover -s tests -p test_pairing_key_commitment_v3.py -v
+      - name: Verify v3 SAS and TV remote-OK proof against frozen cross-language fixture
+        run: python -m unittest discover -s tests -p test_pairing_v3_verified_sas.py -v
+      - name: Test actual HA v3 ordered wire messages with a cryptographic TV peer
+        run: python -m unittest discover -s tests -p test_pairing_v3_wire.py -v
+      - name: Check bounded Android v3-only LAN listener and absence of credential routes
+        run: python -m unittest discover -s tests -p test_pairing_v3_android_listener_contract.py -v
+      - name: Check QA-only Android v3 on-screen remote flow and lifecycle cleanup
+        run: python -m unittest discover -s tests -p test_pairing_v3_debug_tv_ui.py -v
+      - name: Test actual Home Assistant config-flow discovery and human code form
+        run: python -m unittest discover -s tests -p test_pairing_v3_ha_config_flow.py -v
+      - name: Prohibit live credential or v2 protocol activation
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          ha = Path('custom_components/kellies_voice')
+          app = Path('app/src/main/java/com/example/tvvoiceprobe')
+          core = (ha / 'pairing_key_commitment.py').read_text()
+          android = (app / 'PairingKeyCommitment.java').read_text()
+          v3 = (ha / 'pairing_v3_verified.py').read_text()
+          wire = (ha / 'pairing_v3_wire.py').read_text()
+          tv_wire = (app / 'PairingV3TvWireState.java').read_text()
+          tv_listener = (app / 'PairingV3LanWindow.java').read_text()
+          tv_ui = (app / 'PairingV3QaActivity.java').read_text()
+          for code in (core, android, v3, wire, tv_wire, tv_listener, tv_ui):
+              assert 'auth/token' not in code
+              assert 'CredentialStore(' not in code
+              assert 'connect(' not in code
+          assert 'from .pairing_key_commitment import _session_bytes' in (ha / 'config_flow.py').read_text()
+          assert 'pairing_v3_verified' not in (ha / 'config_flow.py').read_text()
+          assert 'PairingKeyCommitment' not in (app / 'VoiceActivity.java').read_text()
+          assert 'PairingV3TvWireState' not in (app / 'VoiceActivity.java').read_text()
+          assert 'PairingV3LanWindow' not in (app / 'VoiceActivity.java').read_text()
+          assert 'BuildConfig.DEBUG || BuildConfig.IS_QA' in (app / 'VoiceActivity.java').read_text()
+          assert 'if (!BuildConfig.DEBUG && !BuildConfig.IS_QA)' in tv_ui
+          flow = (ha / 'config_flow.py').read_text()
+          assert 'pairing_v3_wire' in flow
+          v3_section = flow.split('async def async_step_v3_preview(', 1)[1]
+          assert 'async_create_entry(' not in v3_section
+          assert 'v3_preview_verified' in v3_section
+          assert 'HaV3WireAttempt' in flow
+          assert 'PairingKeyCommitment' not in (app / 'PairingDiscoveryWindow.java').read_text() if (app / 'PairingDiscoveryWindow.java').exists() else True
+          print('PASS: v3 is offline only; existing v2 pairing unchanged')
+          PY

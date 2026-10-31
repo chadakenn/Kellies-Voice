@@ -12,6 +12,7 @@ from .camera_picker import NONE, SLOTS, get_camera_picker
 
 from .const import ALERT_SELECTS, DOMAIN, FOLLOW_SELECTS, FRIGATE_SELECTS, NOISE_SELECTS, SELECTS, WEATHER_SELECTS
 from .layout_attrs import layout_attributes
+from .quick_action_device import quick_action_selects
 
 
 async def async_setup_entry(
@@ -43,6 +44,7 @@ async def async_setup_entry(
                     for setting, name, options, icon, initial in FRIGATE_SELECTS)
     entities.append(WeatherSourceSelect(entry))
     entities.extend(FrigateCameraSelect(entry, slot) for slot in range(SLOTS))
+    entities.extend(quick_action_selects(entry))
     async_add_entities(entities)
 
 
@@ -87,6 +89,34 @@ class KellieSelect(SelectEntity, RestoreEntity):
                 self._generation = 0
         # Registry entry becomes available after the entity has been added.
         self._attr_extra_state_attributes = self._attributes()
+        if self._setting == "style":
+            self.async_on_remove(
+                self.hass.bus.async_listen(
+                    EVENT_STATE_CHANGED,
+                    self._on_community_themes_changed,
+                )
+            )
+
+    @callback
+    def _on_community_themes_changed(self, event) -> None:
+        if self._setting != "style":
+            return
+        entity_id = event.data.get("entity_id", "")
+        if not entity_id.endswith("_community_theme_list"):
+            return
+        new_state = event.data.get("new_state")
+        if new_state is None:
+            return
+        raw = new_state.state or ""
+        extra = [name.strip() for name in raw.split("|") if name.strip()]
+        base = list(self._attr_options)
+        # Keep only original built-ins (those that were in the initial STYLES)
+        from .const import STYLES
+        built_in = [o for o in base if o in STYLES]
+        self._attr_options = built_in + [n for n in extra if n not in built_in]
+        if self._attr_current_option not in self._attr_options:
+            self._attr_current_option = self._attr_options[0]
+        self.async_write_ha_state()
 
     async def async_select_option(self, option: str) -> None:
         if option not in self._attr_options:

@@ -39,6 +39,22 @@ jobs:
       - name: Verify APK contains both wake-word JNI libraries and model
         shell: bash
         run: bash .github/scripts/verify-wake-apk.sh app/build/outputs/apk/debug/app-debug.apk
+      - name: Verify full app beta separation and test center
+        if: (github.head_ref == 'feature/full-app-beta-test-center' || github.head_ref == 'feature/v3qa-owner-approved-tv-login' || github.head_ref == 'integration/v0.17.0-combined-qa')
+        run: python -m unittest discover -s tests -p 'test_full_app_beta_readiness.py' -v
+      - name: Build isolated full app beta QA kit
+        if: (github.head_ref == 'feature/full-app-beta-test-center' || github.head_ref == 'feature/v3qa-owner-approved-tv-login' || github.head_ref == 'integration/v0.17.0-combined-qa')
+        run: |
+          python scripts/package_ha_v3qa.py
+          python scripts/package_full_app_beta_kit.py
+      - name: Upload full app beta test kit
+        if: (github.head_ref == 'feature/full-app-beta-test-center' || github.head_ref == 'feature/v3qa-owner-approved-tv-login' || github.head_ref == 'integration/v0.17.0-combined-qa')
+        uses: actions/upload-artifact@v4
+        with:
+          name: Kellies-Voice-full-app-beta-kit
+          path: dist/Kellies-Voice-Full-App-Beta-Kit.zip
+          if-no-files-found: error
+          retention-days: 7
       - name: Save test APK
         uses: actions/upload-artifact@v4
         with:

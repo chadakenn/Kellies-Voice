@@ -59,6 +59,9 @@
                 android:resource="@xml/file_paths" />
         </provider>
         <activity android:name=".MainActivity" android:exported="false"/>
+        <!-- Beta guided onboarding and isolated ephemeral v3 verification. -->
+        <activity android:name=".FirstRunSetupActivity" android:exported="false" />
+        <activity android:name=".PairingV3QaActivity" android:exported="false" />
         <activity android:name=".ui.settings.ComposeSettingsActivity"
             android:exported="false"
             android:theme="@android:style/Theme.Material.NoActionBar" />

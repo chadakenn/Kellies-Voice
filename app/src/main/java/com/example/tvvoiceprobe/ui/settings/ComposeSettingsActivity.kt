@@ -3,6 +3,8 @@ package com.example.tvvoiceprobe.ui.settings
 import android.Manifest
 import android.app.AlertDialog
 import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.provider.Settings
@@ -50,6 +52,7 @@ import com.example.tvvoiceprobe.LiveCameraMode
 import com.example.tvvoiceprobe.ScreensaverDashboard
 import com.example.tvvoiceprobe.ScreensaverLiveMode
 import com.example.tvvoiceprobe.ScreensaverPreviewActivity
+import com.example.tvvoiceprobe.FirstRunSetupActivity
 import com.example.tvvoiceprobe.TvAlertLayout
 import com.example.tvvoiceprobe.OverlayPreferences
 import com.example.tvvoiceprobe.TvEventsService
@@ -319,6 +322,68 @@ fun CategoryContent(
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
+                Text("Community Themes", color = skin.colors.accent, fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                Text("Import JSON themes created by the community. Data only — never code.", color = skin.colors.textMuted, fontSize = 13.sp)
+                Spacer(modifier = Modifier.height(8.dp))
+
+                val context = androidx.compose.ui.platform.LocalContext.current
+                var installed by remember { mutableStateOf(com.example.tvvoiceprobe.CommunityThemeStore.list(context)) }
+                val importLauncher = rememberLauncherForActivityResult(
+                    ActivityResultContracts.OpenDocument()
+                ) { uri ->
+                    if (uri != null) {
+                        try {
+                            context.contentResolver.openInputStream(uri)?.use { stream ->
+                                val theme = com.example.tvvoiceprobe.CommunityThemeStore.importTheme(context, stream)
+                                installed = com.example.tvvoiceprobe.CommunityThemeStore.list(context)
+                                Toast.makeText(context, "Imported: ${theme.name}", Toast.LENGTH_SHORT).show()
+                            }
+                        } catch (e: Exception) {
+                            Toast.makeText(context, "Import failed: ${e.message}", Toast.LENGTH_LONG).show()
+                        }
+                    }
+                }
+
+                SettingsChoice(title = "Import Theme", selected = false, onSelect = {
+                    importLauncher.launch(arrayOf("application/json", "text/plain", "*/*"))
+                })
+
+                installed.forEach { theme ->
+                    val selected = skin.id == theme.id
+                    SettingsChoice(
+                        title = if (selected) "● ${theme.name} (${theme.author})" else "○ ${theme.name} (${theme.author})",
+                        selected = selected,
+                        onSelect = {
+                            val prefs = OverlayPreferences(context)
+                            prefs.setSkin(theme.id)
+                            onSkinChange(SkinStore.getSelected(context))
+                            Toast.makeText(context, "Applied: ${theme.name}", Toast.LENGTH_SHORT).show()
+                        }
+                    )
+                }
+
+                if (installed.isNotEmpty()) {
+                    SettingsChoice(title = "Remove selected community theme", selected = false, onSelect = {
+                        val current = OverlayPreferences(context).skin()
+                        if (com.example.tvvoiceprobe.CommunityThemeStore.isId(current)) {
+                            val file = java.io.File(context.filesDir, "community-themes/$current.json")
+                            if (file.delete()) {
+                                OverlayPreferences(context).setSkin(OverlayPreferences.SKIN_GLASS)
+                                installed = com.example.tvvoiceprobe.CommunityThemeStore.list(context)
+                                onSkinChange(SkinStore.getSelected(context))
+                                Toast.makeText(context, "Removed theme", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    })
+                }
+
+                SettingsChoice(title = "Restore Default (Copper Glass)", selected = false, onSelect = {
+                    OverlayPreferences(context).setSkin(OverlayPreferences.SKIN_GLASS)
+                    onSkinChange(SkinStore.getSelected(context))
+                    Toast.makeText(context, "Restored default theme", Toast.LENGTH_SHORT).show()
+                })
+
+                Spacer(modifier = Modifier.height(16.dp))
                 Text("Popup position", color = skin.colors.accent, fontSize = 18.sp, fontWeight = FontWeight.Medium)
                 val positions = listOf(
                     OverlayPreferences.POSITION_DEFAULT to "Default",
@@ -554,26 +619,10 @@ fun CategoryContent(
                     checked = events,
                     onCheckedChange = { on ->
                         if (on) {
-                            val creds = try { CredentialStore(context).load() } catch (e: Exception) { null }
-                            if (creds == null) {
-                                Toast.makeText(context, "Configure Home Assistant before enabling TV notifications", Toast.LENGTH_LONG).show()
-                                return@SettingSwitch
-                            }
-                            if (!Settings.canDrawOverlays(context)) {
-                                Toast.makeText(context, "Grant overlay permission first", Toast.LENGTH_LONG).show()
-                                return@SettingSwitch
-                            }
-                            prefs.setTvEvents(true)
-                            try {
-                                context.startForegroundService(Intent(context, TvEventsService::class.java)
-                                    .setAction(TvEventsService.ACTION_START))
-                                events = true
-                                Toast.makeText(context, "TV alerts enabled", Toast.LENGTH_SHORT).show()
-                            } catch (e: Exception) {
-                                prefs.setTvEvents(false)
-                                events = false
-                                Toast.makeText(context, "Android couldn't start the TV alert receiver", Toast.LENGTH_SHORT).show()
-                            }
+                            // The shared authenticated setup path supports both
+                            // manual credentials and v3 Keystore-backed TV grants.
+                            // Only explicit user consent can start the receiver.
+                            onLegacySection("TV_ALERTS_ENABLE")
                         } else {
                             prefs.setTvEvents(false)
                             context.stopService(Intent(context, TvEventsService::class.java))
@@ -1063,7 +1112,9 @@ fun CategoryContent(
                         val address = ComposeHomeStatus.addressSummary(saved?.url)
                         val safeAddress = if (ComposeHomeStatus.summaryHidesSecrets(address, saved?.token))
                             address else ""
-                        ComposeHomeStatus.configuredLabel(saved != null) +
+                        if (ComposeSettingsInterop.hasOwnerApprovedLogin(context))
+                            "Owner-approved TV login activated (credentials kept on TV)"
+                        else ComposeHomeStatus.configuredLabel(saved != null) +
                             if (safeAddress.isNotEmpty()) "  ·  $safeAddress" else ""
                     } catch (e: Exception) {
                         "Saved login unavailable; use Home Assistant recovery below"
@@ -1076,8 +1127,8 @@ fun CategoryContent(
                     fontSize = 16.sp
                 )
                 Text(
-                    "Your token stays encrypted and is never shown here. " +
-                        "Use the existing authenticated setup dialog for connection changes.",
+                    "An owner-approved TV login is renewable and requires no pasted token. " +
+                        "Secure pairing uses HTTPS for the ongoing Home Assistant connection.",
                     color = skin.colors.textMuted,
                     fontSize = 12.sp,
                     modifier = Modifier.padding(top = 4.dp)
@@ -1087,6 +1138,15 @@ fun CategoryContent(
                     selected = false,
                     onSelect = { onLegacySection("HOME") }
                 )
+                if (BuildConfig.DEBUG) {
+                    SettingsChoice(
+                        title = "First-time setup wizard (pair TV and grant permissions)",
+                        selected = false,
+                        onSelect = {
+                            context.startActivity(Intent(context, FirstRunSetupActivity::class.java))
+                        }
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(16.dp))
                 Text("TV pairing ID", color = skin.colors.accent, fontSize = 18.sp, fontWeight = FontWeight.Medium)

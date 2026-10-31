@@ -5,6 +5,7 @@ from pathlib import Path
 import sys
 import time
 import types
+from types import MappingProxyType
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -28,6 +29,15 @@ def options():
 
 
 class ShortcutPolicyTests(unittest.TestCase):
+    def test_readonly_home_assistant_config_entry_options(self):
+        # Real HA ConfigEntry.options is MappingProxyType, not dict.
+        readonly = MappingProxyType(options())
+        values = shortcuts.entries_from_options(readonly)
+        self.assertEqual([1, 2, 3], [item["slot"] for item in values])
+        self.assertEqual("light.living_room", shortcuts.selection(readonly, 1)["entity_id"])
+        self.assertEqual([], shortcuts.entries_from_options(None))
+        self.assertEqual([], shortcuts.entries_from_options(["untrusted"]))
+
     def test_only_expected_domains_and_services(self):
         values = shortcuts.entries_from_options(options())
         self.assertEqual([1, 2, 3], [x["slot"] for x in values])
@@ -109,17 +119,24 @@ class FakeEntries:
         return self.entries
 
 
+class FakeStates:
+    def get(self, entity_id):
+        icons = {"light.living_room": "mdi:lamp", "scene.movie_time": "mdi:movie-open"}
+        return types.SimpleNamespace(attributes={"icon": icons[entity_id]}) if entity_id in icons else None
+
+
 class FakeHass:
     def __init__(self):
         self.config_entries = FakeEntries([
-            types.SimpleNamespace(data={"device_id": "tv0001"}, options=options()),
+            types.SimpleNamespace(data={"device_id": "tv0001"}, options=MappingProxyType(options())),
             types.SimpleNamespace(
                 data={"device_id": "tv0002"},
-                options={"shortcut_1_label": "Other", "shortcut_1_entity": "light.other",
-                         "shortcut_1_action": "Turn off"}),
+                options=MappingProxyType({"shortcut_1_label": "Other", "shortcut_1_entity": "light.other",
+                         "shortcut_1_action": "Turn off"})),
         ])
         self.data = {}
         self.services = FakeServices()
+        self.states = FakeStates()
 
 
 def make_ws_functions():
@@ -139,6 +156,10 @@ def make_ws_functions():
     ns = {
         "DOMAIN": "kellies_voice",
         "selection": shortcuts.selection,
+        "resolve_shortcut_icon": lambda override, actual, domain: (
+            "mdi:lamp" if actual == "mdi:lamp" else
+            ("mdi:movie-open" if actual == "mdi:movie-open" else "mdi:script-text")
+        ),
         "entries_from_options": shortcuts.entries_from_options,
         "websocket_api": Errors,
         "_tv_can_read": lambda hass, user, tv_id: tv_id in ("tv0001", "tv0002"),
@@ -164,8 +185,8 @@ class ShortcutWebsocketTests(unittest.IsolatedAsyncioTestCase):
             "id": 4, "device_id": "tv0001",
         })
         self.assertEqual([(4, {"shortcuts": [
-            {"slot": 1, "label": "Living room on"},
-            {"slot": 2, "label": "Movie Time"},
+            {"slot": 1, "label": "Living room on", "icon": "mdi:lamp"},
+            {"slot": 2, "label": "Movie Time", "icon": "mdi:movie-open"},
         ]})], self.connection.results)
         self.assertNotIn("entity_id", str(self.connection.results))
 

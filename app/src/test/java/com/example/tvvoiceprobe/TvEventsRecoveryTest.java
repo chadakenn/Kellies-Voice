@@ -28,6 +28,29 @@ public class TvEventsRecoveryTest {
         assertFalse(TvEventsRecovery.accepts("com.example.tvvoiceprobe.TV_EVENTS_START"));
     }
 
+    @Test public void rebootResumesWithCompletedRenewableLoginWithoutManualToken() {
+        assertTrue(TvEventsRecovery.loginReady(false, true));
+        assertEquals(TvEventsRecovery.START,
+                TvEventsRecovery.decide(true, true,
+                        TvEventsRecovery.loginReady(false, true)));
+        // Explicit opt-in and Android permission remain mandatory.
+        assertEquals(TvEventsRecovery.SKIP,
+                TvEventsRecovery.decide(false, true,
+                        TvEventsRecovery.loginReady(false, true)));
+        assertEquals(TvEventsRecovery.NEEDS_USER,
+                TvEventsRecovery.decide(true, false,
+                        TvEventsRecovery.loginReady(false, true)));
+    }
+
+    @Test public void manualLoginStillWorksAndNoLoginIsNeverAuthorized() {
+        assertTrue(TvEventsRecovery.loginReady(true, false));
+        assertTrue(TvEventsRecovery.loginReady(true, true));
+        assertFalse(TvEventsRecovery.loginReady(false, false));
+        assertEquals(TvEventsRecovery.NEEDS_USER,
+                TvEventsRecovery.decide(true, true,
+                        TvEventsRecovery.loginReady(false, false)));
+    }
+
     @Test public void alertsStayOffUntilTheOwnerAlreadyOptedIn() {
         assertEquals(TvEventsRecovery.SKIP, TvEventsRecovery.decide(false, true, true));
         assertEquals(TvEventsRecovery.SKIP, TvEventsRecovery.decide(false, false, false));
