@@ -2,6 +2,8 @@
 
 Custom themes change the look of Kellie's Voice without rebuilding the Android TV app.
 
+**Important for public v0.17.0:** The APK bundles all six themes, but the public SETTINGS button routes to the older settings dialogs, hiding this gallery. This is a confirmed release-only navigation issue addressed by [PR #295](https://github.com/chadakenn/Kellies-Voice/pull/295). Use a newer **official signed** release with the routing fix when published; do not uninstall or install a QA/debug APK to recover the gallery.
+
 ## Install one of the included themes (works without an Android file picker)
 
 1. On the TV, open **Settings → Overlay & appearance → Community Themes**.
