@@ -11,6 +11,7 @@ from .services import async_register_services
 from .timer_handler import TimerBridge, TimerHandlerRegistry
 from .websocket import async_register_alert_subscription
 from .home_shortcuts_ws import async_register_home_shortcuts
+from .v3 import async_register_owner_ui
 
 _LOGGER = logging.getLogger(__name__)
 _TIMER_KEY = "native_timer_registries"
@@ -21,6 +22,10 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     async_register_services(hass)
     async_register_alert_subscription(hass)
     async_register_home_shortcuts(hass)
+    # Normal HACS loads the owner UI; no separate v3 QA integration or YAML.
+    # Fail closed for new pairing if any owner approval service is unavailable;
+    # existing TV controls and manual accounts must stay operational.
+    await async_register_owner_ui(hass)
     return True
 
 

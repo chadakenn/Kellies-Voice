@@ -14,10 +14,9 @@ import android.widget.TextView;
 import java.io.IOException;
 
 /**
- * TV-only, debug-build pairing-v3 protocol QA.
+ * Home Assistant-first owner-approved pairing, with no TV URL or token typing.
  *
- * NEVER starts the microphone, modifies a saved HA login, requests owner
- * identity, stores URL/token, or installs a connection. The 120-second
+ * Never starts the microphone or changes an existing working connection on open. The 120-second
  * LAN window starts only after pressing START on the actual TV remote.
  */
 public final class PairingV3QaActivity extends Activity {
@@ -35,12 +34,6 @@ public final class PairingV3QaActivity extends Activity {
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
-        if (!BuildConfig.DEBUG && !BuildConfig.IS_QA) {
-            // Available only in disposable debug or explicitly signed QA variants.
-            // Never expose this experimental credential flow in the public APK.
-            finish();
-            return;
-        }
         getWindow().getDecorView().setBackgroundColor(BG);
 
         ScrollView scroll = new ScrollView(this);
@@ -55,7 +48,7 @@ public final class PairingV3QaActivity extends Activity {
         TextView heading = text("KELLIE'S VOICE  |  SECURE TV PAIRING", 25, GOLD);
         heading.setTypeface(Typeface.DEFAULT_BOLD);
         root.addView(heading);
-        root.addView(text("V3 TEST MODE  •  OPTIONAL OWNER-APPROVED LOGIN", 16, MUTED));
+        root.addView(text("SECURE HOME ASSISTANT PAIRING", 16, MUTED));
         root.addView(text(
             "Start a short local pairing window, compare the same eight-digit "
             + "code in Home Assistant and on this TV, then press OK. "
@@ -76,7 +69,7 @@ public final class PairingV3QaActivity extends Activity {
         code.setVisibility(View.GONE);
         root.addView(code);
 
-        start = button("START 2-MINUTE V3 TEST");
+        start = button("START SECURE PAIRING");
         start.setOnClickListener(v -> startWindow());
         root.addView(start);
 
@@ -138,7 +131,7 @@ public final class PairingV3QaActivity extends Activity {
                     if (stateMessage.startsWith(
                             "SECURE OWNER APPROVAL VERIFIED")
                             || stateMessage.startsWith("TV LOGIN ACTIVATED")) {
-                        // Tear down the now-consumed debug LAN listener and
+                        // Tear down the now-consumed pairing listener and
                         // its pending expiry callback. Keep success visible.
                         stopWindow();
                     }
@@ -186,7 +179,7 @@ public final class PairingV3QaActivity extends Activity {
         boolean wasRunning = window != null;
         stopWindow();
         if (wasRunning && status != null) {
-            status.setText("V3 test stopped because the QA screen left the foreground. "
+            status.setText("Pairing stopped because this screen closed. "
                     + "Return here and press START again.");
         }
         super.onStop();

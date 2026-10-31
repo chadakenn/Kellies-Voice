@@ -1283,15 +1283,20 @@ fun CategoryContent(
                     selected = false,
                     onSelect = { onLegacySection("HOME") }
                 )
-                if (BuildConfig.DEBUG) {
-                    SettingsChoice(
-                        title = "First-time setup wizard (pair TV and grant permissions)",
-                        selected = false,
-                        onSelect = {
-                            context.startActivity(Intent(context, FirstRunSetupActivity::class.java))
-                        }
-                    )
-                }
+                SettingsChoice(
+                    title = "Secure Home Assistant pairing (no TV typing)",
+                    selected = false,
+                    onSelect = {
+                        context.startActivity(Intent(context, com.example.tvvoiceprobe.PairingV3QaActivity::class.java))
+                    }
+                )
+                SettingsChoice(
+                    title = "First-time setup wizard (pair TV and grant permissions)",
+                    selected = false,
+                    onSelect = {
+                        context.startActivity(Intent(context, FirstRunSetupActivity::class.java))
+                    }
+                )
 
                 Spacer(modifier = Modifier.height(16.dp))
                 Text("TV pairing ID", color = skin.colors.accent, fontSize = 18.sp, fontWeight = FontWeight.Medium)
