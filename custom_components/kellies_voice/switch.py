@@ -17,7 +17,8 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     async_add_entities([KellieAutoListen(entry), KellieScreensaverSwitch(entry),
-                        KellieHaDashboardSignInSwitch(entry)])
+                        KellieHaDashboardSignInSwitch(entry),
+                        KellieLanHttpViewerSwitch(entry)])
 
 
 class KellieAutoListen(SwitchEntity, RestoreEntity):
@@ -100,5 +101,23 @@ class KellieHaDashboardSignInSwitch(KellieAutoListen):
         self._setting = "screensaver_ha_external_auth"
         self._attr_name = "Secure HA dashboard sign-in"
         self._attr_unique_id = f"{self._device_id}_screensaver_ha_external_auth"
+        self._attr_is_on = False
+        self._attr_extra_state_attributes = self._attributes()
+
+
+class KellieLanHttpViewerSwitch(KellieAutoListen):
+    """Opt-in private-IP filter on unauthenticated LAN HTTP WebView browsing.
+
+    DOES NOT authorize any HA token. The restricted local HTTP mode remains
+    separate from HTTPS-only owner-approved TV login.
+    """
+
+    _attr_icon = "mdi:lan"
+
+    def __init__(self, entry: ConfigEntry) -> None:
+        super().__init__(entry)
+        self._setting = "screensaver_lan_http_only"
+        self._attr_name = "Restrict HTTP screensaver to private LAN"
+        self._attr_unique_id = f"{self._device_id}_screensaver_lan_http_only"
         self._attr_is_on = False
         self._attr_extra_state_attributes = self._attributes()

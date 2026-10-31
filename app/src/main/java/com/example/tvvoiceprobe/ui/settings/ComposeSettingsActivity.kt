@@ -896,6 +896,31 @@ fun CategoryContent(
                     )
                 }
                 Spacer(modifier = Modifier.height(8.dp))
+                var lanHttpRestricted by remember { mutableStateOf(prefs.screensaverLanHttpOnly()) }
+                SettingSwitch(
+                    title = "Restrict local HTTP dashboard to private LAN address",
+                    subtitle = if (lanHttpRestricted) "ON · Numeric private IPv4 only"
+                        else "OFF · Original HTTP web viewer",
+                    checked = lanHttpRestricted,
+                    onCheckedChange = { enabled ->
+                        prefs.setScreensaverLanHttpOnly(enabled)
+                        lanHttpRestricted = enabled
+                        ComposeSettingsInterop.applyScreensaverSetting(
+                            context, HaLayout.SCREENSAVER_LAN_HTTP)
+                    }
+                )
+                Text(
+                    "Optional HTTP web-view guard: only 10.x.x.x, 172.16–31.x.x " +
+                        "and 192.168.x.x addresses, with no URL secrets. " +
+                        "Same-origin navigation and ordinary web resources " +
+                        "are restricted, but WebSockets and redirects may bypass " +
+                        "WebView interception. This does NOT provide automatic " +
+                        "Home Assistant login and does NOT encrypt HTTP traffic. " +
+                        "Use local HTTPS for native, owner-approved TV login.",
+                    color = skin.colors.textMuted, fontSize = 12.sp,
+                    modifier = Modifier.padding(top = 5.dp)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
                 var haWebLogin by remember { mutableStateOf(prefs.screensaverHaExternalAuth()) }
                 SettingSwitch(
                     title = "Sign in to Home Assistant dashboard",
