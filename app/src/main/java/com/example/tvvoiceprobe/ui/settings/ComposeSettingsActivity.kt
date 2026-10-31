@@ -344,9 +344,86 @@ fun CategoryContent(
                     }
                 }
 
-                SettingsChoice(title = "Import Theme", selected = false, onSelect = {
-                    importLauncher.launch(arrayOf("application/json", "text/plain", "*/*"))
+                SettingsChoice(title = "Import Theme (file picker)", selected = false, onSelect = {
+                    try {
+                        importLauncher.launch(arrayOf("application/json", "text/plain", "*/*"))
+                    } catch (e: android.content.ActivityNotFoundException) {
+                        Toast.makeText(
+                            context,
+                            "This TV has no document picker. Use Included Themes or the ADB theme folder below.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    } catch (e: SecurityException) {
+                        Toast.makeText(context, "File picker unavailable. Use Included Themes below.", Toast.LENGTH_LONG).show()
+                    }
                 })
+
+                // Many Google TV/Android TV firmwares ship with no DocumentsUI
+                // provider. Bundle the six repository examples so every owner
+                // can install a real community theme with only a TV remote.
+                var showIncludedThemes by remember { mutableStateOf(false) }
+                SettingsChoice(
+                    title = if (showIncludedThemes) "Hide included community themes"
+                            else "Browse included community themes (6)",
+                    selected = false,
+                    onSelect = { showIncludedThemes = !showIncludedThemes }
+                )
+                if (showIncludedThemes) {
+                    val included = listOf(
+                        "midnight-ocean.json" to "Midnight Ocean",
+                        "warm-ember.json" to "Warm Ember",
+                        "forest-canopy.json" to "Forest Canopy",
+                        "twilight-violet.json" to "Twilight Violet",
+                        "soft-slate.json" to "Soft Slate",
+                        "example-copper-night.json" to "Copper Night"
+                    )
+                    included.forEach { (filename, label) ->
+                        SettingsChoice(title = "Install & apply $label", selected = false, onSelect = {
+                            try {
+                                val theme = context.assets.open("community-themes/$filename").use { stream ->
+                                    com.example.tvvoiceprobe.CommunityThemeStore.importTheme(context, stream)
+                                }
+                                installed = com.example.tvvoiceprobe.CommunityThemeStore.list(context)
+                                OverlayPreferences(context).setSkin(theme.id)
+                                onSkinChange(SkinStore.getSelected(context))
+                                Toast.makeText(context, "Applied: ${theme.name}", Toast.LENGTH_SHORT).show()
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "Theme could not be installed: ${e.message}", Toast.LENGTH_LONG).show()
+                            }
+                        })
+                    }
+                }
+
+                // Users who build their own JSON files can transfer them over
+                // ADB into the app-owned external folder, then import here.
+                // Scoped storage requires neither picker nor broad permission.
+                var adbFiles by remember { mutableStateOf(emptyList<String>()) }
+                SettingsChoice(title = "Scan ADB theme import folder", selected = false, onSelect = {
+                    try {
+                        adbFiles = com.example.tvvoiceprobe.CommunityThemeStore.listDroppedThemes(context)
+                        if (adbFiles.isEmpty()) {
+                            Toast.makeText(
+                                context, "No JSON found. Copy files into Android/data/${context.packageName}/files/theme-import/",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                    } catch (e: Exception) {
+                        Toast.makeText(context, "ADB theme folder unavailable: ${e.message}", Toast.LENGTH_LONG).show()
+                    }
+                })
+                adbFiles.forEach { fileName ->
+                    SettingsChoice(title = "Import $fileName", selected = false, onSelect = {
+                        try {
+                            val theme = com.example.tvvoiceprobe.CommunityThemeStore.importDroppedTheme(context, fileName)
+                            installed = com.example.tvvoiceprobe.CommunityThemeStore.list(context)
+                            OverlayPreferences(context).setSkin(theme.id)
+                            onSkinChange(SkinStore.getSelected(context))
+                            Toast.makeText(context, "Imported & applied: ${theme.name}", Toast.LENGTH_SHORT).show()
+                        } catch (e: Exception) {
+                            Toast.makeText(context, "Import failed: ${e.message}", Toast.LENGTH_LONG).show()
+                        }
+                    })
+                }
 
                 installed.forEach { theme ->
                     val selected = skin.id == theme.id

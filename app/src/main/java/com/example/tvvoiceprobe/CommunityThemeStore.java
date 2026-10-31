@@ -184,6 +184,56 @@ public final class CommunityThemeStore {
         return new File(context.getApplicationContext().getFilesDir(), DIR);
     }
 
+    /**
+     * An app-owned external drop folder lets TVs with no ACTION_OPEN_DOCUMENT
+     * handler import JSON without storage permissions or a file manager.
+     * ADB can push into this directory; only exact .json file names are listed.
+     */
+    public static File dropFolder(Context context) {
+        File external = context.getApplicationContext().getExternalFilesDir(null);
+        if (external == null) throw new IllegalStateException("TV storage unavailable");
+        File folder = new File(external, "theme-import");
+        if (!folder.isDirectory() && !folder.mkdirs()) {
+            throw new IllegalStateException("Could not create theme import folder");
+        }
+        return folder;
+    }
+
+    public static List<String> listDroppedThemes(Context context) {
+        File folder = dropFolder(context);
+        File[] candidates = folder.listFiles((dir, filename) ->
+                filename.matches("[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}\\.json"));
+        if (candidates == null) return Collections.emptyList();
+        List<String> names = new ArrayList<>();
+        for (File candidate : candidates) {
+            if (candidate.isFile() && candidate.length() > 0 &&
+                    candidate.length() <= MAX_BYTES) {
+                names.add(candidate.getName());
+            }
+        }
+        names.sort(String::compareToIgnoreCase);
+        if (names.size() > 50) return new ArrayList<>(names.subList(0, 50));
+        return names;
+    }
+
+    public static Theme importDroppedTheme(Context context, String fileName)
+            throws java.io.IOException {
+        if (fileName == null ||
+                !fileName.matches("[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}\\.json")) {
+            throw new IllegalArgumentException("Invalid import filename");
+        }
+        File folder = dropFolder(context);
+        File candidate = new File(folder, fileName);
+        if (!candidate.getCanonicalFile().getParentFile().equals(folder.getCanonicalFile()) ||
+                !candidate.isFile() || candidate.length() > MAX_BYTES) {
+            throw new IllegalArgumentException("Theme file is unavailable or too large");
+        }
+        try (FileInputStream input = new FileInputStream(candidate)) {
+            return importTheme(context, input);
+        }
+    }
+
+
     public static boolean isId(String id) {
         return id != null && id.matches("community\\.[a-z0-9][a-z0-9-]{2,31}");
     }

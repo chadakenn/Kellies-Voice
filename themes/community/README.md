@@ -9,9 +9,9 @@ Themes are **data only** (JSON). They never contain code, scripts, URLs, or asse
 1. Copy `template.json` or `example-copper-night.json`.
 2. Edit the colors, shapes, name, author, and unique ID (`community.your-id`).
 3. Save as a `.json` file.
-4. On the TV: **Settings → Overlay & appearance → Community Themes → Import Theme**.
-5. Use the system file picker to select your JSON.
-6. Preview, then Apply.
+4. On the TV: **Settings → Overlay & appearance → Community Themes**.
+5. Choose **Browse included community themes (6)** to install the sample packs with a D-pad, no file manager needed.
+6. For your own JSON files, choose **Import Theme (file picker)** on TVs with DocumentsUI, then select the imported theme to apply it. Some Android TV firmware has no picker. See the [ADB app-owned folder fallback](../../docs/wiki/Community-Themes.md#import-a-custom-json-theme) if needed.
 
 ## Theme format (v1)
 
