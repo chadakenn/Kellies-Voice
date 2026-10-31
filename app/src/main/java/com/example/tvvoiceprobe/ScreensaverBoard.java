@@ -324,7 +324,10 @@ final class ScreensaverBoard {
         settings.setGeolocationEnabled(false);
         settings.setDomStorageEnabled(true);
         CookieManager cookies = CookieManager.getInstance();
-        if (cookies != null) cookies.setAcceptThirdPartyCookies(web, false);
+        if (cookies != null) {
+            cookies.setAcceptCookie(true);
+            cookies.setAcceptThirdPartyCookies(web, false);
+        }
         web.setFocusableInTouchMode(true);
         if (authenticatedHaOrigin != null) {
             final WebView loadedWeb = web;
@@ -336,17 +339,35 @@ final class ScreensaverBoard {
         }
         web.setOnKeyListener((view, key, event) -> browsing && remoteKey(key, event));
         web.setWebViewClient(new WebViewClient() {
+            @Override public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
+                super.onPageStarted(view, url, favicon);
+                ScreensaverWebDiagnostics.pageStarted(url);
+            }
             @Override public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
+                ScreensaverWebDiagnostics.pageFinished(url);
                 if (desktop && !stopped && ScreensaverDashboard.sameSite(page, url)) {
                     view.evaluateJavascript(ScreensaverDashboard.desktopViewportScript(
                             ScreensaverDashboard.viewportWidth(prefs.screensaverFit())), null);
                 }
             }
+            @Override public void onReceivedError(WebView view, WebResourceRequest request,
+                    android.webkit.WebResourceError error) {
+                super.onReceivedError(view, request, error);
+                if (request != null && request.isForMainFrame()) {
+                    ScreensaverWebDiagnostics.loadError(
+                            request.getUrl() == null ? "" : request.getUrl().toString(),
+                            error == null ? -1 : error.getErrorCode(),
+                            error == null ? "" : String.valueOf(error.getDescription()));
+                }
+            }
 
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 if (request == null || request.getUrl() == null) return true;
-                return !ScreensaverDashboard.sameSite(page, request.getUrl().toString());
+                String next = request.getUrl().toString();
+                boolean same = ScreensaverDashboard.sameSite(page, next);
+                if (!same) ScreensaverWebDiagnostics.authNote("blocked off-site navigation");
+                return !same;
             }
         });
         FrameLayout.LayoutParams params = cardParams();

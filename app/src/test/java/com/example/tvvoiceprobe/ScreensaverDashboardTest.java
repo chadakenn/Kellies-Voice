@@ -93,4 +93,26 @@ public class ScreensaverDashboardTest {
         assertEquals(1f, ScreensaverDashboard.fraction("large"), 0.001f);
         assertEquals("", ScreensaverDashboard.cameras("none"));
     }
+
+    @Test public void httpLanDashboardIsAcceptedButNeverCarriesSecrets() {
+        String http = "http://192.168.1.10:8123/lovelace/wall?kiosk";
+        assertEquals(http, ScreensaverDashboard.dashboardUrl(http));
+        assertTrue(ScreensaverDashboard.sameSite(http, "http://192.168.1.10:8123/auth/authorize"));
+        assertFalse(ScreensaverDashboard.sameSite(http, "https://192.168.1.10:8123/lovelace"));
+        assertFalse(ScreensaverDashboard.sameSite(http, "http://192.168.1.11:8123/lovelace"));
+        assertFalse(ScreensaverDashboard.sameSite(http, "http://192.168.1.10:8124/lovelace"));
+        // Token in URL is rejected
+        assertEquals("", ScreensaverDashboard.dashboardUrl(
+                "http://192.168.1.10:8123/lovelace?token=secret"));
+    }
+
+    @Test public void authenticatedUrlNeverDowngradesToHttpExternalAuth() {
+        String httpPage = "http://192.168.1.10:8123/lovelace/wall";
+        String httpsHa = "https://ha.example.org:8123";
+        assertEquals("", HaDashboardAuthPolicy.authenticatedUrl(httpPage, httpsHa));
+        assertEquals("", HaDashboardAuthPolicy.authenticatedUrl(httpPage, httpPage));
+        // HTTPS same-origin still works
+        assertTrue(HaDashboardAuthPolicy.authenticatedUrl(
+                "https://ha.example.org:8123/lovelace", httpsHa).contains("external_auth=1"));
+    }
 }
