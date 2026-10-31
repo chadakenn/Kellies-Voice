@@ -424,7 +424,9 @@ final class ScreensaverBoard {
                 boolean allowed = strictLocalHttp
                         ? LanHttpDashboardPolicy.allowedNavigation(page, next)
                         : ScreensaverDashboard.sameSite(page, next);
-                if (!allowed) ScreensaverWebDiagnostics.blockedNavigation(next);
+                if (!allowed) ScreensaverWebDiagnostics.blockedNavigation(
+                        page, next, request.isForMainFrame(),
+                        request.isRedirect(), request.hasGesture());
                 return !allowed;
             }
         });
