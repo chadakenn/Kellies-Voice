@@ -16,7 +16,8 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    async_add_entities([KellieAutoListen(entry), KellieScreensaverSwitch(entry)])
+    async_add_entities([KellieAutoListen(entry), KellieScreensaverSwitch(entry),
+                        KellieHaDashboardSignInSwitch(entry)])
 
 
 class KellieAutoListen(SwitchEntity, RestoreEntity):
@@ -80,5 +81,24 @@ class KellieScreensaverSwitch(KellieAutoListen):
         self._setting = "screensaver_enabled"
         self._attr_name = "Frigate screensaver"
         self._attr_unique_id = f"{self._device_id}_screensaver_enabled"
+        self._attr_is_on = False
+        self._attr_extra_state_attributes = self._attributes()
+
+
+class KellieHaDashboardSignInSwitch(KellieAutoListen):
+    """Per-TV opt-in for same-origin authenticated HA dashboard WebView.
+
+    This switch changes no credentials, microphone grants or remote sessions.
+    The Android TV independently verifies HTTPS + exact paired HA origin, the
+    owner-approved renewable grant and a V2-only WebView security bridge.
+    """
+
+    _attr_icon = "mdi:shield-lock"
+
+    def __init__(self, entry: ConfigEntry) -> None:
+        super().__init__(entry)
+        self._setting = "screensaver_ha_external_auth"
+        self._attr_name = "Secure HA dashboard sign-in"
+        self._attr_unique_id = f"{self._device_id}_screensaver_ha_external_auth"
         self._attr_is_on = False
         self._attr_extra_state_attributes = self._attributes()
