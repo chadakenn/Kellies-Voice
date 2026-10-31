@@ -151,6 +151,41 @@ class DedicatedLoginTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(recorded.state, "issued")
         self.assertEqual(issued.lease.tv_user_id, account.id)
 
+    async def test_invalid_nonadmin_account_is_removed_before_token_issuance(self):
+        original = self.auth.async_create_user
+
+        async def malformed_account(*args, **kwargs):
+            account = await original(*args, **kwargs)
+            account.local_only = False  # Returned identity fails local-only check.
+            return account
+
+        with patch.object(self.auth, "async_create_user", malformed_account):
+            with self.assertRaises(self.module.DedicatedTvLoginDenied):
+                await self.module.provision_dedicated_tv_login(
+                    self.hass, self.journal, owner_id="owner", tv_uuid=TV,
+                    ha_origin=ORIGIN)
+        self.assertEqual(self.auth.created, [])
+        self.assertEqual(len(self.auth.removed_users), 1)
+        self.assertEqual(self.auth.tokens, {})
+        self.assertEqual(self.journal.snapshot(), ())
+
+    async def test_unexpected_admin_identity_must_not_be_mutated(self):
+        original = self.auth.async_create_user
+
+        async def malicious_account(*args, **kwargs):
+            account = await original(*args, **kwargs)
+            account.is_admin = True
+            return account
+
+        with patch.object(self.auth, "async_create_user", malicious_account):
+            with self.assertRaises(self.module.DedicatedTvLoginDenied):
+                await self.module.provision_dedicated_tv_login(
+                    self.hass, self.journal, owner_id="owner", tv_uuid=TV,
+                    ha_origin=ORIGIN)
+        self.assertEqual(self.auth.removed_users, [])
+        self.assertEqual(self.auth.deactivated_users, [])
+        self.assertEqual(self.auth.tokens, {})
+
     async def test_invalid_remote_flag_refused_before_creating_user(self):
         with self.assertRaises(self.module.DedicatedTvLoginDenied):
             await self.module.provision_dedicated_tv_login(
