@@ -89,6 +89,14 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+      - name: Upload matching Home Assistant integration for volunteer tests
+        uses: actions/upload-artifact@v4
+        with:
+          name: kellies-voice-hacs-dev
+          path: custom_components/kellies_voice/
+          if-no-files-found: error
+          retention-days: 14
+
       # Dedicated, permanent application ID. This is a non-debuggable
       # release-style QA app, signed by the existing trusted dev-only
       # workflow. Never use ephemeral pull-request debug signing for it.
