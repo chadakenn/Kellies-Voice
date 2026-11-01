@@ -1,6 +1,8 @@
 # Stable releases and opt-in beta testing
 
-**Public stable: [the latest signed release](https://github.com/chadakenn/Kellies-Voice/releases/latest).** v0.17.0 (Android build 55) is the current stable release. v0.16.14 (build 54) was the preceding stable release. If you just want to use Kellie's Voice, stay on stable. You do **not** need to enable betas for signed updates.
+**Public stable: [the latest signed release](https://github.com/chadakenn/Kellies-Voice/releases/latest).** As of November 1, 2026, the latest stable is **v0.17.3 (Android build 58)**. If you just want to use Kellie's Voice, stay on stable. You do **not** need to enable betas for signed updates.
+
+**Philips volunteer candidate: v0.17.4-dev.1 (Android build 59).** This opt-in prerelease bundles smoother HA dashboard startup, `show_dashboard` / `hide_dashboard` HA actions and Philips OLED field-test guidance. The signed APK and Home Assistant integration must **both** be v0.17.4-dev.1. See the [volunteer test checklist](qa/v0.17.4-voravin-test.md) and [PR #300](https://github.com/chadakenn/Kellies-Voice/pull/300). This is not yet the public stable v0.17.4 release; TV behavior still needs field testing.
 
 **Previous beta:** v0.16.13-dev.1 (Android build 53) was an opt-in prerelease between stable v0.16.12 and the now-published stable v0.16.14. Choose stable v0.16.14 when available. Historical v0.16.12-dev.N versions are for manual recovery/testing, not the newest beta channel.
 
