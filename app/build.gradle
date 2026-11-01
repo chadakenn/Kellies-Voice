@@ -15,8 +15,8 @@ android {
         applicationId 'com.example.tvvoiceprobe'
         minSdk 26
         targetSdk 35
-        versionCode 56
-        versionName '0.17.1'
+        versionCode 57
+        versionName '0.17.2'
         buildConfigField 'boolean', 'IS_QA', 'false'
         manifestPlaceholders = [
             appDisplayName: "Kellie's Voice",
