@@ -65,6 +65,26 @@ public class ScreensaverDashboardTest {
                 "http://192.168.1.42:8123/").contains("expected="));
     }
 
+    @Test public void triggerDashboardPathsStayOnTheConfiguredHaServer() {
+        String base = "http://192.168.1.42:8123/mobile-command/home?kiosk";
+        assertEquals("http://192.168.1.42:8123/mobile-command/bedroom?kiosk",
+                ScreensaverDashboard.dashboardForPath(base, "/mobile-command/bedroom"));
+        assertEquals("http://192.168.1.42:8123/dashboard-cameras/front?kiosk",
+                ScreensaverDashboard.dashboardForPath(base, "/dashboard-cameras/front"));
+        assertEquals(base, ScreensaverDashboard.dashboardForPath(base, ""));
+        assertTrue(ScreensaverDashboard.validDashboardPath("/mobile-command/cameras"));
+        assertFalse(ScreensaverDashboard.validDashboardPath("https://evil.example/"));
+        assertFalse(ScreensaverDashboard.validDashboardPath("//evil.example"));
+        assertFalse(ScreensaverDashboard.validDashboardPath("/../admin"));
+        assertFalse(ScreensaverDashboard.validDashboardPath("/%2F"));
+        assertFalse(ScreensaverDashboard.validDashboardPath("/dashboard?token=x"));
+        assertFalse(ScreensaverDashboard.validDashboardPath("/dashboard#fragment"));
+        assertFalse(ScreensaverDashboard.validDashboardPath(null));
+        assertEquals("", ScreensaverDashboard.dashboardForPath(base, "//evil.example"));
+        assertEquals("", ScreensaverDashboard.dashboardForPath(base, "/../admin"));
+        assertEquals("", ScreensaverDashboard.dashboardForPath("javascript:alert(1)", "/bedroom"));
+    }
+
     @Test public void fitPresetsChangeViewportAndFallbackSafely() {
         assertEquals(1920, ScreensaverDashboard.viewportWidth("Fit more cameras"));
         assertEquals(1440, ScreensaverDashboard.viewportWidth("Balanced"));
