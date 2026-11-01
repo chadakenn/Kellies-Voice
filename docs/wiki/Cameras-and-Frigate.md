@@ -53,7 +53,7 @@ This is a **single-device compatibility confirmation**, not a guarantee for ever
 
 ## Home Assistant dashboard loading and on-demand actions (v0.17.4 candidate)
 
-For Home Assistant dashboards, the TV keeps the WebView **behind a black Loading screen** while HA signs in and redirects from its initial/default page to the configured dashboard. The finished dashboard appears once the expected path and HA frontend are ready and briefly stable. This is only a visual change, **not a login bypass**. If a login never completes, Back exits; the app does not silently use an unsafe token or redirect to a different origin.
+For Home Assistant dashboards, the TV keeps the WebView **behind a black Loading screen** while HA signs in and redirects from its initial/default page to the configured dashboard. The finished dashboard appears once the expected path and HA frontend are ready and briefly stable. This is only a visual change, **not a login bypass**. If automatic login still has not finished after about 15 seconds, a **Sign in manually** button appears so the user can intentionally reveal the same-origin WebView and complete interactive HA sign-in. **Back** exits at any time. The app does not silently use an unsafe token or redirect to a different origin.
 
 After installing the matching v0.17.4 TV app and HACS integration, `kellies_voice.show_dashboard` can display the TV's **configured** screensaver source over another app (with overlay permission), and `kellies_voice.hide_dashboard` closes only that explicit on-demand view. See the [YAML Cookbook](YAML-Cookbook.md#show-and-hide-the-configured-dashboard-v0174-candidate) for action syntax and limitations. Normal system screensaver behavior remains unchanged.
 
