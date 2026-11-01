@@ -13,7 +13,7 @@ except ImportError:
     ec = None
 
 ROOT = (Path(__file__).resolve().parents[1] /
-        "custom_components/kellies_voice_v3qa")
+        "qa/ha_v3qa/kellies_voice_v3qa")
 PKG = "kv_v3_scoped_login_transport_tests"
 pkg = types.ModuleType(PKG)
 pkg.__path__ = [str(ROOT)]

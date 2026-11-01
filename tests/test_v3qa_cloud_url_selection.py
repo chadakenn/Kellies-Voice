@@ -7,7 +7,7 @@ import types
 import unittest
 from unittest.mock import patch
 
-ROOT = Path(__file__).resolve().parents[1] / "custom_components/kellies_voice_v3qa"
+ROOT = Path(__file__).resolve().parents[1] / "qa/ha_v3qa/kellies_voice_v3qa"
 PKG = "kv_v3qa_cloud_https_tests"
 pkg = types.ModuleType(PKG)
 pkg.__path__ = [str(ROOT)]

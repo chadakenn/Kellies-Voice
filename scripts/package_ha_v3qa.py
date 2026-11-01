@@ -7,7 +7,7 @@ import ast
 
 ROOT = Path(__file__).resolve().parents[1]
 PART = Path("custom_components/kellies_voice_v3qa")
-SOURCE = ROOT / PART
+SOURCE = ROOT / "qa" / "ha_v3qa" / "kellies_voice_v3qa"
 OUT = ROOT / "dist" / "kellies_voice_v3qa_ha.zip"
 assert SOURCE.is_dir(), "Isolated QA component folder missing"
 manifest = json.loads((SOURCE / "manifest.json").read_text())

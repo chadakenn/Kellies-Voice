@@ -7,7 +7,7 @@ import types
 import unittest
 from unittest.mock import patch, AsyncMock
 
-ROOT = Path(__file__).resolve().parents[1] / "custom_components" / "kellies_voice_v3qa"
+ROOT = Path(__file__).resolve().parents[1] / "qa" / "ha_v3qa" / "kellies_voice_v3qa"
 PKG = "kv_v3qa_flow_owner_tests"
 SID = "AQIDBAUGBwgJCgsMDQ4PEA"
 TV = "123e4567-e89b-42d3-a456-426614174000"

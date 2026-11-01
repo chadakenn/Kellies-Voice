@@ -7,11 +7,11 @@ TV = (ROOT / "app/src/main/java/com/example/tvvoiceprobe"
       / "TvRenewableLoginVault.java").read_text()
 POLICY = (ROOT / "app/src/main/java/com/example/tvvoiceprobe"
           / "TvRenewableLoginPolicy.java").read_text()
-ISSUER = (ROOT / "custom_components/kellies_voice_v3qa"
+ISSUER = (ROOT / "qa/ha_v3qa/kellies_voice_v3qa"
           / "scoped_login_issuer.py").read_text()
-FLOW = (ROOT / "custom_components/kellies_voice_v3qa"
+FLOW = (ROOT / "qa/ha_v3qa/kellies_voice_v3qa"
         / "config_flow.py").read_text()
-INIT = (ROOT / "custom_components/kellies_voice_v3qa"
+INIT = (ROOT / "qa/ha_v3qa/kellies_voice_v3qa"
         / "__init__.py").read_text()
 
 
