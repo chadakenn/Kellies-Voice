@@ -13,6 +13,19 @@
 
 **Safety and limits:** The TV's microphone is not activated by video playback; no audio plays from unselected grid cameras. Streams are authenticated via your HA URL and validated HLS paths; unsupported video and no-first-frame cases fall back to snapshots. Four software HLS streams may overload weaker devices and audio cannot be invented when a camera has no sound track. Frigate website mode is a different, opt-in interface. Do not publicly share unblurred home camera images.
 
+## Compatibility: CleanMyTV Home launcher (verified November 1, 2026)
+
+**Verified on the maintainer's onn 4K Pro:** [CleanMyTV](https://github.com/wingedpanther/cleanmytv) can remain the default ad-free launcher while Kellie's Voice automatically displays the four-camera screensaver when Google/Android TV Ambient Mode activates.
+
+CleanMyTV Home's own **Idle screen** shows its clock and wallpaper inside the launcher; it is not the Android Ambient Mode event that Kellie's Voice monitors. To use the camera screensaver:
+
+1. In the **CleanMyTV desktop application → Home screen → Layout → Idle screen**, choose **Off**.
+2. Keep the Kellie's Voice screensaver feature enabled and the overlay permission granted.
+3. Return to CleanMyTV Home and wait for the TV's **normal Android/Google TV Ambient Mode** to start after inactivity. Automatic Kellie's Voice camera display was verified after this change; it is not instantaneous.
+4. If uncertain, manually enter Google's **Ambient Mode** from TV settings. If Kellie's Voice opens there but does not open automatically, investigate whether Android enters Ambient Mode on its normal idle timer before changing HA camera settings. If Ambient Mode starts without Kellie's Voice, inspect **Screensaver status & permissions** (watcher status, last dream event and overlay outcome).
+
+**Result:** On the tested onn 4K Pro, the camera screensaver opened automatically with CleanMyTV Home installed, **Idle screen OFF**, and no code changes. Other devices and firmware versions remain unverified. See the [camera wiki guide](wiki/Cameras-and-Frigate.md#cleanmytv-home-launcher-compatibility-onn-4k-pro-field-tested-november-1-2026).
+
 ## Historical development testing notes (dev.10 and earlier)
 
 The sections below preserve beta diagnostics and acceptance history. Their previous "not in stable" warnings describe older beta builds, not the current v0.16.12 stable release.
