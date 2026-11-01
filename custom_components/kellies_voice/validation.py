@@ -19,7 +19,7 @@ except ImportError:  # unit test loads this file without the Home Assistant pack
         MIN_DURATION_SECONDS,
     )
 
-_CAMERA_ENTITY = re.compile(r"^camera\\.[a-z0-9_]+$")
+_CAMERA_ENTITY = re.compile(r"^camera\.[a-z0-9_]+$")
 # Exact local HA dashboard routes only, never schemes, hosts, query strings,
 # fragments, percent-encoding, path traversal or third-party URLs.
 _DASHBOARD_PATH = re.compile(r"^/(?:[A-Za-z0-9_-]+(?:/[A-Za-z0-9_-]+)*)?$")
