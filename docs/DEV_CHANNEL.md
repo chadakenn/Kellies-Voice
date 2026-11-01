@@ -7,6 +7,25 @@ The public repository's default branch is **main**. **dev** is a staging branch
 for pre-release QA on the owner's onn 4K Pro. Changes under development must
 not appear in public GitHub Releases until approved.
 
+## v0.17.4-dev.1: opt-in Philips volunteer preview (November 2026)
+
+This is a **tester prerelease**, not the default public stable release. A
+reviewed `dev` commit explicitly marked `[publish-hacs-dev]` may publish
+`v0.17.4-dev.1`, with a verified same-signed Android build 59 and matching
+Home Assistant integration. Public stable remains v0.17.3 until physical
+dashboard tests and a separate stable release approval are complete.
+
+The volunteer checklist covers HA dashboard login and visual transitions,
+`kellies_voice.show_dashboard` / `hide_dashboard`, Philips OLED vendor-logo
+interference and safe panel-protection behavior, HDMI/TiviMate overlays,
+D-pad/Back, camera popups and full-reboot recovery.
+
+See [the targeted Philips beta guide](qa/v0.17.4-voravin-test.md) and
+[the combined v0.17.4 development PR](https://github.com/chadakenn/Kellies-Voice/pull/300).
+Testers should opt in to the HACS prerelease and select Development on the
+TV, or download the signed APK directly from the tagged prerelease. Never
+use a disposable PR debug APK for in-place upgrades.
+
 ## Branch policy
 
 | Branch | Purpose | May publish a public stable release? |
