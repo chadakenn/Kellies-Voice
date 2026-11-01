@@ -6,13 +6,15 @@ Do not blindly forward arbitrary event data to ordinary Home Assistant users.
 
 import json
 
-from .validation import clean_actions
+from .validation import clean_actions, clean_dashboard_path
 
 from .const import (
     EVENT_ANNOUNCEMENT,
     EVENT_CAMERA_POPUP,
     EVENT_FORECAST,
     EVENT_HIDE_CAMERA,
+    EVENT_SHOW_DASHBOARD,
+    EVENT_HIDE_DASHBOARD,
     EVENT_LIVE_CAMERA,
 )
 
@@ -21,6 +23,8 @@ EVENT_FIELDS = {
     EVENT_CAMERA_POPUP: ("device_id", "entity_id", "title", "speak", "duration_seconds", "show_header", "image_fit", "refresh_seconds", "actions", "announcement_id"),
     EVENT_LIVE_CAMERA: ("device_id", "entity_id", "title", "speak", "duration_seconds", "show_header", "image_fit", "refresh_seconds", "actions", "announcement_id"),
     EVENT_HIDE_CAMERA: ("device_id",),
+    EVENT_SHOW_DASHBOARD: ("device_id", "dashboard_path"),
+    EVENT_HIDE_DASHBOARD: ("device_id",),
     EVENT_FORECAST: ("device_id", "location", "units", "issued", "duration_seconds", "days"),
     "kellies_voice_timer": (
         "device_id", "operation", "name", "issued",
@@ -54,6 +58,12 @@ def sanitize_event(event_type: str, payload: dict, this_tv: str) -> dict | None:
         if key == "device_id" or key not in payload:
             continue
         value = payload[key]
+        if key == "dashboard_path":
+            try:
+                safe[key] = clean_dashboard_path(value)
+            except ValueError:
+                return None
+            continue
         if key == "actions":
             try:
                 safe["actions"] = clean_actions(value)

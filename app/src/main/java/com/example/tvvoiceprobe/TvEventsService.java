@@ -713,6 +713,31 @@ public final class TvEventsService extends Service {
             if (subscription == SCOPED_ALERTS_ID && isDiagnosticPopup(eventType)) {
                 reportPopupReceipt("received", diagnosticReceipt);
             }
+            // Dashboard actions are accepted ONLY through the authenticated,
+            // scoped subscription, never unscoped legacy Home Assistant events.
+            // The target TV must already have its screensaver source configured.
+            if (subscription == SCOPED_ALERTS_ID
+                    && (TvEventPayload.SHOW_DASHBOARD.equals(eventType)
+                    || TvEventPayload.HIDE_DASHBOARD.equals(eventType))) {
+                boolean show = TvEventPayload.SHOW_DASHBOARD.equals(eventType);
+                String action = show
+                        ? ScreensaverWatchService.ACTION_SHOW_DASHBOARD
+                        : ScreensaverWatchService.ACTION_HIDE_DASHBOARD;
+                String route = show ? data.optString("dashboard_path", "") : "";
+                if (!ScreensaverDashboard.validDashboardPath(route)) return;
+                try {
+                    Intent command = new Intent(this, ScreensaverWatchService.class)
+                            .setAction(action);
+                    if (show) command.putExtra(
+                            ScreensaverWatchService.EXTRA_DASHBOARD_PATH, route);
+                    startForegroundService(command);
+                } catch (RuntimeException ignored) {
+                    // Foreground-service launches can be denied on some TV firmware.
+                    // Do not bypass Android permissions with an exported receiver.
+                    TvEventsRecovery.diagnostic("Dashboard request blocked by Android");
+                }
+                return;
+            }
             // A close command never starts a new overlay or microphone.
             // Ignore it when a text announcement (or nothing) is visible.
             if ((subscription == SCOPED_ALERTS_ID || subscription == HIDE_CAMERA_EVENT_ID)

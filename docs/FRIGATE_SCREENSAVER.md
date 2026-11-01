@@ -26,6 +26,14 @@ CleanMyTV Home's own **Idle screen** shows its clock and wallpaper inside the la
 
 **Result:** On the tested onn 4K Pro, the camera screensaver opened automatically with CleanMyTV Home installed, **Idle screen OFF**, and no code changes. Other devices and firmware versions remain unverified. See the [camera wiki guide](wiki/Cameras-and-Frigate.md#cleanmytv-home-launcher-compatibility-onn-4k-pro-field-tested-november-1-2026).
 
+## Philips OLED firmware screensaver interaction (community-tested November 2026)
+
+A tester using a **Philips 55OLED856/12 OLED** reported that Philips firmware can display its own **bouncing-logo screensaver on top of Kellie's Voice**, even while the Android `FrigateScreensaverDream` is still running. This is different from Kellie's Voice failing to launch. They observed the Philips logo after roughly two minutes of idle/unchanged picture, and the Philips menu offered no way to turn it off.
+
+Their **advanced, device-specific workaround** started Android's screen timeout at one minute with `adb shell settings put system screen_off_timeout 60000` and changed the dashboard layout at least every 30 seconds. **Neither measure guarantees OLED burn-in protection.** Do not disable or defeat the TV's manufacturer panel-protection, dimming or sleep behavior. The timeout may reset after a reboot or firmware upgrade and may not behave the same on other TVs. A single, unreplicated full-TV freeze was also reported following a Back-button sequence while the vendor logo was present; its cause is unknown. The tester had **not yet verified automatic screensaver startup after a full reboot**.
+
+See the full [Philips OLED behavior, safety notes and diagnostics](wiki/Cameras-and-Frigate.md#philips-oled-factory-screensaver-covering-the-dashboard-community-report-november-2026) and the [original issue #261 field report](https://github.com/chadakenn/Kellies-Voice/issues/261#issuecomment-6562897320). This is a **community result**, not a general Philips/OLED compatibility guarantee.
+
 ## Historical development testing notes (dev.10 and earlier)
 
 The sections below preserve beta diagnostics and acceptance history. Their previous "not in stable" warnings describe older beta builds, not the current v0.16.12 stable release.

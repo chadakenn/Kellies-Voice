@@ -63,12 +63,18 @@ final class ScreensaverBoard {
 
     private final Context context;
     private final Host host;
+    private final String requestedDashboardPath;
     private final Handler main = new Handler(Looper.getMainLooper());
     private final FrameLayout root;
     private final List<Call> calls = new ArrayList<>();
     private OkHttpClient http;
     private WebView web;
     private HaDashboardExternalAuthBridge haWebAuth;
+    private View dashboardLoading;
+    private Button dashboardLoginButton;
+    private boolean dashboardRevealed;
+    private long dashboardReadySinceMs;
+    private long dashboardLoadingStartedMs;
     private ScreensaverLiveGrid liveGrid;
     private ImageView[] gridPhotos;
     private View[] gridCells;
@@ -92,8 +98,13 @@ final class ScreensaverBoard {
     });
 
     ScreensaverBoard(Context context, Host host) {
+        this(context, host, "");
+    }
+
+    ScreensaverBoard(Context context, Host host, String dashboardPath) {
         this.context = context;
         this.host = host;
+        this.requestedDashboardPath = dashboardPath == null ? "" : dashboardPath;
         root = new FrameLayout(context) {
             // The focused camera tile or footer button receives key events before
             // a root OnKeyListener. Intercept before dispatching to children.
@@ -198,12 +209,31 @@ final class ScreensaverBoard {
         remotePointer = null;
         browsing = false;
         haDashboardPage = false;
+        dashboardLoading = null;
+        dashboardLoginButton = null;
+        dashboardRevealed = false;
+        dashboardReadySinceMs = 0L;
+        dashboardLoadingStartedMs = 0L;
         if (!prefs.screensaverDashboard()) {
             showMessage("Frigate screensaver is off. Turn it on in Kellie's Voice settings, then press Close.");
             root.addView(closeButton());
             return;
         }
-        String page = prefs.screensaverUrl();
+        String configuredPage = prefs.screensaverUrl();
+        String page = configuredPage;
+        if (!requestedDashboardPath.isEmpty()) {
+            // Only configured HA dashboards accept alternate pages. The route
+            // cannot change scheme, server or port and cannot carry secrets.
+            page = ScreensaverDashboard.isHomeAssistantPage(
+                    configuredPage, prefs.screensaverHaExternalAuth())
+                    ? ScreensaverDashboard.dashboardForPath(
+                            configuredPage, requestedDashboardPath) : "";
+            if (page.isEmpty()) {
+                showMessage("Choose a Home Assistant dashboard URL in TV settings "
+                        + "before selecting another dashboard from an automation.");
+                return;
+            }
+        }
         String[] cameras = ScreensaverDashboard.cameraList(prefs.screensaverCameras());
         haDashboardPage = !page.isEmpty()
                 && ScreensaverDashboard.isHomeAssistantPage(page, prefs.screensaverHaExternalAuth());
@@ -239,6 +269,11 @@ final class ScreensaverBoard {
 
     void stop() {
         stopped = true;
+        dashboardLoading = null;
+        dashboardLoginButton = null;
+        dashboardRevealed = false;
+        dashboardReadySinceMs = 0L;
+        dashboardLoadingStartedMs = 0L;
         browsing = false;
         remotePointer = null;
         fullscreenSlot = -1;
@@ -385,6 +420,9 @@ final class ScreensaverBoard {
             @Override public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
                 super.onPageStarted(view, url, favicon);
                 ScreensaverWebDiagnostics.pageStarted(url);
+                // Initial HA redirects, including its login and default dashboard,
+                // stay behind the native loading surface, never exposed on the TV.
+                if (haDashboardPage && !dashboardRevealed) dashboardReadySinceMs = 0L;
             }
             @Override public WebResourceResponse shouldInterceptRequest(
                     WebView view, WebResourceRequest request) {
@@ -448,16 +486,94 @@ final class ScreensaverBoard {
         if (params.width == FrameLayout.LayoutParams.MATCH_PARENT) params.bottomMargin = 0;
         // Keep Close / browse controls ABOVE the asynchronously loaded page.
         root.addView(web, 0, params);
+        if (haDashboardPage) {
+            // A native, opaque surface masks the whole WebView during HA's
+            // login, redirect to / and subsequent navigation to the saved path.
+            // Nothing is injected into HA's login flow or a URL.
+            FrameLayout cover = new FrameLayout(context);
+            cover.setBackgroundColor(Color.BLACK);
+            TextView loading = new TextView(context);
+            loading.setText("Loading Home Assistant dashboard…\nPress Back to exit");
+            loading.setTextColor(Color.WHITE);
+            loading.setTextSize(20);
+            loading.setGravity(Gravity.CENTER);
+            cover.addView(loading, new FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    FrameLayout.LayoutParams.MATCH_PARENT));
+            // Preserve manual login for TVs without automatic trusted-network
+            // or secure HA sign-in; keep it hidden during ordinary redirects.
+            Button manualLogin = new Button(context);
+            manualLogin.setText("Sign in manually");
+            manualLogin.setTextColor(Color.WHITE);
+            manualLogin.setBackground(controlBackground(0xFF173747, 0xFF24556A));
+            manualLogin.setFocusable(true);
+            manualLogin.setVisibility(View.GONE);
+            FrameLayout.LayoutParams loginParams = new FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.WRAP_CONTENT,
+                    FrameLayout.LayoutParams.WRAP_CONTENT,
+                    Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+            loginParams.bottomMargin = dp(44);
+            cover.addView(manualLogin, loginParams);
+            manualLogin.setOnClickListener(v -> {
+                // Explicit user choice: unmask the same-origin WebView and
+                // allow interactive Home Assistant login.
+                if (stopped || web == null || dashboardRevealed) return;
+                dashboardRevealed = true;
+                cover.setVisibility(View.GONE);
+                if (!browsing) startBrowsing();
+            });
+            root.addView(cover, new FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    FrameLayout.LayoutParams.MATCH_PARENT));
+            dashboardLoading = cover;
+            dashboardLoginButton = manualLogin;
+            dashboardLoadingStartedMs = SystemClock.uptimeMillis();
+        }
+        final WebView openedWeb = web;
+        final int openedGeneration = generation;
         web.loadUrl(page);
         if (haDashboardPage) {
-            // HA login WebViews can trap the remote on a single HTML link.
-            // Automatically provide the visible TV pointer for HA pages only.
-            // Frigate retains its existing opt-in camera browsing button.
-            final WebView openedWeb = web;
-            web.post(() -> {
-                if (!stopped && web == openedWeb && !browsing) startBrowsing();
-            });
+            main.postDelayed(() -> checkDashboardReady(
+                    openedWeb, page, openedGeneration), 400L);
         }
+    }
+
+    /** Reveal only after the configured HA path AND frontend have settled.
+     * HA uses history.pushState, so onPageFinished alone is insufficient.
+     * No browser URL, DOM content, credentials or response text enters logs.
+     */
+    private void checkDashboardReady(WebView openedWeb, String expectedPage, int openedGeneration) {
+        if (stopped || openedGeneration != generation || web != openedWeb
+                || !haDashboardPage || dashboardRevealed) return;
+        openedWeb.evaluateJavascript(ScreensaverDashboard.dashboardReadyScript(expectedPage),
+                result -> {
+                    if (stopped || openedGeneration != generation || web != openedWeb
+                            || dashboardRevealed) return;
+                    long now = SystemClock.uptimeMillis();
+                    if ("true".equals(result)) {
+                        if (dashboardReadySinceMs == 0L) dashboardReadySinceMs = now;
+                        if (now - dashboardReadySinceMs >= 1000L) {
+                            dashboardRevealed = true;
+                            if (dashboardLoading != null)
+                                dashboardLoading.setVisibility(View.GONE);
+                            // HA D-pad pointer is shown only over the final page.
+                            if (!browsing) startBrowsing();
+                            return;
+                        }
+                    } else {
+                        dashboardReadySinceMs = 0L;
+                    }
+                    if (now - dashboardLoadingStartedMs >= 15_000L
+                            && dashboardLoginButton != null
+                            && dashboardLoginButton.getVisibility() != View.VISIBLE) {
+                        // Restore a path for interactive password/user login
+                        // when automatic sign-in is unavailable on this TV.
+                        dashboardLoginButton.setVisibility(View.VISIBLE);
+                        dashboardLoginButton.requestFocus();
+                    }
+                    main.postDelayed(() -> checkDashboardReady(
+                            openedWeb, expectedPage, openedGeneration), 400L);
+                });
     }
 
     /** Explicit remote browsing. WebView itself may not expose Frigate's tiles to D-pad focus. */
