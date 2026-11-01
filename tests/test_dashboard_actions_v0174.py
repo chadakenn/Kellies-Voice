@@ -49,9 +49,14 @@ class DashboardActionSourceTests(unittest.TestCase):
         from importlib.util import module_from_spec, spec_from_file_location
         module = HA / "validation.py"
         # Existing validator supports standalone loading for unit tests.
-        spec = spec_from_file_location("kellies_dashboard_validation", module)
-        validator = module_from_spec(spec)
-        spec.loader.exec_module(validator)
+        import sys
+        sys.path.insert(0, str(HA))
+        try:
+            spec = spec_from_file_location("kellies_dashboard_validation", module)
+            validator = module_from_spec(spec)
+            spec.loader.exec_module(validator)
+        finally:
+            sys.path.remove(str(HA))
         self.assertEqual("/mobile-command/bedroom",
                          validator.clean_dashboard_path("/mobile-command/bedroom"))
         self.assertEqual("", validator.clean_dashboard_path(None))
