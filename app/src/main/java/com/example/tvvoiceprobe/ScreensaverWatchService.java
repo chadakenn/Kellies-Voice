@@ -147,7 +147,9 @@ public final class ScreensaverWatchService extends Service {
         } else if (intent != null && ACTION_SHOW_DASHBOARD.equals(intent.getAction())) {
             // Respect the same settings, overlay permission and configured-source
             // checks as the existing manual preview. Never open the microphone.
-            if (!ScreensaverSignals.ourDream()) {
+            if (!ScreensaverSignals.ourDream() && board == null) {
+                // An already-running ambient screensaver is NOT converted
+                // into a user-demand session that HA may close.
                 onDemand = true;
                 showIfWanted(true);
                 if (board == null) onDemand = false;
