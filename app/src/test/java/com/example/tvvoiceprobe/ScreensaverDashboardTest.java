@@ -51,6 +51,20 @@ public class ScreensaverDashboardTest {
         assertTrue(ScreensaverDashboard.useFrigateDesktopViewport(frigate, true, false));
     }
 
+    @Test public void haLoadingChecksConfiguredRouteWithoutExposingAuthQuery() {
+        String script = ScreensaverDashboard.dashboardReadyScript(
+                "http://192.168.1.42:8123/tv-wall/wall?kiosk=true&auth_code=never_print");
+        assertTrue(script.contains("tv-wall/wall"));
+        assertTrue(script.contains("location.pathname"));
+        assertTrue(script.contains("document.readyState"));
+        assertTrue(script.contains("home-assistant"));
+        assertFalse(script.contains("auth_code"));
+        assertFalse(script.contains("never_print"));
+        assertFalse(script.contains("192.168.1.42"));
+        assertTrue(ScreensaverDashboard.dashboardReadyScript(
+                "http://192.168.1.42:8123/").contains("expected="));
+    }
+
     @Test public void fitPresetsChangeViewportAndFallbackSafely() {
         assertEquals(1920, ScreensaverDashboard.viewportWidth("Fit more cameras"));
         assertEquals(1440, ScreensaverDashboard.viewportWidth("Balanced"));
