@@ -51,6 +51,35 @@ On the maintainer's onn Google TV, all four live cameras launched automatically 
 
 This is a **single-device compatibility confirmation**, not a guarantee for every CleanMyTV-supported TV or firmware. No CleanMyTV uninstall, launcher rollback, or Kellie's Voice code change was needed for the verified setup.
 
+## Philips OLED factory screensaver covering the dashboard (community report, November 2026)
+
+**Reported on:** Philips **55OLED856/12** (OLED, firmware `TPM211EA_R.101.001.005.115`), Kellie's Voice **0.17.1**, by [@voravin in issue #261](https://github.com/chadakenn/Kellies-Voice/issues/261#issuecomment-6562897320). Their separate Philips **65PUS8507/12** LED TV (app 0.17.3) also passed Home Assistant dashboard login/navigation and camera-popup checks, but **the factory-logo interference was reported only on the OLED model**. This is a community test, not a universal Philips fix.
+
+### Symptoms and cause
+
+After approximately **two minutes** of inactivity or an unchanged picture, Philips firmware can display its own **bouncing-logo screensaver** *above* Kellie's Voice's Android screensaver/dashboard. In the report, `dumpsys dreams` showed `FrigateScreensaverDream` still running and `dumpsys window` showed a visible `org.droidtv.tvsystemui` window above it. So a visible Philips logo **does not necessarily mean** that Kellie's Voice stopped or lost its Home Assistant login. The tester could not disable this vendor behavior through the Philips TV menu.
+
+### Advanced workaround reported by the tester
+
+The tester found that starting Android's screensaver **before** the Philips logo normally appears, while regularly changing the dashboard layout, kept their dashboard visible. This is **optional and model/firmware-specific**, not a recommended default setting or a verified permanent solution.
+
+1. First review the TV's normal **screen protection, sleep and screensaver** settings. Prefer the manufacturer's intended protections, particularly for OLED.
+2. **Advanced, ADB only:** with Android debugging already configured, the tester used:
+
+   ```sh
+   adb shell settings put system screen_off_timeout 60000
+   ```
+
+   This requests a **60,000 ms (one-minute)** Android inactivity timeout; it does not disable the Philips firmware's own screensaver. The Philips menu exposed a five-minute minimum, and firmware sometimes reset the ADB value after a reboot or update. Read it back with `adb shell settings get system screen_off_timeout` if behavior changes. Do **not** assume this command works on other Philips models.
+3. The tester **rotated the dashboard layout at least every 30 seconds**. That's a report of their setup, **not a guarantee against OLED image retention or burn-in**. Maintain dimming, sleep and manufacturer panel-protection features; avoid leaving bright static widgets or camera frames on an OLED for long periods.
+4. If the Philips logo still appears, do not keep defeating panel-protection behavior just to force Kellie's Voice to remain visible. Use the manufacturer's screensaver or normal display power-off behavior instead.
+
+### One unconfirmed TV freeze
+
+The tester reported **one non-reproducible full-TV freeze** after dismissing the Philips logo and pressing the remote **Back** button: the display went blank and neither the remote, ADB nor the Philips API responded until power cycling. The cause is **unknown**; there is no evidence establishing that Kellie's Voice caused the freeze. They subsequently used **OK** to dismiss the Philips logo before using Back. If it happens again, report firmware, app version, exact key sequence and redacted diagnostics in [issue #261](https://github.com/chadakenn/Kellies-Voice/issues/261).
+
+**Verified limits:** On both Philips TVs the reporter confirmed Home Assistant trusted-network login without the old `Please wait` stall, remote D-pad navigation/Back, dashboards over TiviMate and HDMI, and camera popups. **Automatic screensaver start after a full TV reboot was not yet tested** in that report.
+
 ## Snapshot popups
 
 Use `kellies_voice.show_camera`. This is a still image. Optional parameters (v0.16.5+):
