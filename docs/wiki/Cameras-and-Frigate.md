@@ -51,6 +51,12 @@ On the maintainer's onn Google TV, all four live cameras launched automatically 
 
 This is a **single-device compatibility confirmation**, not a guarantee for every CleanMyTV-supported TV or firmware. No CleanMyTV uninstall, launcher rollback, or Kellie's Voice code change was needed for the verified setup.
 
+## Home Assistant dashboard loading and on-demand actions (v0.17.4 candidate)
+
+For Home Assistant dashboards, the TV keeps the WebView **behind a black Loading screen** while HA signs in and redirects from its initial/default page to the configured dashboard. The finished dashboard appears once the expected path and HA frontend are ready and briefly stable. This is only a visual change, **not a login bypass**. If a login never completes, Back exits; the app does not silently use an unsafe token or redirect to a different origin.
+
+After installing the matching v0.17.4 TV app and HACS integration, `kellies_voice.show_dashboard` can display the TV's **configured** screensaver source over another app (with overlay permission), and `kellies_voice.hide_dashboard` closes only that explicit on-demand view. See the [YAML Cookbook](YAML-Cookbook.md#show-and-hide-the-configured-dashboard-v0174-candidate) for action syntax and limitations. Normal system screensaver behavior remains unchanged.
+
 ## Philips OLED factory screensaver covering the dashboard (community report, November 2026)
 
 **Reported on:** Philips **55OLED856/12** (OLED, firmware `TPM211EA_R.101.001.005.115`), Kellie's Voice **0.17.1**, by [@voravin in issue #261](https://github.com/chadakenn/Kellies-Voice/issues/261#issuecomment-6562897320). Their separate Philips **65PUS8507/12** LED TV (app 0.17.3) also passed Home Assistant dashboard login/navigation and camera-popup checks, but **the factory-logo interference was reported only on the OLED model**. This is a community test, not a universal Philips fix.
