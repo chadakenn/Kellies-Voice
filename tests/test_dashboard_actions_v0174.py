@@ -19,7 +19,8 @@ class DashboardActionSourceTests(unittest.TestCase):
         self.assertIn("SERVICE_SHOW_DASHBOARD", services)
         self.assertIn("SERVICE_HIDE_DASHBOARD", services)
         self.assertIn('_event_targets(call, requested)', services)
-        self.assertIn('EVENT_SHOW_DASHBOARD: ("device_id",)', transport)
+        self.assertIn('EVENT_SHOW_DASHBOARD: ("device_id", "dashboard_path")', transport)
+        self.assertIn("clean_dashboard_path(value)", transport)
         self.assertIn('EVENT_HIDE_DASHBOARD: ("device_id",)', transport)
         self.assertIn('SERVICE_SHOW_DASHBOARD = "show_dashboard"', const)
         self.assertIn('SERVICE_HIDE_DASHBOARD = "hide_dashboard"', const)
@@ -39,7 +40,31 @@ class DashboardActionSourceTests(unittest.TestCase):
         self.assertIn("if (!ScreensaverSignals.ourDream() && board == null)", watch)
         self.assertIn("showIfWanted(true)", watch)
         self.assertIn("Settings.canDrawOverlays(this)", watch)
+        self.assertIn("EXTRA_DASHBOARD_PATH", watch)
+        self.assertIn("if (onDemand && board != null) hide();", watch)
+        self.assertIn("ScreensaverDashboard.validDashboardPath(route)", events)
         self.assertNotIn("settings put system screen_off_timeout", watch)
+
+    def test_service_exposes_only_safe_same_server_route(self):
+        from importlib.util import module_from_spec, spec_from_file_location
+        module = HA / "validation.py"
+        # Existing validator supports standalone loading for unit tests.
+        spec = spec_from_file_location("kellies_dashboard_validation", module)
+        validator = module_from_spec(spec)
+        spec.loader.exec_module(validator)
+        self.assertEqual("/mobile-command/bedroom",
+                         validator.clean_dashboard_path("/mobile-command/bedroom"))
+        self.assertEqual("", validator.clean_dashboard_path(None))
+        for invalid in ("https://example.com/", "//host/path", "/../x",
+                        "/dashboard?token=x", "/dashboard#x", "/%2F",
+                        "/foo//bar", "/foo/with space", "relative/dashboard"):
+            with self.subTest(invalid=invalid):
+                with self.assertRaises(ValueError):
+                    validator.clean_dashboard_path(invalid)
+        services = (HA / "services.py").read_text()
+        self.assertIn("clean_dashboard_path(call.data.get", services)
+        self.assertIn('"dashboard_path": dashboard_path', services)
+        self.assertIn('vol.Optional("dashboard_path", default="")', services)
 
     def test_ha_loading_hides_login_until_saved_path_is_ready(self):
         board = (APP / "ScreensaverBoard.java").read_text()
