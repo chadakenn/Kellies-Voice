@@ -45,6 +45,8 @@ class DashboardActionSourceTests(unittest.TestCase):
         board = (APP / "ScreensaverBoard.java").read_text()
         policy = (APP / "ScreensaverDashboard.java").read_text()
         self.assertIn("dashboardLoading = cover", board)
+        self.assertIn('manualLogin.setText("Sign in manually")', board)
+        self.assertIn("dashboardLoadingStartedMs >= 15_000L", board)
         self.assertIn("dashboardReadyScript(expectedPage)", board)
         self.assertIn("dashboardReadySinceMs", board)
         self.assertIn("dashboardLoading.setVisibility(View.GONE)", board)
