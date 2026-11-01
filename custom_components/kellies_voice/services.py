@@ -20,6 +20,8 @@ from .const import (
     EVENT_CAMERA_POPUP,
     EVENT_LIVE_CAMERA,
     EVENT_HIDE_CAMERA,
+    EVENT_SHOW_DASHBOARD,
+    EVENT_HIDE_DASHBOARD,
     EVENT_FORECAST,
     MAX_DURATION_SECONDS,
     MAX_LIVE_SECONDS,
@@ -29,6 +31,8 @@ from .const import (
     SERVICE_SHOW_CAMERA,
     SERVICE_SHOW_LIVE_CAMERA,
     SERVICE_HIDE_CAMERA,
+    SERVICE_SHOW_DASHBOARD,
+    SERVICE_HIDE_DASHBOARD,
     SERVICE_SHOW_FORECAST,
 )
 from .validation import (
@@ -114,6 +118,12 @@ HIDE_CAMERA_SCHEMA = vol.Schema(
     }
 )
 
+# Deliberately require a single TV. Dashboard takeover must never broadcast
+# unexpectedly across every screen. URL comes from the TV configuration only.
+DASHBOARD_ACTION_SCHEMA = vol.Schema(
+    {vol.Required("device_id"): cv.string}
+)
+
 SHOW_FORECAST_SCHEMA = vol.Schema(
     {
         vol.Optional("entity_id"): cv.string,
@@ -158,6 +168,12 @@ def async_register_services(hass: HomeAssistant) -> None:
     )
     hass.services.async_register(
         DOMAIN, SERVICE_HIDE_CAMERA, _async_hide_camera, schema=HIDE_CAMERA_SCHEMA
+    )
+    hass.services.async_register(
+        DOMAIN, SERVICE_SHOW_DASHBOARD, _async_show_dashboard, schema=DASHBOARD_ACTION_SCHEMA
+    )
+    hass.services.async_register(
+        DOMAIN, SERVICE_HIDE_DASHBOARD, _async_hide_dashboard, schema=DASHBOARD_ACTION_SCHEMA
     )
     hass.services.async_register(
         DOMAIN, SERVICE_SHOW_FORECAST, _async_show_forecast, schema=SHOW_FORECAST_SCHEMA
@@ -365,6 +381,36 @@ async def _async_hide_camera(call: ServiceCall) -> None:
         ledger(call.hass).clear(device_id)
         call.hass.bus.async_fire(EVENT_HIDE_CAMERA, {"device_id": device_id})
     _LOGGER.debug("Fired %s for %s configured TV(s)", EVENT_HIDE_CAMERA, len(targets))
+
+
+async def _async_show_dashboard(call: ServiceCall) -> None:
+    """Display the TV's already configured screensaver source on demand.
+
+    This uses the existing authorized per-TV alert channel. No custom URL,
+    login token, or script content is accepted in the event payload.
+    """
+    try:
+        requested = call.data["device_id"].strip()
+        if not requested:
+            raise ValueError("Choose one paired TV device id.")
+        targets = _event_targets(call, requested)
+    except ValueError as err:
+        raise ServiceValidationError(str(err)) from None
+    for device_id in targets:
+        call.hass.bus.async_fire(EVENT_SHOW_DASHBOARD, {"device_id": device_id})
+
+
+async def _async_hide_dashboard(call: ServiceCall) -> None:
+    """Dismiss only a dashboard opened on demand, not the Android dream."""
+    try:
+        requested = call.data["device_id"].strip()
+        if not requested:
+            raise ValueError("Choose one paired TV device id.")
+        targets = _event_targets(call, requested)
+    except ValueError as err:
+        raise ServiceValidationError(str(err)) from None
+    for device_id in targets:
+        call.hass.bus.async_fire(EVENT_HIDE_DASHBOARD, {"device_id": device_id})
 
 
 def _saved_weather_entity(hass: HomeAssistant, device_id: str):
