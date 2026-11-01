@@ -7,16 +7,16 @@ The public repository's default branch is **main**. **dev** is a staging branch
 for pre-release QA on the owner's onn 4K Pro. Changes under development must
 not appear in public GitHub Releases until approved.
 
-## v0.17.4-dev.1: opt-in Philips volunteer preview (November 2026)
+## v0.17.4-dev.2: opt-in Philips volunteer preview (November 2026)
 
 This is a **tester prerelease**, not the default public stable release. A
 reviewed `dev` commit explicitly marked `[publish-hacs-dev]` may publish
-`v0.17.4-dev.1`, with a verified same-signed Android build 59 and matching
+`v0.17.4-dev.2`, with a verified same-signed Android build 60 and matching
 Home Assistant integration. Public stable remains v0.17.3 until physical
 dashboard tests and a separate stable release approval are complete.
 
 The volunteer checklist covers HA dashboard login and visual transitions,
-`kellies_voice.show_dashboard` / `hide_dashboard`, Philips OLED vendor-logo
+`kellies_voice.show_dashboard` with optional `dashboard_path`, `hide_dashboard`, Philips OLED vendor-logo
 interference and safe panel-protection behavior, HDMI/TiviMate overlays,
 D-pad/Back, camera popups and full-reboot recovery.
 
