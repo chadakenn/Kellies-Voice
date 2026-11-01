@@ -75,6 +75,26 @@ public final class ScreensaverDashboard {
                 "m.setAttribute(\'content\',\'width=" + (width == 1200 || width == 1440 ? width : 1920) + ", initial-scale=1\');})();";
     }
 
+    /** Initial HA navigation check for a masked WebView.
+     * Check the path only, never the URL query (which can hold transient auth
+     * redirects). This is a presentation check, NOT an authentication guard.
+     */
+    public static String dashboardReadyScript(String configuredPage) {
+        String path = "/";
+        try {
+            String rawPath = URI.create(configuredPage).getRawPath();
+            if (rawPath != null && !rawPath.isEmpty()) path = rawPath;
+        } catch (RuntimeException ignored) { }
+        // URI paths are validated upstream; still escape the JavaScript
+        // string literal so a user-configured path cannot inject script.
+        String quoted = "\\"" + path.replace("\\\\", "\\\\\\\\").replace("\\"", "\\\\"") + "\\"";
+        return "(function(){var expected=" + quoted + ";"
+                + "var p=location.pathname;"
+                + "return document.readyState==='complete'"
+                + "&&p.replace(/\\\\/$/,'')===expected.replace(/\\\\/$/,'')"
+                + "&&!!document.querySelector('home-assistant');})()";
+    }
+
     public static boolean showOverlay(boolean enabled, boolean dreaming, boolean dismissed,
             boolean ourDreamVisible, boolean overlayAllowed, boolean configured) {
         return enabled && dreaming && !dismissed && !ourDreamVisible
