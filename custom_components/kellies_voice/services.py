@@ -37,6 +37,7 @@ from .const import (
 )
 from .validation import (
     clean_camera_entity,
+    clean_dashboard_path,
     clean_snapshot_refresh,
     clean_duration,
     clean_text,
@@ -121,8 +122,12 @@ HIDE_CAMERA_SCHEMA = vol.Schema(
 # Deliberately require a single TV. Dashboard takeover must never broadcast
 # unexpectedly across every screen. URL comes from the TV configuration only.
 DASHBOARD_ACTION_SCHEMA = vol.Schema(
-    {vol.Required("device_id"): cv.string}
+    {
+        vol.Required("device_id"): cv.string,
+        vol.Optional("dashboard_path", default=""): cv.string,
+    }
 )
+HIDE_DASHBOARD_SCHEMA = vol.Schema({vol.Required("device_id"): cv.string})
 
 SHOW_FORECAST_SCHEMA = vol.Schema(
     {
@@ -173,7 +178,7 @@ def async_register_services(hass: HomeAssistant) -> None:
         DOMAIN, SERVICE_SHOW_DASHBOARD, _async_show_dashboard, schema=DASHBOARD_ACTION_SCHEMA
     )
     hass.services.async_register(
-        DOMAIN, SERVICE_HIDE_DASHBOARD, _async_hide_dashboard, schema=DASHBOARD_ACTION_SCHEMA
+        DOMAIN, SERVICE_HIDE_DASHBOARD, _async_hide_dashboard, schema=HIDE_DASHBOARD_SCHEMA
     )
     hass.services.async_register(
         DOMAIN, SERVICE_SHOW_FORECAST, _async_show_forecast, schema=SHOW_FORECAST_SCHEMA
@@ -393,11 +398,15 @@ async def _async_show_dashboard(call: ServiceCall) -> None:
         requested = call.data["device_id"].strip()
         if not requested:
             raise ValueError("Choose one paired TV device id.")
+        dashboard_path = clean_dashboard_path(call.data.get("dashboard_path", ""))
         targets = _event_targets(call, requested)
     except ValueError as err:
         raise ServiceValidationError(str(err)) from None
     for device_id in targets:
-        call.hass.bus.async_fire(EVENT_SHOW_DASHBOARD, {"device_id": device_id})
+        call.hass.bus.async_fire(
+            EVENT_SHOW_DASHBOARD,
+            {"device_id": device_id, "dashboard_path": dashboard_path},
+        )
 
 
 async def _async_hide_dashboard(call: ServiceCall) -> None:
