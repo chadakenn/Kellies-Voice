@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.17.4 (release candidate; not yet signed or published) — Combined dashboard release
+
+- **Smooth Home Assistant dashboard opening:** Keep the WebView behind a native black loading surface while HA login, startup and configured-path redirects settle. This changes presentation, not credentials or same-origin security. Frigate pages and native camera grid remain unchanged.
+- **On-demand HA actions:** `kellies_voice.show_dashboard` and `kellies_voice.hide_dashboard` target one paired TV using the authorized TV alert channel and the TV's already configured screensaver URL/grid. No arbitrary URL or token is forwarded. `hide_dashboard` cannot dismiss automatic Android dream screensavers.
+- **Philips OLED guidance and compatibility:** Document the factory bouncing-logo window over an otherwise-running Android dream, the reported advanced workaround, panel-protection warnings, the one non-reproducible TV freeze of unknown cause, and verified limits for 55OLED856/12 OLED and 65PUS8507/12 LED.
+- **Requirements:** Both Android and HACS v0.17.4, TV alert receiver authorized/connected, screensaver source configured and enabled, and Android overlay permission. Android firmware may block overlays or background foreground-service launches.
+- **QA pending:** PR CI, physical dashboard login transition with local HTTP and HTTPS, on-demand HA action show/hide over live TV/HDMI, reboot recovery and Philips-specific retest. Do not release signed artifacts before QA passes.
+
+[Draft v0.17.4 release notes](docs/releases/v0.17.4.md). These entries describe candidate changes, not a published signed release.
+
+
 ## v0.16.12 (2026-10-26) — Live screensaver cameras and full-screen audio
 
 - Signed Android stable `versionCode 50`, `versionName 0.16.12`, matching HACS integration `0.16.12`; preserve permanent APK signing identity and existing TV settings.
