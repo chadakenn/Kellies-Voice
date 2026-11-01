@@ -70,8 +70,10 @@ final class ScreensaverBoard {
     private WebView web;
     private HaDashboardExternalAuthBridge haWebAuth;
     private View dashboardLoading;
+    private Button dashboardLoginButton;
     private boolean dashboardRevealed;
     private long dashboardReadySinceMs;
+    private long dashboardLoadingStartedMs;
     private ScreensaverLiveGrid liveGrid;
     private ImageView[] gridPhotos;
     private View[] gridCells;
@@ -202,8 +204,10 @@ final class ScreensaverBoard {
         browsing = false;
         haDashboardPage = false;
         dashboardLoading = null;
+        dashboardLoginButton = null;
         dashboardRevealed = false;
         dashboardReadySinceMs = 0L;
+        dashboardLoadingStartedMs = 0L;
         if (!prefs.screensaverDashboard()) {
             showMessage("Frigate screensaver is off. Turn it on in Kellie's Voice settings, then press Close.");
             root.addView(closeButton());
@@ -246,8 +250,10 @@ final class ScreensaverBoard {
     void stop() {
         stopped = true;
         dashboardLoading = null;
+        dashboardLoginButton = null;
         dashboardRevealed = false;
         dashboardReadySinceMs = 0L;
+        dashboardLoadingStartedMs = 0L;
         browsing = false;
         remotePointer = null;
         fullscreenSlot = -1;
@@ -474,10 +480,34 @@ final class ScreensaverBoard {
             cover.addView(loading, new FrameLayout.LayoutParams(
                     FrameLayout.LayoutParams.MATCH_PARENT,
                     FrameLayout.LayoutParams.MATCH_PARENT));
+            // Preserve manual login for TVs without automatic trusted-network
+            // or secure HA sign-in; keep it hidden during ordinary redirects.
+            Button manualLogin = new Button(context);
+            manualLogin.setText("Sign in manually");
+            manualLogin.setTextColor(Color.WHITE);
+            manualLogin.setBackground(controlBackground(0xFF173747, 0xFF24556A));
+            manualLogin.setFocusable(true);
+            manualLogin.setVisibility(View.GONE);
+            FrameLayout.LayoutParams loginParams = new FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.WRAP_CONTENT,
+                    FrameLayout.LayoutParams.WRAP_CONTENT,
+                    Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+            loginParams.bottomMargin = dp(44);
+            cover.addView(manualLogin, loginParams);
+            manualLogin.setOnClickListener(v -> {
+                // Explicit user choice: unmask the same-origin WebView and
+                // allow interactive Home Assistant login.
+                if (stopped || web == null || dashboardRevealed) return;
+                dashboardRevealed = true;
+                cover.setVisibility(View.GONE);
+                if (!browsing) startBrowsing();
+            });
             root.addView(cover, new FrameLayout.LayoutParams(
                     FrameLayout.LayoutParams.MATCH_PARENT,
                     FrameLayout.LayoutParams.MATCH_PARENT));
             dashboardLoading = cover;
+            dashboardLoginButton = manualLogin;
+            dashboardLoadingStartedMs = SystemClock.uptimeMillis();
         }
         final WebView openedWeb = web;
         final int openedGeneration = generation;
@@ -512,6 +542,14 @@ final class ScreensaverBoard {
                         }
                     } else {
                         dashboardReadySinceMs = 0L;
+                    }
+                    if (now - dashboardLoadingStartedMs >= 15_000L
+                            && dashboardLoginButton != null
+                            && dashboardLoginButton.getVisibility() != View.VISIBLE) {
+                        // Restore a path for interactive password/user login
+                        // when automatic sign-in is unavailable on this TV.
+                        dashboardLoginButton.setVisibility(View.VISIBLE);
+                        dashboardLoginButton.requestFocus();
                     }
                     main.postDelayed(() -> checkDashboardReady(
                             openedWeb, expectedPage, openedGeneration), 400L);
