@@ -25,6 +25,8 @@ public final class ScreensaverWatchService extends Service {
     public static final String ACTION_STOP = "com.example.tvvoiceprobe.SCREENSAVER_STOP";
     static final String ACTION_TEST_OVERLAY = "com.example.tvvoiceprobe.SCREENSAVER_TEST_OVERLAY";
     static final String ACTION_REFRESH_HA = "com.example.tvvoiceprobe.SCREENSAVER_REFRESH_HA";
+    static final String ACTION_SHOW_DASHBOARD = "com.example.tvvoiceprobe.SHOW_DASHBOARD";
+    static final String ACTION_HIDE_DASHBOARD = "com.example.tvvoiceprobe.HIDE_DASHBOARD";
     private static final String CHANNEL = "kellie_screensaver";
     private static final int NOTICE = 2244;
     private static final String DREAMING_STARTED = "android.intent.action.DREAMING_STARTED";
@@ -35,6 +37,9 @@ public final class ScreensaverWatchService extends Service {
     private ScreensaverSettingsSync settingsSync;
     private boolean registered;
     private boolean dreaming;
+    // Only a dashboard explicitly opened via HA may be closed via HA hide_dashboard.
+    // System-controlled Android dreams and automatic screensaver entry are unaffected.
+    private boolean onDemand;
     private long shownAtMs;
     private final Runnable onSettings = () -> {
         OverlayPreferences prefs = new OverlayPreferences(this);
@@ -53,6 +58,12 @@ public final class ScreensaverWatchService extends Service {
             } else if (DREAMING_STOPPED.equals(intent.getAction())) {
                 dreaming = false;
                 ScreensaverWatchStatus.event("Android DREAMING_STOPPED received");
+                if (onDemand) {
+                    // HDMI/input changes and Android dream termination must not
+                    // dismiss a dashboard explicitly opened by a HA automation.
+                    ScreensaverSignals.screensaverStopped();
+                    return;
+                }
                 long now = SystemClock.elapsedRealtime();
                 if (board != null && ScreensaverDashboard.keepAfterEarlyStop(shownAtMs, now)) return;
                 hide();
@@ -131,6 +142,17 @@ public final class ScreensaverWatchService extends Service {
             ScreensaverSignals.setListener(this::hideBecauseOurDream);
             ScreensaverSignals.listen(onSettings);
         }
+        if (intent != null && ACTION_HIDE_DASHBOARD.equals(intent.getAction())) {
+            if (onDemand) hide();
+        } else if (intent != null && ACTION_SHOW_DASHBOARD.equals(intent.getAction())) {
+            // Respect the same settings, overlay permission and configured-source
+            // checks as the existing manual preview. Never open the microphone.
+            if (!ScreensaverSignals.ourDream()) {
+                onDemand = true;
+                showIfWanted(true);
+                if (board == null) onDemand = false;
+            }
+        }
         if (intent != null && ACTION_TEST_OVERLAY.equals(intent.getAction())) {
             // Explicit local test, not evidence of an ambient-mode event.
             showIfWanted(true);
@@ -188,6 +210,7 @@ public final class ScreensaverWatchService extends Service {
     }
 
     private void hide() {
+        onDemand = false;
         shownAtMs = 0;
         if (board == null) return;
         board.stop();
