@@ -39,7 +39,7 @@ class FrigateSettingsTest(unittest.TestCase):
                          "Midnight Ocean|Jade Terminal")
         self.assertEqual(validate("community_theme_list", "  Midnight Ocean  "),
                          "Midnight Ocean")
-        for bad in ("|Empty name", "Bad|", "Theme\\nName", "X" * 41,
+        for bad in ("|Empty name", "Bad|", "Theme\nName", "X" * 41,
                     "A" * 256, "|".join(["Theme"] * 21)):
             with self.subTest(bad=bad), self.assertRaises(ValueError):
                 validate("community_theme_list", bad)
