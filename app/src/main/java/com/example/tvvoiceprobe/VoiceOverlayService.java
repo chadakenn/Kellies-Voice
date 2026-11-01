@@ -391,11 +391,15 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
         boolean obsidian = OverlayPreferences.SKIN_OBSIDIAN.equals(preferences.skin());
         boolean terminal = OverlayPreferences.SKIN_TERMINAL.equals(preferences.skin());
         boolean community = CommunityThemeStore.isId(preferences.skin());
+        boolean compactSize = OverlayPreferences.SIZE_SMALL.equals(preferences.size());
         AppPalette theme = AppPalette.forSkin(this, preferences.skin());
 
         panel = new VoicePanel();
         panel.setOrientation(LinearLayout.VERTICAL);
-        panel.setPadding(dp(signal ? 20 : 22), dp(signal ? 12 : 14), dp(22), dp(14));
+        // Small should be a genuinely compact corner panel, not a near full-height card.
+        panel.setPadding(dp(compactSize ? 14 : signal ? 20 : 22),
+                dp(compactSize ? 9 : signal ? 12 : 14),
+                dp(compactSize ? 14 : 22), dp(compactSize ? 9 : 14));
         panel.setFocusable(true);
         panel.setFocusableInTouchMode(true);
         GradientDrawable background = new GradientDrawable(
@@ -445,7 +449,8 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
                 : aurora ? VoiceWaveView.LOOK_AURORA
                 : signal ? VoiceWaveView.LOOK_SIGNAL : VoiceWaveView.LOOK_COPPER);
         wave.setMode(VoiceWaveView.CONNECTING);
-        panel.addView(wave, new LinearLayout.LayoutParams(-1, dp(glass ? 88 : signal ? 64 : 68)));
+        panel.addView(wave, new LinearLayout.LayoutParams(-1,
+                dp(compactSize ? 38 : glass ? 88 : signal ? 64 : 68)));
 
         // One scrolling region keeps long Assist answers readable while the
         // TALK/STOP/CLOSE/SETTINGS buttons remain visible and remote-friendly.
@@ -476,9 +481,10 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
         answerScroll.setFocusableInTouchMode(true);
         answerScroll.setVerticalScrollBarEnabled(true);
         answerScroll.addView(words);
-        float textFraction = OverlayPreferences.SIZE_SMALL.equals(preferences.size()) ? 0.28f
-                : OverlayPreferences.SIZE_LARGE.equals(preferences.size()) ? 0.44f : 0.34f;
-        int textHeight = Math.max(dp(110),
+        // Small used to reserve 28% of the entire TV height even for an empty answer.
+        // Cap that scrolling region instead; long replies stay readable by scrolling.
+        float textFraction = OverlayPreferences.SIZE_LARGE.equals(preferences.size()) ? 0.44f : 0.34f;
+        int textHeight = compactSize ? dp(108) : Math.max(dp(110),
                 (int) (getResources().getDisplayMetrics().heightPixels * textFraction));
         panel.addView(answerScroll, new LinearLayout.LayoutParams(-1, textHeight));
 
@@ -493,10 +499,10 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
         int screenWidth = getResources().getDisplayMetrics().widthPixels;
         int baseWidthDp;
         if (signal) {
-            baseWidthDp = OverlayPreferences.SIZE_SMALL.equals(preferences.size()) ? 440
+            baseWidthDp = compactSize ? 355
                     : OverlayPreferences.SIZE_LARGE.equals(preferences.size()) ? 880 : 640;
-        } else if (OverlayPreferences.SIZE_SMALL.equals(preferences.size())) {
-            baseWidthDp = glass ? 470 : 385;
+        } else if (compactSize) {
+            baseWidthDp = glass ? 375 : 345;
         } else if (OverlayPreferences.SIZE_LARGE.equals(preferences.size())) {
             baseWidthDp = glass ? 940 : 760;
         } else {
@@ -570,7 +576,7 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
         final int index = actions.size();
         Button button = new Button(this);
         button.setText(name);
-        button.setTextSize(signal ? 14 : 13);
+        button.setTextSize(OverlayPreferences.SIZE_SMALL.equals(preferences.size()) ? 11 : signal ? 14 : 13);
         button.setAllCaps(false);
         boolean obsidian = OverlayPreferences.SKIN_OBSIDIAN.equals(preferences.skin());
         boolean terminal = OverlayPreferences.SKIN_TERMINAL.equals(preferences.skin());
@@ -615,7 +621,8 @@ public final class VoiceOverlayService extends Service implements HaAssistClient
         });
         if (signal) button.getOnFocusChangeListener().onFocusChange(button, false);
         actions.add(button);
-        parent.addView(button, new LinearLayout.LayoutParams(0, dp(signal ? 40 : 42), 1f));
+        parent.addView(button, new LinearLayout.LayoutParams(0,
+                dp(OverlayPreferences.SIZE_SMALL.equals(preferences.size()) ? 36 : signal ? 40 : 42), 1f));
     }
 
     private void focus(int index) {

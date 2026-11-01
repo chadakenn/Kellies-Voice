@@ -33,6 +33,19 @@ class FrigateSettingsTest(unittest.TestCase):
             with self.subTest(bad=bad), self.assertRaises(ValueError):
                 validate("screensaver_cameras", bad)
 
+    def test_community_themes_are_accepted_without_weakening_camera_validation(self):
+        self.assertEqual(validate("community_theme_list", ""), "")
+        self.assertEqual(validate("community_theme_list", "Midnight Ocean|Jade Terminal"),
+                         "Midnight Ocean|Jade Terminal")
+        self.assertEqual(validate("community_theme_list", "  Midnight Ocean  "),
+                         "Midnight Ocean")
+        for bad in ("|Empty name", "Bad|", "Theme\nName", "X" * 41,
+                    "A" * 256, "|".join(["Theme"] * 21)):
+            with self.subTest(bad=bad), self.assertRaises(ValueError):
+                validate("community_theme_list", bad)
+        with self.assertRaises(ValueError):
+            validate("screensaver_cameras", "Midnight Ocean|Jade Terminal")
+
     def test_integrations_register_all_entities(self):
         integration = Path(__file__).resolve().parents[1] / "custom_components/kellies_voice"
         self.assertIn('"text"', (integration / "const.py").read_text())

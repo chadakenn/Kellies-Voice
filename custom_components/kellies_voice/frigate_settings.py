@@ -29,6 +29,18 @@ def validate_frigate_setting(setting: str, value: str) -> str:
         except ValueError:
             raise ValueError("Invalid HTTP(S) address.") from None
         return value
+    if setting == "community_theme_list":
+        # The TV reports installed theme display names separated by pipes.
+        # This is a read-only inventory, not a Frigate camera/URL setting.
+        if not value:
+            return ""
+        names = value.split("|")
+        if len(names) > 20 or any(
+            not name or len(name) > 40 or any(ord(ch) < 32 or ord(ch) == 127 for ch in name)
+            for name in names
+        ):
+            raise ValueError("Invalid community theme list.")
+        return value
     if setting == "screensaver_cameras":
         if not value:
             return ""
