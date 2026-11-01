@@ -20,6 +20,8 @@ No replacement launcher, always-open browser tab, or separate AI server on the T
 
 **New to Kellie's Voice?** The [documentation home](docs/wiki/Home.md) has a guided first-install path, grouped feature guides, a [copy-and-paste YAML Cookbook](docs/wiki/YAML-Cookbook.md), and [step-by-step TV alert recovery](docs/wiki/Troubleshooting.md#resume-tv-alerts-exact-steps). These repository links work without a separately published GitHub Wiki. The [Wiki publishing guide](docs/WIKI_PUBLISHING.md) explains the owner-approved sync to the Wiki tab.
 
+**Alternate launcher compatibility:** [CleanMyTV Home](https://github.com/wingedpanther/cleanmytv) was field-tested with Kellie's Voice's automatic four-camera screensaver on an **onn 4K Pro** (November 1, 2026). Turn **CleanMyTV → Home screen → Layout → Idle screen OFF** so Android/Google TV Ambient Mode can activate normally. See the [CleanMyTV setup and troubleshooting guide](docs/wiki/Cameras-and-Frigate.md#cleanmytv-home-launcher-compatibility-onn-4k-pro-field-tested-november-1-2026). Other devices remain unverified.
+
 ## Kellie's Voice vs. Julia: what's the difference?
 
 **Kellie's Voice** is the **Android TV app and Home Assistant integration** in this repository. It is named for Kellie.
