@@ -83,9 +83,7 @@ public final class ScreensaverDashboard {
         String base = dashboardUrl(configuredPage);
         if (base.isEmpty()) return "";
         if (dashboardPath == null || dashboardPath.isEmpty()) return base;
-        if (dashboardPath.length() > 160
-                || !dashboardPath.matches("^/(?:[A-Za-z0-9_-]+(?:/[A-Za-z0-9_-]+)*)?$"))
-            return "";
+        if (!validDashboardPath(dashboardPath)) return "";
         try {
             URI uri = URI.create(base);
             String candidate = uri.getScheme() + "://" + uri.getRawAuthority()
@@ -96,6 +94,14 @@ public final class ScreensaverDashboard {
         } catch (RuntimeException ignored) {
             return "";
         }
+    }
+
+    /** Empty means use the default configured source. All other routes must
+     * be simple, root-relative HA paths, never full URLs or query strings. */
+    public static boolean validDashboardPath(String path) {
+        return path != null && path.length() <= 160
+                && (path.isEmpty()
+                || path.matches("^/(?:[A-Za-z0-9_-]+(?:/[A-Za-z0-9_-]+)*)?$"));
     }
 
     /** Initial HA navigation check for a masked WebView.
