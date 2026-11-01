@@ -3,8 +3,8 @@ from pathlib import Path
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
-PANEL = (ROOT / "custom_components/kellies_voice_v3qa/owner_panel.py").read_text()
-JS = (ROOT / "custom_components/kellies_voice_v3qa/frontend/kellies-voice-v3qa-owner-panel.js").read_text()
+PANEL = (ROOT / "qa/ha_v3qa/kellies_voice_v3qa/owner_panel.py").read_text()
+JS = (ROOT / "qa/ha_v3qa/kellies_voice_v3qa/frontend/kellies-voice-v3qa-owner-panel.js").read_text()
 
 class CacheTests(unittest.TestCase):
     def test_ha_registers_unique_asset_url_and_does_not_cache_static_path(self):

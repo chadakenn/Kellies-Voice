@@ -8,7 +8,7 @@ import types
 import unittest
 from unittest.mock import MagicMock, patch
 
-ROOT = Path(__file__).resolve().parents[1] / "custom_components" / "kellies_voice_v3qa"
+ROOT = Path(__file__).resolve().parents[1] / "qa" / "ha_v3qa" / "kellies_voice_v3qa"
 PACKAGE = "kv_v3qa_owner_claim_tests"
 mod = types.ModuleType(PACKAGE)
 mod.__path__ = [str(ROOT)]

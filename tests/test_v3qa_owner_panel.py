@@ -10,7 +10,7 @@ import types
 from unittest.mock import AsyncMock, patch
 import unittest
 
-ROOT = Path(__file__).resolve().parents[1] / "custom_components" / "kellies_voice_v3qa"
+ROOT = Path(__file__).resolve().parents[1] / "qa" / "ha_v3qa" / "kellies_voice_v3qa"
 PACKAGE = "kv_v3qa_owner_panel_test"
 package = types.ModuleType(PACKAGE)
 package.__path__ = [str(ROOT)]

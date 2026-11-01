@@ -10,7 +10,7 @@ from types import SimpleNamespace
 import unittest
 
 PATH = (Path(__file__).resolve().parents[1] /
-        "custom_components/kellies_voice_v3qa/credential_scope.py")
+        "qa/ha_v3qa/kellies_voice_v3qa/credential_scope.py")
 spec = importlib.util.spec_from_file_location("kv_v3qa_scope_policy_tests", PATH)
 import sys
 scope = importlib.util.module_from_spec(spec)

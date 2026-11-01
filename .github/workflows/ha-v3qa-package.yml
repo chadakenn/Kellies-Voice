@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
   pull_request:
     paths:
-      - 'custom_components/kellies_voice_v3qa/**'
+      - 'qa/ha_v3qa/kellies_voice_v3qa/**'
       - 'scripts/package_ha_v3qa.py'
       - '.github/workflows/ha-v3qa-package.yml'
 jobs:
@@ -21,12 +21,12 @@ jobs:
           python-version: '3.12'
       - name: Compile and create isolated HA-only ZIP
         run: |
-          python -m compileall -q custom_components/kellies_voice_v3qa
+          python -m compileall -q qa/ha_v3qa/kellies_voice_v3qa
           python scripts/package_ha_v3qa.py
       - name: Owner authentication security tests (no HA tokens)
         run: |
           python -m unittest discover -s tests -p 'test_v3qa_owner_*.py' -v
-          node --check custom_components/kellies_voice_v3qa/frontend/kellies-voice-v3qa-owner-panel.js
+          node --check qa/ha_v3qa/kellies_voice_v3qa/frontend/kellies-voice-v3qa-owner-panel.js
       - name: Restricted TV account permission preflight tests
         run: python -m unittest discover -s tests -p 'test_v3qa_credential_scope.py' -v
       - name: Per-TV capability default-deny and replay tests

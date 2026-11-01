@@ -8,7 +8,7 @@ import types
 import unittest
 
 ROOT = (Path(__file__).resolve().parents[1]
-        / "custom_components" / "kellies_voice_v3qa")
+        / "qa" / "ha_v3qa" / "kellies_voice_v3qa")
 PKG = "kv_v3qa_scoped_gate_tests"
 TV1 = "123e4567-e89b-42d3-a456-426614174000"
 TV2 = "123e4567-e89b-42d3-a456-426614174001"
