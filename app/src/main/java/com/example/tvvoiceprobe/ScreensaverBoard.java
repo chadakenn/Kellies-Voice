@@ -63,6 +63,7 @@ final class ScreensaverBoard {
 
     private final Context context;
     private final Host host;
+    private final String requestedDashboardPath;
     private final Handler main = new Handler(Looper.getMainLooper());
     private final FrameLayout root;
     private final List<Call> calls = new ArrayList<>();
@@ -97,8 +98,13 @@ final class ScreensaverBoard {
     });
 
     ScreensaverBoard(Context context, Host host) {
+        this(context, host, "");
+    }
+
+    ScreensaverBoard(Context context, Host host, String dashboardPath) {
         this.context = context;
         this.host = host;
+        this.requestedDashboardPath = dashboardPath == null ? "" : dashboardPath;
         root = new FrameLayout(context) {
             // The focused camera tile or footer button receives key events before
             // a root OnKeyListener. Intercept before dispatching to children.
@@ -213,7 +219,21 @@ final class ScreensaverBoard {
             root.addView(closeButton());
             return;
         }
-        String page = prefs.screensaverUrl();
+        String configuredPage = prefs.screensaverUrl();
+        String page = configuredPage;
+        if (!requestedDashboardPath.isEmpty()) {
+            // Only configured HA dashboards accept alternate pages. The route
+            // cannot change scheme, server or port and cannot carry secrets.
+            page = ScreensaverDashboard.isHomeAssistantPage(
+                    configuredPage, prefs.screensaverHaExternalAuth())
+                    ? ScreensaverDashboard.dashboardForPath(
+                            configuredPage, requestedDashboardPath) : "";
+            if (page.isEmpty()) {
+                showMessage("Choose a Home Assistant dashboard URL in TV settings "
+                        + "before selecting another dashboard from an automation.");
+                return;
+            }
+        }
         String[] cameras = ScreensaverDashboard.cameraList(prefs.screensaverCameras());
         haDashboardPage = !page.isEmpty()
                 && ScreensaverDashboard.isHomeAssistantPage(page, prefs.screensaverHaExternalAuth());
