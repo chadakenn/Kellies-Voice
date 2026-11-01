@@ -36,6 +36,21 @@ In the paired TV's Home Assistant controls choose **HA camera grid playback → 
 
 On the maintainer's onn Google TV, all four live cameras launched automatically and returned after reboot. Full-screen Doorbell audio, remote Back and focus were field-tested. This does **not** establish other devices, all decoders or audio tracks. See [Frigate screensaver setup](https://github.com/chadakenn/Kellies-Voice/blob/main/docs/FRIGATE_SCREENSAVER.md) for the diagnostics and Resync HA cameras recovery.
 
+## CleanMyTV Home launcher compatibility (onn 4K Pro, field-tested November 1, 2026)
+
+[CleanMyTV](https://github.com/wingedpanther/cleanmytv) can be used as the ad-free Android/Google TV home launcher alongside Kellie's Voice's automatic camera screensaver. The maintainer verified the combination on an **onn 4K Pro**, including automatic idle entry and the four-camera screensaver.
+
+**Important:** CleanMyTV Home has a separate **Idle screen** (clock and wallpaper). That is an in-launcher idle view, **not** Android/Google TV Ambient Mode, and it does not itself trigger Kellie's Voice's screensaver watcher.
+
+1. On your computer open **CleanMyTV → Home screen → Layout → Idle screen** and set it to **Off**.
+2. Keep Kellie's Voice's **Frigate screensaver** enabled, with its Home Assistant camera source configured and Android **Display over other apps** permission granted.
+3. Return to the CleanMyTV Home screen, leave the remote untouched, and allow the TV's **normal Android/Google TV Ambient Mode** idle timeout to elapse. Do not expect the camera grid to appear immediately when CleanMyTV's own idle clock is disabled.
+4. When Android Ambient Mode starts, Kellie's Voice should show its camera view if the screensaver watcher is running. On the maintainer's onn 4K Pro, this **worked automatically** after disabling CleanMyTV's Idle screen.
+
+**If the cameras appear only when you manually start Google Ambient Mode:** the camera viewer and dream trigger work; check whether the system is actually entering Ambient Mode after its idle timeout. If no overlay appears when Ambient Mode starts, inspect **Kellie's Voice → Settings → Screensaver → Screensaver status & permissions** for watcher status, overlay permission, last Android dream event, and overlay result. A working **Preview** alone does not prove automatic idle activation. See [screensaver diagnostics](https://github.com/chadakenn/Kellies-Voice/blob/main/docs/FRIGATE_SCREENSAVER.md).
+
+This is a **single-device compatibility confirmation**, not a guarantee for every CleanMyTV-supported TV or firmware. No CleanMyTV uninstall, launcher rollback, or Kellie's Voice code change was needed for the verified setup.
+
 ## Snapshot popups
 
 Use `kellies_voice.show_camera`. This is a still image. Optional parameters (v0.16.5+):
