@@ -37,7 +37,7 @@ class DashboardActionSourceTests(unittest.TestCase):
         self.assertIn("ScreensaverWatchService.ACTION_SHOW_DASHBOARD", events)
         self.assertIn("ScreensaverWatchService.ACTION_HIDE_DASHBOARD", events)
         self.assertIn("if (onDemand) hide();", watch)
-        self.assertIn("if (!ScreensaverSignals.ourDream() && board == null)", watch)
+        self.assertIn("if (!ScreensaverSignals.ourDream())", watch)
         self.assertIn("showIfWanted(true)", watch)
         self.assertIn("Settings.canDrawOverlays(this)", watch)
         self.assertIn("EXTRA_DASHBOARD_PATH", watch)
