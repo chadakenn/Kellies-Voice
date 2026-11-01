@@ -87,11 +87,11 @@ public final class ScreensaverDashboard {
         } catch (RuntimeException ignored) { }
         // URI paths are validated upstream; still escape the JavaScript
         // string literal so a user-configured path cannot inject script.
-        String quoted = "\\"" + path.replace("\\\\", "\\\\\\\\").replace("\\"", "\\\\"") + "\\"";
+        String quoted = "\"" + path.replace("\\", "\\\\").replace("\"", "\\\"") + "\"";
         return "(function(){var expected=" + quoted + ";"
                 + "var p=location.pathname;"
                 + "return document.readyState==='complete'"
-                + "&&p.replace(/\\\\/$/,'')===expected.replace(/\\\\/$/,'')"
+                + "&&p.replace(/\\/$/,'')===expected.replace(/\\/$/,'')"
                 + "&&!!document.querySelector('home-assistant');})()";
     }
 
