@@ -13,6 +13,8 @@ from .const import (
     EVENT_CAMERA_POPUP,
     EVENT_FORECAST,
     EVENT_HIDE_CAMERA,
+    EVENT_SHOW_DASHBOARD,
+    EVENT_HIDE_DASHBOARD,
     EVENT_LIVE_CAMERA,
 )
 
@@ -21,6 +23,8 @@ EVENT_FIELDS = {
     EVENT_CAMERA_POPUP: ("device_id", "entity_id", "title", "speak", "duration_seconds", "show_header", "image_fit", "refresh_seconds", "actions", "announcement_id"),
     EVENT_LIVE_CAMERA: ("device_id", "entity_id", "title", "speak", "duration_seconds", "show_header", "image_fit", "refresh_seconds", "actions", "announcement_id"),
     EVENT_HIDE_CAMERA: ("device_id",),
+    EVENT_SHOW_DASHBOARD: ("device_id",),
+    EVENT_HIDE_DASHBOARD: ("device_id",),
     EVENT_FORECAST: ("device_id", "location", "units", "issued", "duration_seconds", "days"),
     "kellies_voice_timer": (
         "device_id", "operation", "name", "issued",
