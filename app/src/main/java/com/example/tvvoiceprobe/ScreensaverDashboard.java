@@ -75,6 +75,35 @@ public final class ScreensaverDashboard {
                 "m.setAttribute(\'content\',\'width=" + (width == 1200 || width == 1440 ? width : 1920) + ", initial-scale=1\');})();";
     }
 
+    /** Keep automated dashboard selection on the TV's configured HA server.
+     * A service may select a safe route, NEVER another origin or a URL token.
+     * A blank route uses the TV's original configured URL unchanged.
+     */
+    public static String dashboardForPath(String configuredPage, String dashboardPath) {
+        String base = dashboardUrl(configuredPage);
+        if (base.isEmpty()) return "";
+        if (dashboardPath == null || dashboardPath.isEmpty()) return base;
+        if (!validDashboardPath(dashboardPath)) return "";
+        try {
+            URI uri = URI.create(base);
+            String candidate = uri.getScheme() + "://" + uri.getRawAuthority()
+                    + dashboardPath
+                    + (uri.getRawQuery() == null ? "" : "?" + uri.getRawQuery());
+            return dashboardUrl(candidate).isEmpty() || !sameSite(base, candidate)
+                    ? "" : candidate;
+        } catch (RuntimeException ignored) {
+            return "";
+        }
+    }
+
+    /** Empty means use the default configured source. All other routes must
+     * be simple, root-relative HA paths, never full URLs or query strings. */
+    public static boolean validDashboardPath(String path) {
+        return path != null && path.length() <= 160
+                && (path.isEmpty()
+                || path.matches("^/(?:[A-Za-z0-9_-]+(?:/[A-Za-z0-9_-]+)*)?$"));
+    }
+
     /** Initial HA navigation check for a masked WebView.
      * Check the path only, never the URL query (which can hold transient auth
      * redirects). This is a presentation check, NOT an authentication guard.

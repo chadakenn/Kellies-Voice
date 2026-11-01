@@ -26,6 +26,7 @@ public final class ScreensaverWatchService extends Service {
     static final String ACTION_TEST_OVERLAY = "com.example.tvvoiceprobe.SCREENSAVER_TEST_OVERLAY";
     static final String ACTION_REFRESH_HA = "com.example.tvvoiceprobe.SCREENSAVER_REFRESH_HA";
     static final String ACTION_SHOW_DASHBOARD = "com.example.tvvoiceprobe.SHOW_DASHBOARD";
+    static final String EXTRA_DASHBOARD_PATH = "dashboard_path";
     static final String ACTION_HIDE_DASHBOARD = "com.example.tvvoiceprobe.HIDE_DASHBOARD";
     private static final String CHANNEL = "kellie_screensaver";
     private static final int NOTICE = 2244;
@@ -40,6 +41,7 @@ public final class ScreensaverWatchService extends Service {
     // Only a dashboard explicitly opened via HA may be closed via HA hide_dashboard.
     // System-controlled Android dreams and automatic screensaver entry are unaffected.
     private boolean onDemand;
+    private String requestedDashboardPath = "";
     private long shownAtMs;
     private final Runnable onSettings = () -> {
         OverlayPreferences prefs = new OverlayPreferences(this);
@@ -147,12 +149,28 @@ public final class ScreensaverWatchService extends Service {
         } else if (intent != null && ACTION_SHOW_DASHBOARD.equals(intent.getAction())) {
             // Respect the same settings, overlay permission and configured-source
             // checks as the existing manual preview. Never open the microphone.
-            if (!ScreensaverSignals.ourDream() && board == null) {
-                // An already-running ambient screensaver is NOT converted
-                // into a user-demand session that HA may close.
-                onDemand = true;
-                showIfWanted(true);
-                if (board == null) onDemand = false;
+            if (!ScreensaverSignals.ourDream()) {
+                String path = intent.getStringExtra(EXTRA_DASHBOARD_PATH);
+                if (path == null) path = "";
+                if (!ScreensaverDashboard.validDashboardPath(path)) {
+                    ScreensaverWatchStatus.overlay("Rejected invalid HA dashboard route");
+                } else if (!path.isEmpty() && !ScreensaverDashboard.isHomeAssistantPage(
+                        prefs.screensaverUrl(), prefs.screensaverHaExternalAuth())) {
+                    ScreensaverWatchStatus.overlay("Configure a Home Assistant dashboard URL first");
+                } else {
+                    // A repeated command can switch from bedroom to cameras
+                    // without modifying the saved screensaver or Android dream.
+                    if (onDemand && board != null) hide();
+                    if (board == null) {
+                        requestedDashboardPath = path;
+                        onDemand = true;
+                        showIfWanted(true);
+                        if (board == null) {
+                            onDemand = false;
+                            requestedDashboardPath = "";
+                        }
+                    }
+                }
             }
         }
         if (intent != null && ACTION_TEST_OVERLAY.equals(intent.getAction())) {
@@ -188,7 +206,7 @@ public final class ScreensaverWatchService extends Service {
         board = new ScreensaverBoard(this, () -> {
             ScreensaverSignals.dismiss();
             hide();
-        });
+        }, onDemand ? requestedDashboardPath : "");
         int windowFlags = WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
                 | WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED;
         WindowManager.LayoutParams params = new WindowManager.LayoutParams(
@@ -213,6 +231,7 @@ public final class ScreensaverWatchService extends Service {
 
     private void hide() {
         onDemand = false;
+        requestedDashboardPath = "";
         shownAtMs = 0;
         if (board == null) return;
         board.stop();
