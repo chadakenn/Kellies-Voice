@@ -75,6 +75,7 @@ final class ScreensaverBoard {
     private boolean dashboardRevealed;
     private long dashboardReadySinceMs;
     private long dashboardLoadingStartedMs;
+    private long dashboardLastNavigationMs;
     private ScreensaverLiveGrid liveGrid;
     private ImageView[] gridPhotos;
     private View[] gridCells;
@@ -214,6 +215,7 @@ final class ScreensaverBoard {
         dashboardRevealed = false;
         dashboardReadySinceMs = 0L;
         dashboardLoadingStartedMs = 0L;
+        dashboardLastNavigationMs = 0L;
         if (!prefs.screensaverDashboard()) {
             showMessage("Frigate screensaver is off. Turn it on in Kellie's Voice settings, then press Close.");
             root.addView(closeButton());
@@ -274,6 +276,7 @@ final class ScreensaverBoard {
         dashboardRevealed = false;
         dashboardReadySinceMs = 0L;
         dashboardLoadingStartedMs = 0L;
+        dashboardLastNavigationMs = 0L;
         browsing = false;
         remotePointer = null;
         fullscreenSlot = -1;
@@ -422,7 +425,10 @@ final class ScreensaverBoard {
                 ScreensaverWebDiagnostics.pageStarted(url);
                 // Initial HA redirects, including its login and default dashboard,
                 // stay behind the native loading surface, never exposed on the TV.
-                if (haDashboardPage && !dashboardRevealed) dashboardReadySinceMs = 0L;
+                if (haDashboardPage && !dashboardRevealed) {
+                    dashboardReadySinceMs = 0L;
+                    dashboardLastNavigationMs = SystemClock.uptimeMillis();
+                }
             }
             @Override public WebResourceResponse shouldInterceptRequest(
                     WebView view, WebResourceRequest request) {
@@ -438,6 +444,17 @@ final class ScreensaverBoard {
                     }
                 }
                 return super.shouldInterceptRequest(view, request);
+            }
+            @Override public void doUpdateVisitedHistory(
+                    WebView view, String url, boolean isReload) {
+                super.doUpdateVisitedHistory(view, url, isReload);
+                // Home Assistant's single-page router changes paths via
+                // pushState/replaceState without a new onPageFinished callback.
+                // Never log paths, auth callback queries or credentials.
+                if (haDashboardPage && !dashboardRevealed) {
+                    dashboardReadySinceMs = 0L;
+                    dashboardLastNavigationMs = SystemClock.uptimeMillis();
+                }
             }
             @Override public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
@@ -528,6 +545,7 @@ final class ScreensaverBoard {
             dashboardLoading = cover;
             dashboardLoginButton = manualLogin;
             dashboardLoadingStartedMs = SystemClock.uptimeMillis();
+            dashboardLastNavigationMs = dashboardLoadingStartedMs;
         }
         final WebView openedWeb = web;
         final int openedGeneration = generation;
@@ -552,7 +570,12 @@ final class ScreensaverBoard {
                     long now = SystemClock.uptimeMillis();
                     if ("true".equals(result)) {
                         if (dashboardReadySinceMs == 0L) dashboardReadySinceMs = now;
-                        if (now - dashboardReadySinceMs >= 1000L) {
+                        // The HA shell may initially show the requested URL,
+                        // then route through login/default views. Wait for an
+                        // actually rendered dashboard and a quiet route period.
+                        if (now - dashboardReadySinceMs >= 2000L
+                                && now - dashboardLastNavigationMs >= 2000L
+                                && now - dashboardLoadingStartedMs >= 4000L) {
                             dashboardRevealed = true;
                             if (dashboardLoading != null)
                                 dashboardLoading.setVisibility(View.GONE);
