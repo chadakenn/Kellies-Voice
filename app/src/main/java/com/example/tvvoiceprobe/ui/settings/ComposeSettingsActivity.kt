@@ -56,6 +56,7 @@ import com.example.tvvoiceprobe.FirstRunSetupActivity
 import com.example.tvvoiceprobe.TvAlertLayout
 import com.example.tvvoiceprobe.OverlayPreferences
 import com.example.tvvoiceprobe.TvEventsService
+import com.example.tvvoiceprobe.TvNotificationHistory
 import com.example.tvvoiceprobe.WakeWordLoginGate
 import com.example.tvvoiceprobe.WakeWordService
 import com.example.tvvoiceprobe.ui.theme.KellieSkins
@@ -721,6 +722,55 @@ fun CategoryContent(
                     }
                 )
                 Spacer(modifier = Modifier.height(8.dp))
+                Text("Smart notification quiet hours", color = skin.colors.accent, fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                Text("Off by default. Low/normal notifications stay in session history during quiet hours. High priority doorbells still appear.",
+                    color = skin.colors.textMuted, fontSize = 12.sp)
+                var quietHours by remember { mutableStateOf(prefs.alertQuietHours()) }
+                SettingSwitch(
+                    title = "Enable quiet hours on this TV",
+                    subtitle = if (quietHours) "ON" else "OFF",
+                    checked = quietHours,
+                    onCheckedChange = { enabled ->
+                        prefs.setAlertQuietHours(enabled)
+                        quietHours = prefs.alertQuietHours()
+                    }
+                )
+                val windows = listOf(
+                    Triple(22 * 60, 7 * 60, "10 PM to 7 AM"),
+                    Triple(23 * 60, 6 * 60, "11 PM to 6 AM"),
+                    Triple(0, 7 * 60, "Midnight to 7 AM")
+                )
+                var quietStart by remember { mutableIntStateOf(prefs.alertQuietStart()) }
+                var quietEnd by remember { mutableIntStateOf(prefs.alertQuietEnd()) }
+                windows.forEach { window ->
+                    SettingsChoice(
+                        title = window.third,
+                        selected = quietStart == window.first && quietEnd == window.second,
+                        onSelect = {
+                            prefs.setAlertQuietWindow(window.first, window.second)
+                            quietStart = prefs.alertQuietStart()
+                            quietEnd = prefs.alertQuietEnd()
+                        }
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                SettingsChoice(
+                    title = "Recent notifications (this app session)",
+                    selected = false,
+                    onSelect = {
+                        val entries = TvNotificationHistory.recent()
+                        val builder = AlertDialog.Builder(context)
+                            .setTitle("Notification history")
+                            .setNegativeButton("Close", null)
+                            .setNeutralButton("Clear") { _, _ -> TvNotificationHistory.clear() }
+                        if (entries.isEmpty()) builder.setMessage("No recent TV notifications in this app session.")
+                        else builder.setItems(entries.toTypedArray()) { _, _ -> }
+                        builder.show()
+                    }
+                )
+                Text("Recent titles are kept only in memory (up to 30 for 24 hours), never synced to HA or stored after the app process ends.",
+                    color = skin.colors.textMuted, fontSize = 12.sp)
+                Spacer(modifier = Modifier.height(12.dp))
                 Text("TV alert popup position", color = skin.colors.accent, fontSize = 18.sp, fontWeight = FontWeight.Medium)
                 var alertPos by remember { mutableStateOf(prefs.alertPosition()) }
                 val alertPositions = listOf(

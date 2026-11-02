@@ -42,6 +42,24 @@ class ScopedPayloadTests(unittest.TestCase):
                           "text": "Open", "duration_seconds": 9}, out)
         self.assertIsNone(transport.sanitize_event(const.EVENT_ANNOUNCEMENT, data, self.OTHER))
 
+    def test_priority_allowlist_and_legacy_default(self):
+        for event_type in (const.EVENT_ANNOUNCEMENT, const.EVENT_CAMERA_POPUP,
+                           const.EVENT_LIVE_CAMERA):
+            for value in ("low", "normal", "high"):
+                with self.subTest(event_type=event_type, priority=value):
+                    safe = transport.sanitize_event(event_type,
+                        {"device_id": self.TV, "priority": value,
+                         "title": "Test", "entity_id": "camera.doorbell"},
+                        self.TV)
+                    self.assertEqual(value, safe["priority"])
+            # Old callers omit priority entirely, preserving existing behavior.
+            old = transport.sanitize_event(event_type,
+                {"device_id": self.TV, "title": "Old app"}, self.TV)
+            self.assertNotIn("priority", old)
+            for invalid in ("critical", "HIGH", "../bad", "", 12, None):
+                self.assertIsNone(transport.sanitize_event(event_type,
+                    {"device_id": self.TV, "priority": invalid}, self.TV))
+
     def test_spoken_announcements_reach_scoped_tv(self):
         for event_type in (const.EVENT_ANNOUNCEMENT, const.EVENT_CAMERA_POPUP,
                            const.EVENT_LIVE_CAMERA):

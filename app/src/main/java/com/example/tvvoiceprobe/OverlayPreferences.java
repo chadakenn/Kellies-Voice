@@ -42,6 +42,9 @@ public final class OverlayPreferences {
     private static final String KEY_SIZE = "overlay_size";
     private static final String KEY_ALERT_POSITION = "tv_alert_position";
     private static final String KEY_ALERT_SIZE = "tv_alert_size";
+    private static final String KEY_ALERT_QUIET = "tv_alert_quiet_hours";
+    private static final String KEY_ALERT_QUIET_START = "tv_alert_quiet_start_minute";
+    private static final String KEY_ALERT_QUIET_END = "tv_alert_quiet_end_minute";
     private static final String KEY_HIDE_SECONDS = "overlay_hide_seconds";
     private static final String KEY_NOISE = "room_noise";
     private static final String KEY_DEVICE = "ha_device_id";
@@ -180,6 +183,31 @@ public final class OverlayPreferences {
         String stored = TvAlertLayout.sizeOrNull(value);
         preferences.edit().putString(KEY_ALERT_SIZE,
                 stored == null ? TvAlertLayout.MEDIUM : stored).apply();
+    }
+
+    /** Quiet hours are OFF by default. Based on the TV's local wall clock. */
+    public boolean alertQuietHours() {
+        return preferences.getBoolean(KEY_ALERT_QUIET, false);
+    }
+
+    public void setAlertQuietHours(boolean enabled) {
+        preferences.edit().putBoolean(KEY_ALERT_QUIET, enabled).apply();
+    }
+
+    public int alertQuietStart() {
+        int value = preferences.getInt(KEY_ALERT_QUIET_START, 22 * 60);
+        return value >= 0 && value < 1440 ? value : 22 * 60;
+    }
+
+    public int alertQuietEnd() {
+        int value = preferences.getInt(KEY_ALERT_QUIET_END, 7 * 60);
+        return value >= 0 && value < 1440 ? value : 7 * 60;
+    }
+
+    public void setAlertQuietWindow(int start, int end) {
+        if (start < 0 || start >= 1440 || end < 0 || end >= 1440 || start == end) return;
+        preferences.edit().putInt(KEY_ALERT_QUIET_START, start)
+                .putInt(KEY_ALERT_QUIET_END, end).apply();
     }
 
     // 7 seconds preserves the original approximately 6.5-second delay.

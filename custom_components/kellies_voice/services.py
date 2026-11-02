@@ -70,6 +70,7 @@ ANNOUNCE_SCHEMA = vol.Schema(
         ),
         vol.Optional("speak"): cv.string,
         vol.Optional("actions"): list,
+        vol.Optional("priority"): vol.In(("low", "normal", "high")),
         vol.Optional("device_id"): cv.string,
     }
 )
@@ -89,6 +90,7 @@ SHOW_CAMERA_SCHEMA = vol.Schema(
         ),
         vol.Optional("speak"): cv.string,
         vol.Optional("actions"): list,
+        vol.Optional("priority"): vol.In(("low", "normal", "high")),
         vol.Optional("device_id"): cv.string,
     }
 )
@@ -108,6 +110,7 @@ SHOW_LIVE_SCHEMA = vol.Schema(
         ),
         vol.Optional("speak"): cv.string,
         vol.Optional("actions"): list,
+        vol.Optional("priority"): vol.In(("low", "normal", "high")),
         vol.Optional("device_id"): cv.string,
     }
 )
@@ -268,6 +271,7 @@ async def _async_announce(call: ServiceCall) -> None:
         )
         speak = clean_speak(call.data.get("speak"))
         actions = clean_actions(call.data.get("actions"))
+        priority = call.data.get("priority")
         targets = _event_targets(call, call.data.get("device_id"))
     except ValueError as err:
         raise ServiceValidationError(str(err)) from None
@@ -276,6 +280,7 @@ async def _async_announce(call: ServiceCall) -> None:
         data = {
             "title": title,
             "text": text,
+            **({"priority": priority} if priority is not None else {}),
             "duration_seconds": duration,
             "device_id": device_id,
         }
@@ -303,6 +308,7 @@ async def _async_show_camera(call: ServiceCall) -> None:
         )
         speak = clean_speak(call.data.get("speak"))
         actions = clean_actions(call.data.get("actions"))
+        priority = call.data.get("priority")
         targets = _event_targets(call, call.data.get("device_id"))
     except ValueError as err:
         raise ServiceValidationError(str(err)) from None
@@ -314,6 +320,7 @@ async def _async_show_camera(call: ServiceCall) -> None:
             EVENT_CAMERA_POPUP,
             {
                 "entity_id": entity_id,
+                **({"priority": priority} if priority is not None else {}),
                 "title": title,
                 "show_header": show_header,
                 "image_fit": fit,
@@ -344,6 +351,7 @@ async def _async_show_live_camera(call: ServiceCall) -> None:
             raise ValueError("Live duration must be from 4 to 180 seconds.")
         speak = clean_speak(call.data.get("speak"))
         actions = clean_actions(call.data.get("actions"))
+        priority = call.data.get("priority")
         targets = _event_targets(call, call.data.get("device_id"))
     except (ValueError, TypeError) as err:
         raise ServiceValidationError(str(err)) from None
@@ -359,6 +367,7 @@ async def _async_show_live_camera(call: ServiceCall) -> None:
             EVENT_LIVE_CAMERA,
             {
                 "entity_id": entity_id,
+                **({"priority": priority} if priority is not None else {}),
                 "title": title,
                 "show_header": show_header,
                 "image_fit": fit,

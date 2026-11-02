@@ -68,6 +68,15 @@ announce:
       example: The washer is finished.
       selector:
         text:
+    priority:
+      description: "low = small and silent; normal = existing popup; high = large popup that bypasses opt-in quiet hours."
+      default: normal
+      selector:
+        select:
+          options:
+            - low
+            - normal
+            - high
     actions:
       description: "Optional list of up to three id/label button pairs; no action occurs until the user presses OK. A separate Home Assistant automation must handle the acknowledged event."
       example: [{id: acknowledge, label: Acknowledge}]
@@ -121,6 +130,15 @@ show_camera:
       example: Someone is at the front door.
       selector:
         text:
+    priority:
+      description: "low = small and silent; normal = existing popup; high = large popup that bypasses opt-in quiet hours."
+      default: normal
+      selector:
+        select:
+          options:
+            - low
+            - normal
+            - high
     actions:
       description: "Optional list of up to three id/label button pairs; no action occurs until the user presses OK. A separate Home Assistant automation must handle the acknowledged event."
       example: [{id: acknowledge, label: Acknowledge}]
@@ -174,6 +192,15 @@ show_live_camera:
       example: Someone is at the front door.
       selector:
         text:
+    priority:
+      description: "low = small and silent; normal = existing popup; high = large popup that bypasses opt-in quiet hours."
+      default: normal
+      selector:
+        select:
+          options:
+            - low
+            - normal
+            - high
     actions:
       description: "Optional list of up to three id/label button pairs; no action occurs until the user presses OK. A separate Home Assistant automation must handle the acknowledged event."
       example: [{id: acknowledge, label: Acknowledge}]
