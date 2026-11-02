@@ -750,6 +750,26 @@ public final class TvEventsService extends Service {
                 if (timerOverlay != null) timerOverlay.command(data);
                 return;
             }
+            // Smart Notification Center: strict priority and optional quiet hours.
+            // Older HA automations have the same "normal" behavior by default.
+            String priority = TvNotificationPolicy.priority(data.optString("priority", "normal"));
+            boolean notification = TvEventPayload.ANNOUNCEMENT.equals(eventType)
+                    || TvEventPayload.CAMERA_POPUP.equals(eventType)
+                    || TvEventPayload.LIVE_CAMERA.equals(eventType);
+            if (notification) {
+                if (priority == null) return;
+                OverlayPreferences alertPrefs = new OverlayPreferences(this);
+                java.util.Calendar clock = java.util.Calendar.getInstance();
+                int minute = clock.get(java.util.Calendar.HOUR_OF_DAY) * 60
+                        + clock.get(java.util.Calendar.MINUTE);
+                boolean display = TvNotificationPolicy.shouldDisplay(priority,
+                        alertPrefs.alertQuietHours(), minute,
+                        alertPrefs.alertQuietStart(), alertPrefs.alertQuietEnd());
+                TvNotificationHistory.add(data.optString("title", "TV notification"),
+                        TvEventPayload.ANNOUNCEMENT.equals(eventType) ? "announcement" : "camera",
+                        priority, !display);
+                if (!display) return;
+            }
             List<TvEventPayload.Action> popupActions = alertActions(data.optJSONArray("actions"));
             String popupId = TvEventPayload.announcementId(data.optString("announcement_id"));
             int duration = TvEventPayload.duration(data.optInt("duration_seconds", 10));
@@ -760,10 +780,10 @@ public final class TvEventsService extends Service {
                 if (!body.isEmpty()) {
                     showCard(
                         TvEventPayload.cleanText(data.optString("title", "Kellie's Voice"), 65),
-                        body, null, duration, false, true, false, 0, popupActions, popupId);
+                        body, null, duration, false, true, false, 0, popupActions, popupId, priority);
                     if (card != null) {
                         reportPopupReceipt("popup_created", diagnosticReceipt);
-                        maybeSpeak(spoken);
+                        if (TvNotificationPolicy.shouldSpeak(priority)) maybeSpeak(spoken);
                     }
                 }
             } else if ((subscription == SCOPED_ALERTS_ID || subscription == CAMERA_ID)
@@ -781,10 +801,11 @@ public final class TvEventsService extends Service {
                             && photo != null && entity.equals(snapshotEntity)
                             && title.equals(snapshotTitle) && header == snapshotHeader
                             && fit == snapshotFit;
-                    showSnapshotCard(title, entity, duration, header, fit, refresh, popupActions, popupId);
+                    showSnapshotCard(title, entity, duration, header, fit, refresh, popupActions, popupId, priority);
                     if (card != null) reportPopupReceipt("popup_created", diagnosticReceipt);
                     if (!sameCard && card != null) {
-                        maybeSpeak(TvEventPayload.speak(data.optString("speak", "")));
+                        if (TvNotificationPolicy.shouldSpeak(priority))
+                            maybeSpeak(TvEventPayload.speak(data.optString("speak", "")));
                     }
                 }
             } else if ((subscription == SCOPED_ALERTS_ID || subscription == LIVE_EVENT_ID)
@@ -797,10 +818,11 @@ public final class TvEventsService extends Service {
                     showCard(TvEventPayload.cleanText(data.optString("title", "Live camera"), 65),
                             "LIVE · Starting muted video…", entity,
                             TvEventPayload.liveDuration(data.optInt("duration_seconds", 90)),
-                            true, header, fit, refresh, popupActions, popupId);
+                            true, header, fit, refresh, popupActions, popupId, priority);
                     if (card != null) {
                         reportPopupReceipt("popup_created", diagnosticReceipt);
-                        maybeSpeak(TvEventPayload.speak(data.optString("speak", "")));
+                        if (TvNotificationPolicy.shouldSpeak(priority))
+                            maybeSpeak(TvEventPayload.speak(data.optString("speak", "")));
                     }
                 }
             } else if ((subscription == SCOPED_ALERTS_ID || subscription == FORECAST_EVENT_ID)
@@ -976,6 +998,14 @@ public final class TvEventsService extends Service {
     private void showSnapshotCard(String title, String entity, int seconds,
                                   boolean header, boolean fit, int refreshSeconds,
                                   List<TvEventPayload.Action> actions, String announcementId) {
+        showSnapshotCard(title, entity, seconds, header, fit, refreshSeconds,
+                actions, announcementId, TvNotificationPolicy.NORMAL);
+    }
+
+    private void showSnapshotCard(String title, String entity, int seconds,
+                                  boolean header, boolean fit, int refreshSeconds,
+                                  List<TvEventPayload.Action> actions, String announcementId,
+                                  String priority) {
         if (stopping || windowManager == null || !Settings.canDrawOverlays(this)) return;
         // Never reuse an old card with active buttons, and do not silently
         // discard newly issued action IDs when repeated snapshots arrive.
@@ -993,7 +1023,7 @@ public final class TvEventsService extends Service {
             return;
         }
         showCard(title, "Home Assistant camera snapshot", entity, seconds,
-                false, header, fit, refreshSeconds, actions, announcementId);
+                false, header, fit, refreshSeconds, actions, announcementId, priority);
     }
 
     private void showCard(String title, String text, String entity, int seconds, boolean live) {
@@ -1008,6 +1038,14 @@ public final class TvEventsService extends Service {
     private void showCard(String title, String text, String entity, int seconds,
                           boolean live, boolean showHeader, boolean fitWhole, int refreshSeconds,
                           List<TvEventPayload.Action> actions, String announcementId) {
+        showCard(title, text, entity, seconds, live, showHeader, fitWhole,
+                refreshSeconds, actions, announcementId, TvNotificationPolicy.NORMAL);
+    }
+
+    private void showCard(String title, String text, String entity, int seconds,
+                          boolean live, boolean showHeader, boolean fitWhole, int refreshSeconds,
+                          List<TvEventPayload.Action> actions, String announcementId,
+                          String priority) {
         if (stopping || windowManager == null || !Settings.canDrawOverlays(this)) return;
         hideCard();
         int current = ++generation;
@@ -1035,7 +1073,7 @@ public final class TvEventsService extends Service {
             panel.addView(subtitle);
         }
         photo = null;
-        String alertSize = placement.alertSize();
+        String alertSize = TvNotificationPolicy.alertSize(priority, placement.alertSize());
         String cameraMode = placement.cameraMode();
         if (entity != null && live) {
             liveStatus = subtitle;
