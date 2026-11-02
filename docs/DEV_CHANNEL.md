@@ -1,5 +1,14 @@
 # Kellie's Voice development and testing lane
 
+**November 2, 2026:** Publish the **v0.17.4-dev.3** signed opt-in prerelease
+for Onn and Philips TV testing of the HA loading-mask fix in #302. The
+Android code is **61** and matching HACS version is **0.17.4-dev.3**.
+Do not promote stable until the final Lovelace screen is confirmed without
+startup/default-dashboard flashes and the camera/reboot checks are complete.
+The separate beta-release job must pass its own Android/HA tests, signature
+verification, and asset generation first. Public stable stays v0.17.3.
+
+
 **Owner-approved v0.16.11 stable promotion (2026-10-25):** Signed dev.7 was hardware tested for an 8-second second follow-up question, silence timeout/mic privacy, STOP, and independent 40% HA announcement voice gain. The older dev.7 instructions below describe **historical pretest status**, not current acceptance. New experimental work still belongs on dev.
 
 
