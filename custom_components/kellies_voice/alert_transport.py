@@ -19,9 +19,9 @@ from .const import (
 )
 
 EVENT_FIELDS = {
-    EVENT_ANNOUNCEMENT: ("device_id", "title", "text", "speak", "duration_seconds", "actions", "announcement_id"),
-    EVENT_CAMERA_POPUP: ("device_id", "entity_id", "title", "speak", "duration_seconds", "show_header", "image_fit", "refresh_seconds", "actions", "announcement_id"),
-    EVENT_LIVE_CAMERA: ("device_id", "entity_id", "title", "speak", "duration_seconds", "show_header", "image_fit", "refresh_seconds", "actions", "announcement_id"),
+    EVENT_ANNOUNCEMENT: ("device_id", "priority", "title", "text", "speak", "duration_seconds", "actions", "announcement_id"),
+    EVENT_CAMERA_POPUP: ("device_id", "priority", "entity_id", "title", "speak", "duration_seconds", "show_header", "image_fit", "refresh_seconds", "actions", "announcement_id"),
+    EVENT_LIVE_CAMERA: ("device_id", "priority", "entity_id", "title", "speak", "duration_seconds", "show_header", "image_fit", "refresh_seconds", "actions", "announcement_id"),
     EVENT_HIDE_CAMERA: ("device_id",),
     EVENT_SHOW_DASHBOARD: ("device_id", "dashboard_path"),
     EVENT_HIDE_DASHBOARD: ("device_id",),
@@ -58,6 +58,11 @@ def sanitize_event(event_type: str, payload: dict, this_tv: str) -> dict | None:
         if key == "device_id" or key not in payload:
             continue
         value = payload[key]
+        if key == "priority":
+            if value not in ("low", "normal", "high"):
+                return None
+            safe[key] = value
+            continue
         if key == "dashboard_path":
             try:
                 safe[key] = clean_dashboard_path(value)
