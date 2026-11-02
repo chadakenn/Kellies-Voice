@@ -104,9 +104,9 @@ public final class ScreensaverDashboard {
                 || path.matches("^/(?:[A-Za-z0-9_-]+(?:/[A-Za-z0-9_-]+)*)?$"));
     }
 
-    /** Initial HA navigation check for a masked WebView.
-     * Check the path only, never the URL query (which can hold transient auth
-     * redirects). This is a presentation check, NOT an authentication guard.
+    /** Ready means the requested route has rendered a Lovelace dashboard,
+     * not merely the outer HA shell (which appears during login and redirects).
+     * This is a visual gate, not authentication or a navigation permission.
      */
     public static String dashboardReadyScript(String configuredPage) {
         String path = "/";
@@ -114,14 +114,32 @@ public final class ScreensaverDashboard {
             String rawPath = URI.create(configuredPage).getRawPath();
             if (rawPath != null && !rawPath.isEmpty()) path = rawPath;
         } catch (RuntimeException ignored) { }
-        // URI paths are validated upstream; still escape the JavaScript
-        // string literal so a user-configured path cannot inject script.
+        // Only the route path is embedded; URL queries, tokens, hosts and
+        // authentication redirects never enter the readiness script.
         String quoted = "\"" + path.replace("\\", "\\\\").replace("\"", "\\\"") + "\"";
         return "(function(){var expected=" + quoted + ";"
                 + "var p=location.pathname;"
-                + "return document.readyState==='complete'"
-                + "&&p.replace(/\\/$/,'')===expected.replace(/\\/$/,'')"
-                + "&&!!document.querySelector('home-assistant');})()";
+                + "if(document.readyState!=='complete'"
+                + "||p.replace(/\\/$/,'')!==expected.replace(/\\/$/,''))return false;"
+                + "var app=document.querySelector('home-assistant');"
+                + "if(!app)return false;"
+                // HA's <home-assistant> element is only a shell. Its Lovelace
+                // panel renders <hui-root> AFTER dashboard config is fetched.
+                // Walk bounded, open shadow roots, without reading card text,
+                // user identity, private data or DOM URLs.
+                + "var examined=0;"
+                + "function ready(root,depth){"
+                + "if(!root||depth>16||examined>=2400)return false;"
+                + "var nodes=root.querySelectorAll('*');"
+                + "for(var i=0;i<nodes.length&&examined<2400;i++){"
+                + "var el=nodes[i];examined++;"
+                + "if(el.localName==='hui-root'){"
+                + "var box=el.getBoundingClientRect();"
+                + "if(el.isConnected&&box.width>0&&box.height>0)return true;}"
+                + "if(el.shadowRoot&&ready(el.shadowRoot,depth+1))return true;"
+                + "}"
+                + "return false;}"
+                + "return ready(app.shadowRoot||app,0);})()";
     }
 
     public static boolean showOverlay(boolean enabled, boolean dreaming, boolean dismissed,
