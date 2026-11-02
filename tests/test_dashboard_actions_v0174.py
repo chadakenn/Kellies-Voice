@@ -83,6 +83,13 @@ class DashboardActionSourceTests(unittest.TestCase):
         self.assertIn("location.pathname", policy)
         self.assertIn("document.readyState", policy)
         self.assertIn("document.querySelector('home-assistant')", policy)
+        self.assertIn("el.localName==='hui-root'", policy)
+        self.assertIn("app.shadowRoot||app", policy)
+        self.assertIn("doUpdateVisitedHistory(", board)
+        self.assertIn("dashboardLastNavigationMs", board)
+        self.assertIn("now - dashboardLoadingStartedMs >= 4000L", board)
+        self.assertIn("now - dashboardReadySinceMs >= 2000L", board)
+        self.assertIn("dashboardLoginButton.setVisibility(View.VISIBLE)", board)
         self.assertNotIn("addJavascriptInterface(", board)
 
 
