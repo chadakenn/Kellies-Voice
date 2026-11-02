@@ -58,6 +58,11 @@ public class ScreensaverDashboardTest {
         assertTrue(script.contains("location.pathname"));
         assertTrue(script.contains("document.readyState"));
         assertTrue(script.contains("home-assistant"));
+        // The HA application shell alone must NOT count as a loaded dashboard.
+        assertTrue(script.contains("hui-root"));
+        assertTrue(script.contains("shadowRoot"));
+        assertTrue(script.contains("getBoundingClientRect"));
+        assertTrue(script.contains("examined<2400"));
         assertFalse(script.contains("auth_code"));
         assertFalse(script.contains("never_print"));
         assertFalse(script.contains("192.168.1.42"));
