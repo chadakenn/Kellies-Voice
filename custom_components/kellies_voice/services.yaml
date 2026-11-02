@@ -191,6 +191,32 @@ hide_camera:
       selector:
         text:
 
+show_dashboard:
+  name: Show Home Assistant dashboard on TV
+  description: Show the paired TV\x27s already configured screensaver dashboard over its current content. Requires TV alert receiver, screensaver enabled, and Android overlay permission; does not change any TV settings or accept URLs.
+  fields:
+    device_id:
+      required: true
+      description: TV pairing ID, not the Home Assistant device registry ID.
+      selector:
+        text:
+
+    dashboard_path:
+      description: Optional route on the configured Home Assistant server, such as /mobile-command/bedroom or /dashboard-security/cameras. No hostname, query, or credentials.
+      example: /mobile-command/bedroom
+      selector:
+        text:
+
+hide_dashboard:
+  name: Hide on-demand TV dashboard
+  description: Hide a dashboard opened with show_dashboard. Does not disable automatic screensaver or close an Android system dream.
+  fields:
+    device_id:
+      required: true
+      description: TV pairing ID, not the Home Assistant device registry ID.
+      selector:
+        text:
+
 show_forecast:
   fields:
     entity_id:

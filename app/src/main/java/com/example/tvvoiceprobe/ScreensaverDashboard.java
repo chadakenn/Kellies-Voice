@@ -75,6 +75,73 @@ public final class ScreensaverDashboard {
                 "m.setAttribute(\'content\',\'width=" + (width == 1200 || width == 1440 ? width : 1920) + ", initial-scale=1\');})();";
     }
 
+    /** Keep automated dashboard selection on the TV's configured HA server.
+     * A service may select a safe route, NEVER another origin or a URL token.
+     * A blank route uses the TV's original configured URL unchanged.
+     */
+    public static String dashboardForPath(String configuredPage, String dashboardPath) {
+        String base = dashboardUrl(configuredPage);
+        if (base.isEmpty()) return "";
+        if (dashboardPath == null || dashboardPath.isEmpty()) return base;
+        if (!validDashboardPath(dashboardPath)) return "";
+        try {
+            URI uri = URI.create(base);
+            String candidate = uri.getScheme() + "://" + uri.getRawAuthority()
+                    + dashboardPath
+                    + (uri.getRawQuery() == null ? "" : "?" + uri.getRawQuery());
+            return dashboardUrl(candidate).isEmpty() || !sameSite(base, candidate)
+                    ? "" : candidate;
+        } catch (RuntimeException ignored) {
+            return "";
+        }
+    }
+
+    /** Empty means use the default configured source. All other routes must
+     * be simple, root-relative HA paths, never full URLs or query strings. */
+    public static boolean validDashboardPath(String path) {
+        return path != null && path.length() <= 160
+                && (path.isEmpty()
+                || path.matches("^/(?:[A-Za-z0-9_-]+(?:/[A-Za-z0-9_-]+)*)?$"));
+    }
+
+    /** Ready means the requested route has rendered a Lovelace dashboard,
+     * not merely the outer HA shell (which appears during login and redirects).
+     * This is a visual gate, not authentication or a navigation permission.
+     */
+    public static String dashboardReadyScript(String configuredPage) {
+        String path = "/";
+        try {
+            String rawPath = URI.create(configuredPage).getRawPath();
+            if (rawPath != null && !rawPath.isEmpty()) path = rawPath;
+        } catch (RuntimeException ignored) { }
+        // Only the route path is embedded; URL queries, tokens, hosts and
+        // authentication redirects never enter the readiness script.
+        String quoted = "\"" + path.replace("\\", "\\\\").replace("\"", "\\\"") + "\"";
+        return "(function(){var expected=" + quoted + ";"
+                + "var p=location.pathname;"
+                + "if(document.readyState!=='complete'"
+                + "||p.replace(/\\/$/,'')!==expected.replace(/\\/$/,''))return false;"
+                + "var app=document.querySelector('home-assistant');"
+                + "if(!app)return false;"
+                // HA's <home-assistant> element is only a shell. Its Lovelace
+                // panel renders <hui-root> AFTER dashboard config is fetched.
+                // Walk bounded, open shadow roots, without reading card text,
+                // user identity, private data or DOM URLs.
+                + "var examined=0;"
+                + "function ready(root,depth){"
+                + "if(!root||depth>16||examined>=2400)return false;"
+                + "var nodes=root.querySelectorAll('*');"
+                + "for(var i=0;i<nodes.length&&examined<2400;i++){"
+                + "var el=nodes[i];examined++;"
+                + "if(el.localName==='hui-root'){"
+                + "var box=el.getBoundingClientRect();"
+                + "if(el.isConnected&&box.width>0&&box.height>0)return true;}"
+                + "if(el.shadowRoot&&ready(el.shadowRoot,depth+1))return true;"
+                + "}"
+                + "return false;}"
+                + "return ready(app.shadowRoot||app,0);})()";
+    }
+
     public static boolean showOverlay(boolean enabled, boolean dreaming, boolean dismissed,
             boolean ourDreamVisible, boolean overlayAllowed, boolean configured) {
         return enabled && dreaming && !dismissed && !ourDreamVisible

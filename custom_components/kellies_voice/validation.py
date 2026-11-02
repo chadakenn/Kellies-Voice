@@ -20,6 +20,21 @@ except ImportError:  # unit test loads this file without the Home Assistant pack
     )
 
 _CAMERA_ENTITY = re.compile(r"^camera\.[a-z0-9_]+$")
+# Exact local HA dashboard routes only, never schemes, hosts, query strings,
+# fragments, percent-encoding, path traversal or third-party URLs.
+_DASHBOARD_PATH = re.compile(r"^/(?:[A-Za-z0-9_-]+(?:/[A-Za-z0-9_-]+)*)?$")
+
+
+def clean_dashboard_path(value) -> str:
+    """Allow only a bounded dashboard route on the TV's configured HA origin."""
+    if value is None or value == "":
+        return ""
+    if not isinstance(value, str) or len(value) > 160 or not _DASHBOARD_PATH.fullmatch(value):
+        raise ValueError(
+            "Dashboard path must start with /, for example /mobile-command/bedroom. "
+            "No URL, query, fragment, percent escapes or '..' allowed."
+        )
+    return value
 
 
 def clean_tv_device_id(value) -> str:

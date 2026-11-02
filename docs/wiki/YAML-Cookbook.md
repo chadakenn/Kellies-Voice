@@ -83,6 +83,33 @@ data:
 
 Closes a live or snapshot camera popup immediately. Does not affect announcements or the voice overlay.
 
+## Show and hide the configured dashboard (v0.17.4 candidate)
+
+**Requires the v0.17.4 TV APK and matching HACS integration**, with the TV's **Frigate/screensaver** option and **TV notifications & camera popups** enabled, a configured HA dashboard URL (or camera grid), an authorized/connected TV alert receiver, and Android **Display over other apps** permission. Commands are delivered over the existing per-TV authenticated channel.
+
+In Home Assistant **Developer tools → Actions**, use the **TV pairing ID** from Kellie's Voice settings (not the Home Assistant registry ID). The optional `dashboard_path` opens a different view **on the TV's already configured HA server**, without changing the saved screensaver settings:
+
+```yaml
+action: kellies_voice.show_dashboard
+data:
+  device_id: YOUR_TV_PAIRING_ID
+  dashboard_path: /mobile-command/bedroom
+```
+
+For another trigger use the same action with a different route, for example `/mobile-command/cameras` or `/dashboard-security/cameras`. Omit `dashboard_path` for the TV's default dashboard or configured camera grid. Repeated requests switch pages when an on-demand dashboard is already open. The path must start with `/` and contain simple letters/digits/dashes/underscores/slashes. No complete URL, host, query, fragment or encoded path is allowed.
+
+To dismiss **only an on-demand dashboard**:
+
+```yaml
+action: kellies_voice.hide_dashboard
+data:
+  device_id: YOUR_TV_PAIRING_ID
+```
+
+This lets automations temporarily show the configured dashboard or a selected same-server view over TV content, including HDMI when Android permits overlays, without ADB. **A dashboard already opened by Android's ordinary automatic screensaver is not converted into an HA-controlled one**, and `hide_dashboard` does not disable the TV's screensaver. Some TV firmware blocks overlays or foreground-service starts; the action is not guaranteed across all TV brands.
+
+**No optional remote URL parameter in v0.17.4:** configure the Home Assistant server/dashboard on the TV first, then optionally select only its dashboard path from an automation. The HA event carries only a TV ID, no access token, dashboard address, or credentials. The action does not create a new HA login.
+
 ## Frigate person automation / blueprint
 
 The repository includes a ready blueprint: `custom_components/kellies_voice/blueprints/frigate_person_popup.yaml`.

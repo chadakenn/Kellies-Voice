@@ -1,8 +1,6 @@
 # Optional actionable TV popup buttons (development preview)
 
-**Status:** Draft, not in the stable v0.16.11 release. This feature is being
-ported from [PR #61](https://github.com/chadakenn/Kellies-Voice/pull/61)
-to current development code and must pass signed onn 4K Pro hardware testing.
+**Status:** Button support is present in the released v0.17.3 Android and HACS code. The core one-use button behavior was **hardware verified on a Philips 55OLED856/12 OLED** using matching signed v0.17.4-dev.3 / HACS v0.17.4-dev.3 on 2026-11-02: D-pad/OK, exactly one event, replacement invalidation, Back/timeout, still/live camera buttons and non-focusable passive alerts passed. See [tester report](https://github.com/chadakenn/Kellies-Voice/issues/261#issuecomment-6581439136) and [remaining hardware checklist #304](https://github.com/chadakenn/Kellies-Voice/issues/304). **Not yet verified on that tester setup:** spoken audio ducking, microphone-related features, negative authorization cases, timer/reconnect regressions. Do not label the entire checklist complete until those are tested. Original implementation reference: [PR #61](https://github.com/chadakenn/Kellies-Voice/pull/61).
 
 You can add up to **three optional focusable buttons** to a normal text
 announcement, still camera or live camera. A popup without an `actions` list
@@ -58,4 +56,4 @@ camera URLs, or pairing IDs in public screenshots.
   scoped WebSocket; wrong/offline TV IDs or unauthorized users are refused.
 - Mic follow-up, timer dismiss and Wi-Fi reconnect still work.
 
-This port remains a **draft** until these tests pass on real hardware.
+**Current result:** Core button UX passed signed Philips OLED hardware tests on v0.17.4-dev.3. The remaining audio, mic, permission and reconnect acceptance criteria are tracked in [#304](https://github.com/chadakenn/Kellies-Voice/issues/304).

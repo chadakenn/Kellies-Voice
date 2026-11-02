@@ -196,6 +196,26 @@ For voice, expose an appropriately named script to your Assist/Ollama agent that
 
 The TV receiver requests a temporary HLS URL through Home Assistant's authenticated WebSocket `camera/stream` command. Events never carry stream URLs, tokens, or RTSP credentials. Playback is muted and released on timeout, a new popup, or receiver shutdown. HLS has more delay than WebRTC. Both the v0.16.0 or newer HACS integration and the matching signed Android APK with Media3 HLS support are needed. Moving live video has been confirmed on the onn 4K Pro with `camera.driveway` and `camera.doorbell` using Android v0.16.1. Other TV models and cameras have not been field-tested.
 
+## New dashboard actions (v0.17.4 candidate)
+
+With the **matching v0.17.4 Android APK and HACS integration**, the TV can show its *already configured* screensaver dashboard (or HA camera grid) on demand without running an ADB command:
+
+```yaml
+action: kellies_voice.show_dashboard
+data:
+  device_id: YOUR_TV_PAIRING_ID
+```
+
+To close **only that on-demand** dashboard:
+
+```yaml
+action: kellies_voice.hide_dashboard
+data:
+  device_id: YOUR_TV_PAIRING_ID
+```
+
+Both actions require exactly one configured TV ID and are sent through the authenticated per-TV event channel. They do not carry a URL or any HA credentials and they cannot hide an ordinary Android screensaver dream. Enable the TV screensaver and alert receiver, configure a source, and allow Android **Display over other apps**. Android TV firmware can still deny overlay/foreground launches. This is a **release candidate pending CI and physical TV QA**, not a feature available in the currently published release until v0.17.4 ships.
+
 ## Close a live or snapshot camera on demand (v0.16.2)
 
 Use `kellies_voice.hide_camera` to dismiss **only** a camera window without waiting for its scheduled timeout. This clears live video and releases Media3 playback on the TV; text announcements and the listening overlay are not touched. When `device_id` is omitted, the action targets every configured Kellie's Voice TV. No entity id or URL is needed.
