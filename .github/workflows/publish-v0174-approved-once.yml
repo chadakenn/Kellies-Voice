@@ -1,0 +1,152 @@
+# Single-use publication of v0.17.4 after explicit owner approval (2026-11-02).
+# Only the creation/update of THIS workflow on main with the precise approval
+# commit message triggers it. It is version-locked and refuses existing tags.
+# No future release gains an automatic publishing path from this workflow.
+name: Publish approved v0.17.4 stable (one-time)
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/publish-v0174-approved-once.yml'
+permissions:
+  contents: write
+concurrency:
+  group: one-time-approved-v0174-release
+  cancel-in-progress: false
+jobs:
+  stable-v0174:
+    if: >-
+      github.repository == 'chadakenn/Kellies-Voice' &&
+      github.ref == 'refs/heads/main' &&
+      github.event.head_commit.message == 'release(v0.17.4): owner approved one-time signing and publication [approved-v0174]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - name: Check out approved main source
+        uses: actions/checkout@v7
+      - name: Confirm exact release identity, previous stable and unpublished tag
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          APP_CODE=$(sed -nE 's/.*versionCode ([0-9]+).*/\1/p' app/build.gradle | head -1)
+          APP_NAME=$(sed -nE "s/.*versionName '([^']+)'.*/\1/p" app/build.gradle | head -1)
+          HA_NAME=$(python3 -c 'import json; print(json.load(open("custom_components/kellies_voice/manifest.json"))["version"])')
+          [[ "$APP_NAME" == "0.17.4" && "$APP_CODE" == "62" && "$HA_NAME" == "0.17.4" ]] || {
+            echo "::error::Android code62/v0.17.4 and HA v0.17.4 are required."; exit 1;
+          }
+          LAST_TAG=$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq '.tag_name')
+          [[ "$LAST_TAG" == "v0.17.3" ]] || {
+            echo "::error::Unexpected previous stable release ($LAST_TAG), abort."; exit 1;
+          }
+          if gh release view "v0.17.4" >/dev/null 2>&1; then
+            echo "::error::Release v0.17.4 already exists; no duplicate or overwrite.";
+            exit 1
+          fi
+          test -f docs/releases/v0.17.4.md
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: platform-tools
+      - name: Install Android SDK 35
+        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.2.12479018' 'cmake;3.22.1'
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Re-run Android unit tests and Home Assistant tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew --no-daemon -PskipWakeNative=true :app:assembleDebug :app:testDebugUnitTest
+          python3 -m compileall -q custom_components/kellies_voice
+          python3 -m unittest discover -s tests -p 'test_*.py' -v
+
+      - name: Restore permanent release signing key
+        shell: bash
+        env:
+          TV_KEY_B64: ${{ secrets.TV_SIGNING_KEYSTORE_B64 }}
+          TV_SIGNING_PASSWORD: ${{ secrets.TV_SIGNING_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$TV_KEY_B64" || -z "$TV_SIGNING_PASSWORD" ]]; then
+            echo "::error::Permanent signing secrets missing."; exit 1;
+          fi
+          printf '%s' "$TV_KEY_B64" | base64 --decode > "$RUNNER_TEMP/kellies-voice-signing.p12"
+          chmod 600 "$RUNNER_TEMP/kellies-voice-signing.p12"
+          keytool -list -storetype PKCS12 -keystore "$RUNNER_TEMP/kellies-voice-signing.p12" -storepass "$TV_SIGNING_PASSWORD" -alias tvvoice >/dev/null
+          echo "TV_SIGNING_KEYSTORE_PATH=$RUNNER_TEMP/kellies-voice-signing.p12" >> "$GITHUB_ENV"
+
+      - name: Build production signed APK
+        env:
+          TV_SIGNING_PASSWORD: ${{ secrets.TV_SIGNING_PASSWORD }}
+        run: ./gradlew --no-daemon :app:assembleRelease
+
+      - name: Verify JNI assets, APK package, version and permanent signing identity
+        shell: bash
+        env:
+          TV_SIGNING_PASSWORD: ${{ secrets.TV_SIGNING_PASSWORD }}
+        run: |
+          set -euo pipefail
+          apk=app/build/outputs/apk/release/app-release.apk
+          test -s "$apk"
+          bash .github/scripts/verify-wake-apk.sh "$apk"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$apk"
+          badging=$("$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$apk")
+          grep -F "package: name='com.example.tvvoiceprobe' versionCode='62' versionName='0.17.4'" <<< "$badging"
+          if grep -q 'application-debuggable' <<< "$badging"; then
+            echo "::error::Production release cannot be debuggable"; exit 1;
+          fi
+          apk_cert=$("$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$apk" | sed -nE 's/^Signer #1 certificate SHA-256 digest: ([[:xdigit:]]+).*/\1/p' | head -1)
+          key_cert=$(keytool -list -v -storetype PKCS12 -keystore "$TV_SIGNING_KEYSTORE_PATH" -storepass "$TV_SIGNING_PASSWORD" -alias tvvoice | sed -nE 's/.*SHA256: ([[:xdigit:]:]+).*/\1/p' | head -1 | tr -d ':' | tr '[:upper:]' '[:lower:]')
+          [[ -n "$apk_cert" && "$apk_cert" == "$key_cert" ]] || {
+            echo "::error::APK signer differs from permanent signing keystore"; exit 1;
+          }
+
+      - name: Prepare signed APK, update metadata and release notes
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release-files
+          cp app/build/outputs/apk/release/app-release.apk release-files/app-release.apk
+          python3 - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          apk=Path('release-files/app-release.apk')
+          assert apk.stat().st_size > 4096
+          Path('release-files/update.json').write_text(json.dumps({
+              'tag': 'v0.17.4',
+              'versionCode': 62,
+              'versionName': '0.17.4',
+              'sha256': hashlib.sha256(apk.read_bytes()).hexdigest()
+          }, indent=2)+'\n')
+          PY
+      - name: Save verified release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: kellies-voice-v0174-approved-signed
+          path: release-files/
+          if-no-files-found: error
+
+      - name: Publish v0.17.4 as public latest stable
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh release view "v0.17.4" >/dev/null 2>&1; then
+            echo "::error::Release exists; refusing overwrite."; exit 1;
+          fi
+          gh release create v0.17.4 \
+            release-files/app-release.apk \
+            release-files/update.json \
+            --target "$GITHUB_SHA" \
+            --title "Kellie's Voice v0.17.4" \
+            --notes-file docs/releases/v0.17.4.md \
+            --latest
