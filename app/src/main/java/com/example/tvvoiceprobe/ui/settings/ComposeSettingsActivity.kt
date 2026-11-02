@@ -48,6 +48,7 @@ import com.example.tvvoiceprobe.ComposeSettingsInterop
 import com.example.tvvoiceprobe.HaLayout
 import com.example.tvvoiceprobe.UpdateChannel
 import com.example.tvvoiceprobe.BuildConfig
+import com.example.tvvoiceprobe.EasterEggActivity
 import com.example.tvvoiceprobe.LiveCameraMode
 import com.example.tvvoiceprobe.ScreensaverDashboard
 import com.example.tvvoiceprobe.ScreensaverLiveMode
@@ -1382,7 +1383,22 @@ fun CategoryContent(
                 )
             }
             "updates" -> {
-                Text("Installed version: ${BuildConfig.VERSION_NAME}", color = skin.colors.text)
+                // Secret remote-friendly Easter egg: five intentional OK presses.
+                // Purely local animation, never starts voice, HA or a TV overlay.
+                var versionPresses by remember { mutableIntStateOf(0) }
+                SettingsChoice(
+                    title = "Installed version: ${BuildConfig.VERSION_NAME}",
+                    selected = false,
+                    onSelect = {
+                        versionPresses++
+                        if (versionPresses >= 5) {
+                            versionPresses = 0
+                            context.startActivity(Intent(context, EasterEggActivity::class.java))
+                        } else if (versionPresses == 3) {
+                            Toast.makeText(context, "Something is purring...", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                )
                 Spacer(modifier = Modifier.height(12.dp))
                 Text("App update channel", color = skin.colors.accent, fontSize = 18.sp, fontWeight = FontWeight.Medium)
                 var updateChannel by remember { mutableStateOf(prefs.updateChannel()) }

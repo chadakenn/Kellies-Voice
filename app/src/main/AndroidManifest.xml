@@ -70,6 +70,11 @@
             android:exported="false"
             android:excludeFromRecents="true"
             android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen" />
+        <!-- Private, purely local party activity. No extra permissions. -->
+        <activity android:name=".EasterEggActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen" />
         <service android:name=".ScreensaverWatchService"
             android:exported="false"
             android:foregroundServiceType="specialUse">
