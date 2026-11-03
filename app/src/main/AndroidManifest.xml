@@ -66,6 +66,11 @@
         <activity android:name=".ui.settings.ComposeSettingsActivity"
             android:exported="false"
             android:theme="@android:style/Theme.Material.NoActionBar" />
+        <!-- Local-only recent-event browser, launched by an explicit camera button. -->
+        <activity android:name=".FrigateReplayActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:theme="@android:style/Theme.Material.NoActionBar" />
         <activity android:name=".ScreensaverPreviewActivity"
             android:exported="false"
             android:excludeFromRecents="true"
