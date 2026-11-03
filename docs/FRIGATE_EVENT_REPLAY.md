@@ -1,0 +1,51 @@
+# Frigate Recorded Event Replay | v0.18.0 design / first implementation slice
+
+**Status:** Developer groundwork in [#307](https://github.com/chadakenn/Kellies-Voice/issues/307). **No public TV clip player, Home Assistant service, or automatic history fetching is shipped in this slice.**
+
+This phase adds `frigate_replay.py`: a pure, dependency-free selector that accepts a bounded page of authenticated Frigate `GET /api/events` results and returns at most ten metadata-only `ReplayEvent` instances for **one explicitly mapped Frigate camera**. It performs no network I/O and never constructs or distributes playback URLs.
+
+## Why do this first?
+
+A doorbell alert may arrive at the same moment as a person/car event on a nearby camera. **Watch Last Event must not quietly choose a different camera or an unrelated newer clip.** The selector requires an exact camera match, completed recording (`has_clip is True`, valid `end_time`), a non-false-positive event, and a bounded timestamp.
+
+- If the triggering Frigate event ID is supplied, find **that exact event** or return an empty result. **Never fall back** to another event.
+- Otherwise, only consider events for an explicitly configured camera and return the most recent completed recordings (newest first), at most eight by default.
+- Allow only narrow Frigate event IDs, camera identifiers, and labels. Reject URL/path data, malformed timestamps, in-progress/missing clips, stale entries, oversized pages, and unknown cameras.
+- Keep metadata transient. Do not include clip URLs, Frigate credentials, authentication headers, image thumbnails, arbitrary event JSON, or private camera access tokens.
+
+## Confirmed Frigate API
+
+Frigate 0.18 exposes `GET /api/events` with `camera`, `has_clip`, `limit`, `after`, and other filters, plus `GET /api/events/{event_id}` to validate a specific event and `GET /api/events/{event_id}/clip.mp4` to stream the recorded clip. The HA Frigate integration exposes notification clip routes, including `/api/frigate/notifications/{event_id}/clip.mp4`, and supports a `<client_id>` route namespace for multiple instances.
+
+References:
+- https://docs.frigate.video/integrations/api/events-events-get/
+- https://docs.frigate.video/integrations/api/event-events-event-id-get/
+- https://docs.frigate.video/integrations/api/event-clip-events-event-id-clip-mp-4-get
+- https://docs.frigate.video/integrations/home-assistant/
+
+**Security:** HA's Frigate notification media routes are documented as publicly available for notification apps. We **must not** put event IDs, sensitive media paths, or plaintext Frigate credentials into broadly exposed TV alert payloads. The final playback phase needs a scoped, authorized route or a clearly explained and owner-approved strategy to access Frigate media. Existing authenticated HA TV WebSocket messages are the control plane, **not** an automatic authorization grant to Frigate's entire archive. Do not bypass TLS or proxy arbitrary URLs.
+
+## Required work to complete #307
+
+1. **Authenticated metadata fetch:** Use an already configured, authenticated Frigate instance in Home Assistant. Require explicit HA camera entity ↔ Frigate camera mapping. Query a bounded event page or exact ID. Confirm the returned camera and has_clip server-side. For multi-Frigate homes, require instance ID rather than guessing.
+2. **Scoped request / action:** Bind `Watch Last Event` to the existing one-use, per-TV alert-action ledger. The server must authorize the paired TV and the mapped camera, and the action must refer to the correct notification/event. **Do not add an untrusted arbitrary video URL field** to existing `kellies_voice.announce` or camera services.
+3. **Private playback:** Play only the verified clip in a TV video player with a same-origin/approved-host URL policy, muted by default. Use remote Back to return to the previous TV app, not an injected overlay that steals focus in passive mode. Handle 403/404, expired retention, missing clips, timeouts, cancellation and codec failures gracefully.
+4. **Recent-event strip:** Show up to 8 recent results for the same authorized camera, with time, short label and bounded thumbnails only after explicit user selection. Keep access limited to that paired TV. The strip should not accidentally show recordings from other cameras.
+5. **QA:** Home Assistant integration tests including multiple TVs and Frigate instances, then signed Onn 4K Pro testing. Verify correct doorbell event, wrong-camera rejection, missing clip, Frigate offline, Back, mute/audio preference, screensaver camera and regular notification regression.
+
+## Calling the selector (internal only)
+
+```python
+from custom_components.kellies_voice.frigate_replay import recent_recorded_events
+
+# events must come from an authenticated, restricted Frigate client.
+result = recent_recorded_events(
+    events,
+    frigate_camera="doorbell",   # explicitly mapped, never guessed from entity_id
+    now=clock.time(),
+    requested_event_id="1730571482.487155-abc123",
+)
+# No match => [] (not "try the latest other event").
+```
+
+Nothing in this first slice makes HA or the TV fetch a clip or expose a media URL.
