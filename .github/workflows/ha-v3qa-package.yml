@@ -59,7 +59,7 @@ jobs:
               assert not any('/__pycache__/' in n for n in names)
               print("PASS", len(names), "files; no stable integration files")
           PY
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: kellies-voice-v3qa-ha-integration
           path: dist/kellies_voice_v3qa_ha.zip

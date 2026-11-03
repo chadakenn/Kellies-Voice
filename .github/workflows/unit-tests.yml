@@ -49,14 +49,14 @@ jobs:
           python scripts/package_full_app_beta_kit.py
       - name: Upload full app beta test kit
         if: (github.head_ref == 'feature/full-app-beta-test-center' || github.head_ref == 'feature/v3qa-owner-approved-tv-login' || github.head_ref == 'integration/v0.17.0-combined-qa')
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Kellies-Voice-full-app-beta-kit
           path: dist/Kellies-Voice-Full-App-Beta-Kit.zip
           if-no-files-found: error
           retention-days: 7
       - name: Save test APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Kellies-Voice-test-apk
           path: app/build/outputs/apk/debug/app-debug.apk

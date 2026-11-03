@@ -82,7 +82,7 @@ jobs:
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose app/build/outputs/apk/release/app-release.apk
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging app/build/outputs/apk/release/app-release.apk | head -n 4
       - name: Upload dev APK, not a public release
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: kellies-voice-dev-signed
           path: app/build/outputs/apk/release/app-release.apk
@@ -118,7 +118,7 @@ jobs:
           fi
 
       - name: Upload stable-identity QA APK (separate from release and debug)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: kellies-voice-qa-signed
           path: app/build/outputs/apk/qa/app-qa.apk
