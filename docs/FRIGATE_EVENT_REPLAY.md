@@ -10,10 +10,18 @@ This phase adds a pure selection policy (`frigate_replay.py`) and a narrowly sco
 
 - The TV is paired and the authenticated account may read its TV control entity, using the already deployed `_tv_can_read` permission rule.
 - The same user has **read permission for the requested HA camera entity**, not merely access to the TV.
-- The TV config entry owner has explicitly configured a `replay_camera_map` entry linking that HA camera entity to a specific Frigate config entry and camera name. This mapping has no UI/settings setter in the current PR, so replay remains unavailable until a future owner-controlled configuration is implemented.
+- The TV config entry owner has explicitly configured a `replay_camera_map` entry linking that HA camera entity to a specific Frigate config entry and camera name. The HA Options form now offers a single explicit Frigate camera mapping for each paired TV; the owner selects a registered Frigate HA camera entity and enters its actual Frigate camera name. The Frigate entry ID comes from HA's registry, not from the TV.
 - The HA entity registry confirms that the camera entity **belongs to the expected Frigate config entry**, and that exact Frigate entry exists. A generic camera or a camera from a different Frigate installation fails closed.
 
-No camera mapping is invented, no Frigate URL or credentials are generated, no new WebSocket command is registered, and no TV can initiate replay yet. All denial messages are generic to avoid disclosing other cameras or credentials.
+No camera mapping is invented, and no Frigate URL or credentials are generated. The registered read-only `kellies_voice/replay_events` WebSocket command can now query scoped event metadata, but the TV app doesn't call it yet. All denial messages are generic to avoid disclosing other cameras or credentials.
+
+## Owner setup and authorized event metadata
+
+In **Home Assistant → Settings → Devices & services → Kellie's Voice TV → Configure**, choose **Replay: Home Assistant Frigate camera** from a dropdown restricted to camera entities owned by a loaded Frigate integration, then enter **Replay: exact camera name inside Frigate** (such as `front_door`). Both fields blank disables replay. Mappings are stored only in that TV's own HA options.
+
+The scoped, read-only command `kellies_voice/replay_events` accepts `device_id`, `entity_id`, optional `event_id`, and `limit` (1–10). It verifies the authenticated user can read both that TV and that camera, that the mapped camera belongs to the declared Frigate config entry, and that the real Frigate instance config includes that camera. It queries Frigate using the **already authenticated HA Frigate client**, never a TV-supplied URL. Permissions are checked again after the async query.
+
+It returns a camera entity ID and up to 10 event summaries containing only `event_id`, short `label`, `start_time`, and `end_time`. No thumbnail, clip URL, credential or raw Frigate JSON travels over this command. **This is development only; the Android TV player and event strip are not yet wired.**
 
 ## Why do this first?
 
@@ -38,7 +46,7 @@ References:
 
 ## Required work to complete #307
 
-1. **Home Assistant authorization integration:** The pure TV/camera/Frigate-instance gate is implemented, along with a bounded authenticated Frigate metadata client adapter. Still needed: an owner-controlled, explicit camera mapping setup and a scoped request handler that passes the real authenticated HA user and entity registry into the gate. Only after the returned scope is verified may the handler resolve the expected Frigate API client and fetch metadata. Do not accept host, client, mapping or camera inventory from TV events.
+1. **Home Assistant authorization integration:** The owner-controlled camera mapping, per-TV/camera/Frigate-instance gate, and read-only metadata WebSocket request are implemented. Still needed: live testing with the real Frigate integration/TV and Android UI request wiring. Multiple-camera configuration can follow the first verified mapping.
 2. **Scoped request / action:** Bind `Watch Last Event` to the existing one-use, per-TV alert-action ledger. The server must authorize the paired TV and the mapped camera, and the action must refer to the correct notification/event. **Do not add an untrusted arbitrary video URL field** to existing `kellies_voice.announce` or camera services.
 3. **Private playback:** Play only the verified clip in a TV video player with a same-origin/approved-host URL policy, muted by default. Use remote Back to return to the previous TV app, not an injected overlay that steals focus in passive mode. Handle 403/404, expired retention, missing clips, timeouts, cancellation and codec failures gracefully.
 4. **Recent-event strip:** Show up to 8 recent results for the same authorized camera, with time, short label and bounded thumbnails only after explicit user selection. Keep access limited to that paired TV. The strip should not accidentally show recordings from other cameras.
@@ -59,4 +67,4 @@ result = recent_recorded_events(
 # No match => [] (not "try the latest other event").
 ```
 
-The adapter can ask an **existing HA Frigate API client** for event metadata only; there is still **no TV-triggered metadata request, clip fetching, video player, or media URL** in this first slice.
+The authenticated HA WebSocket metadata lookup exists, but the TV app does not yet issue that request. There is still **no clip playback, video player, or media URL** in this first slice.
