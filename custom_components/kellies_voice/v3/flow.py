@@ -43,13 +43,16 @@ class V3OwnerPairingFlowMixin:
                 return self.async_abort(reason="cancelled")
             # Constructor generates a P-256 key and serializes its public key.
             # Keep both off Home Assistant's event loop.
-            attempt = await async_crypto_job(
-                self.hass, partial(
-                    HaV3WireAttempt, self._v3_session, retain_owner_receipt=True))
+            attempt = None
             try:
+                attempt = await async_crypto_job(
+                    self.hass, partial(
+                        HaV3WireAttempt, self._v3_session,
+                        retain_owner_receipt=True))
                 code = await attempt.start(self._v3_transport, hass=self.hass)
             except Exception:
-                attempt.close()
+                if attempt is not None:
+                    attempt.close()
                 errors["base"] = "unavailable"
             else:
                 self._v3_attempt = attempt
