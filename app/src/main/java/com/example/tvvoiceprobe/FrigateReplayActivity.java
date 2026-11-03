@@ -1,11 +1,8 @@
 package com.example.tvvoiceprobe;
 
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.net.Uri;
-import android.view.KeyEvent;
 import android.widget.FrameLayout;
-import android.content.res.ColorStateList;
 
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.PlaybackException;
@@ -45,8 +42,9 @@ import okhttp3.WebSocketListener;
 
 /**
  * Explicitly opened from a camera alert's authenticated action button.
- * Requests only read-scoped Frigate event metadata. No clip URL, password,
- * thumbnail, or media stream is ever received or played by this Activity.
+ * Requests read-scoped event metadata and plays selected MP4 clips only via
+ * Home Assistant's authenticated per-TV proxy. Frigate credentials, original
+ * host URLs and unrestricted archive access never leave Home Assistant.
  */
 public final class FrigateReplayActivity extends Activity {
     public static final String EXTRA_CAMERA_ENTITY = "replay_camera_entity";
@@ -68,7 +66,6 @@ public final class FrigateReplayActivity extends Activity {
     private volatile String haToken;
     private ExoPlayer clipPlayer;
     private FrameLayout playbackLayer;
-    private TextView playbackLabel;
     private boolean requestSent;
 
     @Override protected void onCreate(Bundle state) {
