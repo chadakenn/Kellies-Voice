@@ -3,6 +3,7 @@
 # Paste this into Developer Tools → YAML → Automation, or save as an automation.
 # Replace device_id with your paired TV id (or leave blank to target all).
 # The TV must already be listening for kellies_voice_rich_card.
+# Optional: set image_entity to a camera.* entity to show a one-shot snapshot.
 
 alias: "Test rich card — shopping list"
 description: "Shows a temporary list card on a Kellie's Voice TV"
@@ -21,6 +22,7 @@ action:
       type: list
       duration_seconds: 25
       device_id: ""   # leave blank for all configured TVs
+      # image_entity: camera.kitchen   # optional one-shot snapshot
       rows:
         - label: Milk
           value: "2"
