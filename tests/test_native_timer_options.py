@@ -42,7 +42,16 @@ _ICON_FILE = Path(__file__).resolve().parents[1] / "custom_components/kellies_vo
 _icon_spec = importlib.util.spec_from_file_location("timer_quick_icons", _ICON_FILE)
 _icon_module = importlib.util.module_from_spec(_icon_spec)
 _icon_spec.loader.exec_module(_icon_module)
+_REPLAY_MAPPING = Path(__file__).resolve().parents[1] / "custom_components/kellies_voice/frigate_replay_mapping.py"
+_replay_spec = importlib.util.spec_from_file_location("timer_replay_mapping", _REPLAY_MAPPING)
+_replay = importlib.util.module_from_spec(_replay_spec)
+_replay_spec.loader.exec_module(_replay)
+
 runtime = {
+    "mapped_camera_options": _replay.mapped_camera_options,
+    "current_replay_fields": _replay.current_replay_fields,
+    "validate_replay_mapping": _replay.validate_replay_mapping,
+    "ReplayMappingError": _replay.ReplayMappingError,
     "ICON_CHOICES": _icon_module.ICON_CHOICES,
     "validate_override": _icon_module.validate_override,
     "OptionsFlow": FakeOptionsFlow,
