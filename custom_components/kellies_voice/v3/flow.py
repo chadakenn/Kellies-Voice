@@ -5,8 +5,10 @@ authenticated encrypted TV handoff. Physical OK + owner opt-in is required.
 """
 import logging
 import time
+from functools import partial
 import voluptuous as vol
 from .pairing_v3_wire import HaV3WireAttempt
+from .executor import async_crypto_job
 from .owner_claim import owner_claims
 from . import owner_controls_ready, async_register_owner_ui
 from ..const import DOMAIN
@@ -39,10 +41,13 @@ class V3OwnerPairingFlowMixin:
         if user_input is not None:
             if user_input.get("start_test") is not True:
                 return self.async_abort(reason="cancelled")
-            attempt = HaV3WireAttempt(
-                self._v3_session, retain_owner_receipt=True)
+            # Constructor generates a P-256 key and serializes its public key.
+            # Keep both off Home Assistant's event loop.
+            attempt = await async_crypto_job(
+                self.hass, partial(
+                    HaV3WireAttempt, self._v3_session, retain_owner_receipt=True))
             try:
-                code = await attempt.start(self._v3_transport)
+                code = await attempt.start(self._v3_transport, hass=self.hass)
             except Exception:
                 attempt.close()
                 errors["base"] = "unavailable"
@@ -72,7 +77,8 @@ class V3OwnerPairingFlowMixin:
                 self._v3_code = None
                 return self.async_abort(reason="mismatch")
             try:
-                result = await self._v3_attempt.confirmed_by_tv_remote(self._v3_transport)
+                result = await self._v3_attempt.confirmed_by_tv_remote(
+                    self._v3_transport, hass=self.hass)
             except Exception:
                 self._v3_attempt = None
                 self._v3_code = None
