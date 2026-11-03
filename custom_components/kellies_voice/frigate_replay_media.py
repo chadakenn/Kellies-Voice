@@ -158,8 +158,21 @@ class FrigateReplayClipView(HomeAssistantView):
                 target = web.StreamResponse(status=source.status, headers=output_headers)
                 await target.prepare(request)
                 transferred = 0
+                last_access_check = time.monotonic()
                 try:
                     async for chunk in source.content.iter_chunked(64 * 1024):
+                        # Revocation should stop an active clip, not just
+                        # subsequent seek/range requests. Keep checks bounded.
+                        if time.monotonic() - last_access_check >= 2.0:
+                            try:
+                                still_allowed = authorize_replay_request(
+                                    hass, user, tv_id, entity_id, er.async_get(hass)
+                                ) == scope
+                            except ReplayAccessDenied:
+                                still_allowed = False
+                            if not still_allowed:
+                                break
+                            last_access_check = time.monotonic()
                         transferred += len(chunk)
                         if transferred > _MAX_CLIP_BYTES:
                             # Kill an unbounded stream rather than disclosing more
