@@ -14,7 +14,7 @@ except ImportError:
     # optional P-256 library; dedicated v3 CI does and runs these tests.
     ec = None
 
-ROOT = Path(__file__).resolve().parents[1] / "custom_components" / "kellies_voice"
+ROOT = Path(__file__).resolve().parents[1] / "custom_components" / "kellies_voice" / "v3"
 PACKAGE = "kv_v3_verified_tests"
 pkg = types.ModuleType(PACKAGE)
 pkg.__path__ = [str(ROOT)]
