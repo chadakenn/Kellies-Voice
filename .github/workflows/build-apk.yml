@@ -82,7 +82,7 @@ jobs:
 
       - name: Upload installable signed APK
         if: github.ref == 'refs/heads/main' && (github.event_name != 'workflow_dispatch' || inputs.publish_release == true)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: kellies-voice-signed
           path: app/build/outputs/apk/release/app-release.apk
@@ -115,7 +115,7 @@ jobs:
 
       - name: Upload privately verified release candidate APK (no publication)
         if: (github.event_name == 'workflow_dispatch' && inputs.publish_release != true) || (github.event_name == 'push' && github.ref == 'refs/heads/release/v0.17.0-public-rc')
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: kellies-voice-release-candidate-private
           path: app/build/outputs/apk/release/app-release.apk
@@ -162,7 +162,7 @@ jobs:
 
       - name: Upload persistently signed QA APK
         if: (github.event_name == 'workflow_dispatch' && inputs.publish_release != true) || (github.event_name == 'push' && github.ref == 'refs/heads/release/v0.17.0-public-rc')
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: kellies-voice-qa-signed
           path: app/build/outputs/apk/qa/app-qa.apk
@@ -204,7 +204,7 @@ jobs:
 
       - name: Upload matching Home Assistant QA ZIP
         if: (github.event_name == 'workflow_dispatch' && inputs.publish_release != true) || (github.event_name == 'push' && github.ref == 'refs/heads/release/v0.17.0-public-rc')
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: kellies-voice-ha-qa
           path: dist/kellies-voice-ha-qa.zip
