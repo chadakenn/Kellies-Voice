@@ -3,11 +3,16 @@
 import voluptuous as vol
 from homeassistant.config_entries import ConfigFlow, OptionsFlow
 from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
+from homeassistant.helpers import entity_registry as er
 
 from .const import DOMAIN, QUICK_ACTION_CACHE
 from .validation import clean_tv_device_id
 from .home_shortcuts import COUNT, ACTIONS, validate_slot
 from .quick_action_icons import ICON_CHOICES, validate_override
+from .frigate_replay_mapping import (
+    ReplayMappingError, current_replay_fields,
+    mapped_camera_options, validate_replay_mapping,
+)
 from .pairing_v3_wire import HaV3WireAttempt, AiohttpV3LanTransport
 from .pairing_key_commitment import _session_bytes
 from .v3.flow import V3OwnerPairingFlowMixin
@@ -33,6 +38,15 @@ class KellieVoiceOptionsFlow(OptionsFlow):
         """
         current = dict(self.config_entry.options)
         errors = {}
+        # Only HA-registered Frigate cameras can be configured for replay;
+        # non-Frigate camera entities are never offered as options.
+        hass = getattr(self, "hass", None)
+        registry = er.async_get(hass) if hass is not None else None
+        records = registry.entities if registry is not None else {}
+        frigate_ids = ({e.entry_id for e in hass.config_entries.async_entries("frigate")}
+                       if hass is not None else set())
+        available_replay_cameras = mapped_camera_options(records, frigate_ids)
+        configured_entity, configured_camera = current_replay_fields(current)
         if user_input is not None:
             updated = dict(current)
             updated["native_timer_intents"] = bool(user_input["native_timer_intents"])
@@ -57,6 +71,20 @@ class KellieVoiceOptionsFlow(OptionsFlow):
                     f"shortcut_{slot}_action": action,
                     f"shortcut_{slot}_icon": icon,
                 })
+            if not errors and hass is not None:
+                # The mapping is explicitly chosen by the HA owner. It cannot
+                # be set by an untrusted TV event or guessed from a camera label.
+                selection = user_input.get("replay_camera_entity", configured_entity)
+                name = user_input.get("replay_frigate_name", configured_camera)
+                try:
+                    mapping = validate_replay_mapping(
+                        selection, name, registry_entities=records,
+                        frigate_entry_ids=frigate_ids,
+                    )
+                except ReplayMappingError:
+                    errors["base"] = "invalid_replay_mapping"
+                else:
+                    updated["replay_camera_map"] = mapping
             if not errors:
                 # The native device-page fields share this same per-TV draft.
                 # An explicit Options form submission replaces it atomically.
@@ -83,6 +111,17 @@ class KellieVoiceOptionsFlow(OptionsFlow):
                 fields[vol.Optional(
                     key, default=current.get(key, default)
                 )] = value_type
+        # Single verified camera mapping for the first replay release slice.
+        # A blank selection disables replay; an incomplete pairing is rejected.
+        # Keep the fields hidden on installations without the Frigate integration.
+        if frigate_ids:
+            fields[vol.Optional(
+                "replay_camera_entity",
+                default=configured_entity if configured_entity in available_replay_cameras else "",
+            )] = vol.In(["", *available_replay_cameras])
+            fields[vol.Optional(
+                "replay_frigate_name", default=configured_camera,
+            )] = str
         return self.async_show_form(
             step_id="init", data_schema=vol.Schema(fields), errors=errors,
         )
