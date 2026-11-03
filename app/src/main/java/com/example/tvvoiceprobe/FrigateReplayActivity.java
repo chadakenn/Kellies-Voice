@@ -7,7 +7,6 @@ import android.graphics.Typeface;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
-import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -53,7 +52,6 @@ public final class FrigateReplayActivity extends Activity {
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         camera = TvEventPayload.cameraEntity(getIntent().getStringExtra(EXTRA_CAMERA_ENTITY));
         if (camera == null) {
             finish();
@@ -173,7 +171,7 @@ public final class FrigateReplayActivity extends Activity {
                 requestSent = true;
                 ws.send(new JSONObject().put("id", REQUEST_ID)
                         .put("type", "kellies_voice/replay_events")
-                        .put("device_id", new OverlayPreferences(thisActivity()).deviceId())
+                        .put("device_id", new OverlayPreferences(this).deviceId())
                         .put("entity_id", camera).put("limit", 8).toString());
                 return;
             }
@@ -199,8 +197,6 @@ public final class FrigateReplayActivity extends Activity {
         }
     }
 
-    private Activity thisActivity() { return this; }
-
     private void showEvents(JSONArray events) {
         if (closing || rows == null || status == null) return;
         rows.removeAllViews();
@@ -214,15 +210,16 @@ public final class FrigateReplayActivity extends Activity {
             JSONObject event = events.optJSONObject(i);
             if (event == null) continue;
             String id = event.optString("event_id", "");
-            if (!id.matches("[A-Za-z0-9][A-Za-z0-9._-]{5,95}") || id.contains(".."))
+            if (!TvReplayEvent.validId(id))
                 continue;
             String label = event.optString("label", "event");
-            if (!label.matches("[a-z][a-z0-9_]{0,39}")) continue;
+            if (!TvReplayEvent.validLabel(label)) continue;
             double startedAt = event.optDouble("start_time", 0);
-            if (!Double.isFinite(startedAt) || startedAt <= 0) continue;
+            long epochMs = TvReplayEvent.epochMillis(startedAt);
+            if (epochMs < 0) continue;
 
             String time = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT,
-                    Locale.getDefault()).format(new Date((long) (startedAt * 1000)));
+                    Locale.getDefault()).format(new Date(epochMs));
             Button entry = new Button(this);
             entry.setText((shown + 1) + ".  " + label.replace('_', ' ') + "  ·  " + time);
             entry.setAllCaps(false);
