@@ -2,7 +2,7 @@
 
 **Status:** Developer groundwork in [#307](https://github.com/chadakenn/Kellies-Voice/issues/307). **No public TV clip player, Home Assistant service, or automatic history fetching is shipped in this slice.**
 
-This phase adds `frigate_replay.py`: a pure, dependency-free selector that accepts a bounded page of authenticated Frigate `GET /api/events` results and returns at most ten metadata-only `ReplayEvent` instances for **one explicitly mapped Frigate camera**. It performs no network I/O and never constructs or distributes playback URLs.
+This phase adds a pure selection policy (`frigate_replay.py`) and a narrowly scoped async adapter (`frigate_replay_client.py`). The adapter calls an **already authenticated Frigate integration API client supplied by Home Assistant** and gets a bounded set of recent events or one exact event ID, then applies the selector. They return at most ten metadata-only `ReplayEvent` instances for **one explicitly mapped Frigate camera** and never construct or distribute playback URLs. The caller must still verify the TV and HA camera permissions, find the correct Frigate integration config entry/client, and supply its configured camera inventory.
 
 ## Why do this first?
 
@@ -27,7 +27,7 @@ References:
 
 ## Required work to complete #307
 
-1. **Authenticated metadata fetch:** Use an already configured, authenticated Frigate instance in Home Assistant. Require explicit HA camera entity ↔ Frigate camera mapping. Query a bounded event page or exact ID. Confirm the returned camera and has_clip server-side. For multi-Frigate homes, require instance ID rather than guessing.
+1. **Home Assistant authorization integration:** The authenticated-client adapter and bounded exact/recent metadata query are now implemented. Wire it to HA's configured Frigate client **only after** checking the paired TV's permission to the selected camera entity, resolving the correct Frigate instance, and confirming explicit HA entity ↔ Frigate camera mapping. Do not accept arbitrary host/client/camera inventory from TV events. Multi-instance homes must not guess which server to use.
 2. **Scoped request / action:** Bind `Watch Last Event` to the existing one-use, per-TV alert-action ledger. The server must authorize the paired TV and the mapped camera, and the action must refer to the correct notification/event. **Do not add an untrusted arbitrary video URL field** to existing `kellies_voice.announce` or camera services.
 3. **Private playback:** Play only the verified clip in a TV video player with a same-origin/approved-host URL policy, muted by default. Use remote Back to return to the previous TV app, not an injected overlay that steals focus in passive mode. Handle 403/404, expired retention, missing clips, timeouts, cancellation and codec failures gracefully.
 4. **Recent-event strip:** Show up to 8 recent results for the same authorized camera, with time, short label and bounded thumbnails only after explicit user selection. Keep access limited to that paired TV. The strip should not accidentally show recordings from other cameras.
@@ -48,4 +48,4 @@ result = recent_recorded_events(
 # No match => [] (not "try the latest other event").
 ```
 
-Nothing in this first slice makes HA or the TV fetch a clip or expose a media URL.
+The adapter can ask an **existing HA Frigate API client** for event metadata only; there is still **no TV-triggered metadata request, clip fetching, video player, or media URL** in this first slice.
