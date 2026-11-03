@@ -1,0 +1,67 @@
+blueprint:
+  name: Kellie's Voice rich card test
+  description: >
+    Shows a temporary list or status card on a paired Kellie's Voice TV.
+    Useful for testing the rich-card overlay. Does not start the microphone.
+  domain: automation
+  input:
+    title:
+      name: Title
+      default: Shopping list
+    subtitle:
+      name: Subtitle
+      default: Tonight
+    card_type:
+      name: Card type
+      default: list
+      selector:
+        select:
+          options:
+            - list
+            - card
+    duration_seconds:
+      name: Duration (seconds)
+      default: 20
+      selector:
+        number:
+          min: 8
+          max: 45
+          mode: box
+    device_id:
+      name: TV device id
+      description: Leave blank to send to every configured Kellie's Voice TV.
+      default: ""
+    trigger_entity:
+      name: Trigger entity
+      description: Any entity whose state change should show the card.
+      selector:
+        entity: {}
+
+mode: single
+
+trigger:
+  - trigger: state
+    entity_id: !input trigger_entity
+
+variables:
+  card_title: !input title
+  card_subtitle: !input subtitle
+  card_kind: !input card_type
+  card_duration: !input duration_seconds
+  tv_device: !input device_id
+
+action:
+  - action: kellies_voice.show_rich_card
+    data:
+      title: "{{ card_title }}"
+      subtitle: "{{ card_subtitle }}"
+      type: "{{ card_kind }}"
+      duration_seconds: "{{ card_duration | int }}"
+      device_id: "{{ tv_device }}"
+      rows:
+        - label: Milk
+          value: "2"
+        - label: Eggs
+          value: "1 dozen"
+        - label: Bread
+          value: "1"
