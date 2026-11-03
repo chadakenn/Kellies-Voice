@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.18.0 (draft) — Rich interactive Assist cards
+
+- **Rich Assist cards:** New `kellies_voice.show_rich_card` service and `kellies_voice_rich_card` event. Temporary floating list or status cards appear in the TV overlay. Optional action buttons reuse the existing one-use token system. Does not turn the TV into a dashboard.
+- Android overlay rendering for list/card types with title, subtitle, rows, and optional buttons. Auto-dismisses; Back closes.
+- Hardware QA and changelog finalization still pending.
+
+
 ## v0.17.4 (2026-11-02) — Combined dashboard release
 
 - **Smooth Home Assistant dashboard opening:** Keep the WebView behind a native black loading surface while HA login, startup and configured-path redirects settle. This changes presentation, not credentials or same-origin security. Frigate pages and native camera grid remain unchanged.
