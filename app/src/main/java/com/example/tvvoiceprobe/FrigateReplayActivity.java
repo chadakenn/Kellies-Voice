@@ -2,6 +2,22 @@ package com.example.tvvoiceprobe;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.net.Uri;
+import android.view.KeyEvent;
+import android.widget.FrameLayout;
+import android.content.res.ColorStateList;
+
+import androidx.media3.common.MediaItem;
+import androidx.media3.common.PlaybackException;
+import androidx.media3.common.Player;
+import androidx.media3.datasource.DefaultDataSource;
+import androidx.media3.datasource.DefaultHttpDataSource;
+import androidx.media3.exoplayer.ExoPlayer;
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory;
+import androidx.media3.ui.PlayerView;
+
+import java.util.HashMap;
+import java.util.Map;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.os.Bundle;
@@ -47,7 +63,12 @@ public final class FrigateReplayActivity extends Activity {
     private TextView status;
     private LinearLayout rows;
     private String camera;
-    private boolean closing;
+    private volatile boolean closing;
+    private volatile String haOrigin;
+    private volatile String haToken;
+    private ExoPlayer clipPlayer;
+    private FrameLayout playbackLayer;
+    private TextView playbackLabel;
     private boolean requestSent;
 
     @Override protected void onCreate(Bundle state) {
@@ -105,7 +126,15 @@ public final class FrigateReplayActivity extends Activity {
         back.setOnClickListener(v -> finish());
         root.addView(back, new LinearLayout.LayoutParams(dp(230), dp(56)));
         back.requestFocus();
-        setContentView(root);
+
+        FrameLayout host = new FrameLayout(this);
+        host.addView(root, new FrameLayout.LayoutParams(-1, -1));
+
+        playbackLayer = new FrameLayout(this);
+        playbackLayer.setBackgroundColor(Color.BLACK);
+        playbackLayer.setVisibility(View.GONE);
+        host.addView(playbackLayer, new FrameLayout.LayoutParams(-1, -1));
+        setContentView(host);
     }
 
     private void connectOnWorker() {
@@ -132,6 +161,8 @@ public final class FrigateReplayActivity extends Activity {
             return;
         }
         final String bearer = connection.token;
+        haOrigin = base.toString();
+        haToken = bearer;
         HttpUrl wsUrl = base.newBuilder().addPathSegments("api/websocket").build();
         synchronized (this) {
             if (closing) return;
@@ -227,17 +258,113 @@ public final class FrigateReplayActivity extends Activity {
             entry.setGravity(Gravity.CENTER_VERTICAL | Gravity.START);
             entry.setTextSize(19);
             entry.setPadding(dp(20), dp(12), dp(20), dp(12));
-            entry.setOnClickListener(v -> new AlertDialog.Builder(this)
-                    .setTitle("Recording found")
-                    .setMessage("Recorded video playback is not enabled in this development build yet. "
-                            + "This screen verifies the correct camera and event permissions first.")
-                    .setPositiveButton("OK", null).show());
+            entry.setOnClickListener(v -> playRecordedEvent(id));
             rows.addView(entry, new LinearLayout.LayoutParams(-1, dp(66)));
             shown++;
         }
         status.setText(shown == 0 ? "No valid recorded events returned."
-                : shown + " recorded events · metadata preview only (no video player yet)");
+                : shown + " recorded events · press OK to play, Back to exit");
         if (rows.getChildCount() > 0) rows.getChildAt(0).requestFocus();
+    }
+
+    /** Play only our own HA-authenticated per-TV clip route. No Frigate URL. */
+    private void playRecordedEvent(String id) {
+        if (closing || !TvReplayEvent.validId(id) || camera == null) return;
+        String origin = haOrigin, bearer = haToken;
+        HttpUrl base = HttpUrl.parse(origin == null ? "" : origin);
+        if (base == null || bearer == null || bearer.isEmpty()) {
+            showStatus("Home Assistant login is not ready.");
+            return;
+        }
+        HttpUrl url = base.newBuilder()
+                .addPathSegments("api/kellies_voice/replay_clip")
+                .addPathSegment(new OverlayPreferences(this).deviceId())
+                .addPathSegment(camera)
+                .addPathSegment(id)
+                .build();
+
+        stopPlayer();
+        Map<String, String> headers = new HashMap<>();
+        headers.put("Authorization", "Bearer " + bearer);
+        DefaultHttpDataSource.Factory httpSource = new DefaultHttpDataSource.Factory()
+                .setDefaultRequestProperties(headers)
+                .setConnectTimeoutMs(12000)
+                .setReadTimeoutMs(30000)
+                .setAllowCrossProtocolRedirects(false);
+        DefaultDataSource.Factory dataSource = new DefaultDataSource.Factory(this, httpSource);
+        clipPlayer = new ExoPlayer.Builder(this)
+                .setMediaSourceFactory(new DefaultMediaSourceFactory(dataSource))
+                .build();
+        clipPlayer.setVolume(0f); // Never surprise viewers with clip audio.
+        PlayerView view = new PlayerView(this);
+        view.setUseController(true);
+        view.setPlayer(clipPlayer);
+        playbackLayer.removeAllViews();
+        playbackLayer.addView(view, new FrameLayout.LayoutParams(-1, -1));
+
+        LinearLayout controls = new LinearLayout(this);
+        controls.setOrientation(LinearLayout.HORIZONTAL);
+        controls.setPadding(dp(24), dp(12), dp(24), dp(12));
+        controls.setBackgroundColor(0xB0000000);
+        Button back = new Button(this);
+        back.setText("Back to events");
+        back.setAllCaps(false);
+        back.setOnClickListener(v -> stopPlayer());
+        controls.addView(back);
+
+        Button audio = new Button(this);
+        audio.setText("Unmute clip");
+        audio.setAllCaps(false);
+        audio.setOnClickListener(v -> {
+            if (clipPlayer == null) return;
+            boolean muted = clipPlayer.getVolume() == 0f;
+            clipPlayer.setVolume(muted ? 1f : 0f);
+            audio.setText(muted ? "Mute clip" : "Unmute clip");
+        });
+        controls.addView(audio);
+        FrameLayout.LayoutParams menu = new FrameLayout.LayoutParams(
+                -1, dp(80), Gravity.BOTTOM);
+        playbackLayer.addView(controls, menu);
+
+        playbackLayer.setVisibility(View.VISIBLE);
+        playbackLayer.bringToFront();
+        back.requestFocus();
+
+        clipPlayer.addListener(new Player.Listener() {
+            @Override public void onPlayerError(PlaybackException exception) {
+                stopPlayer();
+                showStatus("Recording unavailable, expired, or blocked by HA permissions.");
+            }
+        });
+        clipPlayer.setMediaItem(MediaItem.fromUri(Uri.parse(url.toString())));
+        clipPlayer.prepare();
+        clipPlayer.play();
+    }
+
+    private void stopPlayer() {
+        if (clipPlayer != null) {
+            clipPlayer.stop();
+            clipPlayer.release();
+            clipPlayer = null;
+        }
+        if (playbackLayer != null) {
+            playbackLayer.setVisibility(View.GONE);
+            playbackLayer.removeAllViews();
+        }
+    }
+
+    @Override public void onBackPressed() {
+        if (playbackLayer != null && playbackLayer.getVisibility() == View.VISIBLE) {
+            stopPlayer();
+            return;
+        }
+        super.onBackPressed();
+    }
+
+    @Override protected void onStop() {
+        // Never keep recording video playing after another app takes the screen.
+        stopPlayer();
+        super.onStop();
     }
 
     private void showStatus(String text) {
@@ -247,6 +374,7 @@ public final class FrigateReplayActivity extends Activity {
     }
 
     @Override protected void onDestroy() {
+        stopPlayer();
         synchronized (this) {
             closing = true;
             if (socket != null) {
@@ -256,6 +384,8 @@ public final class FrigateReplayActivity extends Activity {
         }
         http.dispatcher().executorService().shutdown();
         http.connectionPool().evictAll();
+        haOrigin = null;
+        haToken = null;
         super.onDestroy();
     }
 }
