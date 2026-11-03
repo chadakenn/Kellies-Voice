@@ -71,7 +71,7 @@ class KellieVoiceOptionsFlow(OptionsFlow):
                     f"shortcut_{slot}_action": action,
                     f"shortcut_{slot}_icon": icon,
                 })
-            if not errors and hass is not None:
+            if not errors and hass is not None and frigate_ids:
                 # The mapping is explicitly chosen by the HA owner. It cannot
                 # be set by an untrusted TV event or guessed from a camera label.
                 selection = user_input.get("replay_camera_entity", configured_entity)
