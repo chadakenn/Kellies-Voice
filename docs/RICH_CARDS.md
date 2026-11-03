@@ -28,5 +28,11 @@ See services.py for the schema.
 
 ## Status
 
-MVP: list and card types, optional buttons, optional image entity.
-Android rendering is basic. Hardware testing required.
+Basic end-to-end path implemented:
+
+- HA service registration and event firing
+- Sanitized alert transport
+- Android overlay rendering (title, subtitle, rows, optional action buttons)
+- Auto-dismiss and Back to close
+
+Image entity rendering and full hardware QA are still pending.
