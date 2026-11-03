@@ -35,7 +35,7 @@ Basic end-to-end path implemented:
 - Android overlay rendering (title, subtitle, rows, optional action buttons)
 - Auto-dismiss and Back to close
 
-Image entity rendering and full hardware QA are still pending.
+Camera snapshot rendering via `image_entity` is implemented. Media-player images and full hardware QA are still pending.
 
 
 ## Example
