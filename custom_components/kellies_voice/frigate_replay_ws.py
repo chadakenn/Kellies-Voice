@@ -93,6 +93,22 @@ async def websocket_replay_metadata(hass, connection, msg) -> None:
                               "Frigate replay not available")
         return
 
+    # Entity/TV permissions or owner mapping may change while Frigate is
+    # answering. Recheck before revealing even metadata to an old socket.
+    try:
+        latest_scope = authorize_replay_request(
+            hass, connection.user, msg["device_id"], msg["entity_id"],
+            er.async_get(hass),
+        )
+    except ReplayAccessDenied:
+        connection.send_error(msg["id"], websocket_api.ERR_UNAUTHORIZED,
+                              "Replay not authorized")
+        return
+    if latest_scope != scope:
+        connection.send_error(msg["id"], websocket_api.ERR_UNAUTHORIZED,
+                              "Replay not authorized")
+        return
+
     # An explicit bounded wire shape; never return credentials, untrusted
     # Frigate response JSON, images, thumbnails, or video/clip URLs.
     connection.send_result(msg["id"], {
