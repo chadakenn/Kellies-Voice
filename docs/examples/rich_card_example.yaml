@@ -1,0 +1,41 @@
+# Example: temporary shopping-list card on a Kellie's Voice TV
+#
+# Paste this into Developer Tools → YAML → Automation, or save as an automation.
+# Replace device_id with your paired TV id (or leave blank to target all).
+# The TV must already be listening for kellies_voice_rich_card.
+
+alias: "Test rich card — shopping list"
+description: "Shows a temporary list card on a Kellie's Voice TV"
+mode: single
+
+trigger:
+  - platform: state
+    entity_id: input_boolean.test_rich_card   # create this helper, or change the trigger
+    to: "on"
+
+action:
+  - service: kellies_voice.show_rich_card
+    data:
+      title: Shopping list
+      subtitle: "Tonight"
+      type: list
+      duration_seconds: 25
+      device_id: ""   # leave blank for all configured TVs
+      rows:
+        - label: Milk
+          value: "2"
+        - label: Eggs
+          value: "1 dozen"
+        - label: Bread
+          value: "1"
+        - label: Coffee
+          value: "1 bag"
+      actions:
+        - id: clear
+          label: Clear
+        - id: later
+          label: Later
+
+  - service: input_boolean.turn_off
+    target:
+      entity_id: input_boolean.test_rich_card
