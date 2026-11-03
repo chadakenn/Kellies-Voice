@@ -112,7 +112,8 @@ class ReplayMediaSecurityTests(unittest.TestCase):
         self.assertIn(".addPathSegments(\"api/kellies_voice/replay_clip\")", ANDROID)
         self.assertIn("clipPlayer.setVolume(0f)", ANDROID)
         self.assertIn('headers.put("Authorization", "Bearer " + bearer)', ANDROID)
-        self.assertIn('setAllowCrossProtocolRedirects(false)', ANDROID)
+        self.assertIn("followRedirects(false)", ANDROID)
+        self.assertIn("followSslRedirects(false)", ANDROID)
         self.assertIn('"recent_events".equals(action.id)',
                       (ROOT / "app/src/main/java/com/example/tvvoiceprobe/TvEventsService.java").read_text())
         self.assertIn("stopPlayer();", ANDROID)
