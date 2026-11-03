@@ -6,8 +6,10 @@ LAN socket, OAuth code, access or refresh token is accessed.
 """
 from __future__ import annotations
 
+import asyncio
 import importlib
 from pathlib import Path
+import threading
 import sys
 import types
 import unittest
@@ -17,7 +19,7 @@ try:
 except ImportError:
     ec = None
 
-ROOT = Path(__file__).resolve().parents[1] / "custom_components" / "kellies_voice"
+ROOT = Path(__file__).resolve().parents[1] / "custom_components" / "kellies_voice" / "v3"
 PKG = "kv_v3_wire_qa"
 mod = types.ModuleType(PKG)
 mod.__path__ = [str(ROOT)]
@@ -148,6 +150,31 @@ class HaV3LanWireTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(self.ha.code)
         with self.assertRaises(ValueError):
             await self.ha.confirmed_by_tv_remote(self.tv)
+
+    async def test_executor_offloads_code_and_physical_proof(self):
+        """Real ECDH must run in the HA executor, never on the loop thread."""
+        main_thread = threading.get_ident()
+        worker_threads = []
+        jobs = []
+
+        class Hass:
+            async def async_add_executor_job(self, func, *args):
+                jobs.append(func)
+                def run():
+                    worker_threads.append(threading.get_ident())
+                    return func(*args)
+                return await asyncio.to_thread(run)
+
+        hass = Hass()
+        code = await self.ha.start(self.tv, hass=hass)
+        self.assertEqual("83428994", code)
+        self.tv.approved = True
+        self.assertEqual(
+            TV_UUID,
+            (await self.ha.confirmed_by_tv_remote(self.tv, hass=hass)).tv_uuid)
+        self.assertEqual(len(jobs), 2)
+        self.assertEqual(len(worker_threads), 2)
+        self.assertTrue(all(t != main_thread for t in worker_threads))
 
     async def test_protocol_downgrade_wrong_fields_and_key_tampering(self):
         for mode in ("wrong_version", "extra_field", "bad_commit",
