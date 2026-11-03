@@ -106,6 +106,7 @@ public final class TvEventsService extends Service {
     private boolean cardHasActions;
     private ImageView photo;
     private Call snapshotCall;
+    private Call richCardImageCall;
     private int snapshotSerial;
     private Runnable snapshotRefreshTask;
     private String snapshotEntity;
@@ -977,6 +978,18 @@ public final class TvEventsService extends Service {
         if (!cardModel.subtitle.isEmpty()) {
             panel.addView(label(cardModel.subtitle, 14, colors.forecastHeading));
         }
+        ImageView cardImage = null;
+        if (cardModel.imageEntity.startsWith("camera.")) {
+            cardImage = new ImageView(this);
+            cardImage.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            cardImage.setAdjustViewBounds(true);
+            LinearLayout.LayoutParams imgParams = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, dp(160));
+            imgParams.setMargins(0, dp(8), 0, dp(8));
+            cardImage.setLayoutParams(imgParams);
+            panel.addView(cardImage);
+            loadRichCardImage(cardModel.imageEntity, cardImage, overlayGeneration);
+        }
         for (RichCard.Row row : cardModel.rows) {
             String line = row.value.isEmpty() ? row.label : row.label + ": " + row.value;
             TextView tv = label(line, 16, colors.forecastText);
@@ -1049,6 +1062,61 @@ public final class TvEventsService extends Service {
         } catch (RuntimeException ignored) {
             card = null;
         }
+    }
+
+
+    /** Load a camera snapshot into a rich-card ImageView. Entity id only; no URL. */
+    private void loadRichCardImage(String entity, ImageView target, int current) {
+        if (credentials == null || entity == null || !entity.startsWith("camera.")) return;
+        HttpUrl base = HttpUrl.parse(credentials.url);
+        if (base == null) return;
+        HttpUrl url = base.newBuilder().addPathSegment("api")
+                .addPathSegment("camera_proxy").addPathSegment(entity).build();
+        Request request = new Request.Builder().url(url)
+                .header("Authorization", "Bearer " + credentials.token)
+                .header("Cache-Control", "no-cache").build();
+        if (richCardImageCall != null) richCardImageCall.cancel();
+        Call call = http.newCall(request);
+        richCardImageCall = call;
+        call.enqueue(new Callback() {
+            @Override public void onFailure(Call failed, java.io.IOException e) {
+                main.post(() -> { if (richCardImageCall == failed) richCardImageCall = null; });
+            }
+            @Override public void onResponse(Call completed, Response response) {
+                try (Response result = response) {
+                    if (!result.isSuccessful() || result.body() == null) return;
+                    long declared = result.body().contentLength();
+                    if (declared > MAX_SNAPSHOT_BYTES) return;
+                    java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
+                    try (java.io.InputStream input = result.body().byteStream()) {
+                        byte[] buf = new byte[8192];
+                        int read;
+                        while ((read = input.read(buf)) >= 0) {
+                            if (bytes.size() + read > MAX_SNAPSHOT_BYTES) return;
+                            bytes.write(buf, 0, read);
+                        }
+                    }
+                    byte[] raw = bytes.toByteArray();
+                    android.graphics.BitmapFactory.Options options = new android.graphics.BitmapFactory.Options();
+                    options.inJustDecodeBounds = true;
+                    android.graphics.BitmapFactory.decodeByteArray(raw, 0, raw.length, options);
+                    int largest = Math.max(options.outWidth, options.outHeight);
+                    options.inSampleSize = largest > 1920 ? 4 : largest > 960 ? 2 : 1;
+                    options.inJustDecodeBounds = false;
+                    android.graphics.Bitmap bitmap = android.graphics.BitmapFactory.decodeByteArray(raw, 0, raw.length, options);
+                    if (bitmap != null) main.post(() -> {
+                        if (!stopping && current == overlayGeneration && card != null) {
+                            target.setImageBitmap(bitmap);
+                        } else {
+                            bitmap.recycle();
+                        }
+                    });
+                } catch (Exception ignored) { }
+                finally {
+                    main.post(() -> { if (richCardImageCall == completed) richCardImageCall = null; });
+                }
+            }
+        });
     }
 
     private List<RichCard.Row> parseRows(JSONArray array) {
@@ -1483,6 +1551,7 @@ public final class TvEventsService extends Service {
         snapshotRefreshTask = null;
         if (snapshotCall != null) snapshotCall.cancel();
         snapshotCall = null;
+        if (richCardImageCall != null) { richCardImageCall.cancel(); richCardImageCall = null; }
         ++snapshotSerial; // Discard stale responses, including a queued UI callback.
     }
 
