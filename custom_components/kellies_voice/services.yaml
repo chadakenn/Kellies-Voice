@@ -236,3 +236,50 @@ show_forecast:
       example: ""
       selector:
         text:
+
+show_rich_card:
+  name: Show a rich Assist card
+  description: Display a temporary list or status card on the TV overlay. Reuses the existing button token system for optional actions.
+  fields:
+    title:
+      required: true
+      example: Lights
+      selector:
+        text:
+    type:
+      required: true
+      example: list
+      selector:
+        select:
+          options:
+            - list
+            - card
+    rows:
+      required: true
+      example: [{label: Kitchen, value: On}, {label: Living room, value: Off}]
+      selector:
+        object:
+    subtitle:
+      example: Current status
+      selector:
+        text:
+    image_entity:
+      example: camera.front_door
+      selector:
+        text:
+    duration_seconds:
+      example: 20
+      selector:
+        number:
+          min: 8
+          max: 45
+          mode: box
+    actions:
+      description: Optional list of up to three id/label button pairs. No action occurs until the user presses OK.
+      example: [{id: acknowledge, label: OK}]
+      selector:
+        object:
+    device_id:
+      example: ""
+      selector:
+        text:
