@@ -86,6 +86,7 @@ public final class TvEventsService extends Service {
     private static final int HIDE_CAMERA_EVENT_ID = 6;
     private static final int FORECAST_EVENT_ID = 7;
     private static final int TIMER_EVENT_ID = 8;
+    private static final int RICH_CARD_EVENT_ID = 10;
     private static final int SCOPED_ALERTS_ID = 9;
     private TimerOverlayController timerOverlay;
     private static final int MAX_SNAPSHOT_BYTES = 5 * 1024 * 1024;
@@ -809,6 +810,12 @@ public final class TvEventsService extends Service {
                     showForecast(data);
                     if (card != null) reportPopupReceipt("popup_created", diagnosticReceipt);
                 }
+            } else if ((subscription == SCOPED_ALERTS_ID || subscription == RICH_CARD_EVENT_ID)
+                    && RichCard.EVENT.equals(eventType)) {
+                if (!cameraVisible) {
+                    showRichCard(data);
+                    if (card != null) reportPopupReceipt("popup_created", diagnosticReceipt);
+                }
             }
         } catch (Exception ignored) {
             // Never print auth tokens, URLs, or untrusted event payloads.
@@ -819,15 +826,15 @@ public final class TvEventsService extends Service {
     private void subscribeLegacy(WebSocket ws) {
         legacyMode = true;
         legacyDenied = false;
-        legacyPending = 6;
+        legacyPending = 7;
         String[] types = {
                 TvEventPayload.ANNOUNCEMENT, TvEventPayload.CAMERA_POPUP,
                 TvEventPayload.LIVE_CAMERA, TvEventPayload.HIDE_CAMERA,
-                ForecastCard.EVENT, "kellies_voice_timer"
+                ForecastCard.EVENT, "kellies_voice_timer", RichCard.EVENT
         };
         int[] ids = {
                 ANNOUNCE_ID, CAMERA_ID, LIVE_EVENT_ID, HIDE_CAMERA_EVENT_ID,
-                FORECAST_EVENT_ID, TIMER_EVENT_ID
+                FORECAST_EVENT_ID, TIMER_EVENT_ID, RICH_CARD_EVENT_ID
         };
         for (int i = 0; i < ids.length; i++) {
             try {
@@ -935,6 +942,127 @@ public final class TvEventsService extends Service {
         } catch (RuntimeException ignored) {
             card = null;
         }
+    }
+
+    /** Temporary rich Assist card. Never opens the microphone or replaces a camera. */
+    private void showRichCard(JSONObject data) {
+        if (stopping || windowManager == null) return;
+        hideCard();
+        int generation = ++overlayGeneration;
+        Runnable dismiss = () -> { if (generation == overlayGeneration) hideCard(); };
+        List<TvEventPayload.Action> actions = alertActions(data.optJSONArray("actions"));
+        String announcementId = TvEventPayload.announcementId(data.optString("announcement_id"));
+        RichCard cardModel = RichCard.from(
+                data.optString("type"),
+                data.optString("title"),
+                data.optString("subtitle"),
+                parseRows(data.optJSONArray("rows")),
+                data.optString("image_entity", ""),
+                actions,
+                announcementId,
+                data.optInt("duration_seconds", 20));
+        if (cardModel == null) return;
+        OverlayPreferences placement = new OverlayPreferences(this);
+        AppPalette.Colors colors = AppPalette.forStyle(placement.style());
+        LinearLayout panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setPadding(dp(20), dp(16), dp(20), dp(16));
+        GradientDrawable background = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[] {colors.forecastStart, colors.forecastEnd});
+        background.setCornerRadius(dp(colors.forecastRadiusDp));
+        background.setStroke(dp(2), colors.forecastBorder);
+        panel.setBackground(placement.style().equals("Aurora Glass")
+                ? new AuroraGlassDrawable(dp(colors.forecastRadiusDp)) : background);
+        panel.addView(label(cardModel.title, 20, colors.forecastTitle));
+        if (!cardModel.subtitle.isEmpty()) {
+            panel.addView(label(cardModel.subtitle, 14, colors.forecastHeading));
+        }
+        for (RichCard.Row row : cardModel.rows) {
+            String line = row.value.isEmpty() ? row.label : row.label + ": " + row.value;
+            TextView tv = label(line, 16, colors.forecastText);
+            tv.setMaxLines(1);
+            panel.addView(tv);
+        }
+        boolean hasButtons = actions != null && !actions.isEmpty();
+        Button firstButton = null;
+        if (hasButtons) {
+            LinearLayout buttonRow = new LinearLayout(this);
+            buttonRow.setOrientation(LinearLayout.HORIZONTAL);
+            buttonRow.setPadding(0, dp(12), 0, 0);
+            for (TvEventPayload.Action action : actions) {
+                Button button = new Button(this);
+                button.setText(action.label);
+                button.setAllCaps(false);
+                button.setOnClickListener(v -> {
+                    reportAction(announcementId, action.id);
+                    hideCard();
+                });
+                button.setOnKeyListener((view, key, event) -> {
+                    if (key == KeyEvent.KEYCODE_BACK && event.getAction() == KeyEvent.ACTION_UP) {
+                        hideCard();
+                        return true;
+                    }
+                    return false;
+                });
+                buttonRow.addView(button, new LinearLayout.LayoutParams(
+                        0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+                if (firstButton == null) firstButton = button;
+            }
+            panel.addView(buttonRow);
+        }
+        panel.setFocusable(true);
+        panel.setOnKeyListener((view, key, event) -> {
+            if (event.getAction() != android.view.KeyEvent.ACTION_DOWN) return false;
+            if (key == android.view.KeyEvent.KEYCODE_BACK
+                    || key == android.view.KeyEvent.KEYCODE_ESCAPE) {
+                hideCard();
+                return true;
+            }
+            return false;
+        });
+        int screen = getResources().getDisplayMetrics().widthPixels;
+        int width = Math.min(dp(420), screen - dp(48));
+        int flags = WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN;
+        if (!hasButtons) flags |= WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
+        WindowManager.LayoutParams params = new WindowManager.LayoutParams(
+                width, WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+                flags,
+                PixelFormat.TRANSLUCENT);
+        String position = placement.alertPosition();
+        params.gravity = alertGravity(position);
+        params.x = dp(TvAlertLayout.marginXDp(position));
+        params.y = dp(TvAlertLayout.marginYDp(position));
+        params.setTitle("Kellie's Voice rich card");
+        try {
+            windowManager.addView(panel, params);
+            card = panel;
+            cardHasActions = hasButtons;
+            cameraVisible = false;
+            if (firstButton != null) {
+                Button focus = firstButton;
+                panel.post(focus::requestFocus);
+            }
+            main.postDelayed(dismiss, cardModel.seconds * 1000L);
+            if (generation != overlayGeneration) hideCard();
+        } catch (RuntimeException ignored) {
+            card = null;
+        }
+    }
+
+    private List<RichCard.Row> parseRows(JSONArray array) {
+        List<RichCard.Row> rows = new ArrayList<>();
+        if (array == null) return rows;
+        for (int i = 0; i < array.length() && rows.size() < 8; i++) {
+            JSONObject item = array.optJSONObject(i);
+            if (item == null) continue;
+            String label = item.optString("label");
+            String value = item.optString("value");
+            if (label == null || label.trim().isEmpty()) continue;
+            rows.add(new RichCard.Row(label, value));
+        }
+        return rows;
     }
 
     private static int weatherGravity(String position) {
