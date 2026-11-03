@@ -11,7 +11,7 @@ import androidx.media3.common.MediaItem;
 import androidx.media3.common.PlaybackException;
 import androidx.media3.common.Player;
 import androidx.media3.datasource.DefaultDataSource;
-import androidx.media3.datasource.DefaultHttpDataSource;
+import androidx.media3.datasource.okhttp.OkHttpDataSource;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory;
 import androidx.media3.ui.PlayerView;
@@ -286,11 +286,12 @@ public final class FrigateReplayActivity extends Activity {
         stopPlayer();
         Map<String, String> headers = new HashMap<>();
         headers.put("Authorization", "Bearer " + bearer);
-        DefaultHttpDataSource.Factory httpSource = new DefaultHttpDataSource.Factory()
-                .setDefaultRequestProperties(headers)
-                .setConnectTimeoutMs(12000)
-                .setReadTimeoutMs(30000)
-                .setAllowCrossProtocolRedirects(false);
+        // Prevent forwarding the TV bearer to any redirected host, including
+        // redirects with the same scheme (which DefaultHttpDataSource follows).
+        OkHttpDataSource.Factory httpSource = new OkHttpDataSource.Factory(
+                http.newBuilder().followRedirects(false)
+                        .followSslRedirects(false).build())
+                .setDefaultRequestProperties(headers);
         DefaultDataSource.Factory dataSource = new DefaultDataSource.Factory(this, httpSource);
         clipPlayer = new ExoPlayer.Builder(this)
                 .setMediaSourceFactory(new DefaultMediaSourceFactory(dataSource))
