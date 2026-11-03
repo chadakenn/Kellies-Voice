@@ -1,6 +1,6 @@
 # Frigate Recorded Event Replay | v0.18.0 design / first implementation slice
 
-**Status:** Developer groundwork in [#307](https://github.com/chadakenn/Kellies-Voice/issues/307). **No public TV clip player, Home Assistant service, or automatic history fetching is shipped in this slice.**
+**Status:** Development-only in [#307](https://github.com/chadakenn/Kellies-Voice/issues/307). The HA authorized event API, scoped MP4 proxy, and Android player are implemented in the draft PR, **not hardware-tested, merged or published**. Public v0.17.4 remains unchanged.
 
 This phase adds a pure selection policy (`frigate_replay.py`) and a narrowly scoped async adapter (`frigate_replay_client.py`). The adapter calls an **already authenticated Frigate integration API client supplied by Home Assistant** and gets a bounded set of recent events or one exact event ID, then applies the selector. They return at most ten metadata-only `ReplayEvent` instances for **one explicitly mapped Frigate camera** and never construct or distribute playback URLs. The caller must still verify the TV and HA camera permissions, find the correct Frigate integration config entry/client, and supply its configured camera inventory.
 
@@ -21,7 +21,7 @@ In **Home Assistant → Settings → Devices & services → Kellie's Voice TV �
 
 The scoped, read-only command `kellies_voice/replay_events` accepts `device_id`, `entity_id`, optional `event_id`, and `limit` (1–10). It verifies the authenticated user can read both that TV and that camera, that the mapped camera belongs to the declared Frigate config entry, and that the real Frigate instance config includes that camera. It queries Frigate using the **already authenticated HA Frigate client**, never a TV-supplied URL. Permissions are checked again after the async query.
 
-It returns a camera entity ID and up to 10 event summaries containing only `event_id`, short `label`, `start_time`, and `end_time`. No thumbnail, clip URL, credential or raw Frigate JSON travels over this command. **This is development only; the Android TV player and event strip are not yet wired.**
+It returns a camera entity ID and up to 10 event summaries containing only `event_id`, short `label`, `start_time`, and `end_time`. No thumbnail, clip URL, credential or raw Frigate JSON travels over this command. **The Android TV event browser and player are now wired in the development PR. Neither has passed physical TV / Frigate integration testing.**
 
 ## TV event-history browser (first Android UI slice)
 
@@ -54,10 +54,26 @@ It handles unauthorized/missing-Frigate cases, validates IDs/labels,
 shows up to eight recent events with timestamps, and supports D-pad,
 OK and Back. No raw Frigate media endpoint or password is accessed.
 
-**Playback is intentionally NOT functional in this slice.** Selecting
-an event explains that the private recorded-video player is pending.
-Do not label this `Watch Last Event` or claim it plays videos until
-authenticated clip transport and hardware QA are complete.
+**Recorded playback is now coded but not verified on hardware.** Selecting
+an event opens the in-app full-screen MP4 player using an authenticated HA
+media URL. Playback starts muted; an explicit Unmute button enables audio,
+and Back returns to the event list. If playback fails, the TV shows a safe
+error and returns to recent events. Do **not** claim a shipped or tested
+Watch Last Event feature until signed hardware QA succeeds.
+
+## Authenticated recorded-video transport (new, hardware QA pending)
+
+The development Home Assistant integration now registers the **private** HTTP
+route `GET /api/kellies_voice/replay_clip/{tv_id}/{entity_id}/{event_id}`.
+
+- `HomeAssistantView.requires_auth = True`. The client sends only its existing HA access token; untrusted Frigate URLs, client ID, usernames and passwords are never sent to Android.
+- Every HTTP request verifies the HA-authenticated account can read the **paired TV and HA camera**, that the camera belongs to the explicitly mapped Frigate instance, and that the requested ID is one of that camera's **completed, existing clips**. Permission is rechecked after the async event query.
+- The server obtains its Frigate authentication headers from the already loaded Frigate HA integration client, restricts upstream requests to the registered Frigate origin and the fixed event clip path, disables redirects, and proxies video through Home Assistant.
+- Simple bounded MP4 byte ranges support player seeks. Output is `video/mp4`, `no-store`; responses over 128 MiB per request are rejected or stopped. Invalid/expired/revoked requests fail without revealing other cameras' footage.
+
+Android Media3 loads only this derived HA route and supplies its saved TV HA bearer token in-memory over the existing HA origin. It opens muted with remote Back to the event list and an explicit audio toggle.
+
+**Review points before merging:** behavior behind reverse proxies, TLS and Frigate auth modes, long/Range MP4 clips, HA's HTTP view lifecycle and client disconnects, Android TV focus/Back behavior, and update migration for the HACS component. All of these need real-world QA; CI passing alone does not prove media security or playback.
 
 ## Why do this first?
 
@@ -84,8 +100,8 @@ References:
 
 1. **Home Assistant authorization integration:** The owner-controlled camera mapping, per-TV/camera/Frigate-instance gate, and read-only metadata WebSocket request are implemented. Still needed: live testing with the real Frigate integration/TV and Android UI request wiring. Multiple-camera configuration can follow the first verified mapping.
 2. **Scoped request / action:** Bind `Watch Last Event` to the existing one-use, per-TV alert-action ledger. The server must authorize the paired TV and the mapped camera, and the action must refer to the correct notification/event. **Do not add an untrusted arbitrary video URL field** to existing `kellies_voice.announce` or camera services.
-3. **Private playback:** The Android **metadata-only browser** now exists, but the video player/clip transport is not implemented. Play only the verified clip with a reviewed per-TV authorized HA/Frigate media path, muted by default. Use remote Back to return to the previous TV app. Handle 403/404, expired retention, missing clips, timeouts, cancellation and codec failures gracefully.
-4. **Recent-event strip:** The first full-screen, remote-controlled metadata list (up to eight camera-scoped results) is implemented. Still needed: authorized thumbnails and an in-player event strip when video playback is enabled. The strip must not show recordings from other cameras.
+3. **Private playback:** The HA-authenticated MP4 clip proxy and Android Media3 player are implemented in this draft. The endpoint requires HA bearer auth plus an exact paired-TV and camera read-permission match, revalidates Frigate event ID and completed-clip status, and uses the HA Frigate integration's existing authentication headers. No Frigate host or token is transferred to the TV. Range seeking is constrained and redirects are disabled. **Still required:** security review and signed Onn test for playback, seeking, unmute, Back, 403/404, expired clips, Frigate disconnection, and codec failure.
+4. **Recent-event strip:** A first full-screen TV list displays up to eight authorized events with timestamps, allowing remote OK to open a clip. Thumbnails and an in-player history strip remain future enhancements; do not display other cameras' recordings.
 5. **QA:** Home Assistant integration tests including multiple TVs and Frigate instances, then signed Onn 4K Pro testing. Verify correct doorbell event, wrong-camera rejection, missing clip, Frigate offline, Back, mute/audio preference, screensaver camera and regular notification regression.
 
 ## Calling the selector (internal only)
@@ -103,4 +119,4 @@ result = recent_recorded_events(
 # No match => [] (not "try the latest other event").
 ```
 
-The authenticated HA WebSocket metadata lookup exists, but the TV app does not yet issue that request. There is still **no clip playback, video player, or media URL** in this first slice.
+The TV app now requests scoped metadata and can open a selected recording through an **HA-authenticated internal clip URL**, but this is only draft code. The server never returns a direct Frigate URL or token to the TV. No real Home Assistant instance, Frigate clip, or TV device has been used to validate this code.
