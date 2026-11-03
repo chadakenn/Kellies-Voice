@@ -222,12 +222,15 @@
           "shortcut_3_action": "Shortcut 3: action (Turn on, Turn off, Toggle)",
           "shortcut_4_label": "Shortcut 4: button label (e.g. Movie Time)",
           "shortcut_4_entity": "Shortcut 4: Home Assistant entity ID (light.*, scene.*, script.*)",
-          "shortcut_4_action": "Shortcut 4: action (Turn on, Turn off, Toggle)"
+          "shortcut_4_action": "Shortcut 4: action (Turn on, Turn off, Toggle)",
+          "replay_camera_entity": "Replay: Home Assistant Frigate camera (blank disables)",
+          "replay_frigate_name": "Replay: exact camera name inside Frigate"
         }
       }
     },
     "error": {
-      "invalid_shortcut": "Each shortcut needs a short label and a light.*, scene.* or script.* entity. Scenes and scripts only support Turn on; lights support Turn on, Turn off and Toggle. Leave both fields empty to remove a shortcut."
+      "invalid_shortcut": "Each shortcut needs a short label and a light.*, scene.* or script.* entity. Scenes and scripts only support Turn on; lights support Turn on, Turn off and Toggle. Leave both fields empty to remove a shortcut.",
+      "invalid_replay_mapping": "Choose one camera provided by the Frigate integration and enter its exact Frigate camera name. Leave both fields empty to disable replay."
     }
   }
 }

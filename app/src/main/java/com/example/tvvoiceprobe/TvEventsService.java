@@ -1095,8 +1095,23 @@ public final class TvEventsService extends Service {
                     if (stopping || generation != current || card != panel
                             || !actionGate.claim()) return;
                     button.setEnabled(false);
+                    // "Recent events" is a deliberately owner-configured
+                    // camera alert action. The one-use HA acknowledgement is
+                    // still consumed normally. No arbitrary URL is opened.
+                    boolean browseReplay = entity != null
+                            && "recent_events".equals(action.id);
                     reportAction(announcementId, action.id);
                     hideCard();
+                    if (browseReplay) {
+                        try {
+                            Intent replay = new Intent(this, FrigateReplayActivity.class)
+                                    .putExtra(FrigateReplayActivity.EXTRA_CAMERA_ENTITY, entity)
+                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                            startActivity(replay);
+                        } catch (RuntimeException ignored) {
+                            TvEventsRecovery.diagnostic("Replay history screen unavailable");
+                        }
+                    }
                 });
                 button.setOnKeyListener((view, key, event) -> {
                     if (key == KeyEvent.KEYCODE_BACK && event.getAction() == KeyEvent.ACTION_UP) {
