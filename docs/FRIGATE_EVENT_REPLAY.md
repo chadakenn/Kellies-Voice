@@ -23,6 +23,42 @@ The scoped, read-only command `kellies_voice/replay_events` accepts `device_id`,
 
 It returns a camera entity ID and up to 10 event summaries containing only `event_id`, short `label`, `start_time`, and `end_time`. No thumbnail, clip URL, credential or raw Frigate JSON travels over this command. **This is development only; the Android TV player and event strip are not yet wired.**
 
+## TV event-history browser (first Android UI slice)
+
+An explicit Home Assistant camera popup button can open a full-screen,
+remote-friendly **Recent camera events** screen. Use an already registered
+HA camera (mapped under the paired TV's **Configure** options):
+
+```yaml
+action: kellies_voice.show_live_camera
+data:
+  device_id: YOUR_TV_PAIRING_ID
+  entity_id: camera.front_door
+  title: Doorbell
+  actions:
+    - id: recent_events
+      label: Recent Events
+```
+
+The `recent_events` ID is **reserved by the Android app** on camera
+popups only: the existing one-use `kellies_voice/press_alert_action`
+acknowledgement is still sent through HA, then the TV opens the
+non-exported `FrigateReplayActivity`. Other action IDs and text-alert
+buttons continue behaving as before. Nothing auto-plays, grabs focus,
+or opens a popup without an explicit HA-authored action and remote OK.
+
+The TV app connects to the existing authenticated HA WebSocket, using
+the scoped renewable TV account when configured, and issues
+`kellies_voice/replay_events` for the camera that triggered the popup.
+It handles unauthorized/missing-Frigate cases, validates IDs/labels,
+shows up to eight recent events with timestamps, and supports D-pad,
+OK and Back. No raw Frigate media endpoint or password is accessed.
+
+**Playback is intentionally NOT functional in this slice.** Selecting
+an event explains that the private recorded-video player is pending.
+Do not label this `Watch Last Event` or claim it plays videos until
+authenticated clip transport and hardware QA are complete.
+
 ## Why do this first?
 
 A doorbell alert may arrive at the same moment as a person/car event on a nearby camera. **Watch Last Event must not quietly choose a different camera or an unrelated newer clip.** The selector requires an exact camera match, completed recording (`has_clip is True`, valid `end_time`), a non-false-positive event, and a bounded timestamp.
@@ -48,8 +84,8 @@ References:
 
 1. **Home Assistant authorization integration:** The owner-controlled camera mapping, per-TV/camera/Frigate-instance gate, and read-only metadata WebSocket request are implemented. Still needed: live testing with the real Frigate integration/TV and Android UI request wiring. Multiple-camera configuration can follow the first verified mapping.
 2. **Scoped request / action:** Bind `Watch Last Event` to the existing one-use, per-TV alert-action ledger. The server must authorize the paired TV and the mapped camera, and the action must refer to the correct notification/event. **Do not add an untrusted arbitrary video URL field** to existing `kellies_voice.announce` or camera services.
-3. **Private playback:** Play only the verified clip in a TV video player with a same-origin/approved-host URL policy, muted by default. Use remote Back to return to the previous TV app, not an injected overlay that steals focus in passive mode. Handle 403/404, expired retention, missing clips, timeouts, cancellation and codec failures gracefully.
-4. **Recent-event strip:** Show up to 8 recent results for the same authorized camera, with time, short label and bounded thumbnails only after explicit user selection. Keep access limited to that paired TV. The strip should not accidentally show recordings from other cameras.
+3. **Private playback:** The Android **metadata-only browser** now exists, but the video player/clip transport is not implemented. Play only the verified clip with a reviewed per-TV authorized HA/Frigate media path, muted by default. Use remote Back to return to the previous TV app. Handle 403/404, expired retention, missing clips, timeouts, cancellation and codec failures gracefully.
+4. **Recent-event strip:** The first full-screen, remote-controlled metadata list (up to eight camera-scoped results) is implemented. Still needed: authorized thumbnails and an in-player event strip when video playback is enabled. The strip must not show recordings from other cameras.
 5. **QA:** Home Assistant integration tests including multiple TVs and Frigate instances, then signed Onn 4K Pro testing. Verify correct doorbell event, wrong-camera rejection, missing clip, Frigate offline, Back, mute/audio preference, screensaver camera and regular notification regression.
 
 ## Calling the selector (internal only)
