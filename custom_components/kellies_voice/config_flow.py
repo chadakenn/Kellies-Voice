@@ -8,8 +8,8 @@ from .const import DOMAIN, QUICK_ACTION_CACHE
 from .validation import clean_tv_device_id
 from .home_shortcuts import COUNT, ACTIONS, validate_slot
 from .quick_action_icons import ICON_CHOICES, validate_override
-from .pairing_v3_wire import HaV3WireAttempt, AiohttpV3LanTransport
-from .pairing_key_commitment import _session_bytes
+from .v3.pairing_v3_wire import AiohttpV3LanTransport
+from .v3.pairing_key_commitment import _session_bytes
 from .v3.flow import V3OwnerPairingFlowMixin
 
 

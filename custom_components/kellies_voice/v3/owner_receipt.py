@@ -16,6 +16,7 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from .owner_claim import OwnerClaimRegistry
 from .pairing_key_commitment import _part, _session_bytes
 from .pairing_v3_verified import _derive_secret
+from .executor import async_crypto_job
 from .pairing_v3_wire import VerifiedTv
 from .validation import clean_tv_device_id
 
@@ -79,7 +80,10 @@ async def issue_after_owner_claim(
         raise OwnerReceiptRejected("Invalid owner claim context")
     # A preflight before consumption prevents an invalid transcript from
     # burning a valid claim. Ownership is rechecked after consuming it.
-    key, aad = _verified_key(private_key, verified, verified_tv, "ha")
+    # _verified_key performs P-256 ECDH; preflight before consuming the
+    # authenticated owner claim, but off Home Assistant's event loop.
+    key, aad = await async_crypto_job(
+        hass, _verified_key, private_key, verified, verified_tv, "ha")
     try:
         owner_id = claims.consume(
             flow_id=flow_id, session=verified_tv.session,

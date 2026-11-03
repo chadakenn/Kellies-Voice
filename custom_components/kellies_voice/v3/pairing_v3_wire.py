@@ -18,8 +18,10 @@ import json
 import re
 import time
 from dataclasses import dataclass
+from functools import partial
 
 from .pairing_key_commitment import CommitmentSession, _session_bytes
+from .executor import async_crypto_job
 from .pairing_v3_verified import (
     comparison_code, physical_tv_ok_proof, public_der,
 )
@@ -82,7 +84,7 @@ class HaV3WireAttempt:
         self._receipt_used = False
         self.code: str | None = None
 
-    async def start(self, transport) -> str:
+    async def start(self, transport, *, hass=None) -> str:
         if self._used or time.monotonic() >= self._expires_at:
             raise ValueError("V3 attempt already started or expired")
         self._used = True
@@ -113,13 +115,15 @@ class HaV3WireAttempt:
             tv_key = _decode(response["tv_key"])
             tv_nonce = _decode(response["tv_nonce"], length=32)
             self._barrier.receive_peer_reveal(tv_key, tv_nonce)
-            self.code = comparison_code(self._private, self._barrier)
+            # P-256 ECDH exchange and peer-key parsing must not block HA.
+            self.code = await async_crypto_job(
+                hass, comparison_code, self._private, self._barrier)
             return self.code
         except Exception:
             self.close()
             raise
 
-    async def confirmed_by_tv_remote(self, transport) -> VerifiedTv | None:
+    async def confirmed_by_tv_remote(self, transport, *, hass=None) -> VerifiedTv | None:
         """Query only after the owner has compared the v3 code on both UIs."""
         if (self._confirmed or not self._barrier.ready or self.code is None
                 or time.monotonic() >= self._expires_at):
@@ -143,8 +147,9 @@ class HaV3WireAttempt:
             tv_uuid = clean_tv_device_id(response["tv_uuid"])
             if tv_uuid != response["tv_uuid"]:
                 raise ValueError("Noncanonical TV identity")
-            expected = physical_tv_ok_proof(
-                self._private, self._barrier, tv_uuid=tv_uuid)
+            expected = await async_crypto_job(
+                hass, partial(physical_tv_ok_proof,
+                              self._private, self._barrier, tv_uuid=tv_uuid))
             provided = response["proof"]
             if type(provided) is not str or not hmac.compare_digest(
                     expected, provided):
@@ -182,9 +187,11 @@ class HaV3WireAttempt:
         try:
             # Instantiate acknowledgement verifier before releasing owner's
             # one-shot claim. Key stays in memory only while this call runs.
-            channel = V3QaPingChannel(
-                private_key=self._private, verified=self._barrier,
-                tv_uuid=tv.tv_uuid, ttl_seconds=30.0)
+            # Channel construction derives an ECDH shared secret.
+            channel = await async_crypto_job(
+                hass, partial(V3QaPingChannel,
+                              private_key=self._private, verified=self._barrier,
+                              tv_uuid=tv.tv_uuid, ttl_seconds=30.0))
             try:
                 number, encrypted = await issue_after_owner_claim(
                     hass=hass, claims=claims, flow_id=flow_id,
@@ -232,9 +239,11 @@ class HaV3WireAttempt:
             issued, recorded, user = await provision_dedicated_tv_login(
                 hass, journal, owner_id=owner_id, tv_uuid=tv.tv_uuid,
                 ha_origin=ha_origin, remote_login=remote_login)
-            handoff = HaTokenHandoff(
-                private_key=self._private, verified=self._barrier, tv=tv,
-                ttl_seconds=30)
+            # Both directional token-handoff keys use ECDH.
+            handoff = await async_crypto_job(
+                hass, partial(HaTokenHandoff,
+                              private_key=self._private, verified=self._barrier,
+                              tv=tv, ttl_seconds=30))
             try:
                 seq, packet = handoff.seal_recorded_provisional(
                     issued, recorded)

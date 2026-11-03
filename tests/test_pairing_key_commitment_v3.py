@@ -6,7 +6,7 @@ import importlib.util
 from pathlib import Path
 import unittest
 
-ROOT = Path(__file__).resolve().parents[1] / "custom_components" / "kellies_voice"
+ROOT = Path(__file__).resolve().parents[1] / "custom_components" / "kellies_voice" / "v3"
 spec = importlib.util.spec_from_file_location("kv_v3_commit", ROOT / "pairing_key_commitment.py")
 proto = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(proto)
