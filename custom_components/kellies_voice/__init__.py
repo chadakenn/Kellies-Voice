@@ -12,6 +12,7 @@ from .services import async_register_services
 from .timer_handler import TimerBridge, TimerHandlerRegistry
 from .websocket import async_register_alert_subscription
 from .home_shortcuts_ws import async_register_home_shortcuts
+from .frigate_replay_ws import async_register_replay_metadata
 from .v3 import async_register_owner_ui
 
 _LOGGER = logging.getLogger(__name__)
@@ -26,6 +27,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     async_register_services(hass)
     async_register_alert_subscription(hass)
     async_register_home_shortcuts(hass)
+    async_register_replay_metadata(hass)
     # Normal HACS loads the owner UI; no separate v3 QA integration or YAML.
     # Fail closed for new pairing if any owner approval service is unavailable;
     # existing TV controls and manual accounts must stay operational.
@@ -93,6 +95,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     async_register_services(hass)
     async_register_alert_subscription(hass)
     async_register_home_shortcuts(hass)
+    async_register_replay_metadata(hass)
     # Canonical option snapshot used by the twelve native device controls.
     # One slot edit must never write over another control's recent changes.
     hass.data.setdefault(DOMAIN, {}).setdefault(
