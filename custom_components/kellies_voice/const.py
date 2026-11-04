@@ -88,6 +88,7 @@ EVENT_SHOW_DASHBOARD = "kellies_voice_show_dashboard"
 EVENT_HIDE_DASHBOARD = "kellies_voice_hide_dashboard"
 EVENT_ACTION_PRESSED = "kellies_voice_announcement_action"
 EVENT_FORECAST = "kellies_voice_forecast"
+EVENT_RICH_CARD = "kellies_voice_rich_card"
 SERVICE_ANNOUNCE = "announce"
 SERVICE_SHOW_CAMERA = "show_camera"
 SERVICE_SHOW_LIVE_CAMERA = "show_live_camera"
@@ -95,6 +96,7 @@ SERVICE_HIDE_CAMERA = "hide_camera"
 SERVICE_SHOW_DASHBOARD = "show_dashboard"
 SERVICE_HIDE_DASHBOARD = "hide_dashboard"
 SERVICE_SHOW_FORECAST = "show_forecast"
+SERVICE_SHOW_RICH_CARD = "show_rich_card"
 
 MAX_TITLE_LENGTH = 65
 MAX_TEXT_LENGTH = 500

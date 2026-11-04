@@ -35,6 +35,7 @@ from .const import (
     SERVICE_HIDE_DASHBOARD,
     SERVICE_SHOW_FORECAST,
 )
+from .services_rich import register_rich_card
 from .validation import (
     clean_camera_entity,
     clean_dashboard_path,
@@ -183,6 +184,7 @@ def async_register_services(hass: HomeAssistant) -> None:
     hass.services.async_register(
         DOMAIN, SERVICE_SHOW_FORECAST, _async_show_forecast, schema=SHOW_FORECAST_SCHEMA
     )
+    register_rich_card(hass)
 
 
 def configured_device_ids(hass: HomeAssistant) -> list:

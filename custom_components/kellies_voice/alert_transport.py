@@ -7,6 +7,7 @@ Do not blindly forward arbitrary event data to ordinary Home Assistant users.
 import json
 
 from .validation import clean_actions, clean_dashboard_path
+from .rich_cards import clean_rows, clean_card_type
 
 from .const import (
     EVENT_ANNOUNCEMENT,
@@ -16,6 +17,7 @@ from .const import (
     EVENT_SHOW_DASHBOARD,
     EVENT_HIDE_DASHBOARD,
     EVENT_LIVE_CAMERA,
+    EVENT_RICH_CARD,
 )
 
 EVENT_FIELDS = {
@@ -26,6 +28,7 @@ EVENT_FIELDS = {
     EVENT_SHOW_DASHBOARD: ("device_id", "dashboard_path"),
     EVENT_HIDE_DASHBOARD: ("device_id",),
     EVENT_FORECAST: ("device_id", "location", "units", "issued", "duration_seconds", "days"),
+    EVENT_RICH_CARD: ("device_id", "title", "subtitle", "type", "duration_seconds", "rows", "image_entity", "actions", "announcement_id"),
     "kellies_voice_timer": (
         "device_id", "operation", "name", "issued",
         "ends_at_ms", "speak_alert", "alert_phrase"
@@ -36,6 +39,7 @@ STRING_LIMITS = {
     "title": 65, "text": 500, "location": 80, "units": 8,
     "entity_id": 88, "name": 40, "alert_phrase": 140, "speak": 180,
     "device_id": 64, "operation": 12, "image_fit": 8,
+    "subtitle": 80, "type": 16, "image_entity": 88,
 }
 INT_FIELDS = {"issued", "duration_seconds", "ends_at_ms", "refresh_seconds"}
 BOOL_FIELDS = {"show_header"}
@@ -67,6 +71,18 @@ def sanitize_event(event_type: str, payload: dict, this_tv: str) -> dict | None:
         if key == "actions":
             try:
                 safe["actions"] = clean_actions(value)
+            except ValueError:
+                return None
+            continue
+        if key == "rows":
+            try:
+                safe["rows"] = clean_rows(value)
+            except ValueError:
+                return None
+            continue
+        if key == "type":
+            try:
+                safe["type"] = clean_card_type(value)
             except ValueError:
                 return None
             continue
