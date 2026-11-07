@@ -94,7 +94,10 @@ public final class UpdateChannel {
             if (!devTag(tag) || !tag.equals("v" + name)) {
                 throw new IllegalArgumentException("Invalid release integrity metadata.");
             }
-        } else if (!ReleaseAssets.stableTag(tag) || name.isEmpty() || name.contains("-dev")) {
+        } else if (!ReleaseAssets.stableTag(tag) || name.isEmpty()
+                || name.contains("-dev") || !tag.equals("v" + name)) {
+            // Stable releases must describe their own tag, not just some
+            // differently named (potentially older) signed APK.
             throw new IllegalArgumentException("Invalid release integrity metadata.");
         }
         return new Meta((int) code, name, hash);
@@ -104,7 +107,7 @@ public final class UpdateChannel {
      * @return {@link #OFFER} only when the published code is newer than the
      *         installed app. Stable cannot replace a newer development build.
      */
-    public static String verdict(String channel, int offeredCode, int installedCode, String installedName) {
+    public static String verdict(String channel, long offeredCode, long installedCode, String installedName) {
         if (offeredCode > installedCode) return OFFER;
         boolean installedDev = installedName != null && installedName.contains("-dev");
         if (STABLE.equals(normalize(channel)) && installedDev) return ROLLBACK_BLOCKED;
